@@ -44,7 +44,10 @@
     'عندكم عندك لديكم لديك عنكم عنها عنه فيها فيه بها به منها منه معكم معك معنا عندنا الكم الك ' +
     'جمعيتكم تكامل تكاملكم ' +
     'what is the a an of to in and or how do does can i you we are for about tell me please your our my ' +
-    'is it its this that which who whom with be was were there their them us me'
+    'is it its this that which who whom with be was were there their them us me ' +
+    // Turkish (normalised: diacritics stripped, ı→i)
+    'bir ve ile icin de da mi mu ne nedir neler nasil neden nicin kim kimler hangi bu su o ben biz siz onlar ' +
+    'olarak olan cok daha gibi kadar mudur midir var yok hakkinda bana lutfen ise ki'
   ).split(' '));
   // Kept even though common: words that are the whole point of some questions.
   const KEEP = new Set(['اين', 'وين', 'فين', 'متى', 'كم', 'لماذا', 'ليش', 'ليه']);
@@ -79,7 +82,12 @@
     if (vcache.has(tok)) return vcache.get(tok);
     let out;
     if (/^\d+$/.test(tok)) out = [tok];
-    else if (!ARABIC.test(tok)) out = [tok.length > 4 && tok.endsWith('s') ? tok.slice(0, -1) : tok];
+    else if (!ARABIC.test(tok)) {
+      // Latin (en/tr sites): plural strip + a 5-letter prefix form as a light stem
+      // (membership/members → "membe", üyelik/üyeler → "uyeli"/"uyele" share "uye…" via fuzzy)
+      const b = tok.length > 4 && tok.endsWith('s') ? tok.slice(0, -1) : tok;
+      out = b.length >= 6 ? [b, b.slice(0, 5)] : [b];
+    }
     else {
       const forms = [tok];
       const a = stripArticle(tok);
@@ -231,7 +239,9 @@
       if (!synIndex.has(v)) synIndex.set(v, new Set());
       synIndex.get(v).add(gi);
     })));
-    IX = { kb, items, docs, df, avg, N: docs.length, byId, vocab: Array.from(df.keys()), synIndex };
+    // a translated KB (en/tr site) is matched in its own language: no Arabic synonym bridging
+    const latin = items.length > 0 && !ARABIC.test(items.slice(0, 5).map(it => it.title).join(' '));
+    IX = { kb, items, docs, df, avg, N: docs.length, byId, vocab: Array.from(df.keys()), synIndex, latin };
     return IX;
   }
   function ensure() {
@@ -277,14 +287,15 @@
       terms.push({ t, forms, w, kind, origin });
     };
     content.forEach((t, i) => {
-      if (EN[t]) { words(EN[t]).forEach(m => addTerm(m, 1, 'q', i)); return; }
-      if (!ARABIC.test(t) && !/^\d+$/.test(t) && !variants(t).some(v => IX.df.has(v))) return; // unknown foreign word
+      if (EN[t] && !IX.latin) { words(EN[t]).forEach(m => addTerm(m, 1, 'q', i)); return; }
+      if (!ARABIC.test(t) && !/^\d+$/.test(t) && !variants(t).some(v => IX.df.has(v))
+        && !(IX.latin && t.length >= 5)) return; // unknown foreign word (kept on en/tr sites for typo matching)
       addTerm(t, KEEP.has(t) ? 0.35 : 1, 'q', i);
     });
     INTENT.forEach(([test, add]) => { if (test(norm)) add.forEach(t => addTerm(t, 0.6, 'x', -1)); });
     // fuzzy (typos): forms unknown to the corpus → nearest vocabulary forms
     terms.forEach(term => {
-      if (term.kind !== 'q' || term.w < 1 || /^\d+$/.test(term.t) || !ARABIC.test(term.t)) return;
+      if (term.kind !== 'q' || term.w < 1 || /^\d+$/.test(term.t) || (!ARABIC.test(term.t) && !IX.latin)) return;
       if (term.forms.some(f => IX.df.has(f) || IX.synIndex.has(f))) return;
       const base = term.forms[term.forms.length - 1];
       if (base.length < 5) return;
@@ -555,7 +566,7 @@
     }
     if (st && st.kinds.includes('salam')) prefix.push(SMALL_REPLY.salam);
     else if (st && st.kinds.includes('greet')) prefix.push(SMALL_REPLY.greet);
-    if (A.english || (!ARABIC.test(text) && /\p{L}/u.test(text))) {
+    if (!IX.latin && (A.english || (!ARABIC.test(text) && /\p{L}/u.test(text)))) {
       prefix.push('وضع الكتيب يجيب باللغة العربية حالياً، وهذه أقرب نتيجة لسؤالك:');
     }
     if (!results.length || conf < 0.4) {

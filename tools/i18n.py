@@ -48,6 +48,8 @@ def localize(lang):
     (out / 'js').mkdir(exist_ok=True)
     for f in (core.SITE / 'js').glob('*.js'):
         (out / 'js' / f.name).write_text(_translate(f.read_text(encoding='utf-8'), m, f.name), encoding='utf-8')
+    w = core.SITE / 'data' / 'world.js'
+    (out / 'data' / 'world.js').write_text(_translate(w.read_text(encoding='utf-8'), m, 'world.js'), encoding='utf-8')
     kb = out / 'data' / 'kb.js'
     kb.write_text(_translate(kb.read_text(encoding='utf-8'), m, 'kb.js'), encoding='utf-8')
     for f in out.glob('*.html'):
@@ -55,7 +57,6 @@ def localize(lang):
         h = h.replace('<html lang="ar" dir="rtl">', f'<html lang="{lang}" dir="{dirn}">')
         h = h.replace('content="ar_AR"', f'content="{ {"en": "en_US", "tr": "tr_TR"}[lang] }"')
         h = re.sub(r'(href|src)="(css|assets|manifest\.webmanifest)', r'\1="../\2', h)
-        h = h.replace('src="data/world.js"', 'src="../data/world.js"')
         h = h.replace('<base href="/">', f'<base href="/{lang}/">')
         h = h.replace('url(../assets/', 'url(../assets/')  # (inline --img vars resolve against the stylesheet)
         # keep the language switch untouched by the chrome map
@@ -71,7 +72,7 @@ def localize(lang):
 def report(lang):
     """Untranslated Arabic runs: {run: {files, ctx}} (runs mapped to themselves are intentional)."""
     out, seen, m = core.OUT, {}, ui_map(lang)
-    for f in list(out.glob('*.html')) + list((out / 'js').glob('*.js')) + [out / 'data' / 'kb.js']:
+    for f in list(out.glob('*.html')) + list((out / 'js').glob('*.js')) + [out / 'data' / 'kb.js', out / 'data' / 'world.js']:
         t = f.read_text(encoding='utf-8')
         for mo in AR_RUN.finditer(re.sub(r'<div class="lang-switch[^"]*"[^>]*>.*?</div>', '', t, flags=re.S)):
             r = mo.group(0).strip()

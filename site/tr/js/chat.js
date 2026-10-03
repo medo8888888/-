@@ -1,4 +1,4 @@
-// «مساعد تكامل الذكي» — hybrid assistant.
+// «Takamul Akıllı Asistanı» — hybrid assistant.
 //  1. window.TakamulBrain: a pure, DOM-free brochure engine (Arabic normalisation, light
 //     stemming, synonyms, BM25) that answers ONLY with verbatim brochure lines from
 //     window.TAKAMUL_KB (site/data/kb.js). Also evaluated by tools/test-kb.mjs in Node.
@@ -44,7 +44,10 @@
     'عندكم عندك لديكم لديك عنكم عنها عنه فيها فيه بها به منها منه معكم معك معنا عندنا الكم الك ' +
     'جمعيتكم تكامل تكاملكم ' +
     'what is the a an of to in and or how do does can i you we are for about tell me please your our my ' +
-    'is it its this that which who whom with be was were there their them us me'
+    'is it its this that which who whom with be was were there their them us me ' +
+    // Turkish (normalised: diacritics stripped, ı→i)
+    'bir ve ile icin de da mi mu ne nedir neler nasil neden nicin kim kimler hangi bu su o ben biz siz onlar ' +
+    'olarak olan cok daha gibi kadar mudur midir var yok hakkinda bana lutfen ise ki'
   ).split(' '));
   // Kept even though common: words that are the whole point of some questions.
   const KEEP = new Set(['اين', 'وين', 'فين', 'متى', 'كم', 'لماذا', 'ليش', 'ليه']);
@@ -79,7 +82,12 @@
     if (vcache.has(tok)) return vcache.get(tok);
     let out;
     if (/^\d+$/.test(tok)) out = [tok];
-    else if (!ARABIC.test(tok)) out = [tok.length > 4 && tok.endsWith('s') ? tok.slice(0, -1) : tok];
+    else if (!ARABIC.test(tok)) {
+      // Latin (en/tr sites): plural strip + a 5-letter prefix form as a light stem
+      // (membership/members → "membe", üyelik/üyeler → "uyeli"/"uyele" share "uye…" via fuzzy)
+      const b = tok.length > 4 && tok.endsWith('s') ? tok.slice(0, -1) : tok;
+      out = b.length >= 6 ? [b, b.slice(0, 5)] : [b];
+    }
     else {
       const forms = [tok];
       const a = stripArticle(tok);
@@ -231,7 +239,9 @@
       if (!synIndex.has(v)) synIndex.set(v, new Set());
       synIndex.get(v).add(gi);
     })));
-    IX = { kb, items, docs, df, avg, N: docs.length, byId, vocab: Array.from(df.keys()), synIndex };
+    // a translated KB (en/tr site) is matched in its own language: no Arabic synonym bridging
+    const latin = items.length > 0 && !ARABIC.test(items.slice(0, 5).map(it => it.title).join(' '));
+    IX = { kb, items, docs, df, avg, N: docs.length, byId, vocab: Array.from(df.keys()), synIndex, latin };
     return IX;
   }
   function ensure() {
@@ -277,14 +287,15 @@
       terms.push({ t, forms, w, kind, origin });
     };
     content.forEach((t, i) => {
-      if (EN[t]) { words(EN[t]).forEach(m => addTerm(m, 1, 'q', i)); return; }
-      if (!ARABIC.test(t) && !/^\d+$/.test(t) && !variants(t).some(v => IX.df.has(v))) return; // unknown foreign word
+      if (EN[t] && !IX.latin) { words(EN[t]).forEach(m => addTerm(m, 1, 'q', i)); return; }
+      if (!ARABIC.test(t) && !/^\d+$/.test(t) && !variants(t).some(v => IX.df.has(v))
+        && !(IX.latin && t.length >= 5)) return; // unknown foreign word (kept on en/tr sites for typo matching)
       addTerm(t, KEEP.has(t) ? 0.35 : 1, 'q', i);
     });
     INTENT.forEach(([test, add]) => { if (test(norm)) add.forEach(t => addTerm(t, 0.6, 'x', -1)); });
     // fuzzy (typos): forms unknown to the corpus → nearest vocabulary forms
     terms.forEach(term => {
-      if (term.kind !== 'q' || term.w < 1 || /^\d+$/.test(term.t) || !ARABIC.test(term.t)) return;
+      if (term.kind !== 'q' || term.w < 1 || /^\d+$/.test(term.t) || (!ARABIC.test(term.t) && !IX.latin)) return;
       if (term.forms.some(f => IX.df.has(f) || IX.synIndex.has(f))) return;
       const base = term.forms[term.forms.length - 1];
       if (base.length < 5) return;
@@ -413,7 +424,7 @@
   }
 
   /* ---------- answer composition (verbatim brochure lines only) ---------- */
-  const LEAD = 'من الكتيب التعريفي:';
+  const LEAD = 'Tanıtım kitapçığından:';
   const strip = s => String(s || '').replace(/^\d+(\.\d+)?\s+/, '').trim();
   function shortTitle(it) {
     if (!it) return '';
@@ -490,25 +501,25 @@
   }
 
   const SMALL_REPLY = {
-    salam: 'وعليكم السلام ورحمة الله وبركاته 🌿',
-    greet: 'أهلاً وسهلاً بك 🌿',
-    thanks: 'العفو، يسعدني ذلك دائماً 🌿 هل لديك سؤال آخر عن الجمعية؟',
-    who: 'أنا **مساعد تكامل الذكي**، المساعد الافتراضي لـ«جمعية تكامل لبناء القيم والتنمية». أجيبك من نص الكتيب التعريفي للأعضاء الجدد، وأرفق مع كل إجابة رابطاً إلى موضعها في الموقع.',
-    bye: 'في أمان الله 🌿 سعدتُ بالحديث معك، وأنا هنا متى احتجتني.',
-    ok: 'يسعدني ذلك 🌿 هل تودّ معرفة المزيد؟ اختر أحد المواضيع المقترحة أو اكتب سؤالك.',
+    salam: 'Aleykümselam ve rahmetullahi ve berekâtüh 🌿',
+    greet: 'Hoş geldiniz 🌿',
+    thanks: 'Rica ederim, her zaman memnuniyetle 🌿 Dernek hakkında başka bir sorunuz var mı?',
+    who: 'Ben **Takamul Akıllı Asistanı**, «Takamul Değerler İnşası ve Kalkınma Derneği»nin sanal asistanıyım. Yanıtlarımı yeni üyeler için hazırlanan tanıtım kitapçığının metninden veriyor, her yanıta sitedeki ilgili bölümün bağlantısını ekliyorum.',
+    bye: 'Allah’a emanet olun 🌿 Sizinle konuşmak güzeldi; ihtiyaç duyduğunuzda buradayım.',
+    ok: 'Ne güzel 🌿 Daha fazlasını öğrenmek ister misiniz? Önerilen konulardan birini seçin ya da sorunuzu yazın.',
   };
   function capabilities() {
     const ids = ['s2', 's3', 's5', 's7', 's8', 's9', 's12'];
     const lines = ids.map(id => IX.byId.get(id)).filter(Boolean).map(it => `- ${strip(it.title)}`);
-    return 'يمكنني إجابتك عن كل ما ورد في الكتيب التعريفي، ومنه:\n' + lines.join('\n') +
-      '\n\nاكتب سؤالك بأسلوبك، وسأعرض لك النص من الكتيب مع رابط إلى موضعه.';
+    return 'Tanıtım kitapçığında yer alan her konuda sorularınızı yanıtlayabilirim; örneğin:\n' + lines.join('\n') +
+      '\n\nSorunuzu kendi ifadenizle yazın; size kitapçıktaki metni, ilgili bölümün bağlantısıyla birlikte göstereyim.';
   }
 
   function fallback(A, results) {
     const ids = (results || []).map(r => r.id).concat(DEFAULT_FOLLOW);
     return {
       kind: 'fallback', top: null, confidence: 0,
-      text: 'لم أجد في الكتيب التعريفي إجابة واضحة عن سؤالك 🌿\nجرّب صياغة أخرى أو كلمة مفتاحية مثل «العضوية» أو «التمويل» أو «ينابيع»، أو اختر أحد المواضيع المقترحة، أو تصفّح [دليل الإجابات](faq.html).',
+      text: 'Tanıtım kitapçığında sorunuza net bir yanıt bulamadım 🌿\nBaşka bir ifade ya da «Üyelik», «Finansman» veya «Yenâbî» gibi bir anahtar kelime deneyin, önerilen konulardan birini seçin ya da şuraya göz atın: [Yanıtlar Rehberi](faq.html).',
       sources: [],
       followups: followups(ids, []),
     };
@@ -530,7 +541,7 @@
         : st.kinds.includes('bye') ? 'bye' : st.kinds.includes('salam') ? 'salam' : st.kinds.includes('ok') ? 'ok' : 'greet';
       let body;
       if (k === 'can') body = capabilities();
-      else if (k === 'salam' || k === 'greet') body = SMALL_REPLY[k] + '\nأنا **مساعد تكامل الذكي**، أجيبك عن رؤية الجمعية ومبادرتيها «ينابيع» و«منافع» وخطة التوسع والعضوية والحوكمة والتمويل. بماذا أبدأ؟';
+      else if (k === 'salam' || k === 'greet') body = SMALL_REPLY[k] + '\nBen **Takamul Akıllı Asistanı**, derneğin vizyonu, «Yenâbî» ve «Menâfi» girişimleri, genişleme planı, üyelik, yönetişim ve finansman hakkındaki sorularınızı yanıtlarım. Nereden başlayalım?';
       else body = SMALL_REPLY[k];
       return { kind: 'smalltalk', small: k, top: null, confidence: 1, text: body, sources: [], followups: followups(DEFAULT_FOLLOW, []) };
     }
@@ -548,15 +559,15 @@
     if (CONTACT.test(normalize(query)) && (conf < 0.75 || !results.length)) {
       const c = answerItem('s1', analyze('المقر الرئيسي'));
       if (c) {
-        c.text = 'لا يتضمن الكتيب التعريفي أرقام هواتف أو عناوين بريد إلكتروني، والوارد فيه عن مقر الجمعية ونطاق عملها:\n\n' + c.text;
+        c.text = 'Tanıtım kitapçığında telefon numarası veya e-posta adresi yer almıyor; derneğin merkezi ve faaliyet alanı hakkında yer alan bilgiler şunlardır:\n\n' + c.text;
         c.contact = true;
         return c;
       }
     }
     if (st && st.kinds.includes('salam')) prefix.push(SMALL_REPLY.salam);
     else if (st && st.kinds.includes('greet')) prefix.push(SMALL_REPLY.greet);
-    if (A.english || (!ARABIC.test(text) && /\p{L}/u.test(text))) {
-      prefix.push('وضع الكتيب يجيب باللغة العربية حالياً، وهذه أقرب نتيجة لسؤالك:');
+    if (!IX.latin && (A.english || (!ARABIC.test(text) && /\p{L}/u.test(text)))) {
+      prefix.push('Kitapçık modu — sorunuza en yakın sonuç:');
     }
     if (!results.length || conf < 0.4) {
       const fb = fallback(A, results);
@@ -644,33 +655,33 @@
   const IDLE_MS = 30000;         // stalled stream → keep the partial answer + cut note
   const HEALTH_WAIT_MS = 4000;   // don't keep a question waiting on a slow health check
   const SUGGESTIONS = [
-    'ما هي مبادرة «ينابيع»؟',
-    'ما هي مبادرة «منافع»؟',
-    'كيف أنضم إلى الجمعية؟',
-    'ما هي مراحل التوسع الجغرافي؟',
-    'ما مصادر تمويل الجمعية؟',
-    'ما حقوق العضو وواجباته؟',
+    '«Yenâbî» girişimi nedir?',
+    '«Menâfi» girişimi nedir?',
+    'Derneğe nasıl katılırım?',
+    'Coğrafi genişlemenin aşamaları nelerdir?',
+    'Derneğin finansman kaynakları nelerdir?',
+    'Üyenin hakları ve yükümlülükleri nelerdir?',
   ];
-  const WELCOME = 'أهلاً وسهلاً بك في أسرة «تكامل» 🌿\nأنا **مساعد تكامل الذكي**، يسعدني أن أجيبك عن رؤية الجمعية ومبادراتها «ينابيع» و«منافع» وخطة التوسع والعضوية والحوكمة. بماذا أبدأ؟';
+  const WELCOME = '«Takamul» ailesine hoş geldiniz 🌿\nBen **Takamul Akıllı Asistanı**, derneğin vizyonu, «Yenâbî» ve «Menâfi» girişimleri, genişleme planı, üyelik ve yönetişim hakkındaki sorularınızı memnuniyetle yanıtlarım. Nereden başlayalım?';
   const MODE = {
-    checking: { label: 'جارٍ الاتصال…', tip: 'نتحقق من توفر المساعد الذكي. يمكنك الكتابة الآن، وستصلك الإجابة في كل الأحوال.' },
-    gemini: { label: 'مدعوم بـ Gemini', tip: 'إجابات ذكية يولّدها Gemini اعتماداً على نص الكتيب التعريفي، مع روابط إلى مصادرها في الموقع.' },
-    local: { label: 'وضع الكتيب', tip: 'يجيب المساعد مباشرةً من نص الكتيب التعريفي دون الحاجة إلى خادم، ويقتبس النص حرفياً مع رابط إلى موضعه في الموقع.' },
+    checking: { label: 'Bağlanıyor…', tip: 'Akıllı asistanın kullanılabilirliği kontrol ediliyor. Şimdi yazabilirsiniz; yanıtınız her durumda gelecek.' },
+    gemini: { label: 'Destekleyen: Gemini', tip: 'Akıllı yanıtları Gemini tanıtım kitapçığının metnine dayanarak üretir; sitedeki kaynak bağlantıları da eklenir.' },
+    local: { label: 'Kitapçık modu', tip: 'Asistan, sunucuya ihtiyaç duymadan doğrudan tanıtım kitapçığının metninden yanıt verir ve metni, sitedeki yerine bağlantı vererek aynen alıntılar.' },
   };
   const NOTES = {
-    gemini: 'قد يخطئ المساعد أحياناً؛ يُرجى التحقق من المعلومات المهمة.',
-    local: 'وضع الكتيب: الإجابات مقتبسة حرفياً من الكتيب التعريفي.',
+    gemini: 'Asistan zaman zaman hata yapabilir; lütfen önemli bilgileri doğrulayın.',
+    local: 'Kitapçık modu: yanıtlar tanıtım kitapçığından aynen alıntılanır.',
   };
   const FALLBACK_NOTE = {
-    not_configured: 'المساعد الذكي غير مفعّل على هذا الخادم بعد، فأجبتك من الكتيب التعريفي مباشرةً.',
-    forbidden: 'تعذّر الاتصال بـ Gemini من هذه الصفحة، فأجبتك من الكتيب التعريفي مباشرةً.',
-    rate_limited: 'وصلتَ إلى الحد المؤقت لأسئلة Gemini، فأجبتك من الكتيب التعريفي مباشرةً. يمكنك المحاولة مجدداً بعد دقيقة.',
-    bad_request: 'لم يتمكن Gemini من معالجة الطلب، فأجبتك من الكتيب التعريفي مباشرةً.',
-    timeout: 'استغرق Gemini وقتاً أطول من المعتاد، فأجبتك من الكتيب التعريفي مباشرةً.',
-    upstream: 'تعذّر الحصول على إجابة من Gemini الآن، فأجبتك من الكتيب التعريفي مباشرةً.',
-    network: 'تعذّر الاتصال بـ Gemini، فأجبتك من الكتيب التعريفي مباشرةً.',
+    not_configured: 'Akıllı asistan bu sunucuda henüz etkin değil; bu yüzden doğrudan tanıtım kitapçığından yanıt verdim.',
+    forbidden: 'Şu hizmete bağlanılamadı: Gemini (bu sayfadan); bu yüzden doğrudan tanıtım kitapçığından yanıt verdim.',
+    rate_limited: 'Geçici soru sınırına ulaştınız: Gemini; bu yüzden doğrudan tanıtım kitapçığından yanıt verdim. Bir dakika sonra yeniden deneyebilirsiniz.',
+    bad_request: 'Maalesef Gemini isteği işleyemedi; bu yüzden doğrudan tanıtım kitapçığından yanıt verdim.',
+    timeout: 'Maalesef Gemini beklenenden uzun sürdü; bu yüzden doğrudan tanıtım kitapçığından yanıt verdim.',
+    upstream: 'Şu anda Gemini üzerinden yanıt alınamadı; bu yüzden doğrudan tanıtım kitapçığından yanıt verdim.',
+    network: 'Şu hizmete bağlanılamadı: Gemini; bu yüzden doğrudan tanıtım kitapçığından yanıt verdim.',
   };
-  const CUT_NOTE = '\n\n_(انقطعت الإجابة قبل اكتمالها، يمكنك إعادة السؤال.)_';
+  const CUT_NOTE = '\n\n_(Yanıt tamamlanmadan kesildi; soruyu yeniden sorabilirsiniz.)_';
   const md = Brain.md, esc = Brain.esc;
   const wait = ms => new Promise(r => setTimeout(r, ms));
   const kbItem = id => {
@@ -731,8 +742,8 @@
     if (!items.length) return null;
     const wrap = el('div', 'chat-sources');
     wrap.setAttribute('role', 'group');
-    wrap.setAttribute('aria-label', 'المصادر');
-    wrap.appendChild(el('span', 'chat-meta-label', 'المصادر'));
+    wrap.setAttribute('aria-label', 'Kaynaklar');
+    wrap.appendChild(el('span', 'chat-meta-label', 'Kaynaklar'));
     items.forEach(it => {
       const a = el('a', 'src-chip');
       a.href = it.url;
@@ -749,8 +760,8 @@
     if (!items.length) return null;
     const wrap = el('div', 'chat-follow');
     wrap.setAttribute('role', 'group');
-    wrap.setAttribute('aria-label', 'أسئلة ذات صلة');
-    wrap.appendChild(el('span', 'chat-meta-label', 'قد يهمك أيضاً'));
+    wrap.setAttribute('aria-label', 'İlgili sorular');
+    wrap.appendChild(el('span', 'chat-meta-label', 'Bunlar da ilginizi çekebilir'));
     items.forEach(it => {
       const b = el('button', 'follow-chip');
       b.type = 'button';
@@ -916,7 +927,7 @@
       const a = opts && opts.id ? Brain.answerItem(opts.id) : Brain.answer(text, { prev: opts && opts.prev });
       if (a) return a;
     } catch (e) { /* fall through */ }
-    return { kind: 'fallback', text: 'تعذّر تحميل نص الكتيب في هذه الصفحة. يمكنك تصفّح [دليل الإجابات](faq.html) مباشرةً.', sources: [], followups: [] };
+    return { kind: 'fallback', text: 'Bu sayfada kitapçık metni yüklenemedi. Bunun yerine doğrudan [Yanıtlar Rehberi](faq.html) sayfasına göz atabilirsiniz.', sources: [], followups: [] };
   }
 
   /* ---------- ask ---------- */
@@ -934,7 +945,7 @@
     bubble('user', text);
     if (input.value.trim() === text.trim() || opts.fromInput) { input.value = ''; autosize(); }
     const node = bubble('model', '');
-    node.innerHTML = '<span class="typing" role="status" aria-label="يكتب الآن"><i></i><i></i><i></i></span>';
+    node.innerHTML = '<span class="typing" role="status" aria-label="Yazıyor"><i></i><i></i><i></i></span>';
 
     if (mode === 'checking') await Promise.race([checkHealth(), wait(HEALTH_WAIT_MS)]);
 

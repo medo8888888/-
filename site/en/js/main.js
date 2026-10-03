@@ -67,7 +67,7 @@
 
   /* ---------------- greeting ---------------- */
   const h = new Date().getHours();
-  const greet = h >= 5 && h < 12 ? 'صباح الخير' : h >= 12 && h < 18 ? 'نهارك سعيد' : 'مساء الخير';
+  const greet = h >= 5 && h < 12 ? 'Good morning' : h >= 12 && h < 18 ? 'Good afternoon' : 'Good evening';
   $$('[data-greet]').forEach(el => { el.textContent = greet; });
 
   /* ---------------- navbar: sliding pills ---------------- */

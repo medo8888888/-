@@ -107,12 +107,12 @@
 
   /* ---------------- index ---------------- */
   const GROUPS = [
-    { key: 'page', label: 'الصفحات', icon: 'compass' },
-    { key: 'section', label: 'الأقسام', icon: 'layers' },
-    { key: 'pillar', label: 'الركائز', icon: 'landmark' },
-    { key: 'stage', label: 'مراحل التوسع', icon: 'pin' },
-    { key: 'faq', label: 'الأسئلة الشائعة', icon: 'help' },
-    { key: 'action', label: 'إجراءات', icon: 'sparkles' }
+    { key: 'page', label: 'Sayfalar', icon: 'compass' },
+    { key: 'section', label: 'Bölümler', icon: 'layers' },
+    { key: 'pillar', label: 'Sütunlar', icon: 'landmark' },
+    { key: 'stage', label: 'Genişleme aşamaları', icon: 'pin' },
+    { key: 'faq', label: 'Sık Sorulan Sorular', icon: 'help' },
+    { key: 'action', label: 'İşlemler', icon: 'sparkles' }
   ];
   const GROUP_OF = { section: 'section', subsection: 'section', intro: 'section', pillar: 'pillar', stage: 'stage', faq: 'faq' };
   const GROUP_LIMIT = { page: 4, section: 6, pillar: 5, stage: 5, faq: 6, action: 6 };
@@ -182,7 +182,7 @@
     while ((m = WORD_RE.exec(n))) {
       let t = m[0];
       const st = stripPrefix(t);
-      if (st && t.startsWith('ال')) t = st[0]; // "المنافع" -> "منافع" (articles are matched on both sides)
+      if (st && t.startsWith('ال')) t = st[0]; // "المنافع" -> "Menâfi" (articles are matched on both sides)
       if (t.length >= 1) out.push(t);
     }
     return { n: n.trim(), tokens: [...new Set(out)] };
@@ -271,7 +271,7 @@
     const nq = norm(q); writeRecent([q].concat(readRecent().filter(x => norm(x) !== nq)));
   };
 
-  const SUGGEST = ['منافع', 'ينابيع', 'الحوكمة', 'الاستدامة المالية', 'أنقرة', 'المخاطر', 'العضوية', 'الرؤية'];
+  const SUGGEST = ['Menâfi', 'Yenâbî', 'Yönetişim', 'Finansal sürdürülebilirlik', 'Ankara', 'Riskler', 'Üyelik', 'Vizyon'];
 
   const themeNow = () => (window.TakamulTheme && window.TakamulTheme.get ? window.TakamulTheme.get() : root.dataset.theme) === 'dark' ? 'dark' : 'light';
   const toggleTheme = () => {
@@ -289,12 +289,12 @@
   };
 
   const ACTIONS = () => [
-    { id: 'theme', icon: themeNow() === 'dark' ? 'sun' : 'moon', title: themeNow() === 'dark' ? 'التبديل إلى المظهر الفاتح' : 'التبديل إلى المظهر الداكن', meta: 'المظهر', keys: 'المظهر الوضع الداكن الفاتح الليلي النهاري الالوان theme dark light', keep: true, run: () => { toggleTheme(); setTimeout(() => render(), 30); } },
-    { id: 'chat', icon: 'sparkles', title: 'افتح المساعد الذكي', meta: 'المساعد', keys: 'المساعد الذكي محادثه دردشه سؤال اسال chat ai', run: () => after(openChat) },
-    { id: 'dash', icon: 'chart', title: 'انتقل إلى لوحة القيادة', meta: 'dashboard.html', keys: 'لوحه القياده dashboard مؤشرات', run: () => go('dashboard.html') },
-    { id: 'toc', icon: 'book', title: 'انتقل إلى محتويات الكتيب', meta: 'الرئيسية', keys: 'محتويات الكتيب الفهرس toc', run: () => go('index.html#toc') }
+    { id: 'theme', icon: themeNow() === 'dark' ? 'sun' : 'moon', title: themeNow() === 'dark' ? 'Açık görünüme geç' : 'Koyu görünüme geç', meta: 'Görünüm', keys: 'görünüm tema mod koyu açık gece gündüz renkler theme dark light', keep: true, run: () => { toggleTheme(); setTimeout(() => render(), 30); } },
+    { id: 'chat', icon: 'sparkles', title: 'Akıllı asistanı aç', meta: 'Asistan', keys: 'akıllı asistan sohbet soru sor chat ai', run: () => after(openChat) },
+    { id: 'dash', icon: 'chart', title: 'Gösterge Paneline git', meta: 'dashboard.html', keys: 'gösterge paneli kontrol paneli dashboard göstergeler', run: () => go('dashboard.html') },
+    { id: 'toc', icon: 'book', title: 'Kitapçık içindekilere git', meta: 'Ana Sayfa', keys: 'kitapçık içindekiler fihrist toc', run: () => go('index.html#toc') }
   ];
-  const askAction = q => ({ id: 'ask', icon: 'message', title: 'اسأل المساعد: ', query: q, meta: 'المساعد الذكي', run: () => { pushRecent(q); after(() => askChat(q)); } });
+  const askAction = q => ({ id: 'ask', icon: 'message', title: 'Asistana Sor: ', query: q, meta: 'Akıllı Asistan', run: () => { pushRecent(q); after(() => askChat(q)); } });
 
   /* ---------------- navigation ---------------- */
   const currentPage = () => { const p = location.pathname.split('/').pop(); return p && /\.html?$/.test(p) ? p : 'index.html'; };
@@ -333,21 +333,21 @@
     el.className = 'pal'; el.hidden = true;
     el.innerHTML =
       '<div class="pal-backdrop" data-pal-close></div>' +
-      '<div class="pal-panel" role="dialog" aria-modal="true" aria-label="البحث في الكتيب">' +
+      '<div class="pal-panel" role="dialog" aria-modal="true" aria-label="Kitapçıkta arama">' +
         '<div class="pal-glow" aria-hidden="true"></div>' +
         '<div class="pal-head">' +
           svg('search', 'pal-i pal-search-i') +
           '<input class="pal-input" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="pal-list" aria-haspopup="listbox" ' +
-            'placeholder="ابحث في الكتيب…" aria-label="ابحث في الكتيب" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="go" dir="rtl">' +
-          '<button type="button" class="pal-clear" aria-label="مسح البحث" hidden>' + svg('x') + '</button>' +
-          '<button type="button" class="pal-close" data-pal-close aria-label="إغلاق البحث"><span class="pal-close-t">إغلاق</span><kbd class="pal-esc">Esc</kbd></button>' +
+            'placeholder="Kitapçıkta ara…" aria-label="Kitapçıkta ara" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="go" dir="rtl">' +
+          '<button type="button" class="pal-clear" aria-label="Aramayı temizle" hidden>' + svg('x') + '</button>' +
+          '<button type="button" class="pal-close" data-pal-close aria-label="Aramayı kapat"><span class="pal-close-t">Kapat</span><kbd class="pal-esc">Esc</kbd></button>' +
         '</div>' +
         '<div class="pal-body">' +
           '<div class="pal-empty" hidden></div>' +
-          '<div class="pal-list" id="pal-list" role="listbox" aria-label="نتائج البحث"><div class="pal-ind" aria-hidden="true"></div></div>' +
+          '<div class="pal-list" id="pal-list" role="listbox" aria-label="Arama sonuçları"><div class="pal-ind" aria-hidden="true"></div></div>' +
         '</div>' +
         '<div class="pal-foot">' +
-          '<span class="pal-hints" aria-hidden="true"><span><kbd>↑</kbd><kbd>↓</kbd> للتنقل</span><span><kbd>↵</kbd> للفتح</span><span><kbd>Esc</kbd> للإغلاق</span></span>' +
+          '<span class="pal-hints" aria-hidden="true"><span><kbd>↑</kbd><kbd>↓</kbd> gezin</span><span><kbd>↵</kbd> aç</span><span><kbd>Esc</kbd> kapat</span></span>' +
           '<span class="pal-count"></span>' +
         '</div>' +
         '<div class="pal-live" role="status" aria-live="polite" aria-atomic="true"></div>' +
@@ -380,7 +380,7 @@
     window.addEventListener('themechange', () => { if (isOpen) render(true); });
   };
 
-  const countText = n => n === 0 ? 'لا توجد نتائج' : n === 1 ? 'نتيجة واحدة' : n === 2 ? 'نتيجتان' : n <= 10 ? n + ' نتائج' : n + ' نتيجة';
+  const countText = n => n === 0 ? 'Sonuç yok' : n === 1 ? '1 sonuç' : n === 2 ? '2 sonuç' : n <= 10 ? n + ' sonuç' : n + ' sonuç';
 
   const rowHTML = (r, i) => {
     const id = 'pal-opt-' + i;
@@ -400,9 +400,9 @@
       meta = esc(r.a.meta || '');
     } else if (r.kind === 'recent' || r.kind === 'suggest') {
       title = esc(r.q);
-      meta = r.kind === 'recent' ? 'بحث سابق' : '';
+      meta = r.kind === 'recent' ? 'Önceki arama' : '';
     } else if (r.kind === 'clear') {
-      title = 'مسح عمليات البحث الأخيرة';
+      title = 'Son aramaları temizle';
     }
     return '<div class="pal-opt" role="option" id="' + id + '" data-i="' + i + '" data-g="' + r.g + '" aria-selected="false">' +
       '<span class="pal-ic">' + svg(r.icon) + '</span>' +
@@ -426,10 +426,10 @@
       if (recent.length) {
         const g = recent.map(x => ({ kind: 'recent', q: x, icon: 'clock', g: 'recent' }));
         g.push({ kind: 'clear', icon: 'trash', g: 'recent' });
-        groups.push({ label: 'عمليات البحث الأخيرة', rows: g });
+        groups.push({ label: 'Son aramalar', rows: g });
       }
-      groups.push({ label: 'اقتراحات', kind: 'chips', rows: SUGGEST.map(x => ({ kind: 'suggest', q: x, icon: 'search', g: 'suggest' })) });
-      groups.push({ label: 'إجراءات', rows: ACTIONS().map(a => ({ kind: 'action', a, icon: a.icon, g: 'action' })) });
+      groups.push({ label: 'Öneriler', kind: 'chips', rows: SUGGEST.map(x => ({ kind: 'suggest', q: x, icon: 'search', g: 'suggest' })) });
+      groups.push({ label: 'İşlemler', rows: ACTIONS().map(a => ({ kind: 'action', a, icon: a.icon, g: 'action' })) });
     } else {
       const res = search(q);
       const by = {};
@@ -451,11 +451,11 @@
       }).map(a => ({ kind: 'action', a, icon: a.icon, g: 'action' }));
       const strong = acts.length > 0;
       acts.push({ kind: 'action', a: askAction(q), icon: 'message', g: 'action' });
-      if (strong) groups.unshift({ label: 'إجراءات', rows: acts }); else groups.push({ label: 'إجراءات', rows: acts });
+      if (strong) groups.unshift({ label: 'İşlemler', rows: acts }); else groups.push({ label: 'İşlemler', rows: acts });
       if (!resultCount) {
         emptyEl.hidden = false;
-        emptyEl.innerHTML = '<div class="pal-none-ic">' + svg('search') + '</div><p class="pal-none-t">لم نجد نتائج لـ «' + esc(q) + '»</p>' +
-          '<p class="pal-none-s">جرّب كلمة أخرى أو صيغة أقصر، أو اسأل المساعد الذكي مباشرة.</p>';
+        emptyEl.innerHTML = '<div class="pal-none-ic">' + svg('search') + '</div><p class="pal-none-t">Sonuç bulunamadı: «' + esc(q) + '»</p>' +
+          '<p class="pal-none-s">Başka bir kelime veya daha kısa bir ifade deneyin ya da doğrudan akıllı asistana sorun.</p>';
       }
     }
     rows = [];
@@ -478,9 +478,9 @@
     setActive(rows.length ? next : -1, false, true);
     if (!keepActive) listEl.scrollTop = 0;
     const msg = q ? countText(resultCount) : '';
-    countEl.textContent = q ? msg : 'ابدأ الكتابة للبحث';
+    countEl.textContent = q ? msg : 'Aramak için yazmaya başlayın';
     clearTimeout(liveTimer);
-    liveTimer = setTimeout(() => { live.textContent = q ? msg + (resultCount ? '' : '. يمكنك سؤال المساعد') : ''; }, 450);
+    liveTimer = setTimeout(() => { live.textContent = q ? msg + (resultCount ? '' : '. Asistana sorabilirsiniz') : ''; }, 450);
   };
   const rowKey = r => r.kind + ':' + (r.e ? r.e.id : r.a ? r.a.id : r.q || '');
 

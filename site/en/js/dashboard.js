@@ -83,7 +83,7 @@
       cells.h.textContent = fmt.format(h);
       cells.m.textContent = fmt.format(m);
       cells.s.textContent = fmt.format(s);
-      cd.setAttribute('aria-label', 'العد التنازلي حتى مطلع عام 2035: ' + d + ' يوماً و' + h + ' ساعة');
+      cd.setAttribute('aria-label', 'Countdown to the start of 2035: ' + d + ' days and ' + h + ' hours');
     };
     tick();
     setInterval(tick, 1000);

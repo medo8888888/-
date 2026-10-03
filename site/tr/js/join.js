@@ -21,10 +21,10 @@
   const done = form.nextElementSibling;
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const MSG = {
-    valueMissing: 'هذا الحقل مطلوب',
-    typeMismatch: 'الصيغة غير صحيحة',
-    tooShort: 'القيمة قصيرة جداً',
-    pattern: 'الصيغة غير صحيحة',
+    valueMissing: 'Bu alan zorunludur',
+    typeMismatch: 'Biçim geçersiz',
+    tooShort: 'Değer çok kısa',
+    pattern: 'Biçim geçersiz',
   };
   const labelOf = el => (el.closest('label') && el.closest('label').querySelector('span')
     ? el.closest('label').querySelector('span').childNodes[0].textContent.trim() : el.name);
@@ -32,10 +32,10 @@
   function check(el) {
     const box = el.closest('label') && el.closest('label').querySelector('.err');
     let msg = '';
-    if (el.name === 'phone' && el.value.trim() && !/^\+?[\d\s()-]{8,20}$/.test(el.value.trim())) msg = 'اكتب رقماً صحيحاً مع رمز الدولة';
+    if (el.name === 'phone' && el.value.trim() && !/^\+?[\d\s()-]{8,20}$/.test(el.value.trim())) msg = 'Ülke koduyla birlikte geçerli bir numara yazın';
     else if (!el.validity.valid) {
       const k = Object.keys(MSG).find(key => el.validity[key]);
-      msg = MSG[k] || 'القيمة غير صحيحة';
+      msg = MSG[k] || 'Değer geçersiz';
     }
     el.setAttribute('aria-invalid', msg ? 'true' : 'false');
     if (box) box.textContent = msg;
@@ -52,7 +52,7 @@
     form.querySelectorAll('input:not([type=checkbox]):not([type=radio]), select, textarea').forEach(el => { if (!check(el) && !first) first = el; });
     const agree = form.elements.agree;
     const agreeErr = form.querySelector('.agree-err');
-    agreeErr.textContent = agree.checked ? '' : 'يجب الموافقة على الإقرار لإرسال الطلب';
+    agreeErr.textContent = agree.checked ? '' : 'Başvuruyu göndermek için beyanı onaylamanız gerekir';
     if (!agree.checked && !first) first = agree;
     if (first) { first.focus(); first.scrollIntoView({ block: 'center', behavior: 'smooth' }); return; }
 
@@ -63,19 +63,19 @@
       if (v) rows.push([labelOf(el), v]);
     });
     const interests = data.getAll('interest');
-    if (interests.length) rows.push(['مجالات المشاركة', interests.join('، ')]);
+    if (interests.length) rows.push(['Katılım alanları', interests.join(', ')]);
     const today = new Date().toLocaleDateString('ar', { year: 'numeric', month: 'long', day: 'numeric' });
     done.querySelector('.done-sheet').innerHTML =
-      `<div class="sheet-title"><img src="assets/logo.png" alt="" width="56" height="56"><div><b>جمعية تكامل لبناء القيم والتنمية</b><span>${esc(form.dataset.title || 'استمارة طلب العضوية')} · ${esc(today)}</span></div></div>` +
+      `<div class="sheet-title"><img src="assets/logo.png" alt="" width="56" height="56"><div><b>Takamul Değerler İnşası ve Kalkınma Derneği</b><span>${esc(form.dataset.title || 'Üyelik Başvuru Formu')} · ${esc(today)}</span></div></div>` +
       `<dl>${rows.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>` +
-      `<p class="sheet-agree">✔ أقرّ مقدّم الطلب بصحة البيانات والتزامه بأهداف الجمعية ونظامها الأساسي وواجبات العضو.</p>` +
-      `<div class="sheet-sign"><span>توقيع مقدّم الطلب: ..................</span><span>اعتماد الجمعية: ..................</span></div>`;
+      `<p class="sheet-agree">✔ Başvuru sahibi, verdiği bilgilerin doğruluğunu ve derneğin hedeflerine, tüzüğüne ve üye yükümlülüklerine bağlılığını beyan eder.</p>` +
+      `<div class="sheet-sign"><span>Başvuru sahibinin imzası: ..................</span><span>Dernek onayı: ..................</span></div>`;
 
     const to = form.dataset.email;
     const mail = done.querySelector('[data-join-mail]');
     if (to) {
       const body = rows.map(([k, v]) => `${k}: ${v}`).join('\n');
-      mail.href = `mailto:${to}?subject=${encodeURIComponent((form.dataset.title || 'طلب عضوية') + ' — ' + (data.get('full_name') || ''))}&body=${encodeURIComponent(body)}`;
+      mail.href = `mailto:${to}?subject=${encodeURIComponent((form.dataset.title || 'Üyelik başvurusu') + ' — ' + (data.get('full_name') || ''))}&body=${encodeURIComponent(body)}`;
       mail.hidden = false;
     }
     form.hidden = true;

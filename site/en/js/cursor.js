@@ -28,10 +28,10 @@
   const DARK = '.init-card, .cta, .footer, .chat-head, .btn-ai, .tab-ai, .sheet-wide.ai, .chat-send';
   const DARK_IN_LIGHT = '.btn-primary, .flag, .msg.user, .sec-num, .toc-num, .pill-active, .links a.active';
   const LABELS = [
-    [DRAG, 'اسحب'],
-    ['.init-card', 'استكشف'],
-    ['.toc-item', 'افتح'],
-    ['[data-open-chat]', 'اسأل'],
+    [DRAG, 'Drag'],
+    ['.init-card', 'Explore'],
+    ['.toc-item', 'Open'],
+    ['[data-open-chat]', 'Ask'],
   ];
   const MAGNETIC = '.btn, .btn-ai, .chat-fab, .icon-btn, .chat-send, .totop';
 
