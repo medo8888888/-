@@ -131,14 +131,18 @@ def card(it, ic_name, cls='q-card', h='h3'):
 # ------------------------------------------------------------------ hero ---
 def hero():
     m = re.match(r'^(\S+)\s+"(.+)"$', Q.meta['title'])
-    h1 = (f'<span class="q-h1-pre">{t(m.group(1))}</span> <span class="q-h1-main">{t(chr(34) + m.group(2) + chr(34))}</span>'
-          if m else t(Q.meta['title']))
+    if m:  # 'مبادرة' + «حفظ، فهم، تطبيق» (guillemets tinted gold)
+        main = t('"' + m.group(2) + '"')
+        main = main.replace('«', '<span class="q-q">«</span>').replace('»', '<span class="q-q">»</span>')
+        h1 = f'<span class="q-h1-pre">{t(m.group(1))}</span> <span class="q-h1-main">{main}</span>'
+    else:
+        h1 = t(Q.meta['title'])
     words = m.group(2).split('، ') if m else []
     tiles = ''
     for i, (w, sid) in enumerate(zip(words, ('a1', 'a2', 'a4')), 1):
         kicker, main = split_kicker(Q[sid].title)
-        tiles += (f'<li><a class="q-tile" href="#{sid}">{med(str(i))}<span class="q-word">{t(w)}</span>'
-                  f'<span class="q-tile-k">{t(kicker)}</span><span class="q-tile-t">{t(main)}</span>'
+        tiles += (f'<li><a class="q-tile" href="#{sid}">{med(icon(SEC_ICON[sid]))}<span class="q-word">{t(w)}</span> '
+                  f'<span class="q-tile-k">{t(kicker)}</span> <span class="q-tile-t">{t(main)}</span>'
                   f'<span class="q-tile-go" aria-hidden="true">{ic("arrow-left")}</span></a></li>')
     return f'''
 <section class="hero q-hero">
@@ -160,12 +164,12 @@ def axis_nav():
         n = i - 1  # intro, goals, then axes 1…11
         mark = f'<span class="q-nav-n" aria-hidden="true">{n if kicker else icon(SEC_ICON[s.id])}</span>'
         k = f'<small class="q-nav-k">{t(kicker)}</small>' if kicker else ''
-        rows += f'<li><a href="#{s.id}">{mark}<span class="q-nav-x">{k}<span class="q-nav-t">{t(short(main))}</span></span></a></li>'
+        rows += f'<li><a href="#{s.id}">{mark}<span class="q-nav-x">{k} <span class="q-nav-t">{t(short(main))}</span></span></a></li>'
     return f'''
 <aside class="q-aside">
   <nav class="q-nav" data-spy aria-label="محاور المبادرة">
     <p class="q-nav-title" aria-hidden="true">{icon('compass')}محاور المبادرة</p>
-    <div class="q-nav-scroll"><ol class="q-nav-list"><span class="q-track" aria-hidden="true"><i></i></span>{rows}</ol></div>
+    <div class="q-nav-scroll"><div class="q-nav-in"><span class="q-track" aria-hidden="true"><i></i></span><ol class="q-nav-list">{rows}</ol></div></div>
   </nav>
 </aside>'''
 
@@ -209,9 +213,9 @@ def s_goals():
         if core_goal:  # حفظ / فهم / تطبيق — the three words of the initiative
             body = body.replace(t(first), f'<strong class="q-key">{t(first)}</strong>', 1)
         mark = f'<span class="q-goal-i" aria-hidden="true">{icon(GOAL_ICONS[i])}</span>' if GOAL_ICONS[i] else ''
-        lis += (f'<li class="q-goal{" core" if core_goal else ""}"><span class="q-goal-n" aria-hidden="true">{i + 1}</span>'
+        lis += (f'<li class="q-goal rv{" core" if core_goal else ""}"><span class="q-goal-n" aria-hidden="true">{i + 1}</span>'
                 f'{mark}<p>{body}</p></li>')
-    return sec(s, f'<ol class="q-goals rv" data-stagger>{lis}</ol>', cls='q-goals-sec')
+    return sec(s, f'<ol class="q-goals" data-stagger>{lis}</ol>', cls='q-goals-sec')
 
 
 def s_a1():
@@ -303,6 +307,7 @@ def s_a5():
           <div class="q-app-head">{logo(26, 'app')}<b>{app_name}</b></div>
           <div class="q-app-hero"><span class="q-app-bars"><i></i><i></i><i></i></span><span class="q-app-ring"></span></div>
           <div class="q-app-grid">{tiles}</div>
+          <div class="q-app-list"><span><i></i><b></b></span><span><i></i><b></b></span></div>
           <div class="q-app-dock"><i></i><i></i><i></i><i></i></div>
         </div>
       </div>
@@ -394,7 +399,8 @@ def s_a11():
         pct = re.search(r'(\d+)%', it.body)
         if pct:
             v = pct.group(1)
-            viz = f'<div class="ring" data-ring style="--v:{v};--rc:var(--q-ring)"><span>{v}%</span></div>'
+            viz = (f'<div class="ring{" q-3d" if len(v) > 2 else ""}" data-ring style="--v:{v};--rc:var(--q-ring)">'
+                   f'<span>{v}%</span></div>')
             body = emph(t(it.body), f'{v}%', 'strong')
         else:
             viz = f'<span class="q-kpi-ic" aria-hidden="true">{icon("hand-heart" if i == 4 else "building")}</span>'

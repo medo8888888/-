@@ -126,6 +126,7 @@
     for (let i = 0; i + 1 < toks.length; i++) {
       toks.pairs.push(new RegExp('(?:^| )\\S{0,4}' + esc(toks[i].s) + '\\S* \\S{0,4}' + esc(toks[i + 1].s)));
     }
+    toks.q = words.join(' ');
     toks.doc = /(^| )(مبادره|حلق|حلقات|قران|قرانيه|طلاب|طالب|محور)( |$)/.test(words.join(' ')) ? 'quran'
       : /(^| )(مشروع|المشروع|منصه|المنصه|ينابيع)( |$)/.test(words.join(' ')) ? 'platform' : '';
     return toks;
@@ -148,6 +149,8 @@
       if (re.test(p.tn)) sum += 8;
       else if (re.test(p.xn)) sum += 5;
     }
+    if (toks.q && p.tn === toks.q) sum += 12;                 // exact title ("الرؤية")
+    else if (toks.q && p.tn.startsWith(toks.q + ' ')) sum += 3;
     if (toks.doc && p.it.doc === toks.doc) sum *= 1.15;
     return sum;
   }
@@ -199,7 +202,7 @@
     const merged = [];
     for (const r of ranges) {
       const last = merged[merged.length - 1];
-      if (last && r[0] <= last[1]) last[1] = Math.max(last[1], r[1]);
+      if (last && (r[0] <= last[1] || !text.slice(last[1], r[0]).trim())) last[1] = Math.max(last[1], r[1]); // «قادة الفرق» = one mark
       else merged.push(r.slice());
     }
     return merged;
@@ -220,10 +223,27 @@
   const SAMPLES = ['الكشافة', 'التمويل', 'مؤشرات الأداء', 'قائد الفريق', 'حماية البيانات', 'الدمج'];
 
   /* ---------- DOM helpers (content always goes in as text, never as HTML) ---------- */
+  // Text goes in as text nodes; Latin runs (KPI 1, CSR, Peer-to-Peer) are isolated in <bdi>
+  // like core.t() does on the pages, so brackets around them don't flip in RTL lines.
+  const LATIN = /[A-Za-z][A-Za-z0-9&+\-/.]*(?:\s+[A-Za-z0-9&+\-/.]+)*/g;
+  const put = (el, s) => {
+    let pos = 0;
+    s.replace(LATIN, (m, i) => {
+      if (i > pos) el.appendChild(document.createTextNode(s.slice(pos, i)));
+      const b = document.createElement('bdi');
+      b.lang = 'en';
+      b.textContent = m;
+      el.appendChild(b);
+      pos = i + m.length;
+      return m;
+    });
+    if (pos < s.length) el.appendChild(document.createTextNode(s.slice(pos)));
+    return el;
+  };
   const h = (tag, cls, text) => {
     const el = document.createElement(tag);
     if (cls) el.className = cls;
-    if (text != null) el.textContent = text;
+    if (text != null) put(el, String(text));
     return el;
   };
   const SVGNS = 'http://www.w3.org/2000/svg';
@@ -244,11 +264,11 @@
   const withMarks = (el, text, toks) => {
     let pos = 0;
     for (const [s, e] of toks && toks.length ? marks(text, toks) : []) {
-      if (s > pos) el.appendChild(document.createTextNode(text.slice(pos, s)));
+      if (s > pos) put(el, text.slice(pos, s));
       el.appendChild(h('mark', '', text.slice(s, e)));
       pos = e;
     }
-    if (pos < text.length) el.appendChild(document.createTextNode(text.slice(pos)));
+    if (pos < text.length) put(el, text.slice(pos));
     return el;
   };
   const tone = name => `var(--${name || 'brand'})`;
@@ -311,9 +331,13 @@
     }
     let best = 0, bestScore = -1;
     lines.forEach((l, i) => { const s = scoreText(l, toks); if (s > bestScore) { bestScore = s; best = i; } });
-    let line = lines[best];
-    if ((item.k || '')[best] === 't') line = line.split(' | ').join(' · ');
+    const k = item.k || '';
+    const show = i => (k[i] === 't' ? lines[i].split(' | ').join(' · ')
+      : item.type === 'kpi' ? lines[i].replace(/^KPI \d+ \([^)]*\):\s*/, '') : lines[i]);
     const LIM = 150;
+    let line = show(best);
+    // A short line ("مصادر التمويل:") reads better with what follows it.
+    for (let i = best + 1; line.length < 90 && i < lines.length; i++) line += ' ' + show(i);
     if (line.length <= LIM) return { text: line, toks };
     const first = marks(line, toks)[0];
     let start = first ? Math.max(0, first[0] - 45) : 0;
@@ -349,7 +373,18 @@
   }
 
   function renderResults(ranked, toks) {
-    const top = ranked.slice(0, MAX);
+    // Drop a parent whose only reason to be here is a child already listed above it
+    // (e.g. «مؤشرات الأداء الرئيسية» under «KPI 7»), unless its own title matches.
+    const shown = new Set();
+    const top = [];
+    for (const r of ranked) {
+      const it = r.item;
+      const childAbove = items.some(c => c.parent === it.id && shown.has(c.id));
+      if (childAbove && scoreText((it.kicker ? it.kicker + ' ' : '') + it.title, toks) === 0) continue;
+      shown.add(it.id);
+      top.push(r);
+      if (top.length === MAX) break;
+    }
     const pageOrder = [];
     const groups = {};
     top.forEach(r => {
@@ -444,12 +479,12 @@
     list.hidden = false;
     renderResults(ranked, toks);
     input.setAttribute('aria-expanded', 'true');
-    announce(plural(Math.min(ranked.length, MAX)));
+    announce(plural(opts.length));
   }
 
   /* ---------- navigation (same-page anchors close the overlay and scroll) ---------- */
   function follow(a, e) {
-    const url = new URL(a.getAttribute('href'), location.href);
+    const url = new URL(a.href, location.href);
     const same = url.pathname === location.pathname && url.search === location.search;
     if (!same || !url.hash) return; // let the browser navigate
     if (e) e.preventDefault();
