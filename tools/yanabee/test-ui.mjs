@@ -258,6 +258,17 @@ try {
   check('user message rendered as text', await c.evaluate(() => [...document.querySelectorAll('.chat-log .msg.user')].pop().textContent === 'ما مصادر التمويل؟'));
   check('suggestions hidden after the first question', await c.evaluate(() => document.querySelectorAll('.chat-suggest button').length === 0));
 
+  // the suggestion chip about the project's funding cites the project (s6) first, not the initiative's a9
+  await c.fill('.chat-form textarea', 'كيف يُموَّل المشروع؟');
+  await c.keyboard.press('Enter');
+  await c.waitForFunction(() => document.querySelectorAll('.chat-log .msg.bot.local').length >= 2, null, { timeout: 4000 }).catch(() => {});
+  const fund = await c.evaluate(() => {
+    const last = [...document.querySelectorAll('.chat-log .msg.bot')].pop();
+    const first = last && last.querySelector('a[href*=".html#"]');
+    return first ? first.getAttribute('href') : '';
+  });
+  check('"كيف يُموَّل المشروع؟" cites operations.html#s6 first', fund === 'operations.html#s6', fund);
+
   // a question the documents don't answer
   await c.fill('.chat-form textarea', 'ما حالة الطقس غداً؟');
   await c.keyboard.press('Enter');

@@ -306,5 +306,6 @@ body:has(.nav.hide) .tm-aside{top:24px}
 @media print{
   .tm-hub,.tm-aside,.tm-seg,.tm-hint{display:none!important}
   .tm-layout{display:block}
-  .tm-team,.tm-inc,.tm-lens-card{box-shadow:none;break-inside:avoid}
+  .tm-team,.tm-inc{box-shadow:none;break-inside:avoid}
+  .tm-lens-card{box-shadow:none;break-inside:auto}
 }

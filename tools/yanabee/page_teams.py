@@ -90,11 +90,12 @@ def hero():
     kicker, main = split_kicker(s2.title)
     words = main.split(' ')
     a, b = ' '.join(words[:3]), ' '.join(words[3:])
-    h1 = (f'<span class="tm-h1-k">{t(kicker)}</span> <span class="tm-h1-a">{t(a)}</span>'
+    h1 = (f'<span class="tm-h1-a">{t(a)}</span>'
           + (f' <span class="tm-h1-b">{t(b)}</span>' if b else ''))
     chips = [(f'#{tid}', f'<span class="tm-chip-ic" style="{tc(tid)}">{ic(TEAMS[tid])}</span><span>{t(short(TEAM[tid].title))}</span>')
              for tid in IDS]
     html = page_hero(PAGE, t(P.meta['title']), h1, t(s2.paras[0]), chips, hub(), 'has-visual tm-hero')
+    html = html.replace('<h1 class="rv">', f'<p class="tm-h1-k rv">{t(kicker)}</p><h1 class="rv">', 1)  # ordinal outside the h1
     return html.replace('<nav class="chips rv"', '<nav class="chips tm-chips-nav rv"', 1)
 
 
@@ -116,7 +117,7 @@ def lens():
                      f'<a class="tm-lens-name" href="#{tid}">{t(short(TEAM[tid].title))}</a>'
                      f'<p class="tm-lens-body">{t(it.body)}</p></li>')
         panels += (f'<div class="tm-lens-panel" role="tabpanel" id="lens-p-{n}" aria-labelledby="lens-tab-{n}" tabindex="0"'
-                   f'{"" if on else " hidden"}><ol class="tm-lens-list">{rows}</ol></div>')
+                   f'><ol class="tm-lens-list">{rows}</ol></div>')  # main.js [data-tabs] hides the others; all visible without JS
     return f'''
 <section class="sec tm-lens" aria-labelledby="lens-h">
   <div class="wrap">
@@ -219,14 +220,13 @@ def s3():
 
 # ------------------------------------------------------------------ page ---
 def build():
-    mission = P['s1']['mission']
     buttons = (btn('operations.html', 'التشغيل والحوكمة', 'shield')
                + btn('quran.html', t(Q.meta['title']), 'book-open', 'btn-ghost')
                + f'<button type="button" class="btn btn-ghost" data-open-chat>{ic("sparkles")}<span>اسأل عن الفرق</span></button>')
     body = f'''<div id="s2" class="tm-s2">{hero()}{lens()}{teams()}
 </div>
 {s3()}
-{cta(t(mission.title), t(mission.paras[0]), buttons)}'''
+{cta(t(P.meta['title']), t(P.meta['subtitle'].strip('()')), buttons)}'''
     kicker, main = split_kicker(P['s2'].title)
     page(PAGE, main, body, P['s2'].paras[0] + ' ' + '، '.join(short(TEAM[x].title) for x in IDS),
          css=('css/teams.css',), js=('js/teams.js',))

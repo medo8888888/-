@@ -10,7 +10,9 @@ Arabic (RTL) mini-site for **مشروع «ينابيع»**, built from two sourc
 
 It is served at **`/yanabee/`** by the same Cloudflare Worker as the Takamul site
 (`site/yanabee/` is inside the Worker's assets directory), and it is also fully
-self-contained: the `site/yanabee/` folder can be uploaded alone to any static host.
+self-contained: the `site/yanabee/` folder can be uploaded alone to any static host or opened
+from `file://`. Only `404.html` assumes the `/yanabee/` mount: Cloudflare serves the nearest
+`404.html` at any depth, so its asset and page URLs are absolute (`/yanabee/…`).
 
 ```
 content/yanabee/*.txt          the two documents, verbatim (markup documented in platform.txt's header)

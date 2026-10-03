@@ -322,10 +322,11 @@ def page(fn, title, body, desc, css=(), js=(), base=None):
         a = ' class="active" aria-current="page"' if h == fn else ''
         return f'<a href="{h}"{a}>{ic(icon)}<span>{label}</span></a>'
 
+    more_on = fn not in ('index.html', 'teams.html', 'quran.html', '404.html')  # pages reached through «المزيد»
     tabbar = (tab('index.html', 'الرئيسية', 'home') + tab('teams.html', 'الفرق', 'users')
-              + f'<button type="button" class="tab-ai" data-open-chat aria-label="اسأل مساعد ينابيع">{ic("sparkles")}<span>المساعد</span></button>'
+              + f'<button type="button" class="tab-ai" data-open-chat>{ic("sparkles")}<span>المساعد</span></button>'
               + tab('quran.html', 'المبادرة', 'book-open')
-              + f'<button type="button" data-open-sheet aria-label="القائمة الكاملة">{ic("grid")}<span>المزيد</span></button>')
+              + f'<button type="button" data-open-sheet{" class=active" if more_on else ""} aria-haspopup="dialog">{ic("grid")}<span>المزيد</span></button>')
     extra_css = ''.join(f'<link rel="stylesheet" href="{h}">\n' for h in css)
     extra_js = ''.join(f'<script src="{h}" defer></script>\n' for h in js)
     full_title = f'{title} | {SITE_NAME}' if title != SITE_NAME else SITE_NAME
@@ -364,7 +365,7 @@ def page(fn, title, body, desc, css=(), js=(), base=None):
 
 <header class="nav">
   <div class="nav-bar">
-    <a class="brand" href="index.html" aria-label="مشروع ينابيع – الرئيسية">
+    <a class="brand" href="index.html">
       {logo(42, 'nav')}
       <span><b>ينابيع</b><small>المنصة الوطنية الموحدة</small></span>
     </a>
@@ -390,12 +391,12 @@ def page(fn, title, body, desc, css=(), js=(), base=None):
   <div class="wrap">
     <div class="foot-grid">
       <div class="foot-brand">
-        <a class="brand" href="index.html" aria-label="مشروع ينابيع – الرئيسية">{logo(52, 'foot')}<span><b>ينابيع</b></span></a>
+        <a class="brand" href="index.html">{logo(52, 'foot')}<span><b>ينابيع</b></span></a>
         <p>{t(P.meta['subtitle'].strip('()'))}</p>
       </div>
-      <div><h4>الصفحات</h4>{foot_pages}</div>
-      <div><h4>{t(P.meta['title'])}</h4>{foot_secs}</div>
-      <div><h4>{t(QURAN.meta['title'])}</h4>{foot_axes}</div>
+      <nav aria-label="الصفحات"><h2 class="foot-h">الصفحات</h2>{foot_pages}</nav>
+      <nav aria-label="{plain(P.meta['title'])}"><h2 class="foot-h">{t(P.meta['title'])}</h2>{foot_secs}</nav>
+      <nav aria-label="{plain(QURAN.meta['title'])}"><h2 class="foot-h">{t(QURAN.meta['title'])}</h2>{foot_axes}</nav>
     </div>
     <div class="foot-bottom"><span>{t(P.meta['title'])} {t(P.meta['subtitle'])}</span><button type="button" class="link-btn" data-print>{ic('printer')}طباعة الصفحة</button></div>
   </div>
@@ -426,7 +427,7 @@ def page(fn, title, body, desc, css=(), js=(), base=None):
   </div>
 </div>
 
-<button type="button" class="chat-fab" data-open-chat aria-label="افتح مساعد ينابيع">{ic('sparkles')}<span>اسأل ينابيع</span></button>
+<button type="button" class="chat-fab" data-open-chat>{ic('sparkles')}<span>اسأل ينابيع</span></button>
 <div class="chat" hidden>
   <div class="chat-panel" role="dialog" aria-modal="false" aria-labelledby="chat-title">
     <div class="chat-head">
@@ -449,6 +450,9 @@ def page(fn, title, body, desc, css=(), js=(), base=None):
 </body>
 </html>
 '''
+    if base:  # served at any depth (Cloudflare's nearest 404.html): make asset and page URLs absolute
+        html = html.replace(base_tag, '')
+        html = re.sub(r'(href|src)="(?!https?:|#|/|data:|mailto:)', rf'\1="{base}', html)
     SITE.mkdir(parents=True, exist_ok=True)
     (SITE / fn).write_text(html, encoding='utf-8')
     return html

@@ -30,6 +30,7 @@
     for (let i = 0; i < s.length; i++) {
       const c = s[i];
       if (DIAC.test(c)) continue;
+      if ((c === ',' || c === '٬') && /\d/.test(s[i - 1] || '') && /\d/.test(s[i + 1] || '')) continue; // 1,000 -> 1000
       const f = fold(c);
       if (!WORD.test(f)) {
         if (n && n[n.length - 1] !== ' ') { n += ' '; map.push(i); }
@@ -151,7 +152,7 @@
     }
     if (toks.q && p.tn === toks.q) sum += 12;                 // exact title ("الرؤية")
     else if (toks.q && p.tn.startsWith(toks.q + ' ')) sum += 3;
-    if (toks.doc && p.it.doc === toks.doc) sum *= 1.15;
+    if (toks.doc) sum *= p.it.doc === toks.doc ? 1.15 : 0.5;  // the question names a document: prefer it
     return sum;
   }
 

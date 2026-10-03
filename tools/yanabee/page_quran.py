@@ -400,7 +400,7 @@ def s_a11():
         if pct:
             v = pct.group(1)
             viz = (f'<div class="ring{" q-3d" if len(v) > 2 else ""}" data-ring style="--v:{v};--rc:var(--q-ring)">'
-                   f'<span>{v}%</span></div>')
+                   f'<span aria-hidden="true">{v}%</span></div>')  # the number is read in the sentence below
             body = emph(t(it.body), f'{v}%', 'strong')
         else:
             viz = f'<span class="q-kpi-ic" aria-hidden="true">{icon("hand-heart" if i == 4 else "building")}</span>'

@@ -96,7 +96,7 @@
   /* ---------------- bottom sheet menu ---------------- */
   const sheet = $('.sheet');
   let lastFocus = null, hideTimer = 0;
-  const behind = () => ['.nav', 'main', '.footer', '.tabbar', '.chat-fab', '.totop'].map(q => $(q)).filter(Boolean);
+  const behind = () => ['.skip', '.progress', '.nav', 'main', '.footer', '.tabbar', '.chat-fab', '.totop'].map(q => $(q)).filter(Boolean);
   const openSheet = () => {
     if (!sheet) return;
     clearTimeout(hideTimer);
@@ -120,7 +120,8 @@
   $$('[data-open-sheet]').forEach(b => b.addEventListener('click', openSheet));
   $$('[data-close-sheet]').forEach(b => b.addEventListener('click', () => closeSheet()));
   // Opening chat/search from the sheet: close it without stealing focus back.
-  sheet && $$('[data-open-chat], [data-open-search]', sheet).forEach(b => b.addEventListener('click', () => closeSheet(false), true));
+  // Restore focus to the sheet's opener first, so the overlay records it and returns focus there on close.
+  sheet && $$('[data-open-chat], [data-open-search]', sheet).forEach(b => b.addEventListener('click', () => closeSheet(true), true));
   addEventListener('keydown', e => { if (e.key === 'Escape' && sheet && !sheet.hidden) closeSheet(); });
   if (sheet) {
     const panel = $('.sheet-panel', sheet);

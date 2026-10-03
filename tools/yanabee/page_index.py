@@ -28,7 +28,6 @@ def hero():
     phase_tag = f'{t(m.group(1))} · {t(m.group(2))}' if m else t(g.label)
     stats = f'''
       <div class="hero-stats rv" data-stagger>
-        <div class="hs"><b data-to="7">7</b><span>{t('فرق تخصصية تكاملية')}</span></div>
         <div class="hs"><small>{phase_tag}</small><b data-to="1000">1,000</b><span>{t('قائد موهوب من قادة الفرق')}</span></div>
         <div class="hs"><small>{phase_tag}</small><b data-to="100">100</b><span>{t('مبادرة مجتمعية وبيئية')}</span></div>
       </div>'''
@@ -126,6 +125,7 @@ def teams():
 def model():
     s5, s6 = P['s5'], P['s6']
     k5, main5 = split_kicker(s5.title)
+    k6, main6 = split_kicker(s6.title)
     principle = s5.paras[0]
     pillars = ''.join(
         f'<a class="pillar rv" href="operations.html#s5"><span class="pl-ic">{ic(icn)}</span><b>{t(strip_colon(it.label))}</b></a>'
@@ -145,12 +145,14 @@ def model():
     <div class="model-card rv">
       <div class="model-bg" aria-hidden="true"></div>
       <div class="model-main">
-        <span class="kicker on-dark">{ic('network')}{t(k5)} · {t(main5)}</span>
+        <span class="kicker on-dark">{ic('network')}{t(k5)}</span>
+        <h2 class="model-h">{t(main5)}</h2>
         <p class="principle">{t(principle)}</p>
         <div class="pillars" data-stagger>{''.join([pillars])}</div>
         {btn('operations.html', PAGE_LABEL['operations.html'], 'shield', 'btn-ghost on-dark')}
       </div>
       <div class="model-fund">
+        <span class="kicker on-dark fund-k">{ic('coins')}{t(k6)} · {t(main6)}</span>
         <h3>{t(strip_colon(fund.label))}</h3>
         <a class="donut" href="operations.html#s6" style="--a:{a};--b:{b}" aria-label="{plain(strip_colon(fund.label))}: {' / '.join(f'{x}%' for x in shares)}">
           <span class="donut-hole"><b>{shares[0]}%</b></span>
@@ -190,7 +192,7 @@ def s9():
   <div class="wrap">
     <header class="sec-head rv"><div><span class="kicker">{ic('chart')}{t(k)}</span><h2>{t(main)}</h2></div></header>
     <div class="phases-wrap" id="phases">
-      <h3 class="sub-h rv">{ic('route')}{t(strip_colon(ph.title))}</h3>
+      <h3 class="sub-h rv">{ic('route')}<span>{t(strip_colon(ph.title))}</span></h3>
       <div class="phases-track">
         <div class="river" aria-hidden="true"><svg viewBox="0 0 1000 80" preserveAspectRatio="none"><path d="M0 40 C 120 24, 230 56, 340 40 S 560 24, 670 40 S 880 56, 1000 40"/></svg></div>
         <ol class="phases">{steps}
@@ -198,7 +200,7 @@ def s9():
       </div>
     </div>
     <div class="impact" id="impact">
-      <h3 class="sub-h rv">{ic('gauge')}{t(strip_colon(im.title))}</h3>
+      <h3 class="sub-h rv">{ic('gauge')}<span>{t(strip_colon(im.title))}</span></h3>
       <div class="impact-grid">
         <article class="card imp rv" style="--sc:var(--sky)">
           <div class="ic">{ic('chart')}</div>
@@ -230,7 +232,9 @@ def initiative():
         if not mm:
             continue
         name = re.match(r'^KPI \d+ \((.+)\)$', it.label)
-        rings += f'''<a class="mini-kpi" href="quran.html#kpi{i}"><span class="ring" data-ring style="--v:{mm.group(1)};--rs:78px;--rw:8px"><span>{mm.group(1)}%</span></span><small>{t(name.group(1) if name else it.label)}</small></a>'''
+        rings += (f'<li><a class="mini-kpi" href="quran.html#kpi{i}"><span class="ring" data-ring style="--v:{mm.group(1)};--rs:64px;--rw:7px">'
+                  f'<span aria-hidden="true">{mm.group(1)}%</span></span><span class="mk-text"><b>{t(name.group(1) if name else it.label)}</b>'
+                  f'<small>{t(it.body)}</small></span></a></li>')
     return f'''
 <section class="sec initiative" id="initiative">
   <div class="wrap">
@@ -244,8 +248,8 @@ def initiative():
         <div class="btns">{btn('quran.html', 'استكشف المبادرة', 'arrow-left', 'btn-primary btn-emerald')}</div>
       </div>
       <div class="init-side">
-        <p class="verse-mini">{t(Q['intro'].quotes[0])}</p>
-        <div class="mini-kpis">{rings}</div>
+        <figure class="verse-fig"><figcaption>{t(Q['intro'].paras[1])}</figcaption><p class="verse-mini">{t(Q['intro'].quotes[0])}</p></figure>
+        <ul class="mini-kpis">{rings}</ul>
       </div>
     </div>
   </div>
