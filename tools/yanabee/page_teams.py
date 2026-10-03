@@ -8,7 +8,7 @@ ordinals of the seven teams named in the s2 title.
 """
 import math
 
-from core import (PLATFORM as P, QURAN as Q, TEAMS, btn, cta, ic, logo, page, page_hero, paren, plain,
+from core import (ICONS, PLATFORM as P, QURAN as Q, TEAMS, btn, cta, ic, logo, page, page_hero, paren,
                   section, short, split_kicker, strip_colon, svg, t)
 
 PAGE = 'teams.html'
@@ -73,7 +73,7 @@ def hub():
         nodes += (f'<g class="tm-node" style="{tc(tid)};--k:{k}"><circle class="tm-node-h" cx="{x:.1f}" cy="{y:.1f}" r="{NR + 9}"/>'
                   f'<circle class="tm-node-c" cx="{x:.1f}" cy="{y:.1f}" r="{NR}"/>'
                   f'<svg x="{x - s / 2:.1f}" y="{y - s / 2:.1f}" width="{s}" height="{s}" viewBox="0 0 24 24" fill="none" '
-                  f'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">{TEAM_ICON(tid)}</svg></g>')
+                  f'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">{ICONS[TEAMS[tid]]}</svg></g>')
     rings = ''.join(f'<circle class="tm-rg tm-rg{i}" cx="{C}" cy="{C}" r="{r}"/>' for i, r in enumerate((58, 92, 126)))
     return f'''
     <div class="tm-hub rv" aria-hidden="true">
@@ -83,11 +83,6 @@ def hub():
       </svg>
       <span class="tm-hub-core">{logo(84, 'hub', 'tm-hub-logo')}</span>
     </div>'''
-
-
-def TEAM_ICON(tid):
-    from core import ICONS
-    return ICONS[TEAMS[tid]]
 
 
 def hero():
