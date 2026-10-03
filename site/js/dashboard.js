@@ -140,19 +140,22 @@
   const cyc = $('[data-cycle]');
   if (cyc) {
     const steps = $$('.db-cyc-step', cyc);
-    let i = 0, paused = false, timer = 0;
+    let i = 0, paused = false, timer = 0, ticks = 0;
     const on = k => steps.forEach((s, j) => s.classList.toggle('on', j === k));
     steps.forEach((s, k) => {
       s.addEventListener('mouseenter', () => { paused = true; on(k); });
-      s.addEventListener('focus', () => { paused = true; on(k); });
       s.addEventListener('mouseleave', () => { paused = false; i = k; });
-      s.addEventListener('blur', () => { paused = false; i = k; });
     });
     on(0);
     if (!reduce && 'IntersectionObserver' in window) {
       new IntersectionObserver(es => es.forEach(e => {
         clearInterval(timer);
-        if (e.isIntersecting) timer = setInterval(() => { if (!paused) { i = (i + 1) % steps.length; on(i); } }, 2200);
+        // two gentle loops at most, then it rests (WCAG 2.2.2); hover still highlights
+        if (e.isIntersecting && ticks < steps.length * 2) timer = setInterval(() => {
+          if (paused) return;
+          i = (i + 1) % steps.length; on(i);
+          if (++ticks >= steps.length * 2) clearInterval(timer);
+        }, 2200);
       }), { threshold: 0.3 }).observe(cyc);
     }
   }

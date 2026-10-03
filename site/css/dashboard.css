@@ -9,7 +9,7 @@
 }
 
 /* ------------------------------------------------------------------ hero --- */
-.db-hero{position:relative;isolation:isolate;overflow:hidden;padding:calc(var(--nav-h) + 64px) 0 40px}
+.db-hero{position:relative;isolation:isolate;overflow:hidden;overflow:clip;padding:calc(var(--nav-h) + 64px) 0 40px}
 .db-mesh{position:absolute;inset:0;z-index:-1;pointer-events:none;
   -webkit-mask-image:linear-gradient(#000 60%,transparent);mask-image:linear-gradient(#000 60%,transparent)}
 .db-mesh i{position:absolute;border-radius:50%;filter:blur(70px);opacity:.55}
@@ -38,7 +38,7 @@
 .db-span-4{grid-column:span 4}.db-span-5{grid-column:span 5}.db-span-6{grid-column:span 6}
 .db-span-7{grid-column:span 7}.db-span-12{grid-column:1/-1}
 
-.db-tile{position:relative;isolation:isolate;overflow:hidden;min-width:0;padding:26px;border-radius:var(--r);
+.db-tile{position:relative;isolation:isolate;overflow:hidden;overflow:clip;min-width:0;padding:26px;border-radius:var(--r);
   background:var(--db-glass);border:1px solid var(--db-line);box-shadow:var(--shadow-sm);
   -webkit-backdrop-filter:blur(var(--db-blur)) saturate(1.2);backdrop-filter:blur(var(--db-blur)) saturate(1.2);
   display:flex;flex-direction:column;
@@ -81,7 +81,7 @@
 .db-cd-cell:last-child b{color:var(--db-acc)}
 .db-quote{margin-top:20px;font-size:clamp(17px,1.7vw,19.5px);line-height:1.95;color:var(--ink);font-weight:500;
   padding-inline-start:16px;border-inline-start:3px solid color-mix(in srgb,var(--brand) 60%,transparent)}
-.db-foot-note{margin-top:14px;font-size:14.5px;color:var(--muted);line-height:1.85}
+.db-foot-note{margin-top:auto;padding-top:14px;font-size:14.5px;color:var(--muted);line-height:1.85}
 .db-foot-note b{color:var(--ink-2)}
 
 /* ------------------------------------------------------------------ tabs --- */
@@ -116,7 +116,7 @@
   background:linear-gradient(90deg,var(--gold),var(--db-acc));box-shadow:0 0 14px color-mix(in srgb,var(--db-acc) 70%,transparent);transition:width .6s var(--ease)}
 [dir=rtl] .db-st-track i{background:linear-gradient(270deg,var(--gold),var(--db-acc))}
 .db-stepper .db-tablist{position:relative;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;padding:0;background:none;border:0;border-radius:0;overflow:visible}
-.db-stepper .db-tab{flex-direction:column;gap:6px;min-height:0;padding:6px 4px 10px;border-radius:16px;white-space:normal;background:none;box-shadow:none}
+.db-stepper .db-tab{flex-direction:column;justify-content:flex-start;gap:6px;min-height:0;padding:6px 4px 10px;border-radius:16px;white-space:normal;background:none;box-shadow:none}
 .db-st-dot{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;font-family:var(--font-h);font-weight:900;font-size:17px;
   color:var(--muted);background:var(--surface);border:1.5px solid var(--line-2);transition:all .3s var(--ease)}
 .db-st-name{font-size:13.5px;line-height:1.5;text-align:center;color:var(--muted);font-weight:600}
@@ -175,6 +175,11 @@
 .db-facts span{padding:3px 12px;border-radius:999px;font-size:13.5px;font-weight:700;color:var(--ink-2);background:color-mix(in srgb,var(--brand) 12%,transparent)}
 .db-facts b{font-family:var(--font-h)}
 .db-legend span{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
+.db-member{margin-top:auto;padding-top:18px}
+.db-member h3{font-family:var(--font-h);font-weight:800;font-size:15.5px;color:var(--head);line-height:1.5;margin-bottom:8px;padding-top:14px;border-top:1px solid var(--db-line)}
+.db-member ul{list-style:none;display:grid;gap:6px}
+.db-member li{display:flex;gap:8px;align-items:flex-start;font-size:14px;line-height:1.75;color:var(--muted)}
+.db-member .i{width:16px;height:16px;margin-top:5px;color:var(--brand)}
 
 /* ----------------------------------------------------------------- cycle --- */
 .db-cycle{list-style:none;position:relative;display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -198,7 +203,7 @@
 .db-orbit{position:relative;width:100%;max-width:230px;aspect-ratio:1;justify-self:center}
 .db-ring{width:100%;height:100%;overflow:visible}
 .db-ring-track{fill:none;stroke:color-mix(in srgb,var(--ink) 6%,transparent);stroke-width:18}
-.db-ring-seg{fill:none;stroke:color-mix(in srgb,var(--gold) 34%,var(--surface-3));stroke-width:14;stroke-linecap:round;transition:stroke .3s,stroke-width .3s var(--ease),filter .3s}
+.db-ring-seg{fill:none;stroke:color-mix(in srgb,var(--gold) 26%,var(--surface-3));stroke-width:14;stroke-linecap:round;transition:stroke .3s,stroke-width .3s var(--ease),filter .3s}
 .db-ring-seg.on{stroke:var(--gold);stroke-width:18;filter:drop-shadow(0 0 6px color-mix(in srgb,var(--gold) 70%,transparent))}
 .db-ring-num{font-family:var(--font-h);font-weight:800;font-size:11px;fill:var(--muted);text-anchor:middle;dominant-baseline:central;transition:fill .3s}
 .db-ring-num.on{fill:var(--head)}
@@ -259,7 +264,7 @@
 .db-callout-n small{font-size:12px;color:var(--muted)}
 .db-callout>div>b{font-family:var(--font-h);font-weight:800;color:var(--head)}
 .db-callout p{font-size:14.5px;color:var(--ink-2);line-height:1.75}
-.db-nations{list-style:none;display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.db-nations{list-style:none;display:flex;flex-wrap:wrap;align-content:flex-end;gap:8px;margin-top:14px;flex:1}
 .db-nations li{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;font-weight:700;color:var(--ink);
   background:color-mix(in srgb,var(--surface-2) 60%,transparent);border:1px solid var(--db-line);transition:transform .25s var(--ease),border-color .25s,box-shadow .25s}
 .db-nations li .i{width:16px;height:16px;color:var(--gold)}

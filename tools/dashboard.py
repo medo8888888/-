@@ -104,7 +104,7 @@ def build_dashboard():
 
     # ---------------------------------------------------------- goals ----
     goals = ''.join(
-        f'<li class="db-goal" tabindex="0"><span class="db-goal-n">{L(57 + 3 * k)}</span>'
+        f'<li class="db-goal"><span class="db-goal-n">{L(57 + 3 * k)}</span>'
         f'<div><h3>{L(58 + 3 * k)}</h3><p>{L(59 + 3 * k)}</p></div></li>' for k in range(5))
     goals_t = _tile(f'<ol class="db-goals">{goals}</ol>', 'db-span-7', L(56), 'target', L(51))
 
@@ -123,12 +123,13 @@ def build_dashboard():
          f'<p>{L(183)}</p><div class="db-legend"><span><i class="on"></i>أساسي</span><span><i></i>احتياط</span></div>'),
     ]
     gov = _tablist('db-gov', L(171), gov_nodes, 'db-org')
-    governance = _tile(f'<div class="db-org-lines" aria-hidden="true"></div>{gov}',
+    member = ''.join(f'<li>{ic("check")}<span>{x}</span></li>' for x in LS(185, 187))
+    governance = _tile(f'{gov}<div class="db-member"><h3>{L(184)}</h3><ul>{member}</ul></div>',
                        'db-span-5 db-glow-brand', L(169), 'shield', L(170))
 
     # ---------------------------------------------------- field cycle ----
     cyc = ''.join(
-        f'<li class="db-cyc-step" tabindex="0" data-cyc="{k}"><span class="db-cyc-n">{L(189 + 4 * k)}</span>'
+        f'<li class="db-cyc-step" data-cyc="{k}"><span class="db-cyc-n">{L(189 + 4 * k)}</span>'
         f'<h3>{L(190 + 4 * k)}</h3><p>{L(191 + 4 * k)}</p></li>' for k in range(4))
     cycle = _tile(f'<ol class="db-cycle" data-cycle>{cyc}<li class="db-cyc-core" aria-hidden="true">{ic("refresh")}</li></ol>',
                   'db-span-5 db-glow-leaf', L(188), 'refresh')
@@ -195,13 +196,13 @@ def build_dashboard():
 
     # ---------------------------------------------------- philosophy -----
     phil = ''.join(
-        f'<li class="db-phil" tabindex="0"><span class="db-phil-en" lang="en" dir="ltr">{L(102 + 3 * k)}</span>'
+        f'<li class="db-phil"><span class="db-phil-en" lang="en" dir="ltr">{L(102 + 3 * k)}</span>'
         f'<h3>{L(101 + 3 * k)}</h3><p>{L(103 + 3 * k)}</p></li>' for k in range(4))
     philosophy = _tile(f'<ul class="db-phils">{phil}</ul>', 'db-span-6', L(100), 'scale', L(99))
 
     # --------------------------------------------------- departments -----
     deps = ''.join(
-        f'<li class="db-dep" tabindex="0"><span class="db-dep-n">{k + 1}</span>'
+        f'<li class="db-dep"><span class="db-dep-n">{k + 1}</span>'
         f'<div><h3>{L(116 + 2 * k)}</h3><p>{L(117 + 2 * k)}</p></div></li>' for k in range(5))
     departments = _tile(f'<div class="db-dep-head" aria-hidden="true"><span>{L(114)}</span><span>{L(115)}</span></div>'
                         f'<ol class="db-deps">{deps}</ol>', 'db-span-6', L(113), 'building')
@@ -209,7 +210,7 @@ def build_dashboard():
     # ------------------------------------------------- target groups -----
     gicons = ['link', 'briefcase', 'heart', 'landmark']
     groups = ''.join(
-        f'<li class="db-grp" tabindex="0">{ic(gicons[k], "i db-grp-ic")}<h3>{L(160 + 2 * k)}</h3><p>{L(161 + 2 * k)}</p></li>'
+        f'<li class="db-grp">{ic(gicons[k], "i db-grp-ic")}<h3>{L(160 + 2 * k)}</h3><p>{L(161 + 2 * k)}</p></li>'
         for k in range(4))
     targets = _tile(f'<ul class="db-grps">{groups}</ul>', 'db-span-6 db-glow-brand', L(158), 'users', L(159))
 

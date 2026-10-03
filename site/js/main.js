@@ -35,10 +35,10 @@
     if (document.startViewTransition && !reduce) document.startViewTransition(() => setTheme(next, true));
     else setTheme(next, true);
   };
-  window.TakamulTheme = {
+  window.TakamulTheme = { // programmatic API applies immediately (no view-transition delay)
     get: () => root.dataset.theme,
     set: t => { if (t === 'light' || t === 'dark') setTheme(t, true); },
-    toggle: toggleTheme,
+    toggle: () => setTheme(root.dataset.theme === 'dark' ? 'light' : 'dark', true),
   };
   $$('.theme-toggle').forEach(b => b.addEventListener('click', toggleTheme));
   onMQ(matchMedia('(prefers-color-scheme: dark)'), e => {

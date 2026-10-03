@@ -1,7 +1,7 @@
 /* globe — overlays for site/js/globe.js (canvas colours come from the site tokens at runtime;
    globe.js also sets --globe-hq / --globe-board on the host from --gold / --accent|--leaf) */
 .globe-host{--globe-hq:var(--gold-2,#e5c158);--globe-board:var(--accent,var(--leaf,#5cc489));isolation:isolate}
-.globe-host canvas[data-globe]{touch-action:pan-y;cursor:grab;display:block;border-radius:50%}
+.globe-host canvas[data-globe]{touch-action:pan-y;cursor:grab;display:block}
 .globe-host canvas[data-globe].is-hovering{cursor:pointer}
 .globe-host canvas[data-globe].is-dragging{cursor:grabbing}
 .globe-host canvas[data-globe]:focus-visible{outline:2px solid var(--globe-hq);outline-offset:-6px}

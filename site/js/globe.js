@@ -56,7 +56,7 @@
     legend: 'دليل الكرة الأرضية'
   };
   // label placement (lon, lat) — tuned so the five names never collide; Palestine gets a leader line
-  var LABEL_AT = { TR: [35.6, 38.7], SY: [38.6, 35.2], PS: [31.6, 33.2], IQ: [43.8, 32.6], EG: [29.6, 26.4] };
+  var LABEL_AT = { TR: [37.6, 38.9], SY: [38.3, 35.3], PS: [30.4, 33.6], IQ: [44.7, 32.4], EG: [29.8, 26.5] };
   var HOME = { lon: 35, lat: 33 };
 
   // rough continents (fallback only) — [lon, lat] outlines
@@ -313,6 +313,7 @@
     }
 
     /* ---------- view state ---------- */
+    var tilt = 0;                      // degrees the focus point sits above the sphere centre (horizon view)
     var view = { lon: HOME.lon + 26, lat: HOME.lat + 6 };
     var vel = 0, velLat = 0;           // deg per ms
     var idleUntil = 0;
@@ -340,9 +341,14 @@
       dpr = Math.min(window.devicePixelRatio || 1, 2);
       W = r.width; H = r.height; offX = r.left - pr.left; offY = r.top - pr.top;
       canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
-      // a little closer than a full-earth view; the limb stays visible
-      R = Math.min(W, H) * (compact ? 0.5 : 0.56);
-      cx = W / 2; cy = H * (compact ? 0.5 : 0.47);
+      // closer than a full-earth view: a large sphere whose upper limb (with its glow) stays in frame,
+      // the region of the five countries centred at the focus point above the legend
+      var mn = Math.min(W, H);
+      R = mn * (W < 420 ? 0.95 : 0.9);
+      cx = W / 2; cy = R - H * (W < 420 ? 0.04 : 0.05);  // limb just above the top edge, visible in both upper corners
+      var fy = H * (compact ? 0.42 : 0.43);
+      tilt = Math.asin(clamp((cy - fy) / R, 0, 0.85)) / DEG;
+      if (view.lat > 60 - tilt) view.lat = 60 - tilt;
       parent.style.setProperty('--globe-r', R.toFixed(1) + 'px');
       parent.classList.toggle('globe-narrow', W < 420);
       bgDirty = true;
@@ -476,7 +482,7 @@
       ctx.beginPath();
       var gl = graticule();
       for (var g = 0; g < gl.length; g++) pathPolyline(gl[g], false);
-      ctx.strokeStyle = css(C.sky, dark ? 0.07 : 0.09); ctx.lineWidth = 0.6; ctx.stroke();
+      ctx.strokeStyle = css(C.sky, dark ? 0.07 : 0.06); ctx.lineWidth = 0.6; ctx.stroke();
 
       // context land — faint, anonymous, two depth bands
       counts[0] = counts[1] = 0;
@@ -488,11 +494,11 @@
         buf[o] = cx + (m0 * x + m2 * z) * R; buf[o + 1] = cy - (m3 * x + m4 * y + m5 * z) * R;
         counts[bi] = o + 2;
       }
-      var cr = clamp(R / 260, 0.7, 1.35);
+      var cr = clamp(R / 560, 0.55, 0.95);
       ctx.fillStyle = css(C.ctxDot, 1);
       for (var b = 0; b < 2; b++) {
         if (!counts[b]) continue;
-        ctx.globalAlpha = (dark ? [0.2, 0.36] : [0.22, 0.4])[b];
+        ctx.globalAlpha = (dark ? [0.24, 0.42] : [0.16, 0.3])[b];
         var bf = bufs[b], w = cr * 2;
         ctx.beginPath();
         for (var p = 0; p < counts[b]; p += 2) ctx.rect(bf[p] - cr, bf[p + 1] - cr, w, w);
@@ -553,7 +559,7 @@
             var ph = reduce ? 0.45 : ((t * 0.5 + k * 0.5) % 1);
             ctx.globalAlpha = (1 - ph) * 0.85 * p[2];
             ctx.strokeStyle = css(C.hq, 1); ctx.lineWidth = 1.3;
-            ctx.beginPath(); ctx.arc(p[0], p[1], s * 2 + ph * R * 0.09, 0, TAU); ctx.stroke();
+            ctx.beginPath(); ctx.arc(p[0], p[1], s * 2 + ph * R * 0.045, 0, TAU); ctx.stroke();
           }
           ctx.globalAlpha = 1;
           ctx.fillStyle = css(C.hq, 0.3); ctx.beginPath(); ctx.arc(p[0], p[1], s * 3, 0, TAU); ctx.fill();
@@ -561,17 +567,19 @@
         ctx.fillStyle = css(C.hq, 1); ctx.beginPath(); ctx.arc(p[0], p[1], s * (c.hq ? 1.7 : 1.3), 0, TAU); ctx.fill();
         ctx.fillStyle = dark ? '#fff' : css(C.bg, 1); ctx.beginPath(); ctx.arc(p[0], p[1], s * (c.hq ? 0.7 : 0.55), 0, TAU); ctx.fill();
         // city name: Istanbul above-west, Ankara above
-        var fsz = clamp(R / 22, 11, 14);
+        var fsz = clamp(R * DEG * 1.5, 10.5, 13);
         ctx.font = '700 ' + fsz.toFixed(1) + 'px ' + font;
-        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; ctx.direction = 'rtl';
-        var ly = p[1] - s * (c.hq ? 3.4 : 2.6);
-        ctx.lineWidth = 3; ctx.strokeStyle = css(C.halo, dark ? 0.75 : 0.85); ctx.strokeText(c.ar, p[0], ly);
-        ctx.fillStyle = css(c.hq ? C.hq : C.ink, 1); ctx.fillText(c.ar, p[0], ly);
+        ctx.direction = 'rtl';
+        var lx = p[0], ly;
+        if (c.hq) { ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; lx = p[0] - s * 4.6; ly = p[1] - s * 0.6; }
+        else { ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; ly = p[1] - s * 2; }
+        ctx.lineWidth = 3; ctx.strokeStyle = css(C.halo, dark ? 0.75 : 0.85); ctx.strokeText(c.ar, lx, ly);
+        ctx.fillStyle = css(c.hq ? C.hq : C.ink, 1); ctx.fillText(c.ar, lx, ly);
       });
     }
 
     function drawLabels() {
-      var fsz = clamp(R / 17, 12, 17);
+      var fsz = clamp(R * DEG * 1.75, 12, 16);
       ctx.font = '800 ' + fsz.toFixed(1) + 'px ' + font;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.direction = 'rtl';
       M.countries.forEach(function (c) {
@@ -661,7 +669,7 @@
     /* ---------- camera ---------- */
     function flyTo(lon, lat, dur) {
       var dl = wrapLon(lon - view.lon);
-      anim = { lon0: view.lon, lat0: view.lat, dl: dl, dlat: clamp(lat, -60, 70) - view.lat, t0: now(), dur: reduce ? 0 : (dur || clamp(500 + Math.abs(dl) * 8, 650, 1500)) };
+      anim = { lon0: view.lon, lat0: view.lat, dl: dl, dlat: clamp(lat - tilt, -70, 60) - view.lat, t0: now(), dur: reduce ? 0 : (dur || clamp(500 + Math.abs(dl) * 8, 650, 1500)) };
       vel = 0; velLat = 0; idleUntil = now() + 5000;
       wake();
     }
@@ -692,12 +700,12 @@
       if (drag) return;
       vel *= Math.pow(0.94, dt / 16.7); velLat *= Math.pow(0.92, dt / 16.7);
       view.lon = wrapLon(view.lon + vel * dt);
-      view.lat = clamp(view.lat + velLat * dt, -60, 70);
+      view.lat = clamp(view.lat + velLat * dt, -70, 60);
       var holding = hover >= 0 || selected >= 0 || focusC >= 0 || tNow < idleUntil;
       if (!holding && !reduce && Math.abs(vel) < 0.002) { // drift home with a gentle sway
         var tl = HOME.lon + Math.sin(tNow / 5200) * 5, kk = Math.min(1, dt / 2400);
         view.lon = wrapLon(view.lon + wrapLon(tl - view.lon) * kk);
-        view.lat += (HOME.lat - view.lat) * kk;
+        view.lat += (HOME.lat - tilt - view.lat) * kk;
       }
     }
     function loop(ts) {
@@ -753,7 +761,7 @@
         if (!drag.moved) return;
         var k = 1 / R / DEG * 0.9;
         view.lon = wrapLon(drag.lon - dx * k);
-        if (e.pointerType !== 'touch') view.lat = clamp(drag.lat + dy * k, -60, 70);
+        if (e.pointerType !== 'touch') view.lat = clamp(drag.lat + dy * k, -70, 60);
         var t = now(), dtm = Math.max(1, t - drag.lt);
         vel = vel * 0.6 + (-(p[0] - drag.lx) * k / dtm) * 0.4;
         velLat = e.pointerType === 'touch' ? 0 : velLat * 0.6 + ((p[1] - drag.ly) * k / dtm) * 0.4;
@@ -796,7 +804,7 @@
       var k = e.key, st = e.shiftKey ? 20 : 8;
       if (k === 'ArrowLeft' || k === 'ArrowRight' || k === 'ArrowUp' || k === 'ArrowDown') {
         e.preventDefault();
-        var tl = anim ? anim.lon0 + anim.dl : view.lon, tt = anim ? anim.lat0 + anim.dlat : view.lat;
+        var tl = anim ? anim.lon0 + anim.dl : view.lon, tt = (anim ? anim.lat0 + anim.dlat : view.lat) + tilt;
         if (k === 'ArrowLeft') tl += st; if (k === 'ArrowRight') tl -= st;
         if (k === 'ArrowUp') tt -= st * 0.75; if (k === 'ArrowDown') tt += st * 0.75;
         hover = -1; selected = -1; focusC = -1; setTip(-1);
@@ -804,7 +812,11 @@
         idleUntil = now() + 7000;
       } else if (k === 'Enter' || k === ' ' || k === 'Spacebar') {
         e.preventDefault();
-        var ci = countryAtLL(view.lon, view.lat);
+        var fp = unproject(cx, cy - Math.sin(tilt * DEG) * R), ci = fp ? countryAtLL(fp[0], fp[1]) : -1;
+        if (ci < 0 && fp) { // nothing exactly under the focus point: the nearest of the five within ~9°
+          var fv = vec(fp[0], fp[1]), bd = 9 * DEG;
+          M.countries.forEach(function (c) { var dd = angDist(fv, c.v); if (dd < bd) { bd = dd; ci = c.i; } });
+        }
         focusC = ci; idleUntil = now() + 7000;
         if (ci >= 0) { setTip(ci, 'anchor'); say(UI.center + describe(M.countries[ci])); }
         else { setTip(-1); say(UI.none); }
@@ -841,7 +853,7 @@
     if (resize()) draw(0);
     parent.classList.add('globe-ready');
     if (!M.full) legend.classList.add('is-fallback');
-    if (!reduce) flyTo(HOME.lon, HOME.lat, 1800); else { view.lon = HOME.lon; view.lat = HOME.lat; redraw(); }
+    if (!reduce) flyTo(HOME.lon, HOME.lat, 1800); else { view.lon = HOME.lon; view.lat = HOME.lat - tilt; redraw(); }
 
     self.canvas = canvas;
     self.flyTo = flyToIso;

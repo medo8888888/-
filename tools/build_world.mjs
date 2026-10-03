@@ -13,7 +13,7 @@
 //   WORLD_DEPS=/tmp/world-deps node tools/build_world.mjs
 //
 //   Options (env):  WORLD_RES=50m|110m  (default 50m)     WORLD_EPS=0.02  (Douglas–Peucker, degrees)
-//                   WORLD_LAND=16000   (context sphere)    WORLD_FINE=240000 (sphere for the 5 countries)
+//                   WORLD_LAND=36000   (context sphere)    WORLD_FINE=240000 (sphere for the 5 countries)
 //
 // Source: Natural Earth countries via `world-atlas` (TopoJSON, public domain) decoded with
 // `topojson-client`. All visible words come verbatim from the brochure (read here by line number).
@@ -59,7 +59,7 @@ try {
 
 const Q = 20;
 const EPS = Number(process.env.WORLD_EPS || 0.02);
-const NLAND = Number(process.env.WORLD_LAND || 16000);
+const NLAND = Number(process.env.WORLD_LAND || 36000);
 const NFINE = Number(process.env.WORLD_FINE || 240000);
 const DEG = Math.PI / 180;
 const GA = Math.PI * (3 - Math.sqrt(5));
