@@ -34,9 +34,6 @@ def build_home():
     </div>
     <div class="hero-visual" aria-hidden="true">
       <canvas class="globe" data-globe data-arcs="1"></canvas>
-      <span class="float-chip c1">{ic('pin')} إسطنبول</span>
-      <span class="float-chip c2">{ic('droplet')} ينابيع</span>
-      <span class="float-chip c3">{ic('coins')} منافع</span>
     </div>
   </div>
   <a class="scroll-cue" href="#welcome" aria-label="انتقل للأسفل"><span></span></a>

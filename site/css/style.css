@@ -744,6 +744,11 @@ tbody tr:nth-child(even){background:color-mix(in srgb,var(--surface-2) 50%,trans
 .hero-visual::before{content:"";position:absolute;inset:8%;border-radius:50%;z-index:-1;pointer-events:none;
   background:radial-gradient(closest-side,color-mix(in srgb,var(--accent) 22%,transparent),transparent);filter:blur(20px)}
 
+.hero-visual{border-radius:32px;overflow:hidden;border:1px solid var(--line);
+  background:radial-gradient(80% 70% at 50% 40%,color-mix(in srgb,var(--accent) 7%,transparent),transparent 70%),color-mix(in srgb,var(--surface) 35%,transparent);
+  box-shadow:var(--shadow-lg),var(--edge)}
+@media(max-width:760px){.hero-visual{border-radius:24px}}
+
 /* ---------- chat panel (glass) ---------- */
 .chat-panel{background:color-mix(in srgb,var(--surface) 88%,transparent);-webkit-backdrop-filter:blur(26px) saturate(1.4);backdrop-filter:blur(26px) saturate(1.4);
   border-color:var(--line-2);box-shadow:var(--shadow-lg),var(--edge)}

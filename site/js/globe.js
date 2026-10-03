@@ -56,7 +56,7 @@
     legend: 'دليل الكرة الأرضية'
   };
   // label placement (lon, lat) — tuned so the five names never collide; Palestine gets a leader line
-  var LABEL_AT = { TR: [37.6, 38.9], SY: [38.3, 35.3], PS: [30.4, 33.6], IQ: [44.7, 32.4], EG: [29.8, 26.5] };
+  var LABEL_AT = { TR: [37.6, 38.9], SY: [38.3, 35.3], PS: [30.0, 33.7], IQ: [44.7, 32.4], EG: [29.8, 26.5] };
   var HOME = { lon: 35, lat: 33 };
 
   // rough continents (fallback only) — [lon, lat] outlines
@@ -344,7 +344,7 @@
       // closer than a full-earth view: a large sphere whose upper limb (with its glow) stays in frame,
       // the region of the five countries centred at the focus point above the legend
       var mn = Math.min(W, H);
-      R = mn * (W < 420 ? 0.95 : 0.9);
+      R = mn * (W < 420 ? 1.3 : 1.4);
       cx = W / 2; cy = R - H * (W < 420 ? 0.04 : 0.05);  // limb just above the top edge, visible in both upper corners
       var fy = H * (compact ? 0.42 : 0.43);
       tilt = Math.asin(clamp((cy - fy) / R, 0, 0.85)) / DEG;
@@ -482,7 +482,7 @@
       ctx.beginPath();
       var gl = graticule();
       for (var g = 0; g < gl.length; g++) pathPolyline(gl[g], false);
-      ctx.strokeStyle = css(C.sky, dark ? 0.07 : 0.06); ctx.lineWidth = 0.6; ctx.stroke();
+      ctx.strokeStyle = css(C.sky, dark ? 0.07 : 0.045); ctx.lineWidth = 0.6; ctx.stroke();
 
       // context land — faint, anonymous, two depth bands
       counts[0] = counts[1] = 0;
@@ -579,7 +579,7 @@
     }
 
     function drawLabels() {
-      var fsz = clamp(R * DEG * 1.75, 12, 16);
+      var fsz = clamp(R * DEG * 1.75, 11.5, 16);
       ctx.font = '800 ' + fsz.toFixed(1) + 'px ' + font;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.direction = 'rtl';
       M.countries.forEach(function (c) {
