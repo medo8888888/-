@@ -20,7 +20,7 @@ python3 tools/build.py
 
 ## النشر على Cloudflare (مع المساعد الذكي)
 
-1. Cloudflare ← **Workers & Pages** ← **Create** ← **Import a repository** ← اختر هذا المستودع والفرع.
+1. Cloudflare ← **Workers & Pages** ← الـ Worker الحالي `noisy-water-017a` ← **Settings** ← **Build** ← **Connect** ← اختر هذا المستودع والفرع (اسم الـ Worker في `wrangler.jsonc` مطابق له).
 2. اترك أمر البناء فارغاً، وأمر النشر: `npx wrangler deploy` (يقرأ `wrangler.jsonc` تلقائياً).
 3. بعد النشر: إعدادات الـ Worker ← **Variables and Secrets** ← أضف **Secret** باسم `GEMINI_API_KEY` وقيمته مفتاحك من Google AI Studio.
    (أو من جهازك: `npx wrangler secret put GEMINI_API_KEY`)
