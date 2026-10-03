@@ -895,8 +895,12 @@ tbody tr:nth-child(even){background:color-mix(in srgb,var(--surface-2) 50%,trans
   .hero-num{font-size:44vw;opacity:.4}
 }
 
-.hero-home .hero-visual{max-width:380px}
-@media(max-width:760px){.hero-home .hero-visual{max-width:300px}}
+.hero-home .hero-grid{grid-template-columns:1fr!important;justify-items:center;text-align:center}
+.hero-home .hero-copy{max-width:1000px}
+.hero-home h1{font-size:clamp(44px,8vw,120px)}
+.hero-home .sub{margin-inline:auto;max-width:720px}
+.hero-home{min-height:min(88svh,820px)}
+@media(max-width:760px){.hero-home h1{font-size:clamp(44px,14vw,64px)}.hero-home{min-height:calc(100svh - var(--tab-h))}}
 .hero-home .hero-visual .globe-legend,.hero-home .hero-visual [class*="legend"]{font-size:12px}
 
 /* ---------- reduced motion ---------- */

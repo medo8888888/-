@@ -21,9 +21,6 @@ def build_home():
       <h1 class="rv">جمعية <span class="grad">تكامل</span><br>لبناء القيم والتنمية</h1>
       <p class="sub rv">{L(3)} — {L(8)}</p>
     </div>
-    <div class="hero-visual" aria-hidden="true">
-      <canvas class="globe" data-globe data-arcs="1"></canvas>
-    </div>
   </div>
   <a class="scroll-cue" href="#welcome" aria-label="انتقل للأسفل"><span></span></a>
 </section>
@@ -98,7 +95,7 @@ def build_home():
   </div>
 </section>
 {cta()}'''
-    page('index.html', 'الرئيسية', body, L(10), globe=True)
+    page('index.html', 'الرئيسية', body, L(10))
 
 
 # =============================================================== ABOUT ===
