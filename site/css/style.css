@@ -961,3 +961,22 @@ tbody tr:nth-child(even){background:color-mix(in srgb,var(--surface-2) 50%,trans
 @media(max-width:520px){.photo-band{grid-template-columns:1fr}.ph{min-height:190px}}
 .img-credits{margin-top:12px;font-size:12px;color:#7f8ea0}
 .img-credits a{display:inline;padding:0;color:#9fb0c3;text-decoration:underline}
+/* photo strips inside sections */
+.pstrip{display:grid;gap:14px;margin-top:30px}
+.pstrip.n3{grid-template-columns:1.3fr 1fr 1fr}.pstrip.n4{grid-template-columns:repeat(4,1fr)}
+.pstrip-item{margin:0;height:230px;border-radius:22px;background:var(--img) center/cover no-repeat;border:1px solid var(--line);box-shadow:var(--shadow-sm);
+  position:relative;overflow:hidden;transition:translate .5s var(--ease),box-shadow .5s var(--ease)}
+.pstrip-item::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 55%,color-mix(in srgb,var(--bg) 45%,transparent))}
+.pstrip-item:hover{translate:0 -5px;box-shadow:var(--shadow)}
+.pstrip + .ph-note{margin-top:8px}
+@media(max-width:900px){.pstrip.n3,.pstrip.n4{grid-template-columns:1fr 1fr}.pstrip-item{height:170px}.pstrip.n3 .pstrip-item:first-child{grid-column:1/-1;height:200px}}
+/* home gallery marquee */
+.gallery-sec{padding:70px 0 40px;overflow:hidden}
+.gallery{margin-top:28px;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
+.g-track{display:flex;gap:16px;width:max-content;animation:g-scroll 80s linear infinite}
+.gallery:hover .g-track{animation-play-state:paused}
+.g-item{flex:none;width:300px;height:210px;border-radius:22px;background:var(--img) center/cover no-repeat;border:1px solid var(--line);box-shadow:var(--shadow-sm)}
+.g-item:nth-child(3n+2){width:240px;height:210px}.g-item:nth-child(4n){width:360px}
+@keyframes g-scroll{to{transform:translateX(calc(50% + 8px))}}
+@media(max-width:600px){.g-item{width:220px;height:160px}.g-item:nth-child(4n){width:260px}.g-item:nth-child(3n+2){width:180px;height:160px}.g-track{animation-duration:60s}}
+@media(prefers-reduced-motion:reduce){.g-track{animation:none}.gallery{overflow-x:auto}}

@@ -1,7 +1,7 @@
 """Page compositions for the Takamul site (home + inner pages + 404).
 Uses the components and shell from core.py. See docs/ARCHITECTURE.md."""
 from core import *  # noqa: F401,F403  (L, LS, ic, page, section, card, ...)
-from core import D, SECTIONS, SEC_ICON, PAGE_LABEL, photo_layer
+from core import D, SECTIONS, SEC_ICON, PAGE_LABEL, photo_layer, photo_strip, gallery
 
 
 # ================================================================ HOME ===
@@ -57,6 +57,12 @@ def build_home():
       <p class="rv muted">{L(11)}</p>
     </div>
   </div>
+</section>
+
+<section class="gallery-sec">
+  <div class="wrap center"><span class="kicker rv">{L(1)}</span><h2 class="rv">من أجواء عملنا</h2></div>
+  {gallery()}
+  <p class="ph-note">صور تعبيرية</p>
 </section>
 
 <section class="toc-sec alt" id="toc">
@@ -124,7 +130,8 @@ def build_home():
 def build_about():
     s1 = section(1, f'''<div class="grid g3">
       {card(L(43), L(44), 'landmark')}{card(L(45), L(46), 'pin')}{card(L(47), L(48), 'globe')}
-    </div>''', lead=L(42))
+    </div>
+    {photo_strip('ortakoy', 'dome', 'courtyard')}''', lead=L(42))
     goals = ''.join(numcard(L(57 + 3 * i), L(58 + 3 * i), L(59 + 3 * i)) for i in range(5))
     s2 = section(2, f'''<div class="grid g2">
       <article class="card tilt rv feature" style="--fc:var(--c-gold)"><div class="ic">{ic('eye')}</div><h3>{L(52)}</h3><p>{L(53)}</p></article>
@@ -154,7 +161,8 @@ def build_initiatives():
         <h3>{L(82)}</h3><p class="focus">{L(83)}</p>{ul(LS(84, 87), 'diamond')}</article>
     </div>
     {subhead(L(88), id='s3-3')}
-    <div class="grid g4">{card(L(89), L(90), 'refresh')}{card(L(91), L(92), 'wrench')}{card(L(93), L(94), 'flask')}{card(L(95), L(96), 'scale')}</div>''',
+    <div class="grid g4">{card(L(89), L(90), 'refresh')}{card(L(91), L(92), 'wrench')}{card(L(93), L(94), 'flask')}{card(L(95), L(96), 'scale')}</div>
+    {photo_strip('reading', 'dialogue', 'training', 'bakery')}''',
                  lead=L(75))
     tg = ''.join(card(L(160 + 2 * i), L(161 + 2 * i), icn) for i, icn in enumerate(['building', 'cap', 'heart', 'landmark']))
     s6 = section(6, f'<div class="grid g4">{tg}</div>', alt=True)
@@ -167,7 +175,7 @@ def build_expansion():
     tl = ''.join(
         f'<li class="tl" id="st{i + 1}"><span class="tl-n">{L(130 + 4 * i)}</span><div class="card"><span class="tag">{L(129 + 4 * i)} {L(130 + 4 * i)}</span>'
         f'<h3>{L(131 + 4 * i)}</h3><p>{L(132 + 4 * i)}</p></div></li>' for i in range(7))
-    s5 = section(5, f'<div class="timeline"><span class="tl-fill" aria-hidden="true"></span><ol class="tl-list">{tl}</ol></div>', lead=f'{L(6)} — {L(7)}')
+    s5 = section(5, f'<div class="timeline"><span class="tl-fill" aria-hidden="true"></span><ol class="tl-list">{tl}</ol></div>' + photo_strip('istanbul', 'bosphorus', 'ortakoy'), lead=f'{L(6)} — {L(7)}')
     page('expansion.html', 'خطة التوسع', page_hero('expansion.html', [5], visual=True) + s5 + cta(), L(128), globe=True)
 
 
@@ -189,7 +197,8 @@ def build_governance():
     s8 = section(8, f'''{subhead(L(207), id='s8-1')}
     <div class="grid g4">{fin}</div>
     {subhead(L(222), id='s8-2')}
-    <div class="grid g2">{card(L(223), L(224), 'scale')}{card(L(225), L(226), 'tree')}</div>''', alt=True)
+    <div class="grid g2">{card(L(223), L(224), 'scale')}{card(L(225), L(226), 'tree')}</div>
+    {photo_strip('board', 'dialogue', 'distribution')}''', alt=True)
     page('governance.html', 'الحوكمة والتمويل', page_hero('governance.html', [7, 8]) + s7 + s8 + cta(), L(170))
 
 
@@ -284,7 +293,8 @@ def build_join():
     s9 = section(9, f'''<div class="grid g2">
       <article class="card tilt rv feature" style="--fc:var(--c-leaf)"><div class="ic">{ic('check')}</div><h3>{L(230)}</h3>{ul(LS(232, 235))}</article>
       <article class="card tilt rv feature" style="--fc:var(--c-gold)"><div class="ic">{ic('pinmark')}</div><h3>{L(231)}</h3>{ul(LS(236, 239), 'diamond')}</article>
-    </div>''')
+    </div>
+    {photo_strip('hands', 'youth', 'mentor')}''')
     chips = ''.join(f'<span class="flag">{L(i)}</span>' for i in range(318, 323))
     pillars = [
         pcard(L(306), L(307), L(308), L(309), ul(LS(310, 313))),
@@ -382,7 +392,7 @@ def _sel(name, label, opts, req=True):
             f'<option value="">— اختر —</option>{o}</select><em class="err" aria-live="polite"></em></label>')
 
 
-PHOTO_OF = {78: 'classroom', 79: 'courtyard', 80: 'istanbul', 81: 'classroom', 84: 'workshop', 85: 'workshop', 86: 'bakery', 87: 'distribution'}
+PHOTO_OF = {78: 'reading', 79: 'mentor', 80: 'dialogue', 81: 'youth', 84: 'workshop', 85: 'training', 86: 'bakery', 87: 'distribution'}
 PROGRAMS = [(78, 'yanabee', 'droplet'), (79, 'yanabee', 'heart'), (80, 'yanabee', 'users'), (81, 'yanabee', 'shield'),
             (84, 'manafea', 'briefcase'), (85, 'manafea', 'link'), (86, 'manafea', 'coins'), (87, 'manafea', 'heart')]
 
@@ -451,6 +461,7 @@ def build_support():
 </div></section>
 <section class="sec" id="volunteer"><div class="wrap">
   <div class="center"><span class="kicker rv">{L(113)}</span><h2 class="rv">تطوّع معنا</h2><p class="lead rv center-text">{L(326)}</p></div>
+  {photo_strip('hands', 'youth', 'distribution')}
   <form class="join-form rv" novalidate data-email="" data-title="طلب تطوّع">
     <fieldset><legend><span class="step">1</span> بياناتك</legend>
       <div class="fgrid">

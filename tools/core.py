@@ -156,8 +156,23 @@ def section(n, body, alt=False, lead=''):
 </section>'''
 
 
-HERO_PHOTO = {'about.html': 'courtyard', 'initiatives.html': 'classroom', 'expansion.html': 'istanbul',
-              'governance.html': 'courtyard', 'join.html': 'istanbul', 'faq.html': 'classroom'}
+HERO_PHOTO = {'about.html': 'dome', 'initiatives.html': 'classroom', 'expansion.html': 'bosphorus',
+              'governance.html': 'board', 'join.html': 'hands', 'faq.html': 'ortakoy'}
+
+
+def photo_strip(*names):
+    """A row of illustrative photos inside a section (decorative, labelled «صور تعبيرية»)."""
+    figs = ''.join(f'<figure class="pstrip-item rv" style="--img:url(../assets/img/{n}.jpg)"></figure>' for n in names)
+    return f'<div class="pstrip n{len(names)}" aria-hidden="true">{figs}</div><p class="ph-note rv">صور تعبيرية</p>'
+
+
+GALLERY = ['istanbul', 'reading', 'workshop', 'dialogue', 'bakery', 'youth', 'dome', 'training',
+           'classroom', 'ortakoy', 'mentor', 'distribution', 'hands', 'bosphorus', 'courtyard', 'board']
+
+
+def gallery():
+    one = ''.join(f'<span class="g-item" style="--img:url(../assets/img/{n}.jpg)"></span>' for n in GALLERY)
+    return f'<div class="gallery" aria-hidden="true"><div class="g-track">{one}{one}</div></div>'
 
 
 def photo_layer(name):
