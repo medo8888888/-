@@ -18,7 +18,6 @@ def build_home():
   <div class="hero-bg" aria-hidden="true"></div>
   <div class="wrap hero-grid">
     <div class="hero-copy">
-      <p class="greet rv"><span class="wave" aria-hidden="true">👋</span><span data-greet>أهلاً وسهلاً</span><span class="sep">·</span>{L(9)}</p>
       <span class="eyebrow rv">{ic('book')} {L(1)}</span>
       <h1 class="rv">جمعية <span class="grad">تكامل</span><br>لبناء القيم والتنمية</h1>
       <p class="sub rv">{L(3)} — {L(8)}</p>
