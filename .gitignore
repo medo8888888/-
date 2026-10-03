@@ -1,1 +1,4 @@
 takamul-site.zip
+node_modules/
+.wrangler/
+.dev.vars

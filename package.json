@@ -1,0 +1,14 @@
+{
+  "name": "takamul-site",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "python3 tools/build.py",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "node tools/test-worker.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "^4"
+  }
+}

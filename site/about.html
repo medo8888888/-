@@ -2,80 +2,163 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>من نحن | جمعية تكامل</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>من نحن | جمعية تكامل لبناء القيم والتنمية</title>
 <meta name="description" content="جمعية تكامل لبناء القيم والتنمية مؤسسة أهلية مستقلة غير ربحية، مسجّلة وفق أحكام القانون، تسعى إلى بناء الإنسان وتعزيز منظومة القيم الأخلاقية والاجتماعية ودعم التنمية المستدامة عبر مشاريع نوعية ومبتكرة.">
-<meta name="theme-color" content="#0f2d4f">
+<meta name="theme-color" content="#f7f4ec">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="ar_AR">
+<meta property="og:title" content="من نحن | جمعية تكامل لبناء القيم والتنمية">
+<meta property="og:description" content="جمعية تكامل لبناء القيم والتنمية مؤسسة أهلية مستقلة غير ربحية، مسجّلة وفق أحكام القانون، تسعى إلى بناء الإنسان وتعزيز منظومة القيم الأخلاقية والاجتماعية ودعم التنمية المستدامة عبر مشاريع نوعية ومبتكرة.">
+<meta property="og:image" content="assets/logo.png">
 <link rel="icon" href="assets/logo.png">
+<link rel="apple-touch-icon" href="assets/logo.png">
+<script>(function(){var t;try{t=localStorage.getItem('takamul-theme')}catch(e){}if(t!=='light'&&t!=='dark'){t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}document.documentElement.dataset.theme=t;document.documentElement.classList.add('js')})();</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
+<script src="js/main.js" defer></script>
+<script src="js/chat.js" defer></script>
 </head>
-<body>
-<header>
-  <div class="wrap bar">
-    <a class="brand" href="index.html"><img src="assets/logo.png" alt="شعار تكامل"><span>تكامل</span></a>
-    <button class="burger" aria-label="القائمة" aria-expanded="false"><span></span></button>
-    <nav class="main"><a href="index.html">الرئيسية</a><a href="about.html" class=active>من نحن</a><a href="initiatives.html">المبادرات</a><a href="expansion.html">خطة التوسع</a><a href="governance.html">الحوكمة والتمويل</a><a href="join.html">العضوية والأسئلة</a></nav>
+<body data-page="about.html">
+<div class="progress" aria-hidden="true"></div>
+<a class="skip" href="#main">تخطَّ إلى المحتوى</a>
+
+<header class="nav">
+  <div class="nav-bar">
+    <a class="brand" href="index.html" aria-label="جمعية تكامل – الرئيسية">
+      <img src="assets/logo.png" alt="" width="44" height="44">
+      <span><b>تكامل</b><small>لبناء القيم والتنمية</small></span>
+    </a>
+    <nav class="links" aria-label="القائمة الرئيسية">
+      <span class="pill pill-hover" aria-hidden="true"></span><span class="pill pill-active" aria-hidden="true"></span>
+      <a href="index.html">الرئيسية</a><a href="about.html" class=active aria-current=page>من نحن</a><a href="initiatives.html">المبادرات</a><a href="expansion.html">خطة التوسع</a><a href="governance.html">الحوكمة والتمويل</a><a href="join.html">العضوية</a><a href="faq.html">دليل الإجابات</a>
+    </nav>
+    <div class="actions">
+      <button type="button" class="icon-btn theme-toggle" aria-label="تبديل الوضع الليلي والنهاري" title="الوضع الليلي / النهاري"><svg class="i sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg><svg class="i moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg></button>
+      <button type="button" class="btn-ai" data-open-chat><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/></svg><span>اسأل المساعد</span></button>
+      <button type="button" class="icon-btn menu-btn" data-open-sheet aria-label="القائمة"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" x2="20" y1="7" y2="7"/><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="17" y2="17"/></svg></button>
+    </div>
   </div>
 </header>
-<main>
-<section class="hero small"><div class="blob a"></div><div class="blob b"></div>
-<div class="wrap"><div><span class="eyebrow rv">الهوية والمقر والأحكام العامة</span><h1 class="rv">من نحن، وأين نعمل</h1><p class="sub rv">جمعية تكامل لبناء القيم والتنمية مؤسسة أهلية مستقلة غير ربحية، مسجّلة وفق أحكام القانون، تسعى إلى بناء الإنسان وتعزيز منظومة القيم الأخلاقية والاجتماعية ودعم التنمية المستدامة عبر مشاريع نوعية ومبتكرة.</p></div></div></section>
-<section><div class="wrap">
-  <div class="grid g3">
-    <div class="card rv"><div class="icon">🏛️</div><h3>الاسم الرسمي</h3><p>جمعية تكامل لبناء القيم والتنمية – مؤسسة أهلية مسجلة ذات نطاق عمل مجتمعي وتنموي شامل</p></div>
-    <div class="card rv"><div class="icon">📍</div><h3>المقر الرئيسي</h3><p>مدينة إسطنبول، الجمهورية التركية</p></div>
-    <div class="card rv"><div class="icon">🌍</div><h3>نطاق العمل</h3><p>محلي ودولي؛ يحق للجمعية افتتاح فروع ومكاتب تمثيلية داخل تركيا وخارجها وفق خطة التوسع المعتمدة</p></div>
-  </div>
-</div></section>
 
-<section class="alt"><div class="wrap">
-  <div class="center"><div class="kicker rv">الرؤية والرسالة والأهداف الإستراتيجية</div><h2 class="rv">إلى أين نتجه، وكيف نصل</h2><div style="height:18px"></div></div>
-  <div class="grid g2">
-    <div class="card top rv l"><h3>🔭 الرؤية</h3><p>أن نكون المؤسسة الرائدة عالمياً في بناء القيم وترسيخ البناء الأخلاقي وتعزيز التنسيق والشراكة بين منظمات المجتمع المدني، وتحقيق تنمية مجتمعية واقتصادية شاملة ومستدامة للمجتمعات والأسر والأفراد بحلول عام 2035.</p></div>
-    <div class="card top g rv r"><h3>🎯 الرسالة</h3><p>ترسيخ القيم الأخلاقية والمهارية لدى الأفراد والمؤسسات، واستثمار الطاقات البشرية عبر برامج قيمية وتكاملية، وتفعيل الشراكات مع الجمعيات التركية وجمعيات الجاليات، وإطلاق مبادرات تنموية وإنتاجية نموذجية تحقق الاستقرار والازدهار وتوفر فرص العمل.</p></div>
-  </div>
-</div></section>
+<main id="main">
 
-<section><div class="wrap">
-  <div class=""><div class="kicker rv">2.1  الأهداف الإستراتيجية</div><h2 class="rv">2.1  الأهداف الإستراتيجية</h2><div style="height:18px"></div></div>
-  <div class="grid g3"><div class="card rv"><span class="num">1</span><h3>تعزيز القيم الإيجابية</h3><p>ترسيخ القيم الأخلاقية والإنسانية والوسطية في المجتمع، وبناء أجيال ذات مرجعية قيمية راسخة.</p></div><div class="card rv"><span class="num">2</span><h3>التمكين والتأهيل</h3><p>إكساب الشباب والأسر والنساء المهارات الحياتية والاقتصادية الحديثة والتأهيل المهني.</p></div><div class="card rv"><span class="num">3</span><h3>التكامل والتنسيق المؤسسي</h3><p>الربط بين الجمعيات التركية وجمعيات الجاليات لتفادي تكرار الجهود وتبادل الخبرات وتعظيم الاستفادة من الموارد.</p></div><div class="card rv"><span class="num">4</span><h3>مساندة التنمية والجهود الرسمية</h3><p>دعم جهود الدولة في توفير فرص العمل والتأهيل المهني والحد من التحديات الاقتصادية والبطالة.</p></div><div class="card rv"><span class="num">5</span><h3>الاستدامة والحلول الشاملة</h3><p>تقديم حلول تنموية واجتماعية واقتصادية قائمة على الشراكات الإستراتيجية والاستثمار الاجتماعي.</p></div></div>
-</div></section>
-
-<section class="alt"><div class="wrap">
-  <div class=""><div class="kicker rv">فلسفة العمل والأقسام التنفيذية</div><h2 class="rv">المبادئ التي نعمل بها، والفرق التي تنفّذ</h2><div style="height:18px"></div></div>
-  <h3 style="margin-bottom:14px">4.1  فلسفة العمل</h3>
-  <div class="grid g4"><div class="card rv"><span class="tag">Synergy</span><h3>التكامل والربط</h3><p>تنسيق فاعل بين الجمعيات الأهلية لبناء شراكات مثمرة واستثمار الموارد بكفاءة.</p></div><div class="card rv"><span class="tag">Empowerment</span><h3>التمكين والديمومة</h3><p>الانتقال من الإغاثة المباشرة إلى التأهيل المهني والتمكين الإنتاجي المستدام.</p></div><div class="card rv"><span class="tag">Dual Impact</span><h3>الأثر المزدوج</h3><p>جمع متوازن بين البناء القيمي (ينابيع) والتمكين الاقتصادي والاجتماعي (منافع).</p></div><div class="card rv"><span class="tag">Self-Sustainability</span><h3>الاستدامة الذاتية</h3><p>تشغيل استثماري واجتماعي يضمن موارد ثابتة لتمويل البرامج.</p></div></div>
-</div></section>
-
-<section><div class="wrap">
-  <div class=""><div class="kicker rv">لماذا أنضم إلى جمعية «تكامل»؟</div><h2 class="rv">وما الذي يميزها عن غيرها</h2><p class="lead rv">انضمامك إلى جمعية «تكامل لبناء القيم والتنمية» ليس مجرد التحاق بمؤسسة أهلية تقليدية، بل هو انحياز لنموذج تنموي فريد صاغه بعناية نخبة من رواد العمل التطوعي والإنساني، ليكون علامة فارقة ونقطة تحوّل في مسار العمل المجتمعي.</p></div>
-  <p class="rv" style="margin:-14px 0 24px;font-weight:700;color:var(--head)">وتتجسد قوة الجمعية في عشر ركائز إستراتيجية تجعل منها بيئة استثنائية للعطاء والأثر المستدام:</p>
-  <div class="grid g3"><div class="card rv"><span class="num">1</span><h3>القيادة والحوكمة</h3><p style="font-weight:700;color:var(--amber);margin-bottom:6px">نخبة من الكفاءات الميدانية والدولية</p><p>تعتمد الجمعية معايير اختيار صارمة ودقيقة للأعضاء المؤسسين وأعضاء مجلس الإدارة وهيئة الرقابة ومسؤولي الأنشطة، ضماناً لقيادة مؤسسية احترافية. ويتميز قادتها بما يلي:</p><ul class="tick "><li>كفاءة عالية وخبرة تراكمية عميقة في إدارة المشاريع والتنمية.</li><li>وقت كافٍ للعطاء، وشبكة علاقات إستراتيجية ممتدة محلياً ودولياً.</li><li>حسن الخلق وقدرات قيادية متميزة.</li><li>إتقان اللغة التركية والدراية بالبيئة التشريعية والثقافية في تركيا.</li></ul></div><div class="card rv"><span class="num">2</span><h3>التنوع والتكامل الدولي</h3><p style="font-weight:700;color:var(--amber);margin-bottom:6px">مجلس إدارة يعكس روح الأمة</p><p>تجسيداً لاسم «تكامل»، يتشكّل مجلس الإدارة من 7 أعضاء من جنسيات متعددة، مما يمنح الجمعية عمقاً ثقافياً ورؤية شاملة تتجاوز الحدود:</p><div class="chips"><span class="chip">تركيا</span><span class="chip">سوريا</span><span class="chip">فلسطين</span><span class="chip">العراق</span><span class="chip">مصر</span></div></div><div class="card rv"><span class="num">3</span><h3>الدور التنسيقي والشبكي</h3><p style="font-weight:700;color:var(--amber);margin-bottom:6px">منصة لتعظيم الموارد والخبرات</p><p>تؤدي الجمعية دور هيئة تنسيقية شاملة، وجسر تواصل بين جمعيات الجاليات والجمعيات التركية، بهدف:</p><ul class="tick "><li>تعظيم الاستفادة من الموارد المتاحة وتبادل الخبرات الميدانية.</li><li>منع تكرار الجهود وازدواجية المشاريع.</li><li>إيجاد بيئة تنافسية إيجابية تُثمر تطويراً مستمراً للأداء والخدمات المقدمة للمجتمع.</li></ul></div><div class="card rv"><span class="num">4</span><h3>الشمولية ونطاق الأثر</h3><p style="font-weight:700;color:var(--amber);margin-bottom:6px">من إسطنبول إلى العالم</p><p>لا تقتصر أنشطة الجمعية على ولاية بعينها أو جالية محددة، بل تمتد خدماتها لتشمل جميع المقيمين على الأرض التركية من مواطنين ومقيمين وجاليات بمختلف أطيافهم، وتتوسع وفق خطة إستراتيجية مرحلية لتصل إلى دول عديدة حول العالم.</p></div><div class="card rv"><span class="num">5</span><h3>الأمان المجتمعي والاقتصادي</h3><p style="font-weight:700;color:var(--amber);margin-bottom:6px">مشاريع تلامس الاحتياج الفعلي</p><p>تتجاوز «تكامل» أدوار الإغاثة المؤقتة لتقدّم حلولاً جذرية يحتاجها كل فرد ليعيش في أمان واستقرار، عبر مسارين تنمويين:</p><p style="margin-top:8px"><strong style="color:var(--head)">مشروع «ينابيع»</strong><br>الأمان المجتمعي والحماية الفكرية والقيمية للأبناء والأسر.</p><p style="margin-top:8px"><strong style="color:var(--head)">مشروع «منافع»</strong><br>الأمان الاقتصادي والوظيفي عبر التدريب والتأهيل المهني وتوفير فرص العمل والتشغيل.</p></div><div class="card rv"><span class="num">6</span><h3>التحول الرقمي والذكاء الاصطناعي</h3><p style="font-weight:700;color:var(--amber);margin-bottom:6px">إدارة ذكية وقياس دقيق للأثر</p><p>تعتمد الجمعية على أدوات العصر عبر برنامج تقني متكامل لإدارة أنشطتها، وبالاستعانة بخريجي البرمجة والتكنولوجيا والذكاء الاصطناعي، بما يوفر:</p><ul class="tick "><li>إدارة ذكية للعمليات الميدانية والإدارية.</li><li>قياساً دقيقاً ومستمراً للأداء والأثر التنموي لمشاريع الجمعية على المستفيدين.</li></ul></div><div class="card rv"><span class="num">7</span><h3>الاستثمار في أجيال المستقبل</h3><p style="font-weight:700;color:var(--amber);margin-bottom:6px">ربط الأكاديميا بالقيادة الشابة</p><p>تولي الجمعية اهتماماً خاصاً بإشراك أعضاء هيئة التدريس والأكاديميين في مجلس الإدارة وإدارة الأنشطة، ليكونوا:</p><ul class="tick "><li>جسراً متيناً لاستقطاب الكفاءات والمواهب الشابة من الطلبة وتأطيرها.</li><li>حاضنةً لإعداد هؤلاء الشباب وتأهيلهم ليكونوا أعضاء فاعلين وقادة للجمعية والمجتمع مستقبلاً.</li></ul></div><div class="card rv"><span class="num">8</span><h3>التجديد المؤسسي وتداول القيادة</h3><p style="font-weight:700;color:var(--amber);margin-bottom:6px">الاستدامة وتوريث الخبرات</p><p>تكرّس الجمعية حوكمة رشيدة تمنع الجمود وتضمن ضخ دماء جديدة، عبر سياسة واضحة لمدد القيادة:</p><p style="margin-top:8px"><strong style="color:var(--head)">مجلس الإدارة</strong><br>لا يُجدَّد لأكثر من دورة واحدة، ومدة الدورة 4 سنوات.</p><p style="margin-top:8px"><strong style="color:var(--head)">مسؤولو الأنشطة واللجان</strong><br>دورة واحدة فقط، مدتها 3 سنوات.</p><p style="margin-top:8px">ويبقى أعضاء مجلس الإدارة ومسؤولو الأنشطة السابقون مستشارين تستفيد الجمعية من خبراتهم في توجيه الأعضاء الجدد؛ وهو مبدأ أساسي لتوريث العمل المؤسسي، واختيار أفضل الكفاءات، والابتكار والتطوير المستمر.</p></div><div class="card rv"><span class="num">9</span><h3>التفرغ الإداري والتنفيذي</h3><p style="font-weight:700;color:var(--amber);margin-bottom:6px">تركيز أعلى وأثر أسرع</p><p>ضماناً للفاعلية وسرعة تحقيق الأهداف الميدانية، اعتمدت الجمعية نموذج التفرغ الكامل لـ 5 أعضاء من فريق العمل المؤسس، لتكون هناك أمانة تنفيذية متفرغة تدير الأنشطة وتتابع أثرها في المجتمع بكفاءة عالية.</p></div><div class="card rv"><span class="num">10</span><h3>الاستدامة والاستقلالية المالية</h3><p style="font-weight:700;color:var(--amber);margin-bottom:6px">نموذج التمويل الذاتي الذكي</p><p>وضعت الهيئة التأسيسية خطة مالية محكمة تضمن قوة المؤسسة واستمراريتها بعيداً عن تقلبات التبرعات:</p><p style="margin-top:8px"><strong style="color:var(--head)">التغطية التأسيسية</strong><br>تعتمد الجمعية في عاميها الأولين على القدرة المالية الذاتية لأعضائها المؤسسين في الإنفاق على الأنشطة والبرامج.</p><p style="margin-top:8px"><strong style="color:var(--head)">الاستثمار الاجتماعي التنموي</strong><br>تأسيس مشاريع اقتصادية وتطبيق رقمي ذكي (تطبيق «منافع») ليكون مورداً مالياً مستداماً يموّل أنشطة الجمعية وبرامجها بشكل دائم.</p></div></div>
-  <p class="rv center" style="margin-top:34px;font-size:20px;font-weight:700;color:var(--head)">انضمامك إلى «تكامل» يعني مشاركتك في تجربة تنموية راسخة: نموذج محكم، وقيادة خبيرة، واستدامة مضمونة.. يداً بيد لنبني الإنسان ونحقق التنمية المستدامة!</p>
-</div></section>
-
-<section class="alt"><div class="wrap">
-  <div class=""><div class="kicker rv">10</div><h2 class="rv">قياس الأثر التنموي المتوقع</h2><p class="lead rv">النتائج التي نسعى إليها</p></div>
-  <div class="grid g3">
-    <div class="card rv "><div class="icon">💼</div><h3>الأثر الاقتصادي والتوظيف</h3><p>خلق فرص عمل جديدة وتدريب الكوادر البشرية دعماً لخطط الدولة التنموية وللحد من البطالة.</p></div><div class="card rv "><div class="icon">🔗</div><h3>أثر التكامل المؤسسي</h3><p>تفعيل الشراكة بين الجمعيات التركية وجمعيات الجاليات بما يعظّم الاستفادة من الإمكانات ويمنع تكرار الجهود.</p></div><div class="card rv "><div class="icon">🌳</div><h3>الأثر المجتمعي والقيمي</h3><p>بناء أجيال متمسكة بالقيم، ونموذج عمل فاعل ومستدام يخدم كل أفراد المجتمع بأسلوب تكاملي.</p></div>
-  </div>
-</div></section>
-<section class="cta"><div class="wrap rv"><h2>مرحباً بك مجدداً في رحلة العطاء والتكامل</h2><p style="font-size:20px;margin-bottom:22px">يداً بيد لنبني القيم ونحقق التنمية المستدامة</p><a class="btn" href="join.html">انضم إلينا</a></div></section>
-
-</main>
-<footer>
-  <div class="wrap">
-    <div class="cols">
-      <div><img src="assets/logo.png" alt="تكامل"><p>جمعية تكامل لبناء القيم والتنمية مؤسسة أهلية مستقلة غير ربحية، مسجّلة وفق أحكام القانون، تسعى إلى بناء الإنسان وتعزيز منظومة القيم الأخلاقية والاجتماعية ودعم التنمية المستدامة عبر مشاريع نوعية ومبتكرة.</p></div>
-      <div><h4>روابط</h4><a href="index.html">الرئيسية</a><a href="about.html">من نحن</a><a href="initiatives.html">المبادرات</a><a href="expansion.html">خطة التوسع</a><a href="governance.html">الحوكمة والتمويل</a><a href="join.html">العضوية والأسئلة</a></div>
-      <div><h4>المقر الرئيسي</h4><p>مدينة إسطنبول، الجمهورية التركية</p><p>رؤية 2035</p></div>
+<section class="hero hero-small">
+  <div class="hero-bg" aria-hidden="true"></div>
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <span class="eyebrow rv"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg> الكتيب التعريفي الشامل للأعضاء الجدد</span>
+      <h1 class="rv">من نحن</h1>
+      <nav class="chips rv" aria-label="أقسام الصفحة"><a class="chip-link" href="#s1" style="--sc:var(--c-teal)"><b>1</b>الهوية والمقر والأحكام العامة</a><a class="chip-link" href="#s2" style="--sc:var(--c-navy)"><b>2</b>الرؤية والرسالة والأهداف الإستراتيجية</a><a class="chip-link" href="#s4" style="--sc:var(--c-purple)"><b>4</b>فلسفة العمل والأقسام التنفيذية</a></nav>
     </div>
-    <div class="copy">جمعية تكامل لبناء القيم والتنمية  |  إسطنبول – الجمهورية التركية</div>
+    
+  </div>
+</section>
+<section class="sec" id="s1" style="--sc:var(--c-teal)">
+  <div class="wrap">
+    <header class="sec-head rv">
+      <span class="sec-num" aria-hidden="true">1</span>
+      <div><h2>الهوية والمقر والأحكام العامة</h2><p class="sec-sub">من نحن، وأين نعمل</p></div>
+    </header>
+    <p class="lead rv">جمعية تكامل لبناء القيم والتنمية مؤسسة أهلية مستقلة غير ربحية، مسجّلة وفق أحكام القانون، تسعى إلى بناء الإنسان وتعزيز منظومة القيم الأخلاقية والاجتماعية ودعم التنمية المستدامة عبر مشاريع نوعية ومبتكرة.</p>
+    <div class="grid g3">
+      <article class="card tilt rv "><div class="ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" x2="21" y1="22" y2="22"/><line x1="6" x2="6" y1="18" y2="11"/><line x1="10" x2="10" y1="18" y2="11"/><line x1="14" x2="14" y1="18" y2="11"/><line x1="18" x2="18" y1="18" y2="11"/><polygon points="12 2 20 7 4 7"/></svg></div><h3>الاسم الرسمي</h3><p>جمعية تكامل لبناء القيم والتنمية – مؤسسة أهلية مسجلة ذات نطاق عمل مجتمعي وتنموي شامل</p></article><article class="card tilt rv "><div class="ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg></div><h3>المقر الرئيسي</h3><p>مدينة إسطنبول، الجمهورية التركية</p></article><article class="card tilt rv "><div class="ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg></div><h3>نطاق العمل</h3><p>محلي ودولي؛ يحق للجمعية افتتاح فروع ومكاتب تمثيلية داخل تركيا وخارجها وفق خطة التوسع المعتمدة</p></article>
+    </div>
+  </div>
+</section>
+<section class="sec alt" id="s2" style="--sc:var(--c-navy)">
+  <div class="wrap">
+    <header class="sec-head rv">
+      <span class="sec-num" aria-hidden="true">2</span>
+      <div><h2>الرؤية والرسالة والأهداف الإستراتيجية</h2><p class="sec-sub">إلى أين نتجه، وكيف نصل</p></div>
+    </header>
+    
+    <div class="grid g2">
+      <article class="card tilt rv feature" style="--fc:var(--c-gold)"><div class="ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg></div><h3>الرؤية</h3><p>أن نكون المؤسسة الرائدة عالمياً في بناء القيم وترسيخ البناء الأخلاقي وتعزيز التنسيق والشراكة بين منظمات المجتمع المدني، وتحقيق تنمية مجتمعية واقتصادية شاملة ومستدامة للمجتمعات والأسر والأفراد بحلول عام 2035.</p></article>
+      <article class="card tilt rv feature" style="--fc:var(--c-leaf)"><div class="ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div><h3>الرسالة</h3><p>ترسيخ القيم الأخلاقية والمهارية لدى الأفراد والمؤسسات، واستثمار الطاقات البشرية عبر برامج قيمية وتكاملية، وتفعيل الشراكات مع الجمعيات التركية وجمعيات الجاليات، وإطلاق مبادرات تنموية وإنتاجية نموذجية تحقق الاستقرار والازدهار وتوفر فرص العمل.</p></article>
+    </div>
+    <div class="subhead rv"><h3>2.1  الأهداف الإستراتيجية</h3></div>
+    <div class="grid g3"><article class="card tilt rv "><span class="num">1</span><h3>تعزيز القيم الإيجابية</h3><p>ترسيخ القيم الأخلاقية والإنسانية والوسطية في المجتمع، وبناء أجيال ذات مرجعية قيمية راسخة.</p></article><article class="card tilt rv "><span class="num">2</span><h3>التمكين والتأهيل</h3><p>إكساب الشباب والأسر والنساء المهارات الحياتية والاقتصادية الحديثة والتأهيل المهني.</p></article><article class="card tilt rv "><span class="num">3</span><h3>التكامل والتنسيق المؤسسي</h3><p>الربط بين الجمعيات التركية وجمعيات الجاليات لتفادي تكرار الجهود وتبادل الخبرات وتعظيم الاستفادة من الموارد.</p></article><article class="card tilt rv "><span class="num">4</span><h3>مساندة التنمية والجهود الرسمية</h3><p>دعم جهود الدولة في توفير فرص العمل والتأهيل المهني والحد من التحديات الاقتصادية والبطالة.</p></article><article class="card tilt rv "><span class="num">5</span><h3>الاستدامة والحلول الشاملة</h3><p>تقديم حلول تنموية واجتماعية واقتصادية قائمة على الشراكات الإستراتيجية والاستثمار الاجتماعي.</p></article></div>
+  </div>
+</section>
+<section class="sec" id="s4" style="--sc:var(--c-purple)">
+  <div class="wrap">
+    <header class="sec-head rv">
+      <span class="sec-num" aria-hidden="true">4</span>
+      <div><h2>فلسفة العمل والأقسام التنفيذية</h2><p class="sec-sub">المبادئ التي نعمل بها، والفرق التي تنفّذ</p></div>
+    </header>
+    
+    <div class="subhead rv"><h3>4.1  فلسفة العمل</h3></div>
+    <div class="grid g4"><article class="card tilt rv"><span class="tag" dir="ltr">Synergy</span><h3>التكامل والربط</h3><p>تنسيق فاعل بين الجمعيات الأهلية لبناء شراكات مثمرة واستثمار الموارد بكفاءة.</p></article><article class="card tilt rv"><span class="tag" dir="ltr">Empowerment</span><h3>التمكين والديمومة</h3><p>الانتقال من الإغاثة المباشرة إلى التأهيل المهني والتمكين الإنتاجي المستدام.</p></article><article class="card tilt rv"><span class="tag" dir="ltr">Dual Impact</span><h3>الأثر المزدوج</h3><p>جمع متوازن بين البناء القيمي (ينابيع) والتمكين الاقتصادي والاجتماعي (منافع).</p></article><article class="card tilt rv"><span class="tag" dir="ltr">Self-Sustainability</span><h3>الاستدامة الذاتية</h3><p>تشغيل استثماري واجتماعي يضمن موارد ثابتة لتمويل البرامج.</p></article></div>
+    <div class="subhead rv"><h3>4.2  الأقسام التنفيذية داخل الجمعية</h3></div>
+    <div class="table-wrap rv"><table class="rt"><thead><tr><th>القسم</th><th>المهام الرئيسية</th></tr></thead><tbody><tr><td data-label="القسم">قسم البرامج القيمية والتربوية</td><td data-label="المهام الرئيسية">إعداد البرامج التربوية والمناهج القيمية لمبادرة «ينابيع» وتطبيقها.</td></tr><tr><td data-label="القسم">قسم التنسيق والعلاقات بين الجمعيات</td><td data-label="المهام الرئيسية">بناء شبكة العلاقات المؤسسية والأنشطة المشتركة بين الجمعيات.</td></tr><tr><td data-label="القسم">قسم التأهيل المهني والتوظيف</td><td data-label="المهام الرئيسية">إدارة دورات التدريب المهني ومنصات التوظيف والمشاريع الصغرى ضمن «منافع».</td></tr><tr><td data-label="القسم">قسم التكافل والتضامن الاجتماعي</td><td data-label="المهام الرئيسية">المسح الميداني والدعم الاجتماعي المباشر للأسر والطلاب.</td></tr><tr><td data-label="القسم">قسم الدراسات والتخطيط والاستثمار الاجتماعي</td><td data-label="المهام الرئيسية">البحث الميداني ومتابعة جودة الأداء وإدارة المطبوعات وتشغيل المنشآت الاقتصادية.</td></tr></tbody></table></div>
+  </div>
+</section>
+<section class="cta">
+  <div class="cta-glow" aria-hidden="true"></div>
+  <div class="wrap rv">
+    <img src="assets/logo.png" alt="" width="84" height="84" class="cta-logo">
+    <h2>مرحباً بك مجدداً في رحلة العطاء والتكامل</h2>
+    <p>يداً بيد لنبني القيم ونحقق التنمية المستدامة</p>
+    <div class="btns center">
+      <a class="btn btn-gold" href="join.html"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>العضوية</a>
+      <button class="btn btn-ghost" type="button" data-open-chat><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/></svg>اسأل المساعد الذكي</button>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="foot-brand">
+        <img src="assets/logo.png" alt="شعار جمعية تكامل" width="72" height="72">
+        <p>جمعية تكامل لبناء القيم والتنمية مؤسسة أهلية مستقلة غير ربحية، مسجّلة وفق أحكام القانون، تسعى إلى بناء الإنسان وتعزيز منظومة القيم الأخلاقية والاجتماعية ودعم التنمية المستدامة عبر مشاريع نوعية ومبتكرة.</p>
+      </div>
+      <div><h4>الصفحات</h4><a href="index.html">الرئيسية</a><a href="about.html">من نحن</a><a href="initiatives.html">المبادرات</a><a href="expansion.html">خطة التوسع</a><a href="governance.html">الحوكمة والتمويل</a><a href="join.html">العضوية</a><a href="faq.html">دليل الإجابات</a></div>
+      <div><h4>محتويات الكتيب</h4><a href="about.html#s1">1. الهوية والمقر والأحكام العامة</a><a href="about.html#s2">2. الرؤية والرسالة والأهداف الإستراتيجية</a><a href="initiatives.html#s3">3. المبادرات التنموية ومحاور العمل</a><a href="about.html#s4">4. فلسفة العمل والأقسام التنفيذية</a><a href="expansion.html#s5">5. البرنامج الزمني للتوسع الجغرافي</a><a href="initiatives.html#s6">6. الفئات والمؤسسات المستهدفة</a><a href="governance.html#s7">7. الحوكمة والإدارة وإجراءات العمل</a></div>
+      <div><h4>&nbsp;</h4><a href="governance.html#s8">8. الأحكام المالية والاستدامة والتمويل</a><a href="join.html#s9">9. حقوق وواجبات العضو الجديد</a><a href="initiatives.html#s10">10. قياس الأثر التنموي المتوقع</a><a href="join.html#s11">11. الهيئة التأسيسية للجمعية</a><a href="join.html#s12">12. لماذا أنضم إلى «تكامل»؟</a><a href="faq.html#s13">13. دليل الإجابات للمؤسسين ومجلس الإدارة</a></div>
+    </div>
+    <div class="foot-bottom"><span>جمعية تكامل لبناء القيم والتنمية   |   الكتيب التعريفي للأعضاء الجدد</span><span>جمعية تكامل لبناء القيم والتنمية  |  إسطنبول – الجمهورية التركية</span></div>
   </div>
 </footer>
-<button class="totop" aria-label="للأعلى">↑</button>
-<script src="js/main.js"></script>
+
+<nav class="tabbar" aria-label="التنقل السريع"><a href="index.html"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>الرئيسية</span></a><a href="initiatives.html"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 20h10"/><path d="M10 20c5.5-2.5.8-6.4 3-10"/><path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z"/><path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z"/></svg><span>المبادرات</span></a><button type="button" class="tab-ai" data-open-chat aria-label="المساعد الذكي"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/></svg><span>المساعد</span></button><a href="join.html"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>العضوية</span></a><button type="button" data-open-sheet aria-label="القائمة الكاملة"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="7" height="7" x="3" y="3" rx="1.5"/><rect width="7" height="7" x="14" y="3" rx="1.5"/><rect width="7" height="7" x="14" y="14" rx="1.5"/><rect width="7" height="7" x="3" y="14" rx="1.5"/></svg><span>المزيد</span></button></nav>
+
+<div class="sheet" hidden>
+  <div class="sheet-backdrop" data-close-sheet></div>
+  <div class="sheet-panel" role="dialog" aria-modal="true" aria-label="القائمة">
+    <div class="sheet-handle" aria-hidden="true"></div>
+    <div class="sheet-head"><b>القائمة</b><button type="button" class="icon-btn" data-close-sheet aria-label="إغلاق"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
+    <div class="sheet-grid"><a class="sheet-item" href="index.html"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>الرئيسية</span></a><a class="sheet-item active" href="about.html"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg><span>من نحن</span></a><a class="sheet-item" href="initiatives.html"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 20h10"/><path d="M10 20c5.5-2.5.8-6.4 3-10"/><path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z"/><path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z"/></svg><span>المبادرات</span></a><a class="sheet-item" href="expansion.html"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg><span>خطة التوسع</span></a><a class="sheet-item" href="governance.html"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg><span>الحوكمة والتمويل</span></a><a class="sheet-item" href="join.html"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>العضوية</span></a><a class="sheet-item" href="faq.html"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg><span>دليل الإجابات</span></a></div>
+    <div class="sheet-row">
+      <button type="button" class="sheet-wide theme-toggle"><svg class="i sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg><svg class="i moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg><span class="label-light">الوضع الليلي</span><span class="label-dark">الوضع النهاري</span></button>
+      <button type="button" class="sheet-wide ai" data-open-chat><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/></svg><span>اسأل المساعد</span></button>
+    </div>
+  </div>
+</div>
+
+<button type="button" class="chat-fab" data-open-chat aria-label="افتح المساعد الذكي"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/></svg><span>اسأل تكامل</span></button>
+<div class="chat" hidden>
+  <div class="chat-panel" role="dialog" aria-modal="false" aria-labelledby="chat-title">
+    <div class="chat-head">
+      <img src="assets/logo.png" alt="" width="40" height="40">
+      <div><b id="chat-title">مساعد تكامل الذكي</b><small><span class="dot"></span>مدعوم بـ Gemini</small></div>
+      <button type="button" class="icon-btn chat-clear" aria-label="محادثة جديدة" title="محادثة جديدة"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
+      <button type="button" class="icon-btn chat-close" aria-label="إغلاق المساعد"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+    </div>
+    <div class="chat-log" aria-live="polite"></div>
+    <div class="chat-suggest"></div>
+    <form class="chat-form">
+      <textarea rows="1" maxlength="1500" placeholder="اكتب سؤالك عن الجمعية…" aria-label="رسالتك"></textarea>
+      <button type="submit" class="chat-send" aria-label="إرسال"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg></button>
+    </form>
+    <p class="chat-note">قد يخطئ المساعد أحياناً؛ يُرجى التحقق من المعلومات المهمة.</p>
+  </div>
+</div>
+
+<button type="button" class="totop" aria-label="العودة للأعلى"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button>
 </body>
 </html>

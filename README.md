@@ -1,0 +1,41 @@
+# موقع جمعية تكامل لبناء القيم والتنمية
+
+موقع عربي (RTL) مبني من «الكتيب التعريفي الشامل للأعضاء الجدد» حرفياً، مع وضع ليلي/نهاري، كرة أرضية ثلاثية الأبعاد، وواجهة جوال (شريط تنقل سفلي)، و«مساعد تكامل الذكي» المدعوم بـ Gemini.
+
+## البنية
+
+| المسار | الوصف |
+|---|---|
+| `content/brochure.txt` | نص الكتيب (مصدر كل النصوص؛ سطر لكل فقرة) |
+| `tools/build.py` | يولّد صفحات `site/*.html` و `worker/knowledge.js` من الكتيب |
+| `site/` | الموقع الثابت (HTML + `css/style.css` + `js/main.js`, `js/chat.js`, `js/globe.js`) |
+| `worker/index.js` | Cloudflare Worker: يخدم الموقع + `/api/chat` (Gemini) + `/api/health` |
+| `tools/test-worker.mjs` | اختبارات الـ Worker (`npm test`) |
+
+بعد تعديل `content/brochure.txt` أو `tools/build.py`:
+
+```bash
+python3 tools/build.py
+```
+
+## النشر على Cloudflare (مع المساعد الذكي)
+
+1. Cloudflare ← **Workers & Pages** ← **Create** ← **Import a repository** ← اختر هذا المستودع والفرع.
+2. اترك أمر البناء فارغاً، وأمر النشر: `npx wrangler deploy` (يقرأ `wrangler.jsonc` تلقائياً).
+3. بعد النشر: إعدادات الـ Worker ← **Variables and Secrets** ← أضف **Secret** باسم `GEMINI_API_KEY` وقيمته مفتاحك من Google AI Studio.
+   (أو من جهازك: `npx wrangler secret put GEMINI_API_KEY`)
+4. يُنصح بإضافة قاعدة **Rate limiting** في Cloudflare على المسار `/api/chat`.
+
+> المفتاح لا يوضع أبداً في ملفات الموقع؛ يبقى سرّاً على الخادم فقط.
+
+النموذج الافتراضي في `wrangler.jsonc` ← `vars.GEMINI_MODEL`، ويمكن تغييره دون تعديل الكود.
+
+**بدون المساعد:** يمكن رفع مجلد `site/` وحده (Upload assets)؛ سيعمل الموقع كاملاً ويظهر المساعد بحالة «قيد التفعيل».
+
+## التشغيل محلياً
+
+```bash
+cp .dev.vars.example .dev.vars   # ضع مفتاحك هنا (الملف مُستثنى من git)
+npx wrangler dev
+npm test                         # اختبارات الـ Worker
+```
