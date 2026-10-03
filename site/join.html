@@ -27,6 +27,7 @@
 <script src="js/chat.js" defer></script>
 <script src="js/palette.js" defer></script>
 <script src="js/cursor.js" defer></script>
+<script src="js/join.js" defer></script>
 </head>
 <body data-page="join.html">
 <div class="progress" aria-hidden="true"></div>
@@ -67,6 +68,62 @@
   </div>
 </section>
 <div class="ticker" aria-hidden="true"><div class="ticker-track"><span>✦ القيادة والحوكمة</span><span>✦ التنوع والتكامل الدولي</span><span>✦ الدور التنسيقي والشبكي</span><span>✦ الشمولية ونطاق الأثر</span><span>✦ الأمان المجتمعي والاقتصادي</span><span>✦ التحول الرقمي والذكاء الاصطناعي</span><span>✦ الاستثمار في أجيال المستقبل</span><span>✦ التجديد المؤسسي وتداول القيادة</span><span>✦ التفرغ الإداري والتنفيذي</span><span>✦ الاستدامة والاستقلالية المالية</span><span>✦ القيادة والحوكمة</span><span>✦ التنوع والتكامل الدولي</span><span>✦ الدور التنسيقي والشبكي</span><span>✦ الشمولية ونطاق الأثر</span><span>✦ الأمان المجتمعي والاقتصادي</span><span>✦ التحول الرقمي والذكاء الاصطناعي</span><span>✦ الاستثمار في أجيال المستقبل</span><span>✦ التجديد المؤسسي وتداول القيادة</span><span>✦ التفرغ الإداري والتنفيذي</span><span>✦ الاستدامة والاستقلالية المالية</span></div></div>
+<section class="sec" id="apply">
+  <div class="wrap">
+    <div class="center"><span class="kicker rv">7.2  شروط العضوية والمشاركة الرقمية</span><h2 class="rv">استمارة طلب العضوية</h2>
+      <p class="lead rv center-text">أهلية العضوية: يحق لكل شخص طبيعي أو اعتباري يتمتع بالأهلية القانونية ويتبنى أهداف الجمعية الحصول على العضوية. شرط الأجانب: الحصول على إقامة قانونية رسمية في البلاد.</p></div>
+    <form class="join-form rv" novalidate data-email="">
+      <fieldset><legend><span class="step">1</span> البيانات الشخصية</legend>
+        <div class="fgrid">
+          <label class="fld"><span>الاسم الكامل <b aria-hidden="true">*</b></span><input name="full_name" type="text" required autocomplete="name" minlength="5"><em class="err" aria-live="polite"></em></label>
+          <label class="fld"><span>الجنسية <b aria-hidden="true">*</b></span><input name="nationality" type="text" required autocomplete="country-name"><em class="err" aria-live="polite"></em></label>
+          <label class="fld"><span>رقم الهوية / الإقامة <b aria-hidden="true">*</b></span><input name="id_number" type="text" required inputmode="numeric" minlength="5"><em class="err" aria-live="polite"></em></label>
+          <label class="fld"><span>تاريخ الميلاد <b aria-hidden="true">*</b></span><input name="birth_date" type="date" required><em class="err" aria-live="polite"></em></label>
+          <label class="fld"><span>نوع العضوية <b aria-hidden="true">*</b></span><select name="member_type" required><option value="">— اختر —</option><option>شخص طبيعي (فرد)</option><option>شخص اعتباري (مؤسسة / جمعية)</option></select><em class="err" aria-live="polite"></em></label>
+          <label class="fld"><span>الإقامة في تركيا <b aria-hidden="true">*</b></span><select name="residence" required><option value="">— اختر —</option><option>مواطن تركي</option><option>إقامة قانونية سارية</option><option>مقيم خارج تركيا</option></select><em class="err" aria-live="polite"></em></label>
+        </div>
+      </fieldset>
+      <fieldset><legend><span class="step">2</span> بيانات التواصل</legend>
+        <div class="fgrid">
+          <label class="fld"><span>رقم الجوال (مع رمز الدولة) <b aria-hidden="true">*</b></span><input name="phone" type="tel" required autocomplete="tel" dir="ltr" placeholder="+90 5xx xxx xx xx"><em class="err" aria-live="polite"></em></label>
+          <label class="fld"><span>البريد الإلكتروني <b aria-hidden="true">*</b></span><input name="email" type="email" required autocomplete="email" dir="ltr"><em class="err" aria-live="polite"></em></label>
+          <label class="fld"><span>المدينة / الولاية <b aria-hidden="true">*</b></span><input name="city" type="text" required autocomplete="address-level2"><em class="err" aria-live="polite"></em></label>
+          <label class="fld full"><span>العنوان التفصيلي <small>(اختياري)</small></span><input name="address" type="text" autocomplete="street-address"><em class="err" aria-live="polite"></em></label>
+        </div>
+      </fieldset>
+      <fieldset><legend><span class="step">3</span> المؤهلات والاهتمامات</legend>
+        <div class="fgrid">
+          <label class="fld"><span>المهنة / المسمى الوظيفي <b aria-hidden="true">*</b></span><input name="profession" type="text" required><em class="err" aria-live="polite"></em></label>
+          <label class="fld"><span>المؤهل العلمي <b aria-hidden="true">*</b></span><select name="education" required><option value="">— اختر —</option><option>ثانوي</option><option>دبلوم</option><option>بكالوريوس</option><option>ماجستير</option><option>دكتوراه</option><option>أخرى</option></select><em class="err" aria-live="polite"></em></label>
+          <label class="fld"><span>اللغات التي تتقنها <small>(اختياري)</small></span><input name="languages" type="text"><em class="err" aria-live="polite"></em></label>
+        </div>
+        <p class="fhint">مجالات المشاركة التي تهمّك:</p>
+        <div class="picks"><label class="pick"><input type="checkbox" name="interest" value="مبادرة «ينابيع»"><span>مبادرة «ينابيع»</span></label><label class="pick"><input type="checkbox" name="interest" value="مبادرة «منافع»"><span>مبادرة «منافع»</span></label><label class="pick"><input type="checkbox" name="interest" value="التنسيق بين الجمعيات"><span>التنسيق بين الجمعيات</span></label><label class="pick"><input type="checkbox" name="interest" value="التأهيل المهني والتوظيف"><span>التأهيل المهني والتوظيف</span></label><label class="pick"><input type="checkbox" name="interest" value="التكافل والتضامن الاجتماعي"><span>التكافل والتضامن الاجتماعي</span></label><label class="pick"><input type="checkbox" name="interest" value="الدراسات والتخطيط"><span>الدراسات والتخطيط</span></label></div>
+        <label class="fld full"><span>كيف يمكنك أن تساهم في تحقيق أهداف الجمعية؟ <small>(اختياري)</small></span>
+          <textarea name="contribution" rows="4" maxlength="1200"></textarea></label>
+      </fieldset>
+      <fieldset><legend><span class="step">4</span> الإقرار</legend>
+        <ul class="list diamond"><li>الالتزام بأهداف الجمعية ونظامها الأساسي ومبادئها الأخلاقية.</li><li>المساهمة الفاعلة في تحقيق أهداف الجمعية ونشر رسالتها.</li><li>سداد الاشتراكات السنوية المقررة وفق الأنظمة المعتمدة.</li><li>الحفاظ على سمعة الجمعية وممتلكاتها ومكتسباتها.</li></ul>
+        <label class="agree"><input type="checkbox" name="agree" required><span>أقرّ بصحة البيانات المذكورة، وألتزم بأهداف الجمعية ونظامها الأساسي وواجبات العضو المذكورة أعلاه.</span></label>
+        <em class="err agree-err" aria-live="polite"></em>
+      </fieldset>
+      <div class="factions">
+        <button class="btn btn-primary" type="submit"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>إرسال طلب العضوية</button>
+        <button class="btn btn-soft" type="reset">مسح الحقول</button>
+      </div>
+    </form>
+    <div class="join-done" hidden tabindex="-1">
+      <div class="done-head"><span class="ic big"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><div><h3>تم تجهيز طلب العضوية</h3>
+        <p>راجع بياناتك أدناه، ثم احفظ الطلب أو اطبعه وسلّمه للجمعية.</p></div></div>
+      <div class="done-sheet"></div>
+      <div class="factions">
+        <button class="btn btn-primary" type="button" data-join-print><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>طباعة / حفظ PDF</button>
+        <a class="btn btn-gold" data-join-mail hidden><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg>إرسال بالبريد الإلكتروني</a>
+        <button class="btn btn-soft" type="button" data-join-edit>تعديل البيانات</button>
+      </div>
+    </div>
+  </div>
+</section>
 <section class="sec" id="s9" style="--sc:var(--c-leaf)">
   <div class="wrap">
     <header class="sec-head rv">
@@ -110,7 +167,7 @@
     <h2>مرحباً بك مجدداً في رحلة العطاء والتكامل</h2>
     <p>يداً بيد لنبني القيم ونحقق التنمية المستدامة</p>
     <div class="btns center">
-      <a class="btn btn-gold" href="join.html"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>العضوية</a>
+      <a class="btn btn-gold" href="join.html#apply"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>العضوية</a>
       <button class="btn btn-ghost" type="button" data-open-chat><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/></svg>اسأل المساعد الذكي</button>
     </div>
   </div>

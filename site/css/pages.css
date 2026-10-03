@@ -1,1 +1,57 @@
 /* pages — see docs/ARCHITECTURE.md */
+
+/* ---------- membership application form ---------- */
+.join-form,.join-done{max-width:940px;margin:30px auto 0}
+.join-form fieldset{border:1px solid var(--line);border-radius:24px;padding:24px;margin-bottom:18px;
+  background:color-mix(in srgb,var(--surface) 62%,transparent);box-shadow:var(--shadow-sm)}
+@media(min-width:761px){.join-form fieldset{-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}}
+.join-form legend{display:flex;align-items:center;gap:10px;padding:0 8px;font-family:var(--font-h);font-weight:800;font-size:19px;color:var(--head)}
+.join-form .step{display:grid;place-items:center;width:32px;height:32px;border-radius:10px;font-size:15px;color:var(--accent-ink,#fff);
+  background:linear-gradient(135deg,var(--accent,var(--leaf)),color-mix(in srgb,var(--accent,var(--leaf)) 45%,var(--brand)))}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:14px 16px}
+.fld{display:flex;flex-direction:column;gap:6px}
+.fld.full{grid-column:1/-1}
+.fld span{font-weight:700;font-size:14.5px;color:var(--ink-2)}
+.fld span b{color:var(--c-maroon)}
+.fld span small{color:var(--muted);font-weight:500}
+.fld input,.fld select,.fld textarea{width:100%;min-height:50px;padding:12px 14px;border-radius:14px;border:1px solid var(--line-2);font-size:16px;
+  background:color-mix(in srgb,var(--surface-2) 80%,transparent);color:var(--ink);outline:none;transition:border-color .2s,box-shadow .25s}
+.fld textarea{resize:vertical;min-height:110px}
+.fld input:focus,.fld select:focus,.fld textarea:focus{border-color:var(--accent,var(--leaf));box-shadow:0 0 0 4px color-mix(in srgb,var(--accent,var(--leaf)) 15%,transparent)}
+.fld [aria-invalid=true]{border-color:var(--c-maroon);box-shadow:0 0 0 4px color-mix(in srgb,var(--c-maroon) 14%,transparent)}
+.err{font-style:normal;font-size:13px;color:var(--c-maroon);min-height:0}
+.fhint{margin:18px 0 10px;font-weight:700;color:var(--ink-2)}
+.picks{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px}
+.pick{position:relative;cursor:pointer}
+.pick input{position:absolute;opacity:0;inset:0}
+.pick span{display:inline-block;padding:10px 16px;border-radius:999px;border:1px solid var(--line-2);font-weight:600;font-size:14.5px;
+  background:color-mix(in srgb,var(--surface-2) 70%,transparent);transition:all .2s}
+.pick input:checked+span{color:var(--accent-ink,#fff);border-color:transparent;background:linear-gradient(135deg,var(--accent,var(--leaf)),color-mix(in srgb,var(--accent,var(--leaf)) 45%,var(--brand)))}
+.pick input:focus-visible+span{outline:2px solid var(--accent,var(--leaf));outline-offset:3px}
+.pick:active span{scale:.96}
+.agree{display:flex;gap:12px;align-items:flex-start;margin-top:14px;font-weight:600;cursor:pointer}
+.agree input{width:22px;height:22px;margin-top:4px;accent-color:var(--accent,var(--leaf));flex:none}
+.factions{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-top:8px}
+.join-done{border:1px solid var(--line-2);border-radius:28px;padding:26px;background:color-mix(in srgb,var(--surface) 75%,transparent);outline:none}
+.done-head{display:flex;gap:16px;align-items:center;margin-bottom:18px}
+.done-head .ic{margin:0}
+.done-sheet{background:#fff;color:#111;border-radius:18px;padding:26px;margin-bottom:18px}
+.sheet-title{display:flex;gap:14px;align-items:center;border-bottom:2px solid #c9a227;padding-bottom:14px;margin-bottom:14px}
+.sheet-title b{display:block;font-size:19px;color:#1b4a7a}
+.sheet-title span{color:#555;font-size:14px}
+.done-sheet dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:4px 24px}
+.done-sheet dl div{padding:8px 0;border-bottom:1px dashed #ddd}
+.done-sheet dt{font-size:12.5px;color:#777;font-weight:700}
+.done-sheet dd{font-size:16px;font-weight:600;white-space:pre-wrap}
+.sheet-agree{margin-top:14px;color:#0b5345;font-weight:600}
+.sheet-sign{display:flex;flex-wrap:wrap;justify-content:space-between;gap:16px;margin-top:30px;color:#333}
+@media(max-width:760px){.join-form fieldset{padding:18px 14px;border-radius:20px}.done-sheet{padding:18px}}
+@media print{
+  body.printing-join>*:not(main){display:none!important}
+  body.printing-join main>*:not(#apply){display:none!important}
+  body.printing-join #apply .center,body.printing-join .done-head,body.printing-join .factions{display:none!important}
+  body.printing-join .join-done{border:0;padding:0;background:#fff}
+  body.printing-join{background:#fff!important}
+  body.printing-join::before,body.printing-join::after{display:none}
+}
+#apply,.join-done{scroll-margin-top:calc(var(--nav-h) + 24px)}

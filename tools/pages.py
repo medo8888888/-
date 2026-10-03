@@ -181,6 +181,83 @@ def pair(a, b):
     return f'<div class="pair"><b>{L(a)}</b><span>{L(b)}</span></div>'
 
 
+
+def membership_form():
+    """Membership application (طلب عضوية). Data never leaves the visitor's
+    browser unless they send it; JOIN_EMAIL below enables the e-mail button."""
+    def f(name, label, typ='text', req=True, extra='', full=False):
+        r = ' required' if req else ''
+        star = '<b aria-hidden="true">*</b>' if req else '<small>(اختياري)</small>'
+        return (f'<label class="fld{" full" if full else ""}"><span>{label} {star}</span>'
+                f'<input name="{name}" type="{typ}"{r}{extra}><em class="err" aria-live="polite"></em></label>')
+    def sel(name, label, opts, req=True):
+        o = ''.join(f'<option>{x}</option>' for x in opts)
+        return (f'<label class="fld"><span>{label} <b aria-hidden="true">*</b></span><select name="{name}" required>'
+                f'<option value="">— اختر —</option>{o}</select><em class="err" aria-live="polite"></em></label>')
+    interests = ''.join(
+        f'<label class="pick"><input type="checkbox" name="interest" value="{v}"><span>{v}</span></label>'
+        for v in ['مبادرة «ينابيع»', 'مبادرة «منافع»', 'التنسيق بين الجمعيات', 'التأهيل المهني والتوظيف',
+                  'التكافل والتضامن الاجتماعي', 'الدراسات والتخطيط'])
+    duties = ''.join(f'<li>{t}</li>' for t in LS(236, 239))
+    return f'''
+<section class="sec" id="apply">
+  <div class="wrap">
+    <div class="center"><span class="kicker rv">{L(184)}</span><h2 class="rv">استمارة طلب العضوية</h2>
+      <p class="lead rv center-text">{L(185)}. {L(186)}.</p></div>
+    <form class="join-form rv" novalidate data-email="">
+      <fieldset><legend><span class="step">1</span> البيانات الشخصية</legend>
+        <div class="fgrid">
+          {f('full_name', 'الاسم الكامل', extra=' autocomplete="name" minlength="5"')}
+          {f('nationality', 'الجنسية', extra=' autocomplete="country-name"')}
+          {f('id_number', 'رقم الهوية / الإقامة', extra=' inputmode="numeric" minlength="5"')}
+          {f('birth_date', 'تاريخ الميلاد', 'date')}
+          {sel('member_type', 'نوع العضوية', ['شخص طبيعي (فرد)', 'شخص اعتباري (مؤسسة / جمعية)'])}
+          {sel('residence', 'الإقامة في تركيا', ['مواطن تركي', 'إقامة قانونية سارية', 'مقيم خارج تركيا'])}
+        </div>
+      </fieldset>
+      <fieldset><legend><span class="step">2</span> بيانات التواصل</legend>
+        <div class="fgrid">
+          {f('phone', 'رقم الجوال (مع رمز الدولة)', 'tel', extra=' autocomplete="tel" dir="ltr" placeholder="+90 5xx xxx xx xx"')}
+          {f('email', 'البريد الإلكتروني', 'email', extra=' autocomplete="email" dir="ltr"')}
+          {f('city', 'المدينة / الولاية', extra=' autocomplete="address-level2"')}
+          {f('address', 'العنوان التفصيلي', req=False, full=True, extra=' autocomplete="street-address"')}
+        </div>
+      </fieldset>
+      <fieldset><legend><span class="step">3</span> المؤهلات والاهتمامات</legend>
+        <div class="fgrid">
+          {f('profession', 'المهنة / المسمى الوظيفي')}
+          {sel('education', 'المؤهل العلمي', ['ثانوي', 'دبلوم', 'بكالوريوس', 'ماجستير', 'دكتوراه', 'أخرى'])}
+          {f('languages', 'اللغات التي تتقنها', req=False)}
+        </div>
+        <p class="fhint">مجالات المشاركة التي تهمّك:</p>
+        <div class="picks">{interests}</div>
+        <label class="fld full"><span>كيف يمكنك أن تساهم في تحقيق أهداف الجمعية؟ <small>(اختياري)</small></span>
+          <textarea name="contribution" rows="4" maxlength="1200"></textarea></label>
+      </fieldset>
+      <fieldset><legend><span class="step">4</span> الإقرار</legend>
+        <ul class="list diamond">{duties}</ul>
+        <label class="agree"><input type="checkbox" name="agree" required><span>أقرّ بصحة البيانات المذكورة، وألتزم بأهداف الجمعية ونظامها الأساسي وواجبات العضو المذكورة أعلاه.</span></label>
+        <em class="err agree-err" aria-live="polite"></em>
+      </fieldset>
+      <div class="factions">
+        <button class="btn btn-primary" type="submit">{ic('check')}إرسال طلب العضوية</button>
+        <button class="btn btn-soft" type="reset">مسح الحقول</button>
+      </div>
+    </form>
+    <div class="join-done" hidden tabindex="-1">
+      <div class="done-head"><span class="ic big">{ic('check')}</span><div><h3>تم تجهيز طلب العضوية</h3>
+        <p>راجع بياناتك أدناه، ثم احفظ الطلب أو اطبعه وسلّمه للجمعية.</p></div></div>
+      <div class="done-sheet"></div>
+      <div class="factions">
+        <button class="btn btn-primary" type="button" data-join-print>{ic('book')}طباعة / حفظ PDF</button>
+        <a class="btn btn-gold" data-join-mail hidden>{ic('send')}إرسال بالبريد الإلكتروني</a>
+        <button class="btn btn-soft" type="button" data-join-edit>تعديل البيانات</button>
+      </div>
+    </div>
+  </div>
+</section>'''
+
+
 def build_join():
     s9 = section(9, f'''<div class="grid g2">
       <article class="card tilt rv feature" style="--fc:var(--c-leaf)"><div class="ic">{ic('check')}</div><h3>{L(230)}</h3>{ul(LS(232, 235))}</article>
@@ -208,7 +285,7 @@ def build_join():
         for r in range(7))
     s11 = section(11, f'''<div class="table-wrap rv"><table class="rt founders"><thead><tr>{''.join(f'<th>{h}</th>' for h in heads)}</tr></thead><tbody>{rows}</tbody></table></div>
     <p class="footnote rv">{L(300)}</p>''')
-    page('join.html', 'العضوية', page_hero('join.html', [9, 12, 11]) + s9 + s12 + s11 + cta(), L(304))
+    page('join.html', 'العضوية', page_hero('join.html', [9, 12, 11]) + membership_form() + s9 + s12 + s11 + cta(), L(304), js=('js/join.js',))
 
 
 # ================================================================= FAQ ===

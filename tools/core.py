@@ -192,7 +192,7 @@ def cta():
     <h2>{L(499)}</h2>
     <p>{L(500)}</p>
     <div class="btns center">
-      <a class="btn btn-gold" href="join.html">{ic('users')}العضوية</a>
+      <a class="btn btn-gold" href="join.html#apply">{ic('users')}العضوية</a>
       <button class="btn btn-ghost" type="button" data-open-chat>{ic('sparkles')}اسأل المساعد الذكي</button>
     </div>
   </div>
