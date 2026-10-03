@@ -4,6 +4,21 @@
   const root = document.documentElement;
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const finePointer = matchMedia('(hover: hover) and (pointer: fine)').matches;
+  const onMQ = (mq, fn) => (mq.addEventListener ? mq.addEventListener('change', fn) : mq.addListener(fn));
+
+  /* ---------------- reveal on scroll (set up first) ---------------- */
+  root.classList.add('js');
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver(entries => entries.forEach(e => {
+      if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+    }), { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+    $$('.rv, .tl').forEach(el => io.observe(el));
+  } else {
+    $$('.rv, .tl').forEach(el => el.classList.add('in'));
+  }
+  $$('.grid, .toc-grid, .faq-list, .mini-steps, .cycle').forEach(g =>
+    [...g.children].forEach((c, i) => c.style.setProperty('--d', Math.min(i, 8) * 0.07 + 's')));
+  window.__takamulReady = true;
 
   /* ---------------- theme ---------------- */
   const metaTheme = $('meta[name="theme-color"]');
@@ -20,7 +35,7 @@
     if (document.startViewTransition && !reduce) document.startViewTransition(() => setTheme(next, true));
     else setTheme(next, true);
   }));
-  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+  onMQ(matchMedia('(prefers-color-scheme: dark)'), e => {
     let stored = null;
     try { stored = localStorage.getItem('takamul-theme'); } catch (err) { /* ignore */ }
     if (!stored) setTheme(e.matches ? 'dark' : 'light', false);
@@ -38,11 +53,12 @@
     const place = (pill, a) => {
       if (!a) { pill.style.opacity = 0; return; }
       const lr = links.getBoundingClientRect(), ar = a.getBoundingClientRect();
+      const first = pill.style.opacity !== '1';
+      if (first) pill.style.transition = 'none'; // appear in place, don't sweep in
       pill.style.width = ar.width + 'px';
       pill.style.transform = `translateX(${ar.left - lr.left}px)`;
-      pill.style.insetInlineStart = 'auto';
-      pill.style.left = '0';
       pill.style.opacity = 1;
+      if (first) { void pill.offsetWidth; pill.style.transition = ''; }
     };
     const active = $('a.active', links);
     const placeActive = () => place(pA, active);
@@ -67,10 +83,11 @@
     }
     if (toTop) toTop.classList.toggle('show', y > 700);
     const tl = $('.timeline');
-    if (tl) {
+    const fill = tl && $('.tl-fill', tl);
+    if (fill) {
       const r = tl.getBoundingClientRect();
       const p = Math.min(Math.max((innerHeight * 0.65 - r.top) / r.height, 0), 1);
-      $('.tl-fill', tl).style.height = (p * 100) + '%';
+      fill.style.height = (p * 100) + '%';
     }
     lastY = y; ticking = false;
   };
@@ -80,10 +97,13 @@
 
   /* ---------------- bottom sheet menu ---------------- */
   const sheet = $('.sheet');
-  let lastFocus = null;
+  let lastFocus = null, hideTimer = 0;
+  const behindSheet = () => ['.nav', 'main', '.footer', '.tabbar', '.chat-fab', '.totop'].map(q => $(q)).filter(Boolean);
   const openSheet = () => {
     if (!sheet) return;
+    clearTimeout(hideTimer);
     lastFocus = document.activeElement;
+    behindSheet().forEach(el => { el.inert = true; });
     sheet.hidden = false;
     document.body.classList.add('sheet-open');
     requestAnimationFrame(() => requestAnimationFrame(() => sheet.classList.add('open')));
@@ -94,13 +114,15 @@
     if (!sheet || sheet.hidden) return;
     sheet.classList.remove('open');
     document.body.classList.remove('sheet-open');
-    setTimeout(() => { sheet.hidden = true; }, 380);
+    behindSheet().forEach(el => { el.inert = false; });
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(() => { sheet.hidden = true; }, 380);
     lastFocus && lastFocus.focus && lastFocus.focus({ preventScroll: true });
   };
   $$('[data-open-sheet]').forEach(b => b.addEventListener('click', openSheet));
   $$('[data-close-sheet]').forEach(b => b.addEventListener('click', closeSheet));
   sheet && $$('[data-open-chat]', sheet).forEach(b => b.addEventListener('click', closeSheet));
-  addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
+  addEventListener('keydown', e => { if (e.key === 'Escape' && sheet && !sheet.hidden) closeSheet(); });
   // swipe down to close
   if (sheet) {
     const panel = $('.sheet-panel', sheet);
@@ -111,6 +133,7 @@
       const dy = e.touches[0].clientY - y0;
       if (dy > 0) panel.style.transform = `translateY(${dy}px)`;
     }, { passive: true });
+    panel.addEventListener('touchcancel', () => { panel.style.transform = ''; y0 = null; });
     panel.addEventListener('touchend', e => {
       if (y0 === null) return;
       const dy = e.changedTouches[0].clientY - y0;
@@ -119,15 +142,6 @@
       if (dy > 90) closeSheet();
     });
   }
-
-  /* ---------------- reveal on scroll ---------------- */
-  root.classList.add('js');
-  const io = new IntersectionObserver(entries => entries.forEach(e => {
-    if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
-  }), { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
-  $$('.rv, .tl').forEach(el => io.observe(el));
-  $$('.grid, .toc-grid, .faq-list, .mini-steps, .cycle').forEach(g =>
-    [...g.children].forEach((c, i) => c.style.setProperty('--d', Math.min(i, 8) * 0.07 + 's')));
 
   /* ---------------- counters ---------------- */
   if (!reduce) {

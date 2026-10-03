@@ -4,6 +4,7 @@
 // Secret:  GEMINI_API_KEY  (wrangler secret put GEMINI_API_KEY, or the dashboard)
 // Var:     GEMINI_MODEL           optional, overrides DEFAULT_MODEL
 // Var:     GEMINI_THINKING_LEVEL  optional: minimal | low | medium | high
+// Binding: CHAT_LIMITER           optional Workers rate-limit binding (per client IP)
 
 import { KNOWLEDGE } from "./knowledge.js";
 
@@ -46,13 +47,15 @@ function json(body, status = 200, extraHeaders = {}) {
   });
 }
 
-function isCrossOrigin(request, url) {
+// Browsers always send Origin on a POST from fetch(), so a missing or foreign
+// Origin means the call did not come from our own pages (curl, other sites).
+function isSameOrigin(request, url) {
   const origin = request.headers.get("origin");
-  if (origin === null) return false;
+  if (!origin) return false;
   try {
-    return new URL(origin).host !== url.host;
+    return new URL(origin).host === url.host;
   } catch {
-    return true; // e.g. "null" from sandboxed/opaque contexts
+    return false; // e.g. "null" from sandboxed/opaque contexts
   }
 }
 
@@ -85,12 +88,41 @@ function parseMessages(payload) {
 async function readBody(request) {
   const declared = Number(request.headers.get("content-length"));
   if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) return null;
-  const buf = await request.arrayBuffer();
-  if (buf.byteLength > MAX_BODY_BYTES) return null;
+  if (!request.body) return null;
+  // Stream with a hard cap so a chunked body without Content-Length can't
+  // make us buffer an arbitrary amount of data.
+  const reader = request.body.getReader();
+  const chunks = [];
+  let size = 0;
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > MAX_BODY_BYTES) {
+      await reader.cancel().catch(() => {});
+      return null;
+    }
+    chunks.push(value);
+  }
+  const buf = new Uint8Array(size);
+  let offset = 0;
+  for (const c of chunks) { buf.set(c, offset); offset += c.byteLength; }
   try {
     return JSON.parse(new TextDecoder().decode(buf));
   } catch {
     return null;
+  }
+}
+
+async function isRateLimited(request, env) {
+  if (!env.CHAT_LIMITER || typeof env.CHAT_LIMITER.limit !== "function") return false;
+  const key = request.headers.get("cf-connecting-ip") || "unknown";
+  try {
+    const { success } = await env.CHAT_LIMITER.limit({ key });
+    return !success;
+  } catch (err) {
+    console.error("rate limiter failed:", err && err.message);
+    return false; // fail open: the limiter is a safety net, not auth
   }
 }
 
@@ -115,7 +147,8 @@ function buildGeminiRequest(messages, env, model) {
 }
 
 async function handleChat(request, env, url) {
-  if (isCrossOrigin(request, url)) return json({ error: "forbidden" }, 403);
+  if (!isSameOrigin(request, url)) return json({ error: "forbidden" }, 403);
+  if (await isRateLimited(request, env)) return json({ error: "rate_limited" }, 429, { "retry-after": "60" });
   if (!env.GEMINI_API_KEY) return json({ error: "not_configured" }, 503);
 
   const payload = await readBody(request);

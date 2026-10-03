@@ -114,7 +114,42 @@ const valid = { messages: [{ role: "user", text: "ما هي جمعية تكام�
   check("cross-origin -> no upstream call", captured.length === 0);
   const r3 = await run(chatRequest(valid, { origin: null }));
   await r3.text();
-  check("no Origin header -> allowed", r3.status === 200, String(r3.status));
+  check("no Origin header -> 403", r3.status === 403, String(r3.status));
+  check("missing Origin -> no upstream call", captured.length === 0);
+}
+
+// --- rate limiting -----------------------------------------------------------
+{
+  captured = [];
+  const keys = [];
+  const limiter = (ok) => ({ limit: async ({ key }) => { keys.push(key); return { success: ok }; } });
+  const req = () => {
+    const r = chatRequest(valid);
+    const h = new Headers(r.headers); h.set("cf-connecting-ip", "203.0.113.7");
+    return new Request(r.url, { method: "POST", headers: h, body: JSON.stringify(valid) });
+  };
+  const blocked = await run(req(), makeEnv({ CHAT_LIMITER: limiter(false) }));
+  const bb = await blocked.json();
+  check("rate limited -> 429 rate_limited", blocked.status === 429 && bb.error === "rate_limited", `${blocked.status} ${JSON.stringify(bb)}`);
+  check("rate limited -> no upstream call", captured.length === 0);
+  check("limiter keyed by client IP", keys[0] === "203.0.113.7", String(keys[0]));
+  const allowed = await run(req(), makeEnv({ CHAT_LIMITER: limiter(true) }));
+  await allowed.text();
+  check("under limit -> 200", allowed.status === 200, String(allowed.status));
+  const broken = { limit: async () => { throw new Error("boom"); } };
+  const r4 = await run(req(), makeEnv({ CHAT_LIMITER: broken }));
+  await r4.text();
+  check("limiter error fails open", r4.status === 200, String(r4.status));
+}
+
+// --- chunked body without Content-Length is capped ------------------------------
+{
+  captured = [];
+  const big = new TextEncoder().encode(JSON.stringify({ messages: [{ role: "user", text: "x".repeat(40000) }] }));
+  const stream = new ReadableStream({ start(c) { for (let i = 0; i < big.length; i += 4096) c.enqueue(big.slice(i, i + 4096)); c.close(); } });
+  const r = await run(new Request(`${ORIGIN}/api/chat`, { method: "POST", headers: { "content-type": "application/json", origin: ORIGIN }, body: stream, duplex: "half" }));
+  check("chunked oversized body -> 400", r.status === 400, String(r.status));
+  check("chunked oversized body -> no upstream call", captured.length === 0);
 }
 
 // --- happy path ------------------------------------------------------------

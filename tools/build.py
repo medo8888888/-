@@ -213,7 +213,7 @@ def page(fn, title, body, desc, globe=False):
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>{title} | جمعية تكامل لبناء القيم والتنمية</title>
+{'<base href="/">' if fn == '404.html' else ''}<title>{title} | جمعية تكامل لبناء القيم والتنمية</title>
 <meta name="description" content="{desc}">
 <meta name="theme-color" content="#f7f4ec">
 <meta property="og:type" content="website">
@@ -223,7 +223,7 @@ def page(fn, title, body, desc, globe=False):
 <meta property="og:image" content="assets/logo.png">
 <link rel="icon" href="assets/logo.png">
 <link rel="apple-touch-icon" href="assets/logo.png">
-<script>(function(){{var t;try{{t=localStorage.getItem('takamul-theme')}}catch(e){{}}if(t!=='light'&&t!=='dark'){{t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}}document.documentElement.dataset.theme=t;document.documentElement.classList.add('js')}})();</script>
+<script>(function(){{var t;try{{t=localStorage.getItem('takamul-theme')}}catch(e){{}}if(t!=='light'&&t!=='dark'){{t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}}var d=document.documentElement;d.dataset.theme=t;d.classList.add('js');setTimeout(function(){{if(!window.__takamulReady)d.classList.remove('js')}},2500)}})();</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -440,7 +440,7 @@ def build_expansion():
     tl = ''.join(
         f'<li class="tl"><span class="tl-n">{L(130 + 4 * i)}</span><div class="card"><span class="tag">{L(129 + 4 * i)} {L(130 + 4 * i)}</span>'
         f'<h3>{L(131 + 4 * i)}</h3><p>{L(132 + 4 * i)}</p></div></li>' for i in range(7))
-    s5 = section(5, f'<ol class="timeline"><span class="tl-fill" aria-hidden="true"></span>{tl}</ol>', lead=f'{L(6)} — {L(7)}')
+    s5 = section(5, f'<div class="timeline"><span class="tl-fill" aria-hidden="true"></span><ol class="tl-list">{tl}</ol></div>', lead=f'{L(6)} — {L(7)}')
     page('expansion.html', 'خطة التوسع', page_hero('expansion.html', [5], visual=True) + s5 + cta(), L(128), globe=True)
 
 
