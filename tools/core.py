@@ -164,15 +164,23 @@ def page_hero(fn, nums, visual=False):
     return f'''
 <section class="hero hero-small{' has-visual' if visual else ''}">
   <div class="hero-bg" aria-hidden="true"></div>
+  <div class="hero-aurora" aria-hidden="true"></div>
+  <span class="hero-num" aria-hidden="true">{'·'.join(L(SECTIONS[n][0]) for n in nums)}</span>
   <div class="wrap hero-grid">
     <div class="hero-copy">
       <span class="eyebrow rv">{ic('book')} {L(1)}</span>
-      <h1 class="rv">{PAGE_LABEL[fn]}</h1>
+      <h1 class="rv hero-title">{PAGE_LABEL[fn]}</h1>
       <nav class="chips rv" aria-label="أقسام الصفحة">{chips}</nav>
     </div>
     {vis}
   </div>
-</section>'''
+</section>
+{ticker()}'''
+
+
+def ticker():
+    items = ''.join(f'<span>✦ {L(n)}</span>' for n in (307, 315, 324, 331, 335, 343, 349, 355, 364, 368))
+    return f'<div class="ticker" aria-hidden="true"><div class="ticker-track">{items}{items}</div></div>'
 
 
 def cta():
