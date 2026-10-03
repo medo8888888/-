@@ -6,13 +6,17 @@ for the Gemini assistant. No frameworks, no build toolchain beyond Python.
 
 ```
 content/brochure.txt     the brochure, one paragraph per line (source of ALL text)
+content/brochure.{en,tr}.txt  line-aligned translations (line N = line N of brochure.txt)
+content/ui.{en,tr}.json  UI-chrome translations {arabic run: translation} (value == key keeps it)
 tools/build.py           entry: python3 tools/build.py
 tools/core.py            shell (head, nav, footer, tab bar, sheet, chat markup) + components + helpers
 tools/pages.py           page compositions: index, about, initiatives, expansion, governance, join, faq, 404
 tools/dashboard.py       dashboard.html (command center)
 tools/build_kb.py        site/data/kb.js (search + offline-assistant knowledge base)
 tools/build_world.mjs    site/data/world.js (countries for the globe)
-tools/check_content.py   fails unless every brochure line is visible on the site
+tools/i18n.py            localizes site/en and site/tr (chrome map, per-language JS copies, ../ paths)
+tools/sw.template.js     service worker template (build writes site/sw.js with a content-hash version)
+tools/check_content.py   fails unless every brochure line is visible on the site (ar, en, tr)
 tools/test-worker.mjs    Worker tests            tools/test-kb.mjs   offline-answer tests
 site/css/style.css       design system (tokens, base, components, shell, chat base)
 site/css/pages.css       page layouts (bento compositions)
@@ -22,6 +26,9 @@ site/js/chat.js          assistant (Gemini via /api/chat, offline brochure answe
 site/js/palette.js       command palette / search overlay
 site/js/globe.js         3D globe (canvas)       site/js/cursor.js   custom cursor
 site/js/dashboard.js     command-center interactions
+site/js/pwa.js           service-worker registration + [data-install] buttons (installable app)
+site/manifest.webmanifest, site/assets/icons/   PWA manifest and icons
+site/en/, site/tr/       generated English / Turkish sites (LTR); share css/, assets/, data/world.js
 worker/index.js          serves site/ + /api/chat + /api/health (key = secret GEMINI_API_KEY)
 ```
 
@@ -38,7 +45,12 @@ worker/index.js          serves site/ + /api/chat + /api/health (key = secret GE
    Never put `letter-spacing` on Arabic text (it breaks letter joining).
 5. **Both themes** (`html[data-theme=dark|light]`), **phones first** (390px) up to 1440px+,
    `prefers-reduced-motion` respected, keyboard + screen-reader accessible.
-6. **Generated files** (`site/*.html`, `site/data/kb.js`, `worker/knowledge.js`) are never edited by hand.
+6. **Generated files** (`site/*.html`, `site/en/**`, `site/tr/**`, `site/sw.js`, `site/data/kb.js`,
+   `worker/knowledge.js`) are never edited by hand.
+7. **Languages:** Python code reads brochure text only through `L(n)`; `core.set_lang()` swaps the
+   source. Arabic UI strings in templates/JS are translated by `tools/i18n.py`; the build prints any
+   run still untranslated — add it to `content/ui.<lang>.json`. Direction-dependent CSS gets a
+   `[dir=ltr]` override (end of pages.css).
 
 ## Contracts between modules
 

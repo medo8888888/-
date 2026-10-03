@@ -1,13 +1,16 @@
 # موقع جمعية تكامل لبناء القيم والتنمية
 
 موقع عربي (RTL) مبني من «الكتيب التعريفي الشامل للأعضاء الجدد» حرفياً: تصميم داكن فاخر (مع وضع نهاري)، كرة أرضية ثلاثية الأبعاد بدول الكتيب الخمس، لوحة قيادة تفاعلية، بحث فوري (⌘K)، واجهة جوال (شريط سفلي)، و«مساعد تكامل الذكي» الذي يجيب من الكتيب دائماً، وبـ Gemini عند تفعيل المفتاح.
+ثلاث لغات: العربية (`site/`)، والإنجليزية (`site/en/`)، والتركية (`site/tr/`)، ويعمل كتطبيق قابل للتثبيت على الجوال (PWA) حتى بدون إنترنت.
 
 ## البنية
 
 | المسار | الوصف |
 |---|---|
 | `content/brochure.txt` | نص الكتيب (مصدر كل النصوص؛ سطر لكل فقرة) |
-| `tools/build.py` | يولّد صفحات `site/*.html` و `worker/knowledge.js` من الكتيب |
+| `content/brochure.en.txt`, `content/brochure.tr.txt` | ترجمة الكتيب سطراً بسطر |
+| `content/ui.en.json`, `content/ui.tr.json` | ترجمة نصوص الواجهة (الأزرار والرسائل) |
+| `tools/build.py` | يولّد صفحات اللغات الثلاث و `site/sw.js` و `worker/knowledge.js` من الكتيب |
 | `site/` | الموقع الثابت (HTML + `css/style.css` + `js/main.js`, `js/chat.js`, `js/globe.js`) |
 | `worker/index.js` | Cloudflare Worker: يخدم الموقع + `/api/chat` (Gemini) + `/api/health` |
 | `tools/test-worker.mjs` | اختبارات الـ Worker (`npm test`) |
@@ -15,7 +18,7 @@
 بعد تعديل `content/brochure.txt` أو `tools/build.py`:
 
 ```bash
-python3 tools/build.py
+python3 tools/build.py && python3 tools/check_content.py
 ```
 
 ## النشر على Cloudflare (مع المساعد الذكي)

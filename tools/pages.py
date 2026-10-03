@@ -1,10 +1,17 @@
 """Page compositions for the Takamul site (home + inner pages + 404).
 Uses the components and shell from core.py. See docs/ARCHITECTURE.md."""
 from core import *  # noqa: F401,F403  (L, LS, ic, page, section, card, ...)
+import core
 from core import D, SECTIONS, SEC_ICON, PAGE_LABEL, photo_layer, photo_strip, gallery
 
 
 # ================================================================ HOME ===
+def hero_name():
+    if core.LANG == 'ar':
+        return 'جمعية <span class="grad">تكامل</span><br>لبناء القيم والتنمية'
+    return L(501).split('  |  ')[0].strip().replace('Takamul', '<span class="grad">Takamul</span>', 1)
+
+
 def build_home():
     toc = ''.join(
         f'<a class="toc-item tilt rv" href="{sec_link(n)}" style="--sc:var(--c-{SECTIONS[n][4]})">'
@@ -18,7 +25,7 @@ def build_home():
   <div class="hero-bg" aria-hidden="true"></div>{photo_layer('istanbul')}
   <div class="wrap hero-grid">
     <div class="hero-copy">
-      <h1 class="rv">جمعية <span class="grad">تكامل</span><br>لبناء القيم والتنمية</h1>
+      <h1 class="rv">{hero_name()}</h1>
       <p class="sub rv">{L(3)} — {L(8)}</p>
     </div>
   </div>

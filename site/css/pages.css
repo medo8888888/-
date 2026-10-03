@@ -100,3 +100,34 @@
 @media(max-width:900px){.contact-grid{grid-template-columns:1fr}}
 .prog-card.yanabee{background:linear-gradient(170deg,rgba(11,83,69,.94) 30%,rgba(15,63,92,.88)),var(--img) center/cover}
 .prog-card.manafea{background:linear-gradient(170deg,rgba(138,59,10,.94) 30%,rgba(90,31,23,.88)),var(--img) center/cover}
+
+/* ===================== LANGUAGES + INSTALLABLE APP ===================== */
+.lang-switch{display:inline-flex;align-items:center;gap:2px;padding:3px;border-radius:999px;border:1px solid var(--line);background:color-mix(in srgb,var(--surface) 70%,transparent)}
+.lang-switch a{display:grid;place-items:center;min-width:34px;height:30px;padding:0 8px;border-radius:999px;font-size:12.5px;font-weight:800;color:var(--muted);text-decoration:none;transition:background .25s,color .25s}
+.lang-switch a:hover{color:var(--ink)}
+.lang-switch a.on{background:var(--brand);color:var(--on-brand)}
+.lang-switch a[lang=ar]{font-family:var(--font-h)}
+.sheet-lang{display:flex;justify-content:center;margin:0 auto 14px;width:max-content}
+.sheet-lang a{min-width:64px;height:36px;font-size:14px}
+@media(max-width:760px){.actions>.lang-switch{display:none}}
+.sheet-install,.foot-install{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;margin-top:12px;padding:13px 16px;border-radius:16px;border:1px dashed color-mix(in srgb,var(--brand) 55%,transparent);background:color-mix(in srgb,var(--brand) 12%,transparent);color:var(--ink);font:inherit;font-weight:800;cursor:pointer}
+.foot-install{width:auto;display:inline-flex;margin-top:16px}
+.sheet-install[hidden],.foot-install[hidden]{display:none}
+.sheet-install .i,.foot-install .i{width:20px;height:20px;color:var(--brand)}
+.pwa-toast{position:fixed;inset-inline:16px;bottom:calc(var(--tab-h,0px) + 20px + env(safe-area-inset-bottom));z-index:120;max-width:520px;margin-inline:auto;padding:14px 18px;border-radius:16px;background:var(--surface-3,#111);color:var(--ink);border:1px solid var(--line);box-shadow:var(--shadow-lg);font-weight:600;line-height:1.6;opacity:0;translate:0 12px;pointer-events:none;transition:opacity .3s,translate .3s}
+.pwa-toast.show{opacity:1;translate:0 0}
+@media(display-mode:standalone){.btn-donate{display:none}}
+
+/* left-to-right pages (en / tr): mirror direction-dependent motion */
+[dir=ltr] body{font-family:var(--font)}
+[dir=ltr] .toc-item:hover .toc-go{transform:translateX(5px)}
+[dir=ltr] .init-card:hover .more{transform:translateX(6px)}
+[dir=ltr] .tile:hover .go .i{transform:translateX(6px)}
+[dir=ltr] .chat-send .i{transform:none}
+[dir=ltr] .db-btn .flip{transform:none}
+[dir=ltr] .db-checks li:hover{transform:translateX(3px)}
+[dir=ltr] .db-goal:hover,[dir=ltr] .db-goal:focus-visible,[dir=ltr] .db-dep:hover,[dir=ltr] .db-dep:focus-visible{transform:translateX(4px)}
+[dir=ltr] .ticker-track{animation-name:tick-ltr}
+[dir=ltr] .g-track{animation-name:g-scroll-ltr}
+@keyframes tick-ltr{to{transform:translateX(-50%)}}
+@keyframes g-scroll-ltr{to{transform:translateX(calc(-50% - 8px))}}

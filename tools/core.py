@@ -13,8 +13,46 @@ import re
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SITE = ROOT / 'site'
 D = (ROOT / 'content' / 'brochure.txt').read_text(encoding='utf-8').split('\n')
+LANGS = ('ar', 'en', 'tr')
+LANG = 'ar'
+OUT = SITE  # where page()/build_kb write; site/<lang>/ for translations
+
+
+def set_lang(lang):
+    """Switch the brochure source + output folder. D is mutated in place so every
+    `from core import D` keeps seeing the active language."""
+    global LANG, OUT
+    LANG = lang
+    OUT = SITE if lang == 'ar' else SITE / lang
+    OUT.mkdir(exist_ok=True)
+    name = 'brochure.txt' if lang == 'ar' else f'brochure.{lang}.txt'
+    D[:] = (ROOT / 'content' / name).read_text(encoding='utf-8').split('\n')
+
+
+def alternates(fn):
+    if fn == '404.html':
+        return ''
+    base = '' if LANG == 'ar' else '../'
+    return ''.join(f'<link rel="alternate" hreflang="{l}" href="{base}{"" if l == "ar" else l + "/"}{fn}">' for l in LANGS)
+
+
+def lang_switch(fn, cls='lang-switch'):
+    """Links to the same page in the other languages (paths relative to the current page)."""
+    base = '' if LANG == 'ar' else '../'
+    href = {'ar': base + fn, 'en': base + 'en/' + fn, 'tr': base + 'tr/' + fn}
+    names = {'ar': 'عربي', 'en': 'EN', 'tr': 'TR'}
+    full = {'ar': 'العربية', 'en': 'English', 'tr': 'Türkçe'}
+    return (f'<div class="{cls}" role="group" aria-label="Language">' + ''.join(
+        f'<a href="{href[l]}" hreflang="{l}" lang="{l}" title="{full[l]}"'
+        + (' class="on" aria-current="true"' if l == LANG else '') + f'>{names[l]}</a>' for l in LANGS) + '</div>')
 
 HEADER_LINE = 'جمعية تكامل لبناء القيم والتنمية   |   الكتيب التعريفي للأعضاء الجدد'  # Word page header
+
+
+def header_line():
+    if LANG == 'ar':
+        return HEADER_LINE
+    return D[500].split('  |  ')[0].strip() + '   |   ' + D[0].strip()
 
 
 def L(n):
@@ -58,7 +96,9 @@ ICONS = {
     'x': '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
     'trash': '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
     'arrow-up': '<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>',
+    'download': '<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>',
     'arrow-left': '<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
+    'arrow-right': '<path d="m12 5 7 7-7 7"/><path d="M5 12h14"/>',
     'menu': '<line x1="4" x2="20" y1="7" y2="7"/><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="17" y2="17"/>',
     'user': '<circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/>',
     'check': '<path d="M20 6 9 17l-5-5"/>',
@@ -71,6 +111,8 @@ ICONS = {
 
 
 def ic(name, cls='i'):
+    if LANG != 'ar' and name == 'arrow-left':  # "forward" points right in LTR pages
+        name = 'arrow-right'
     return (f'<svg class="{cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" '
             f'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{ICONS[name]}</svg>')
 
@@ -295,7 +337,13 @@ def page(fn, title, body, desc, globe=False, css=(), js=()):
 <meta property="og:description" content="{desc}">
 <meta property="og:image" content="assets/logo.png">
 <link rel="icon" href="assets/logo.png">
-<link rel="apple-touch-icon" href="assets/logo.png">
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="تكامل">
+{alternates(fn)}
 <script>(function(){{var t;try{{t=localStorage.getItem('takamul-theme')}}catch(e){{}}if(t!=='light'&&t!=='dark'){{t='dark'}}var d=document.documentElement;d.dataset.theme=t;d.classList.add('js');setTimeout(function(){{if(!window.__takamulReady)d.classList.remove('js')}},2500)}})();</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -310,6 +358,7 @@ def page(fn, title, body, desc, globe=False, css=(), js=()):
 <script src="js/chat.js" defer></script>
 <script src="js/palette.js" defer></script>
 <script src="js/cursor.js" defer></script>
+<script src="js/pwa.js" defer></script>
 {globe_js}{extra_js}</head>
 <body data-page="{fn}">
 <div class="progress" aria-hidden="true"></div>
@@ -327,6 +376,7 @@ def page(fn, title, body, desc, globe=False, css=(), js=()):
       {links}
     </nav>
     <div class="actions">
+      {lang_switch(fn)}
       <a class="btn-donate" href="support.html#donate">{ic('heart')}<span>تبرع الآن</span></a>
       <button type="button" class="search-btn" data-open-palette aria-label="ابحث في الموقع (Ctrl+K)" aria-keyshortcuts="Control+K Meta+K">{ic('search')}<span class="search-label">ابحث في الكتيب</span><kbd class="kbd-hint">⌘K</kbd></button>
       <button type="button" class="icon-btn theme-toggle" aria-label="تبديل الوضع الليلي والنهاري" title="الوضع الليلي / النهاري">{ic('sun', 'i sun')}{ic('moon', 'i moon')}</button>
@@ -351,7 +401,8 @@ def page(fn, title, body, desc, globe=False, css=(), js=()):
       <div><h4>{L(12)}</h4>{toc_foot}</div>
       <div><h4>&nbsp;</h4>{toc_foot2}</div>
     </div>
-    <div class="foot-bottom"><span>{HEADER_LINE}</span><span>{L(501)}</span></div>
+    <div class="foot-bottom"><span>{header_line()}</span><span>{L(501)}</span></div>
+    <button type="button" class="foot-install" data-install hidden>{ic('download')}<span>ثبّت التطبيق</span></button>
     {image_credits()}
   </div>
 </footer>
@@ -363,12 +414,14 @@ def page(fn, title, body, desc, globe=False, css=(), js=()):
   <div class="sheet-panel" role="dialog" aria-modal="true" aria-label="القائمة">
     <div class="sheet-handle" aria-hidden="true"></div>
     <div class="sheet-head"><b>القائمة</b><button type="button" class="icon-btn" data-close-sheet aria-label="إغلاق">{ic('x')}</button></div>
+    {lang_switch(fn, 'lang-switch sheet-lang')}
     <div class="sheet-grid">{sheet}</div>
     <button type="button" class="sheet-search" data-open-palette>{ic('search')}<span>ابحث في الكتيب…</span><kbd class="kbd-hint">⌘K</kbd></button>
     <div class="sheet-row">
       <button type="button" class="sheet-wide theme-toggle">{ic('sun', 'i sun')}{ic('moon', 'i moon')}<span class="label-light">الوضع الليلي</span><span class="label-dark">الوضع النهاري</span></button>
       <button type="button" class="sheet-wide ai" data-open-chat>{ic('sparkles')}<span>اسأل المساعد</span></button>
     </div>
+    <button type="button" class="sheet-install" data-install hidden>{ic('download')}<span>ثبّت تطبيق «تكامل» على جوالك</span></button>
   </div>
 </div>
 
@@ -395,4 +448,4 @@ def page(fn, title, body, desc, globe=False, css=(), js=()):
 </body>
 </html>
 '''
-    (SITE / fn).write_text(html, encoding='utf-8')
+    (OUT / fn).write_text(html, encoding='utf-8')

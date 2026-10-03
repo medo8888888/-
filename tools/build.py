@@ -1,22 +1,27 @@
 #!/usr/bin/env python3
-"""Build the Takamul website from content/brochure.txt.
+"""Build the Takamul website from content/brochure.txt (+ brochure.en.txt / brochure.tr.txt).
 
-    python3 tools/build.py            # site/*.html, site/data/kb.js, worker/knowledge.js
-    python3 tools/check_content.py    # verify every brochure line is on the site
+    python3 tools/build.py            # site/*.html (ar), site/en/, site/tr/, kb.js, sw.js, worker/knowledge.js
+    python3 tools/check_content.py    # verify every brochure line is on the site (all languages)
 
 Modules (see docs/ARCHITECTURE.md): core.py (shell + components), pages.py
-(page compositions), dashboard.py (command center), build_kb.py (search/chat KB).
+(page compositions), dashboard.py (command center), build_kb.py (search/chat KB),
+i18n.py (UI chrome translation for site/en and site/tr).
 """
+import hashlib
 import json
+import sys
 
-from core import D, HEADER_LINE, ROOT, SITE
+import core
+import i18n
+from core import D, HEADER_LINE, ROOT, SITE, set_lang
 from build_kb import build_kb
 from dashboard import build_dashboard
 from pages import build_pages
 
 
 def build_knowledge():
-    """Worker system-prompt knowledge (the whole brochure)."""
+    """Worker system-prompt knowledge (the whole Arabic brochure)."""
     text = HEADER_LINE + '\n' + '\n'.join(D[:501])
     (ROOT / 'worker').mkdir(exist_ok=True)
     (ROOT / 'worker' / 'knowledge.js').write_text(
@@ -24,9 +29,35 @@ def build_knowledge():
         f'export const KNOWLEDGE = {json.dumps(text, ensure_ascii=False)};\n', encoding='utf-8')
 
 
+def build_sw():
+    """Service worker with a content-hash version, so every deploy refreshes caches."""
+    files = sorted(p for p in SITE.rglob('*') if p.is_file() and p.name != 'sw.js'
+                   and p.suffix in {'.html', '.css', '.js', '.png', '.jpg', '.webmanifest'})
+    h = hashlib.sha256()
+    for p in files:
+        h.update(p.relative_to(SITE).as_posix().encode()); h.update(p.read_bytes())
+    pre = ['./', './index.html', './manifest.webmanifest', './css/style.css', './css/pages.css', './css/chat-plus.css',
+           './css/palette.css', './css/globe.css', './js/main.js', './js/chat.js', './js/palette.js', './js/cursor.js',
+           './js/pwa.js', './data/kb.js', './assets/logo.png', './assets/icons/icon-192.png', './assets/img/istanbul.jpg']
+    pre += [f'./{p.name}' for p in sorted(SITE.glob('*.html')) if p.name not in ('index.html', '404.html')]
+    t = (ROOT / 'tools' / 'sw.template.js').read_text(encoding='utf-8')
+    t = t.replace('__VERSION__', h.hexdigest()[:12]).replace('__PRECACHE__', json.dumps(pre))
+    (SITE / 'sw.js').write_text(t, encoding='utf-8')
+
+
 if __name__ == '__main__':
-    build_pages()
-    build_dashboard()
-    kb = build_kb()
-    build_knowledge()
-    print('built', sorted(p.name for p in SITE.glob('*.html')), '| kb items:', len(kb['items']))
+    for lang in core.LANGS:
+        set_lang(lang)
+        build_pages()
+        build_dashboard()
+        kb = build_kb()
+        if lang == 'ar':
+            build_knowledge()
+        else:
+            i18n.localize(lang)
+            left = i18n.report(lang)
+            if left:
+                print(f'[{lang}] {len(left)} untranslated UI strings, e.g.:', list(left)[:8], file=sys.stderr)
+        print(f'built [{lang}]', len(list(core.OUT.glob('*.html'))), 'pages | kb items:', len(kb['items']))
+    set_lang('ar')
+    build_sw()

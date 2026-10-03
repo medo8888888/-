@@ -1,0 +1,27 @@
+{
+  "name": "جمعية تكامل لبناء القيم والتنمية",
+  "short_name": "تكامل",
+  "description": "الكتيب التعريفي الشامل للأعضاء الجدد — رؤية 2035",
+  "lang": "ar",
+  "dir": "rtl",
+  "id": "/",
+  "start_url": "./index.html?source=pwa",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#05070a",
+  "theme_color": "#06080b",
+  "categories": ["education", "social", "lifestyle"],
+  "icons": [
+    {"src": "assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "assets/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ],
+  "shortcuts": [
+    {"name": "طلب العضوية", "url": "./join.html#apply", "icons": [{"src": "assets/icons/icon-192.png", "sizes": "192x192"}]},
+    {"name": "تبرع الآن", "url": "./support.html#donate", "icons": [{"src": "assets/icons/icon-192.png", "sizes": "192x192"}]},
+    {"name": "English", "url": "./en/index.html", "icons": [{"src": "assets/icons/icon-192.png", "sizes": "192x192"}]},
+    {"name": "Türkçe", "url": "./tr/index.html", "icons": [{"src": "assets/icons/icon-192.png", "sizes": "192x192"}]}
+  ]
+}
