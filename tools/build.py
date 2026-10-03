@@ -230,6 +230,7 @@ def page(fn, title, body, desc, globe=False):
 <link rel="stylesheet" href="css/style.css">
 <script src="js/main.js" defer></script>
 <script src="js/chat.js" defer></script>
+<script src="js/cursor.js" defer></script>
 {globe_js}</head>
 <body data-page="{fn}">
 <div class="progress" aria-hidden="true"></div>
