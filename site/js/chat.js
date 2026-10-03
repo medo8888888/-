@@ -454,7 +454,7 @@
       const r = rows[i];
       if (r.h) { out.push('', `**${r.h}**`); return; }
       const body = r.k ? `**${r.k}**${r.tag ? ` (${r.tag})` : ''} — ${r.v}` : `${r.v}${r.tag ? ` (${r.tag})` : ''}`;
-      if (!r.k && !r.li && idx.length > 1 && (n === 0 || /:$/.test(r.v))) out.push('', body, '');
+      if (!r.k && !r.li && !r.n && idx.length > 1 && (n === 0 || /:$/.test(r.v))) out.push('', body, '');
       else out.push(`- ${body}`);
     });
     return out.join('\n').replace(/\n{3,}/g, '\n\n').trim();
@@ -788,6 +788,15 @@
     scrollEnd();
     return node;
   };
+  // Long answers: bring their beginning into view (not their last line).
+  function revealAnswer(node) {
+    const room = log.clientHeight;
+    const prevUser = node.previousElementSibling;
+    if (node.offsetHeight + (prevUser ? prevUser.offsetHeight + 10 : 0) <= room - 16) { scrollEnd(); return; }
+    const anchor = prevUser && prevUser.classList.contains('user') && node.offsetHeight < room * 1.6 ? prevUser : node;
+    const y = log.scrollTop + anchor.getBoundingClientRect().top - log.getBoundingClientRect().top - 12;
+    try { log.scrollTo({ top: y, behavior: reduceMQ.matches ? 'auto' : 'smooth' }); } catch (e) { log.scrollTop = y; }
+  }
   const dropFollow = () => log.querySelectorAll('.chat-follow').forEach(n => n.remove());
   const renderSuggestions = () => {
     sug.innerHTML = '';
@@ -956,7 +965,7 @@
     messages.push(m);
     save();
     paintBot(node, m, true);
-    scrollEnd();
+    revealAnswer(node);
     busy = false;
     syncControls();
     const act = document.activeElement;
