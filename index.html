@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>جمعية تكامل لبناء القيم والتنمية</title>
+<meta name="description" content="عرض تعريفي بجمعية تكامل لبناء القيم والتنمية: الرؤية، المبادرات (ينابيع ومنافع)، الحوكمة، خطة التوسع، والاستدامة.">
+<link rel="icon" href="assets/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#1b4a7a;--navy-d:#12335a;--green:#4a8a3c;--amber:#d4932a;
+  --bg:#f7f5ef;--card:#fff;--ink:#1d2a3a;--muted:#5d6b7b;--line:#e4e0d4;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme=light]){--bg:#0f1a28;--card:#16253a;--ink:#eef2f7;--muted:#a6b4c4;--line:#27405e;--navy:#7fb2e8}
+}
+:root[data-theme=dark]{--bg:#0f1a28;--card:#16253a;--ink:#eef2f7;--muted:#a6b4c4;--line:#27405e;--navy:#7fb2e8}
+*{box-sizing:border-box;margin:0}
+html{scroll-behavior:smooth;scroll-padding-top:70px}
+body{font-family:Cairo,system-ui,sans-serif;background:var(--bg);color:var(--ink);line-height:1.8;font-size:17px}
+img{max-width:100%}
+.wrap{max-width:1100px;margin:0 auto;padding:0 16px}
+
+/* nav */
+header{position:sticky;top:0;z-index:20;background:var(--card);border-bottom:1px solid var(--line)}
+.bar{display:flex;align-items:center;gap:12px;height:60px}
+.bar img{height:44px;background:#fff;border-radius:8px}
+.bar b{font-size:18px;color:var(--navy)}
+.bar nav{margin-inline-start:auto;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+.bar nav a{white-space:nowrap;color:var(--muted);text-decoration:none;font-size:14px;padding:6px 10px;border-radius:8px}
+.bar nav a:hover{background:var(--bg);color:var(--ink)}
+button{font:inherit;cursor:pointer}
+.btn{background:var(--green);color:#fff;border:0;border-radius:10px;padding:8px 16px;font-weight:700;white-space:nowrap}
+.btn.ghost{background:transparent;border:1.5px solid #fff;color:#fff}
+
+/* slides */
+section.slide{padding:72px 0;border-bottom:1px solid var(--line)}
+section.slide.alt{background:var(--card)}
+.kicker{color:var(--amber);font-weight:700;font-size:14px;letter-spacing:.5px}
+h2{font-size:clamp(26px,4vw,38px);color:var(--navy);line-height:1.4;margin:4px 0 8px}
+.lead{color:var(--muted);max-width:760px;margin-bottom:28px}
+h3{font-size:20px;color:var(--navy);margin-bottom:6px}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.g4{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px}
+section.alt .card{background:var(--bg)}
+.card p{color:var(--muted);font-size:16px}
+.num{display:inline-grid;place-items:center;width:38px;height:38px;border-radius:50%;background:var(--navy);color:#fff;font-weight:800;margin-bottom:10px}
+:root[data-theme=dark] .num{color:#0f1a28}
+.tag{display:inline-block;font-size:12px;font-weight:700;color:var(--green);background:color-mix(in srgb,var(--green) 14%,transparent);padding:2px 10px;border-radius:99px;margin-bottom:6px}
+ul.tick{list-style:none;padding:0}
+ul.tick li{padding:6px 0 6px 0;padding-inline-start:26px;position:relative;color:var(--muted);font-size:16px}
+ul.tick li::before{content:"✔";position:absolute;inset-inline-start:0;color:var(--green);font-weight:700}
+ul.dot li::before{content:"◆";color:var(--amber)}
+
+/* hero */
+.hero{background:linear-gradient(135deg,var(--navy-d),#1b4a7a 60%,#2d6a4a);color:#fff;padding:64px 0 56px;border:0}
+.hero .wrap{display:grid;gap:32px;grid-template-columns:1fr 280px;align-items:center}
+.hero h1{font-size:clamp(30px,5vw,52px);line-height:1.3;margin:6px 0 12px}
+.hero p{opacity:.92;max-width:560px}
+.hero .logo{background:#fff;border-radius:24px;padding:16px;justify-self:center;width:260px}
+.stats{display:flex;flex-wrap:wrap;gap:12px;margin:26px 0}
+.stat{background:rgba(255,255,255,.13);border-radius:14px;padding:10px 18px}
+.stat b{display:block;font-size:24px;color:#ffd38a}
+.stat span{font-size:14px}
+@media(max-width:760px){.hero .wrap{grid-template-columns:1fr}.hero .logo{width:180px;order:-1}}
+
+/* vision */
+.vision{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.vision .card{border-top:5px solid var(--amber)}
+.vision .card:nth-child(2){border-top-color:var(--green)}
+
+/* timeline */
+.steps{display:grid;gap:12px}
+.step{display:grid;grid-template-columns:48px 1fr;gap:14px;align-items:start;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 18px}
+section.alt .step{background:var(--bg)}
+.step .n{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--green);color:#fff;font-weight:800;font-size:18px}
+.step:nth-child(n+5) .n{background:var(--amber)}
+.step h3{margin:0;font-size:18px}
+.step p{color:var(--muted);font-size:15px}
+
+/* org */
+.org{display:grid;gap:14px}
+.org .card{display:flex;gap:18px;align-items:center}
+.org .big{font-size:30px;font-weight:800;color:var(--amber);min-width:70px;text-align:center}
+.org small{color:var(--muted);direction:ltr;display:inline-block;font-size:13px}
+
+/* cycle */
+.cycle{display:flex;flex-wrap:wrap;gap:10px;align-items:stretch}
+.cycle .card{flex:1 1 200px}
+.arrow{align-self:center;color:var(--amber);font-size:22px}
+@media(max-width:700px){.arrow{display:none}}
+
+/* table */
+table{width:100%;border-collapse:collapse;background:var(--card);border-radius:14px;overflow:hidden;border:1px solid var(--line)}
+th,td{padding:12px 16px;text-align:start;border-bottom:1px solid var(--line);font-size:16px}
+th{background:var(--navy);color:#fff}
+:root[data-theme=dark] th{color:#0f1a28}
+td:first-child{font-weight:700;color:var(--navy)}
+td:last-child{color:var(--muted)}
+
+/* nations */
+.chips{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0}
+.chip{background:var(--navy);color:#fff;border-radius:99px;padding:6px 22px;font-weight:700}
+:root[data-theme=dark] .chip{color:#0f1a28}
+
+/* faq */
+details{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:10px;padding:0 18px}
+section.alt details{background:var(--bg)}
+summary{cursor:pointer;padding:14px 0;font-weight:700;color:var(--navy);list-style:none;position:relative;padding-inline-end:28px}
+summary::after{content:"+";position:absolute;inset-inline-end:0;color:var(--amber);font-size:22px;top:8px}
+details[open] summary::after{content:"–"}
+details>div{padding:0 0 16px;color:var(--muted);font-size:16px}
+details strong{color:var(--green)}
+.tabs{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
+.tab{background:var(--card);border:1.5px solid var(--line);color:var(--ink);border-radius:10px;padding:8px 18px;font-weight:700}
+.tab[aria-selected=true]{background:var(--navy);color:#fff;border-color:var(--navy)}
+:root[data-theme=dark] .tab[aria-selected=true]{color:#0f1a28}
+
+.cta{background:linear-gradient(135deg,var(--navy-d),#2d6a4a);color:#fff;text-align:center;padding:64px 0;border:0}
+.cta h2{color:#fff}
+footer{text-align:center;padding:22px;color:var(--muted);font-size:14px}
+
+/* presentation mode */
+.pbar{display:none}
+body.present{overflow:hidden}
+body.present header,body.present footer{display:none}
+body.present main{height:100vh}
+body.present section.slide{display:none;min-height:100vh;height:100vh;overflow:auto;align-items:center;padding:40px 0 80px;border:0}
+body.present section.slide.on{display:flex}
+body.present section.slide>.wrap{width:100%;margin:auto}
+body.present .pbar{display:flex;position:fixed;inset-inline:0;bottom:0;z-index:30;gap:10px;align-items:center;justify-content:center;padding:10px;background:var(--card);border-top:1px solid var(--line)}
+.pbar button{background:var(--navy);color:#fff;border:0;border-radius:8px;padding:6px 16px}
+:root[data-theme=dark] .pbar button{color:#0f1a28}
+.pbar span{min-width:70px;text-align:center;color:var(--muted)}
+@media print{header,.pbar,footer,.btn{display:none!important}section.slide{break-inside:avoid;padding:30px 0}}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap bar">
+    <img src="assets/logo.png" alt="شعار تكامل">
+    <b>تكامل</b>
+    <nav id="nav"></nav>
+    <button class="btn" id="startPresent">▶ وضع العرض</button>
+  </div>
+</header>
+
+<main id="slides">
+
+<!-- 0 hero -->
+<section class="slide hero" id="home" data-title="الرئيسية">
+  <div class="wrap">
+    <div>
+      <div class="kicker" style="color:#ffd38a">رؤية 2035 · إسطنبول – الجمهورية التركية</div>
+      <h1>جمعية تكامل لبناء القيم والتنمية</h1>
+      <p>مؤسسة أهلية مستقلة غير ربحية، تسعى إلى بناء الإنسان وتعزيز منظومة القيم الأخلاقية والاجتماعية ودعم التنمية المستدامة عبر مشاريع نوعية ومبتكرة.</p>
+      <div class="stats">
+        <div class="stat"><b>2035</b><span>رؤية الريادة العالمية</span></div>
+        <div class="stat"><b>2</b><span>مبادرتان: ينابيع ومنافع</span></div>
+        <div class="stat"><b>7</b><span>مراحل من إسطنبول إلى العالم</span></div>
+      </div>
+      <button class="btn" onclick="document.getElementById('identity').scrollIntoView()">تعرّف على الجمعية</button>
+    </div>
+    <img class="logo" src="assets/logo.png" alt="شعار جمعية تكامل">
+  </div>
+</section>
+
+<!-- 1 identity -->
+<section class="slide" id="identity" data-title="الهوية">
+  <div class="wrap">
+    <div class="kicker">01 · الهوية والمقر</div>
+    <h2>من نحن، وأين نعمل</h2>
+    <p class="lead">جمعية تكامل لبناء القيم والتنمية مؤسسة أهلية مستقلة غير ربحية، مسجّلة وفق أحكام القانون، ذات نطاق عمل مجتمعي وتنموي شامل.</p>
+    <div class="grid g3">
+      <div class="card"><h3>الاسم الرسمي</h3><p>جمعية تكامل لبناء القيم والتنمية – مؤسسة أهلية مسجلة.</p></div>
+      <div class="card"><h3>المقر الرئيسي</h3><p>مدينة إسطنبول، الجمهورية التركية.</p></div>
+      <div class="card"><h3>نطاق العمل</h3><p>محلي ودولي؛ يحق للجمعية افتتاح فروع ومكاتب تمثيلية داخل تركيا وخارجها وفق خطة التوسع المعتمدة.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 2 vision -->
+<section class="slide alt" id="vision" data-title="الرؤية والأهداف">
+  <div class="wrap">
+    <div class="kicker">02 · الرؤية والرسالة والأهداف</div>
+    <h2>إلى أين نتجه، وكيف نصل</h2>
+    <div class="vision" style="margin:24px 0">
+      <div class="card"><h3>الرؤية</h3><p>أن نكون المؤسسة الرائدة عالمياً في بناء القيم وترسيخ البناء الأخلاقي وتعزيز التنسيق والشراكة بين منظمات المجتمع المدني، وتحقيق تنمية مجتمعية واقتصادية شاملة ومستدامة للمجتمعات والأسر والأفراد بحلول عام 2035.</p></div>
+      <div class="card"><h3>الرسالة</h3><p>ترسيخ القيم الأخلاقية والمهارية لدى الأفراد والمؤسسات، واستثمار الطاقات البشرية عبر برامج قيمية وتكاملية، وتفعيل الشراكات مع الجمعيات التركية وجمعيات الجاليات، وإطلاق مبادرات تنموية وإنتاجية نموذجية تحقق الاستقرار والازدهار وتوفر فرص العمل.</p></div>
+    </div>
+    <h3 style="margin-bottom:12px">الأهداف الإستراتيجية</h3>
+    <div class="grid g3">
+      <div class="card"><span class="num">1</span><h3>تعزيز القيم الإيجابية</h3><p>ترسيخ القيم الأخلاقية والإنسانية والوسطية، وبناء أجيال ذات مرجعية قيمية راسخة.</p></div>
+      <div class="card"><span class="num">2</span><h3>التمكين والتأهيل</h3><p>إكساب الشباب والأسر والنساء المهارات الحياتية والاقتصادية والتأهيل المهني.</p></div>
+      <div class="card"><span class="num">3</span><h3>التكامل والتنسيق المؤسسي</h3><p>الربط بين الجمعيات التركية وجمعيات الجاليات لتفادي تكرار الجهود وتعظيم الموارد.</p></div>
+      <div class="card"><span class="num">4</span><h3>مساندة التنمية والجهود الرسمية</h3><p>دعم جهود الدولة في توفير فرص العمل والحد من التحديات الاقتصادية والبطالة.</p></div>
+      <div class="card"><span class="num">5</span><h3>الاستدامة والحلول الشاملة</h3><p>حلول تنموية قائمة على الشراكات الإستراتيجية والاستثمار الاجتماعي.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 3 initiatives -->
+<section class="slide" id="initiatives" data-title="المبادرات">
+  <div class="wrap">
+    <div class="kicker">03 · المبادرات التنموية</div>
+    <h2>مبادرتان تنمويتان ومحور مساند</h2>
+    <p class="lead">تحقق الجمعية أهدافها الميدانية والتعليمية عبر مبادرتين رئيسيتين يدعمهما محور للتنسيق والتكامل المؤسسي.</p>
+    <div class="grid g2">
+      <div class="card" style="border-top:5px solid var(--green)">
+        <span class="tag">البناء الفكري والقيمي</span>
+        <h3>مبادرة «ينابيع»</h3>
+        <p style="margin-bottom:8px">التربية القيمية، والبناء الفكري، والتواصل الثقافي والمجتمعي والتكيف.</p>
+        <ul class="tick">
+          <li>مناهج وورش قيمية وأخلاقية للأطفال والشباب والناشئة.</li>
+          <li>برامج الإرشاد الأسري والتربوي والتطوير الشخصي.</li>
+          <li>لقاءات حوارية وفعاليات ثقافية للتكيف والتعايش المجتمعي.</li>
+          <li>ملتقيات شبابية وبرامج توعوية لحماية النشء.</li>
+        </ul>
+      </div>
+      <div class="card" style="border-top:5px solid var(--amber)">
+        <span class="tag" style="color:var(--amber);background:color-mix(in srgb,var(--amber) 16%,transparent)">التكافل والتمكين الاقتصادي</span>
+        <h3>مبادرة «منافع»</h3>
+        <p style="margin-bottom:8px">معالجة التحديات الاقتصادية، والتوظيف، والتكافل والتضامن.</p>
+        <ul class="tick dot">
+          <li>التأهيل والتدريب المهني للشباب والنساء مساندةً لخطط الدولة.</li>
+          <li>منصات وشبكات تربط الكفاءات بسوق العمل ومؤسسات الإنتاج.</li>
+          <li>دعم وتمويل المشاريع الصغرى والأسر المنتجة.</li>
+          <li>أنشطة التكافل الاجتماعي ومساعدة الأسر المتعففة.</li>
+        </ul>
+      </div>
+    </div>
+    <h3 style="margin:28px 0 12px">محور التنسيق والتكامل المؤسسي</h3>
+    <div class="grid g4">
+      <div class="card"><h3>تكامل الموارد</h3><p>الربط بين الجمعيات التركية وجمعيات الجاليات لأنشطة مشتركة.</p></div>
+      <div class="card"><h3>الدعم التقني</h3><p>دعم تقني وتأهيل تنموي للفئات المستضعفة والمحتاجة.</p></div>
+      <div class="card"><h3>الأبحاث والدراسات</h3><p>دراسات ميدانية حول سوق العمل، وإصدار الحقائب والمجلات التوعوية.</p></div>
+      <div class="card"><h3>الصلاحية العامة</h3><p>أنشطة اجتماعية وثقافية وتعليمية واقتصادية ورياضية، وتأسيس منشآت اقتصادية، وتوقيع بروتوكولات.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 4 philosophy -->
+<section class="slide alt" id="philosophy" data-title="فلسفة العمل">
+  <div class="wrap">
+    <div class="kicker">04 · فلسفة العمل والأقسام التنفيذية</div>
+    <h2>المبادئ التي نعمل بها، والفرق التي تنفّذ</h2>
+    <div class="grid g4" style="margin:24px 0">
+      <div class="card"><span class="tag">Synergy</span><h3>التكامل والربط</h3><p>تنسيق فاعل بين الجمعيات الأهلية واستثمار الموارد بكفاءة.</p></div>
+      <div class="card"><span class="tag">Empowerment</span><h3>التمكين والديمومة</h3><p>الانتقال من الإغاثة المباشرة إلى التأهيل والتمكين الإنتاجي.</p></div>
+      <div class="card"><span class="tag">Dual Impact</span><h3>الأثر المزدوج</h3><p>توازن بين البناء القيمي (ينابيع) والتمكين الاقتصادي (منافع).</p></div>
+      <div class="card"><span class="tag">Self-Sustainability</span><h3>الاستدامة الذاتية</h3><p>تشغيل استثماري واجتماعي يضمن موارد ثابتة لتمويل البرامج.</p></div>
+    </div>
+    <h3 style="margin-bottom:12px">الأقسام التنفيذية</h3>
+    <table>
+      <tr><th>القسم</th><th>المهام الرئيسية</th></tr>
+      <tr><td>البرامج القيمية والتربوية</td><td>إعداد البرامج التربوية والمناهج القيمية لمبادرة «ينابيع» وتطبيقها.</td></tr>
+      <tr><td>التنسيق والعلاقات بين الجمعيات</td><td>بناء شبكة العلاقات المؤسسية والأنشطة المشتركة بين الجمعيات.</td></tr>
+      <tr><td>التأهيل المهني والتوظيف</td><td>دورات التدريب المهني ومنصات التوظيف والمشاريع الصغرى ضمن «منافع».</td></tr>
+      <tr><td>التكافل والتضامن الاجتماعي</td><td>المسح الميداني والدعم الاجتماعي المباشر للأسر والطلاب.</td></tr>
+      <tr><td>الدراسات والتخطيط والاستثمار الاجتماعي</td><td>البحث الميداني ومتابعة الجودة وإدارة المطبوعات وتشغيل المنشآت الاقتصادية.</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- 5 expansion -->
+<section class="slide" id="expansion" data-title="خطة التوسع">
+  <div class="wrap">
+    <div class="kicker">05 · البرنامج الزمني للتوسع الجغرافي</div>
+    <h2>من إسطنبول إلى العالم في 7 مراحل</h2>
+    <p class="lead">خطة مرحلية محسوبة تضمن الجودة ونقل الخبرة.</p>
+    <div class="steps">
+      <div class="step"><div class="n">1</div><div><h3>إسطنبول</h3><p>التأسيس وبناء النموذج التشغيلي المعياري واختبار المبادرات.</p></div></div>
+      <div class="step"><div class="n">2</div><div><h3>أنقرة</h3><p>تعزيز الحضور في العاصمة وبناء الشراكات المركزية مع المؤسسات الرسمية.</p></div></div>
+      <div class="step"><div class="n">3</div><div><h3>أكبر 10 ولايات تركية</h3><p>نشر النموذج وتغطية الكثافات السكانية الكبرى عبر فروع ومكاتب تمثيلية.</p></div></div>
+      <div class="step"><div class="n">4</div><div><h3>كافة الولايات التركية</h3><p>تحقيق التغطية الوطنية الشاملة.</p></div></div>
+      <div class="step"><div class="n">5</div><div><h3>أهم 10 دول إسلامية</h3><p>نقل التجربة وتأسيس شراكات إقليمية لتصدير الحقائب القيمية والتنموية.</p></div></div>
+      <div class="step"><div class="n">6</div><div><h3>باقي الدول الإسلامية</h3><p>تعميق الأثر وتفعيل التكافل والتكامل التنموي الإسلامي.</p></div></div>
+      <div class="step"><div class="n">7</div><div><h3>الدول ذات الأهمية العالمية</h3><p>التواصل مع الجاليات والمجتمعات العالمية وبناء نموذج عمل إنساني وقيمي عالمي.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 6 targets -->
+<section class="slide alt" id="targets" data-title="الفئات المستهدفة">
+  <div class="wrap">
+    <div class="kicker">06 · الفئات المستهدفة</div>
+    <h2>لمن نعمل</h2>
+    <div class="grid g4" style="margin-top:24px">
+      <div class="card"><h3>الجمعيات والمنظمات الأهلية</h3><p>التنسيق وتكامل الموارد والخبرات والأنشطة المشتركة.</p></div>
+      <div class="card"><h3>الشباب والباحثون عن عمل</h3><p>التأهيل المهني والتدريب والربط بسوق العمل.</p></div>
+      <div class="card"><h3>الأسر والأطفال والنساء</h3><p>البناء القيمي والإرشاد الأسري والتمكين الإنتاجي.</p></div>
+      <div class="card"><h3>مؤسسات الدولة والمجتمع</h3><p>الشراكة الاقتصادية والاجتماعية ومساندة خطط التنمية.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 7 governance -->
+<section class="slide" id="governance" data-title="الحوكمة">
+  <div class="wrap">
+    <div class="kicker">07 · الحوكمة والإدارة</div>
+    <h2>الهيكل التنظيمي وآليات اتخاذ القرار</h2>
+    <div class="org" style="margin:24px 0">
+      <div class="card"><div class="big">كل<br>الأعضاء</div><div><h3>الجمعية العمومية <small>Genel Kurul</small></h3><p>السلطة العليا؛ تجتمع اجتماعاً عادياً كل 3 سنوات في شهر أبريل، وتختص بتعديل النظام الأساسي وإقرار السياسات العامة والتصويت.</p></div></div>
+      <div class="card"><div class="big">5 + 5</div><div><h3>مجلس الإدارة <small>Yönetim Kurulu</small></h3><p>5 أعضاء أساسيين و5 احتياط. السلطة التنفيذية: يدير الأنشطة ويشكّل اللجان ويشرف على «ينابيع» و«منافع» ويؤسس المنشآت الاقتصادية.</p></div></div>
+      <div class="card"><div class="big">3 + 3</div><div><h3>مجلس الرقابة <small>Denetim Kurulu</small></h3><p>3 أعضاء أساسيين و3 احتياط. الرقابة المالية والإدارية الدورية والتأكد من مطابقة الأعمال للقوانين والنظام الأساسي.</p></div></div>
+    </div>
+    <div class="grid g2">
+      <div class="card"><h3>شروط العضوية</h3>
+        <ul class="tick">
+          <li>يحق لكل شخص طبيعي أو اعتباري يتمتع بالأهلية القانونية ويتبنى أهداف الجمعية.</li>
+          <li>للأجانب: الحصول على إقامة قانونية رسمية.</li>
+          <li>يجيز النظام الأساسي عقد الاجتماعات والأنشطة إلكترونياً وفق التشريعات.</li>
+        </ul></div>
+      <div class="card"><h3>دورة العمل التنفيذية</h3>
+        <ul class="tick dot">
+          <li><strong>الدراسة والتقييم:</strong> بحث ميداني وتحليل الاحتياجات.</li>
+          <li><strong>التخطيط والشراكة:</strong> تصميم المبادرات وعقد البروتوكولات.</li>
+          <li><strong>التنفيذ الميداني:</strong> إطلاق المشاريع عبر «ينابيع» و«منافع».</li>
+          <li><strong>قياس الأثر:</strong> تقييم مالي وفني ورفع التقارير للرقابة.</li>
+        </ul></div>
+    </div>
+  </div>
+</section>
+
+<!-- 8 finance -->
+<section class="slide alt" id="finance" data-title="التمويل">
+  <div class="wrap">
+    <div class="kicker">08 · الأحكام المالية والاستدامة</div>
+    <h2>مصادر الدخل وقواعد الاقتراض</h2>
+    <div class="grid g3" style="margin:24px 0">
+      <div class="card"><span class="num">1</span><p>رسوم الانتساب والاشتراكات السنوية للأعضاء</p></div>
+      <div class="card"><span class="num">2</span><p>التبرعات والهبات الطوعية من الأفراد والمؤسسات</p></div>
+      <div class="card"><span class="num">3</span><p>عوائد المطبوعات والمعارض والندوات والرحلات والأنشطة</p></div>
+      <div class="card"><span class="num">4</span><p>ريع أصول الجمعية وممتلكاتها</p></div>
+      <div class="card"><span class="num">5</span><p>التبرعات المجمّعة وفق تشريعات جمع التبرعات</p></div>
+      <div class="card"><span class="num">6</span><p>أرباح المنشآت الاقتصادية والتجارية التابعة</p></div>
+      <div class="card"><span class="num">7</span><p>المنح وبرامج الصناديق المحلية والدولية والتمويل المشترك</p></div>
+    </div>
+    <div class="grid g2">
+      <div class="card"><h3>قواعد الاقتراض</h3><p>يجوز لمجلس الإدارة أن يقرر الاقتراض عند الحاجة لتأمين الموارد اللازمة لتنفيذ الأنشطة، نقداً أو عبر الشراء الآجل للبضائع والخدمات.</p></div>
+      <div class="card"><h3>إستراتيجية الاستدامة</h3><p>التوسع في الاستثمار الاجتماعي عبر المنشآت الاقتصادية ومشاريع التمكين المهني والتوظيف، بما يحوّل المستفيدين إلى طاقات إنتاجية تدعم الاقتصاد الوطني.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 9 membership -->
+<section class="slide" id="membership" data-title="حقوق وواجبات العضو">
+  <div class="wrap">
+    <div class="kicker">09 · حقوق وواجبات العضو</div>
+    <h2>ما لك وما عليك</h2>
+    <div class="grid g2" style="margin-top:24px">
+      <div class="card" style="border-top:5px solid var(--green)"><h3>حقوق العضو</h3>
+        <ul class="tick">
+          <li>المشاركة في اجتماعات الجمعية العمومية والتصويت على القرارات.</li>
+          <li>الترشح لعضوية اللجان والمهام في الأقسام التنفيذية.</li>
+          <li>تقديم المقترحات والمبادرات لتطوير «ينابيع» و«منافع».</li>
+          <li>الاستفادة من البرامج التدريبية والفعاليات.</li>
+        </ul></div>
+      <div class="card" style="border-top:5px solid var(--amber)"><h3>واجبات العضو</h3>
+        <ul class="tick dot">
+          <li>الالتزام بأهداف الجمعية ونظامها الأساسي ومبادئها الأخلاقية.</li>
+          <li>المساهمة الفاعلة في تحقيق الأهداف ونشر الرسالة.</li>
+          <li>سداد الاشتراكات السنوية المقررة.</li>
+          <li>الحفاظ على سمعة الجمعية وممتلكاتها.</li>
+        </ul></div>
+    </div>
+  </div>
+</section>
+
+<!-- 10 impact -->
+<section class="slide alt" id="impact" data-title="الأثر المتوقع">
+  <div class="wrap">
+    <div class="kicker">10 · قياس الأثر التنموي</div>
+    <h2>النتائج التي نسعى إليها</h2>
+    <div class="grid g3" style="margin-top:24px">
+      <div class="card"><h3>الأثر الاقتصادي والتوظيف</h3><p>خلق فرص عمل جديدة وتدريب الكوادر دعماً لخطط الدولة وللحد من البطالة.</p></div>
+      <div class="card"><h3>أثر التكامل المؤسسي</h3><p>تفعيل الشراكة بين الجمعيات التركية وجمعيات الجاليات بما يعظّم الإمكانات ويمنع تكرار الجهود.</p></div>
+      <div class="card"><h3>الأثر المجتمعي والقيمي</h3><p>بناء أجيال متمسكة بالقيم ونموذج عمل فاعل ومستدام يخدم كل أفراد المجتمع.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 11 why join -->
+<section class="slide" id="why" data-title="لماذا تكامل؟">
+  <div class="wrap">
+    <div class="kicker">11 · لماذا أنضم إلى «تكامل»؟</div>
+    <h2>عشر ركائز إستراتيجية تصنع الفارق</h2>
+    <p class="lead">انضمامك انحياز لنموذج تنموي فريد صاغه نخبة من رواد العمل التطوعي والإنساني، ليكون نقطة تحوّل في مسار العمل المجتمعي.</p>
+    <div class="grid g3">
+      <div class="card"><span class="num">1</span><h3>القيادة والحوكمة</h3><p>معايير اختيار صارمة لقيادة احترافية: خبرة في إدارة المشاريع والتنمية، وقت كافٍ للعطاء، شبكة علاقات، حسن الخلق، وإتقان التركية والدراية بالبيئة التشريعية.</p></div>
+      <div class="card"><span class="num">2</span><h3>التنوع والتكامل الدولي</h3><p>مجلس إدارة من 7 أعضاء من جنسيات متعددة:
+        <span class="chips" style="margin:8px 0 0"><span class="chip" style="padding:2px 14px;font-size:14px">تركيا</span><span class="chip" style="padding:2px 14px;font-size:14px">سوريا</span><span class="chip" style="padding:2px 14px;font-size:14px">فلسطين</span><span class="chip" style="padding:2px 14px;font-size:14px">العراق</span><span class="chip" style="padding:2px 14px;font-size:14px">مصر</span></span></p></div>
+      <div class="card"><span class="num">3</span><h3>الدور التنسيقي والشبكي</h3><p>جسر بين جمعيات الجاليات والجمعيات التركية: تعظيم الموارد، منع الازدواجية، وبيئة تنافسية إيجابية.</p></div>
+      <div class="card"><span class="num">4</span><h3>الشمولية ونطاق الأثر</h3><p>خدمات لجميع المقيمين على الأرض التركية من مواطنين ومقيمين وجاليات، ثم التوسع وفق خطة مرحلية إلى العالم.</p></div>
+      <div class="card"><span class="num">5</span><h3>الأمان المجتمعي والاقتصادي</h3><p>«ينابيع» للحماية الفكرية والقيمية، و«منافع» للأمان الاقتصادي والوظيفي.</p></div>
+      <div class="card"><span class="num">6</span><h3>التحول الرقمي والذكاء الاصطناعي</h3><p>برنامج تقني متكامل لإدارة الأنشطة وقياس الأثر بدقة، بالاستعانة بخريجي البرمجة والذكاء الاصطناعي.</p></div>
+      <div class="card"><span class="num">7</span><h3>الاستثمار في أجيال المستقبل</h3><p>إشراك الأكاديميين في الإدارة لاستقطاب المواهب الشابة وتأهيلها لتكون قادة المستقبل.</p></div>
+      <div class="card"><span class="num">8</span><h3>التجديد وتداول القيادة</h3><p>مجلس الإدارة دورة واحدة مدتها 4 سنوات، ومسؤولو الأنشطة دورة واحدة مدتها 3 سنوات، ثم يبقون مستشارين.</p></div>
+      <div class="card"><span class="num">9</span><h3>التفرغ الإداري والتنفيذي</h3><p>تفرغ كامل لـ 5 أعضاء من الفريق المؤسس لأمانة تنفيذية تدير الأنشطة وتتابع أثرها.</p></div>
+      <div class="card"><span class="num">10</span><h3>الاستقلالية المالية</h3><p>تغطية تأسيسية ذاتية من المؤسسين في العامين الأولين، ثم مشاريع اقتصادية وتطبيق «منافع» كمورد مستدام.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 12 FAQ -->
+<section class="slide alt" id="faq" data-title="دليل الإجابات">
+  <div class="wrap">
+    <div class="kicker">12 · دليل الإجابات الإدارية والإستراتيجية</div>
+    <h2>أهم الأسئلة للمؤسسين ومجلس الإدارة</h2>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" aria-selected="true" data-t="founders">أسئلة المؤسسين</button>
+      <button class="tab" role="tab" aria-selected="false" data-t="board">أسئلة مجلس الإدارة</button>
+    </div>
+    <div id="founders">
+      <details><summary>لماذا تتواجد هذه المؤسسة الآن؟ وما القيمة الفريدة التي نقدمها؟</summary><div>لمعالجة فجوة تنموية حقيقية: تشتت الجهود وغياب التكامل بين منظمات المجتمع المدني التركية وجمعيات الجاليات، والحاجة إلى نموذج يجمع التنمية القيمية والتأهيل الاقتصادي المستدام. قيمتنا المضافة هي «الأثر المزدوج» عبر «ينابيع» و«منافع»، مع دور المنصة التنسيقية التي توفر الموارد وتمنع التكرار.</div></details>
+      <details><summary>ما رؤيتنا على المدى البعيد؟ وكيف نعرّف «النجاح»؟</summary><div>رؤية 2035: الريادة العالمية في بناء القيم وتمكين المجتمعات. ويُقاس النجاح بمؤشرات: <strong>الأثر الاجتماعي والقيمي</strong> (أجيال متماسكة)، <strong>الأثر الاقتصادي</strong> (تحويل المستفيدين إلى طاقات إنتاجية)، <strong>التوسع الجغرافي</strong> وفق الخطة المرحلية، و<strong>الاستدامة الذاتية</strong> بتمويل 50% على الأقل من الميزانية التشغيلية ذاتياً.</div></details>
+      <details><summary>ما القيم الجوهرية التي تحكم ثقافة العمل؟</summary><div>التكامل والربط (Synergy) · التمكين والديمومة (Empowerment) · الشفافية والحوكمة (Transparency) · الابتكار الاجتماعي (Innovation) · المسؤولية والوسطية (Accountability).</div></details>
+      <details><summary>ما الكيان القانوني الأنسب؟</summary><div>جمعية أهلية تنموية مستقلة غير ربحية، مسجلة وفق قانون الجمعيات التركي في إسطنبول، ويتضمن نظامها صلاحية تأسيس منشآت اقتصادية وتجارية وفتح فروع ومكاتب تمثيلية داخل تركيا وخارجها.</div></details>
+      <details><summary>كيف تُوزَّع الصلاحيات بين الهياكل؟</summary><div>الجمعية العمومية: السلطة العليا والسياسات والتعديلات. مجلس الإدارة: التنفيذ وإدارة الأنشطة والمنشآت. مجلس الرقابة: الفحص المالي والإداري المستقل. الأمانة التنفيذية: العمليات اليومية وفق مصفوفة تفويض الصلاحيات.</div></details>
+      <details><summary>ما اللوائح التي تحمي حقوق المؤسسين وتنظّم الانضمام والخروج؟</summary><div>النظام الأساسي وميثاق الحوكمة: شروط وإجراءات العضوية وإنهائها وتعليقها، عدم استرداد الاشتراكات والتبرعات السابقة حمايةً للأصول، وحفظ الحقوق المعنوية والتاريخية للهيئة التأسيسية.</div></details>
+      <details><summary>كيف نحقق الاستدامة المالية دون الاعتماد على التبرعات المؤقتة؟</summary><div>نموذج تمويل متعدد (Hybrid): الاشتراكات والرسوم، أرباح المنشآت الاقتصادية، المنح والشراكات، عوائد الأنشطة والمطبوعات، والتبرعات المجمّعة وفق التشريعات.</div></details>
+      <details><summary>ما رأس المال التشغيلي المطلوب ومتى نصل إلى نقطة التعادل؟</summary><div>تُحدَّد ميزانية تقديرية لكل مرحلة توسع، وتُحسب نقطة التعادل بربط المصاريف الثابتة بإيرادات المنشآت والمنح، بحيث تغطي الإيرادات الذاتية المصاريف الإدارية الثابتة خلال أول 24–36 شهراً.</div></details>
+      <details><summary>ما المخاطر الرئيسية وكيف نخفف منها؟</summary><div>تُدار عبر سجل المخاطر: <strong>قانونية</strong> بالامتثال لتشريعات الجمعيات والعمل والإقامة، <strong>مالية</strong> باحتياطي نقدي يغطي 6 أشهر على الأقل، و<strong>سمعة</strong> بميثاق إعلامي وأخلاقي صارم.</div></details>
+    </div>
+    <div id="board" hidden>
+      <details><summary>هل تسير الإدارة التنفيذية وفق الخطط المعتمدة؟</summary><div>عبر تقارير متابعة ربع سنوية ترفعها الأمانة العامة للمجلس، تقارن المخرجات الميدانية بالمستهدفات الإستراتيجية لمبادرتي «ينابيع» و«منافع».</div></details>
+      <details><summary>ما مؤشرات الأداء الرئيسية (KPIs)؟</summary><div>وفق بطاقة الأداء المتوازن: <strong>المالي</strong> (نمو الإيرادات الذاتية ونسبة الإداري إلى البرامجي)، <strong>المستفيدون</strong> (العدد والرضا)، <strong>العمليات</strong> (الشراكات الموقعة والالتزام بالمواعيد)، <strong>النمو والتعلم</strong> (الاحتفاظ بالكفاءات وتطوير البرامج).</div></details>
+      <details><summary>هل لدينا خطط إحلال وتعاقب وظيفي؟</summary><div>نعم؛ تدريب الصف الثاني في الأقسام الخمسة وتوثيق الأدلة الإجرائية والسياسات، بما يضمن استمرارية العمل وعدم ارتباطه بأشخاص بعينهم.</div></details>
+      <details><summary>هل القوائم المالية تخضع لمراجعة مستقلة؟</summary><div>نعم، على مستويين: رقابة داخلية عبر مجلس الرقابة، ورقابة خارجية عبر مكاتب محاسبة قانونية معتمدة.</div></details>
+      <details><summary>هل تُدار التدفقات النقدية دون هدر؟</summary><div>بميزانية سنوية يعتمدها المجلس، ولا صرف إلا وفق مصفوفة الاعتماد المالي، مع تحليل دوري لفروقات الميزانية.</div></details>
+      <details><summary>هل المؤسسة ملتزمة بالأنظمة القانونية والضريبية؟</summary><div>نعم: تسجيل العقود والأنشطة وفق قانون الجمعيات وقانون العمل، والتحقق من شروط الإقامة، وإدارة المنشآت الاقتصادية بحسابات ضريبية مستقلة تحمي أعضاء المجلس من أي مسؤولية شخصية.</div></details>
+      <details><summary>كيف نواجه المخاطر المستجدة؟</summary><div>يراجع المجلس مصفوفة المخاطر دورياً وتُفعَّل خطط بديلة: التحول الرقمي للاجتماعات عن بُعد، وتنويع سلة العملات والموارد، والاعتماد على بروتوكولات التعاون لخفض التكاليف.</div></details>
+      <details><summary>كيف نضمن تطوير الخدمات وتنمية الشراكات؟</summary><div>عبر قسم الدراسات والتخطيط والاستثمار الاجتماعي وقسم التنسيق والشراكات: دراسات ميدانية مستمرة، تطوير الحقائب القيمية وتسويقها، وبروتوكولات تعاون مع الجمعيات والمؤسسات الرسمية والصناديق الدولية.</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- end -->
+<section class="slide cta" id="join" data-title="انضم إلينا">
+  <div class="wrap">
+    <img src="assets/logo.png" alt="" style="height:110px;background:#fff;border-radius:16px;padding:6px;margin-bottom:14px">
+    <h2>مرحباً بك في رحلة العطاء والتكامل</h2>
+    <p style="opacity:.9;font-size:20px">يداً بيد لنبني القيم ونحقق التنمية المستدامة</p>
+    <p style="opacity:.75;margin-top:14px">جمعية تكامل لبناء القيم والتنمية | إسطنبول – الجمهورية التركية</p>
+  </div>
+</section>
+</main>
+
+<footer>© جمعية تكامل لبناء القيم والتنمية — إسطنبول</footer>
+
+<div class="pbar">
+  <button id="prev">السابق ›</button><span id="count"></span><button id="next">‹ التالي</button>
+  <button id="exit" style="background:#8a3a3a;color:#fff">خروج (Esc)</button>
+</div>
+
+<script>
+const slides=[...document.querySelectorAll('section.slide')];
+// nav (skip hero and end slide)
+const nav=document.getElementById('nav');
+slides.slice(1,-1).forEach(s=>{const a=document.createElement('a');a.href='#'+s.id;a.textContent=s.dataset.title;nav.append(a)});
+
+// FAQ tabs
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.setAttribute('aria-selected',x===t));
+  ['founders','board'].forEach(id=>document.getElementById(id).hidden=id!==t.dataset.t);
+});
+
+// presentation mode
+let cur=0;
+function show(i){
+  cur=Math.max(0,Math.min(slides.length-1,i));
+  slides.forEach((s,k)=>s.classList.toggle('on',k===cur));
+  slides[cur].scrollTop=0;
+  document.getElementById('count').textContent=(cur+1)+' / '+slides.length;
+}
+function start(){
+  let i=slides.findIndex(s=>s.getBoundingClientRect().bottom>80);
+  document.body.classList.add('present');show(Math.max(0,i));
+  if(document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().catch(()=>{});
+}
+function stop(){
+  document.body.classList.remove('present');slides.forEach(s=>s.classList.remove('on'));
+  if(document.fullscreenElement)document.exitFullscreen();
+  slides[cur].scrollIntoView();
+}
+document.getElementById('startPresent').onclick=start;
+document.getElementById('exit').onclick=stop;
+document.getElementById('next').onclick=()=>show(cur+1);
+document.getElementById('prev').onclick=()=>show(cur-1);
+document.addEventListener('keydown',e=>{
+  if(!document.body.classList.contains('present'))return;
+  // RTL: left arrow = next
+  if(['ArrowLeft','PageDown',' '].includes(e.key)){e.preventDefault();show(cur+1)}
+  else if(['ArrowRight','PageUp'].includes(e.key)){e.preventDefault();show(cur-1)}
+  else if(e.key==='Home')show(0);else if(e.key==='End')show(slides.length-1);
+  else if(e.key==='Escape')stop();
+});
+document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement&&document.body.classList.contains('present'))stop()});
+</script>
+</body>
+</html>
