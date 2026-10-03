@@ -61,10 +61,10 @@ def hub():
     C, R, NR = 230, 168, 33
     streams, nodes = '', ''
     for k, tid in enumerate(IDS):
-        a = math.radians(-90 + k * 360 / 7)
+        a = math.radians(-90 - k * 360 / 7)  # t1 on top, then counter-clockwise (RTL reading order)
         x, y = C + R * math.cos(a), C + R * math.sin(a)
         # a gentle swirl: control point rotated off the straight line
-        b = a - math.radians(24)
+        b = a + math.radians(24)
         cx, cy = C + R * 0.55 * math.cos(b), C + R * 0.55 * math.sin(b)
         d = f'M{C} {C}Q{cx:.1f} {cy:.1f} {x:.1f} {y:.1f}'
         streams += (f'<g class="tm-st" style="{tc(tid)};--k:{k}"><path class="tm-st-a" d="{d}"/>'

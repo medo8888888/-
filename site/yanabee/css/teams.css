@@ -30,6 +30,7 @@ body[data-page="teams.html"] [style*="--tc:"],
    Hero
    ========================================================================== */
 .tm-hero .hero-grid{gap:clamp(24px,4vw,56px)}
+.tm-hero .hero-bg{-webkit-mask-image:linear-gradient(#000 62%,transparent);mask-image:linear-gradient(#000 62%,transparent)}
 .tm-h1-k{display:block;width:fit-content;margin-bottom:12px;padding:3px 16px;border-radius:999px;font-size:.95rem;font-weight:600;line-height:1.7;
   color:var(--brand);background:color-mix(in oklab,var(--brand) 11%,transparent)}
 .tm-h1-a{display:block;line-height:1.25;padding-bottom:.08em;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
@@ -44,6 +45,16 @@ body[data-page="teams.html"] [style*="--tc:"],
 .tm-chips-nav .chip:nth-child(1){--tc:var(--t1)}.tm-chips-nav .chip:nth-child(2){--tc:var(--t2)}.tm-chips-nav .chip:nth-child(3){--tc:var(--t3)}
 .tm-chips-nav .chip:nth-child(4){--tc:var(--t4)}.tm-chips-nav .chip:nth-child(5){--tc:var(--t5)}.tm-chips-nav .chip:nth-child(6){--tc:var(--t6)}
 .tm-chips-nav .chip:nth-child(7){--tc:var(--t7)}
+@media (max-width:600px){
+  .tm-chips-nav{display:grid;gap:0;padding:6px;border-radius:20px;background:var(--glass);border:1px solid var(--glass-line);
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:var(--shadow-sm)}
+  .tm-chips-nav .chip{position:relative;gap:12px;min-height:50px;padding:6px 8px;border:0;border-radius:14px;background:none;font-size:.95rem;line-height:1.5}
+  .tm-chips-nav .chip+.chip::before{content:"";position:absolute;top:0;inset-inline:52px 8px;border-top:1px solid var(--line)}
+  .tm-chips-nav .chip::after{content:"";width:8px;height:8px;margin-inline-start:auto;margin-inline-end:8px;flex:none;
+    border-left:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);opacity:.6}
+  .tm-chips-nav .chip:hover{transform:none;background:color-mix(in oklab,var(--tc) 7%,transparent)}
+  .tm-chip-ic{width:36px;height:36px}
+}
 
 /* the seven springs around the droplet */
 .tm-hub{position:relative;width:min(100%,440px);aspect-ratio:1;margin-inline:auto}
@@ -73,7 +84,7 @@ body[data-page="teams.html"] [style*="--tc:"],
 /* ==========================================================================
    Impact lens (ARIA tabs via main.js [data-tabs])
    ========================================================================== */
-.tm-lens{padding-block:clamp(28px,4vw,52px) clamp(40px,5vw,64px)}
+.tm-lens{padding-block:clamp(12px,2vw,24px) clamp(40px,5vw,64px)}
 .tm-lens-head{display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:18px 40px;margin-bottom:22px}
 .tm-lens-head .kicker{padding:6px;--sc:var(--brand)}
 .tm-lens-head h2{display:inline;margin-inline-start:10px;font-size:clamp(1.45rem,2.6vw,2.05rem);vertical-align:middle}
@@ -96,7 +107,7 @@ body[data-page="teams.html"] [style*="--tc:"],
 .tm-lens-panel{border-radius:inherit}
 .tm-lens-panel:focus-visible{outline-offset:-4px}
 .tm-lens-list{display:grid}
-.tm-lens-row{position:relative;display:grid;grid-template-columns:44px minmax(170px,240px) minmax(0,1fr);align-items:center;gap:6px 22px;
+.tm-lens-row{position:relative;display:grid;grid-template-columns:44px minmax(190px,280px) minmax(0,1fr);align-items:center;gap:6px 22px;
   padding:16px clamp(20px,2.6vw,32px);transition:background-color .25s}
 .tm-lens-row+.tm-lens-row{border-top:1px solid var(--line)}
 .tm-lens-row::before{content:"";position:absolute;inset-inline-start:0;top:16px;bottom:16px;width:4px;border-start-end-radius:4px;border-end-end-radius:4px;background:var(--tc)}
@@ -117,7 +128,8 @@ body[data-page="teams.html"] [style*="--tc:"],
   .tm-seg{max-width:none}
 }
 @media (max-width:760px){
-  .tm-lens-row{grid-template-columns:40px minmax(0,1fr);gap:6px 14px;padding:16px 18px 18px}
+  .tm-lens-row{grid-template-columns:40px minmax(0,1fr);gap:8px 14px;padding:16px 18px 18px}
+  .tm-lens-name{font-size:.98rem}
   .tm-lens-ic{width:40px;height:40px;border-radius:12px}
   .tm-lens-ic .i{width:20px;height:20px}
   .tm-lens-body{grid-column:2/-1;font-size:.97rem}
@@ -168,8 +180,9 @@ body:has(.nav.hide) .tm-aside{top:24px}
 
 .tm-k{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-family:var(--font-h);font-size:.9rem;font-weight:600;line-height:1.5;color:var(--tc-ink)}
 .tm-k .i{width:18px;height:18px}
-.tm-nature{position:relative;margin-bottom:24px;padding:18px clamp(18px,2.4vw,26px) 20px;border-radius:var(--r);
-  background:color-mix(in oklab,var(--tc) 6%,var(--surface-2));border-inline-start:4px solid var(--tc)}
+.tm-nature{position:relative;margin-bottom:24px;padding:18px clamp(20px,2.6vw,30px) 20px;border-radius:var(--r);
+  background:color-mix(in oklab,var(--tc) 6%,var(--surface-2))}
+.tm-nature::before{content:"";position:absolute;inset-inline-start:0;top:18px;bottom:18px;width:4px;border-start-end-radius:4px;border-end-end-radius:4px;background:var(--tc)}
 .tm-nature p{font-family:var(--font-h);font-weight:500;font-size:clamp(1.06rem,1.55vw,1.2rem);line-height:1.9;color:var(--head)}
 
 .tm-bodies{margin-bottom:26px}
@@ -217,12 +230,17 @@ body:has(.nav.hide) .tm-aside{top:24px}
   .tm-imp p{grid-column:1/-1;margin-top:6px}
 }
 @media (max-width:560px){
-  .tm-team{border-radius:var(--r)}
-  .tm-team-head{align-items:flex-start;padding-inline-end:56px}
-  .tm-team-ic{border-radius:16px}
-  .tm-num{font-size:3rem;top:16px}
+  .tm-team{border-radius:var(--r);padding:20px 18px 22px}
+  .tm-team-head{flex-direction:column;align-items:flex-start;gap:14px;padding-inline-end:0;margin-bottom:18px}
+  .tm-team-ic{width:52px;border-radius:16px}
+  .tm-team-head h2{font-size:1.32rem}
+  .tm-num{font-size:3.4rem;top:18px;inset-inline-end:18px}
+  .tm-nature{padding:16px 18px 18px}
+  .tm-nature p{font-size:1.04rem;line-height:1.85}
   .tm-chips li{font-size:.9rem}
-  .tm-quran{flex-wrap:wrap}
+  .tm-quran{gap:12px;padding:14px}
+  .tm-quran-ic{width:46px;height:46px;border-radius:14px}
+  .tm-quran-t b{font-size:1.02rem}
   .tm-quran-go span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
 }
 
@@ -246,7 +264,7 @@ body:has(.nav.hide) .tm-aside{top:24px}
   .tm-nav-list a.current .tm-nav-ic{background:color-mix(in oklab,var(--on-brand) 92%,transparent);color:var(--tc-ink);box-shadow:none}
   /* anchor offsets live on the targets while the strip is stuck (see quran.css) */
   html:has(> body[data-page="teams.html"]){scroll-padding-top:0}
-  .tm-team{scroll-margin-top:150px}
+  .tm-team{scroll-margin-top:140px}
   .tm-s3{scroll-margin-top:84px}
 }
 @media (max-width:860px){.tm-aside{top:calc(58px + 16px)}}
@@ -258,8 +276,8 @@ body:has(.nav.hide) .tm-aside{top:24px}
 .tm-incs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
 .tm-inc{position:relative;isolation:isolate;overflow:hidden;padding:clamp(22px,2.6vw,30px);border-radius:var(--r-lg);
   background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow-sm)}
-.tm-inc::before{content:"";position:absolute;width:240px;height:240px;top:-120px;inset-inline-end:-90px;z-index:-1;border-radius:50%;
-  background:radial-gradient(closest-side,color-mix(in oklab,var(--tc) 14%,transparent),transparent)}
+.tm-inc::before{content:"";position:absolute;width:300px;height:300px;top:-130px;inset-inline-start:-110px;z-index:-1;border-radius:50%;
+  background:radial-gradient(closest-side,color-mix(in oklab,var(--tc) 13%,transparent),transparent)}
 .tm-inc h3{margin:14px 0 8px;font-size:1.2rem;line-height:1.5}
 .tm-inc p{color:var(--ink-2);line-height:1.9}
 .js .tm-inc.rv{transition:opacity .7s var(--ease),transform .7s var(--ease),translate .35s var(--ease),box-shadow .35s,border-color .35s;
@@ -274,8 +292,14 @@ body:has(.nav.hide) .tm-aside{top:24px}
 @media (max-width:560px){
   .tm-inc{grid-template-columns:auto minmax(0,1fr);column-gap:14px}
   .tm-inc .tm-rip{--s:64px;--g:7px;grid-row:auto}
-  .tm-inc h3{align-self:center;margin:0}
+  .tm-inc h3{align-self:center;margin:0;font-size:1.1rem}
   .tm-inc p{grid-column:1/-1;margin-top:10px}
+}
+
+/* ---------- forced colours: no clipped gradient text ---------- */
+@media (forced-colors:active){
+  .tm-h1-a{background:none;color:CanvasText}
+  .tm-num{-webkit-text-stroke:0;color:GrayText}
 }
 
 /* ---------- print ---------- */
