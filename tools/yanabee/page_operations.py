@@ -76,9 +76,9 @@ def hero():
     rows = ''
     for sid in SECS:
         k, main = split_kicker(P[sid].title)
-        rows += (f'<li><a class="op-idx" href="#{sid}" style="--sc:var({COL[sid]})">'
+        rows += (f'<li style="--i:{SECS.index(sid)}"><a class="op-idx" href="#{sid}" style="--sc:var({COL[sid]})">'
                  f'<span class="op-idx-ic" aria-hidden="true">{icon(SEC_ICON[sid])}</span>'
-                 f'<span class="op-idx-t"><small>{t(k)}</small><span>{t(main)}</span></span>'
+                 f'<span class="op-idx-t"><small>{t(k)}</small> <span>{t(main)}</span></span>'
                  f'{icon("arrow-down", "i op-idx-go")}</a></li>')
     return f'''
 <section class="hero hero-page op-hero">
@@ -91,7 +91,7 @@ def hero():
     </div>
     <nav class="op-idx-box rv" aria-label="أقسام الصفحة">
       <p class="op-idx-cap" aria-hidden="true">{icon('layers')}<span>في هذه الصفحة</span></p>
-      <ol class="op-idx-list" data-stagger>{rows}</ol>
+      <ol class="op-idx-list op-stg" data-reveal>{rows}</ol>
     </nav>
   </div>
 </section>'''
@@ -117,8 +117,11 @@ def ring360():
     dots = ''
     for ang, idx in ((-45, 0), (45, 2), (135, 3), (225, 1)):
         a = math.radians(ang)
-        dots += (f'<circle class="op-orb-dot" cx="{c + 124 * math.cos(a):.1f}" cy="{c + 124 * math.sin(a):.1f}" r="5.5" '
-                 f'style="--ac:var({AUD[idx][1]})"/>')
+        x, y = c + 124 * math.cos(a), c + 124 * math.sin(a)
+        # wide screens: a horizontal link from the orbit dot to the edge of the matching card
+        x2 = 275 if x > c else -15
+        dots += (f'<path class="op-conn" d="M{x + (6 if x > c else -6):.1f} {y:.1f}H{x2}" style="--ac:var({AUD[idx][1]})"/>'
+                 f'<circle class="op-orb-dot" cx="{x:.1f}" cy="{y:.1f}" r="5.5" style="--ac:var({AUD[idx][1]})"/>')
     return f'''
     <div class="op-ring" data-reveal aria-hidden="true">
       <svg viewBox="0 0 260 260" focusable="false">
@@ -139,13 +142,13 @@ def s4():
         body = t(it.body)
         if i == 0:
             body = hl(body, 'فريقك سر قوتك', 'op-hl op-hl-q')
-        cards += (f'<li class="op-aud" style="--ac:var({col})">'
+        cards += (f'<li class="op-aud" style="--ac:var({col});--i:{i}">'
                   f'<div class="op-aud-h"><span class="op-aud-ic" aria-hidden="true">{ic(ico)}</span>'
                   f'<h3>{t(strip_colon(it.label))}</h3></div><p>{body}</p></li>')
     body = f'''
-    <div class="op-360 rv">
+    <div class="op-360">
       {ring360()}
-      <ul class="op-auds" data-stagger>{cards}</ul>
+      <ul class="op-auds op-stg" data-reveal>{cards}</ul>
     </div>'''
     return sec('s4', body, 'op-s4')
 
@@ -190,8 +193,7 @@ def s5():
         </figure>
       </div>'''
     nodes = ''
-    for i, (it, ico) in enumerate(zip(s.items, FLOW_ICONS)):
-        last = i == len(s.items) - 1
+    for it, ico in zip(s.items, FLOW_ICONS):
         kids = ''
         if it.children:
             for c, (cico, key) in zip(it.children, BRANCH):
@@ -199,10 +201,9 @@ def s5():
                          f'<p>{hl(t(c.text), key, "op-hl op-hl-k")}</p></li>')
             kids = f'<ul class="op-branches">{kids}</ul>'
         body = f'<p>{t(it.body)}</p>' if it.body else ''
-        nodes += (f'<li class="op-node{" op-node-last" if last else ""}">'
+        nodes += (f'<li class="op-node{" op-node-fork" if kids else ""}">'
                   f'<span class="op-node-ic" aria-hidden="true">{ic(ico)}</span>'
-                  f'<div class="op-node-main"><div class="op-node-card{" op-node-parent" if kids else ""}">'
-                  f'<h3>{t(strip_colon(it.label))}</h3>{body}</div>{kids}</div></li>')
+                  f'<div class="op-node-card"><h3>{t(strip_colon(it.label))}</h3>{body}</div>{kids}</li>')
     body = f'''
     <div class="op-gov">
       {principle}
@@ -212,7 +213,7 @@ def s5():
 
 
 # -------------------------------------------------------------------- s6 ---
-FUND = [('--brand', 'landmark'), ('--sky', 'building'), ('--sun', 'hand-heart')]
+FUND = ['--brand', '--sky', '--sun']  # one colour per funding source (60 / 30 / 10)
 
 
 def donut(values):
@@ -221,7 +222,7 @@ def donut(values):
     C = 2 * math.pi * r
     gap = 3.2
     segs, labels, start = '', '', 0
-    for i, (v, (col, _)) in enumerate(zip(values, FUND)):
+    for i, (v, col) in enumerate(zip(values, FUND)):
         segs += (f'<circle class="op-seg" cx="{c}" cy="{c}" r="{r}" style="--fc:var({col});'
                  f'--len:{v / 100 * C - gap:.2f};--C:{C:.2f};--off:{-(start / 100 * C + gap / 2):.2f};--dl:{.15 + i * .28:.2f}s"/>')
         a = math.radians(-90 + (start + v / 2) * 3.6)
@@ -245,9 +246,9 @@ def s6():
     src, gov = P['s6'].items
     vals = [int(re.match(r'^(\d+)%$', c.label).group(1)) for c in src.children]
     legend = ''
-    for c, v, (col, ico) in zip(src.children, vals, FUND):
-        legend += (f'<li style="--fc:var({col})"><b class="op-pct">{t(c.label)}</b>'
-                   f'<p>{t(c.body)}</p><span class="op-leg-ic" aria-hidden="true">{ic(ico)}</span></li>')
+    for i, (c, col) in enumerate(zip(src.children, FUND)):
+        legend += (f'<li style="--fc:var({col});--i:{i + 2}"><b class="op-pct">{t(c.label)}</b>'
+                   f'<p>{t(c.body)}</p></li>')
     gbody = hl(t(gov.body), 'العهدة الإلكترونية المسبقة الدفع', 'op-hl op-hl-f')
     body = f'''
     <div class="op-fin">
@@ -255,7 +256,7 @@ def s6():
         <h3 id="fund-h"><span class="op-h-ic" aria-hidden="true">{ic('coins')}</span>{t(strip_colon(src.label))}</h3>
         <div class="op-chart-body">
           {donut(vals)}
-          <ul class="op-legend" data-stagger>{legend}</ul>
+          <ul class="op-legend op-stg" data-reveal>{legend}</ul>
         </div>
       </article>
       <article class="op-fgov rv" aria-labelledby="fgov-h">
@@ -278,8 +279,8 @@ RISK = ['cloud-lightning', 'pin']
 def s7():
     items = P['s7'].items
     cards = ''
-    for it, (ico, col) in zip(items[:3], LEGAL):
-        cards += (f'<li class="op-lg" style="--ac:var({col})"><span class="op-lg-ic" aria-hidden="true">{ic(ico)}</span>'
+    for i, (it, (ico, col)) in enumerate(zip(items[:3], LEGAL)):
+        cards += (f'<li class="op-lg" style="--ac:var({col});--i:{i}"><span class="op-lg-ic" aria-hidden="true">{ic(ico)}</span>'
                   f'<h3>{t(strip_colon(it.label))}</h3><p>{t(it.body)}</p></li>')
     risk = items[3]
     scen = ''
@@ -288,7 +289,7 @@ def s7():
                  f'<h4>{t(strip_colon(c.label))}</h4></div>'
                  f'<span class="op-scen-arrow" aria-hidden="true">{ic("arrow-left")}</span><p>{t(c.body)}</p></li>')
     body = f'''
-    <ul class="op-lgs" data-stagger>{cards}</ul>
+    <ul class="op-lgs op-stg" data-reveal>{cards}</ul>
     <div class="op-risk rv">
       <div class="op-risk-h">
         <span class="op-risk-ic" aria-hidden="true">{ic('alert')}</span>

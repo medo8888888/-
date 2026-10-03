@@ -7,10 +7,16 @@
 body[data-page="operations.html"] [style*="--sc:"]{--sc-ink:color-mix(in oklab,var(--sc) 66%,var(--ink))}
 body[data-page="operations.html"] .op-sec .kicker{color:var(--sc-ink)}
 .op-paren{font-weight:500;color:var(--sc-ink);white-space:nowrap}
+body[data-page="operations.html"] main bdi{white-space:nowrap}
+
+/* staggered reveal of card lists ([data-reveal] gets .in from main.js; 'backwards' keeps hover transforms working) */
+@keyframes op-up{from{opacity:0;transform:translateY(16px)}}
+.js .op-stg:not(.in)>*{opacity:0}
+.js .op-stg.in>*{animation:op-up .7s var(--ease) backwards;animation-delay:calc(var(--i,0) * 90ms)}
 
 /* highlighted phrases inside verbatim sentences */
 .op-hl{color:inherit;background:linear-gradient(transparent 58%,color-mix(in oklab,var(--hc,var(--brand)) 24%,transparent) 0);
-  padding-inline:.12em;border-radius:3px;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+  border-radius:2px;-webkit-box-decoration-break:clone;box-decoration-break:clone}
 .op-hl-a{--hc:var(--brand)}
 .op-hl-b{--hc:var(--sun)}
 .op-hl-q{--hc:var(--sky);font-weight:600;color:var(--head)}
@@ -32,7 +38,7 @@ body[data-page="operations.html"] .op-sec .kicker{color:var(--sc-ink)}
   box-shadow:var(--shadow);backdrop-filter:blur(14px) saturate(1.3);-webkit-backdrop-filter:blur(14px) saturate(1.3)}
 .op-idx-cap{display:flex;align-items:center;gap:8px;padding:6px 12px 8px;font-family:var(--font-h);font-size:.86rem;font-weight:500;color:var(--muted)}
 .op-idx-cap .i{width:16px;height:16px}
-.op-idx-list{display:grid;gap:2px}
+.op-idx-list{display:grid;gap:2px;list-style:none}
 .op-idx{display:flex;align-items:center;gap:14px;padding:10px 12px;border-radius:18px;text-decoration:none;color:var(--ink);
   transition:background-color .25s,transform .25s var(--ease)}
 .op-idx:hover{background:color-mix(in oklab,var(--sc) 10%,transparent)}
@@ -50,9 +56,10 @@ body[data-page="operations.html"] .op-sec .kicker{color:var(--sc-ink)}
 /* ------------------------------------------------------------ s4: 360 --- */
 .op-360{position:relative;display:grid;gap:clamp(20px,3vw,28px)}
 .op-ring{position:relative;width:min(232px,62vw);aspect-ratio:1;margin-inline:auto}
-.op-ring svg{width:100%;height:100%;overflow:visible}
+.op-ring>svg{width:100%;height:100%;overflow:visible}
 .op-orbit{fill:none;stroke:var(--line-2);stroke-width:1.5;stroke-dasharray:2 7;transform-origin:130px 130px}
 .op-orb-dot{fill:var(--ac);stroke:var(--bg);stroke-width:3}
+.op-conn{display:none;stroke:var(--ac);stroke-width:2;stroke-linecap:round;opacity:.55}
 .op-disc{fill:var(--surface);filter:drop-shadow(0 10px 22px rgba(7,36,51,.14))}
 .op-track{fill:none;stroke:color-mix(in oklab,var(--sc) 10%,var(--line))}
 .op-arc{fill:none;stroke:var(--ac);stroke-dasharray:var(--len) var(--C);stroke-dashoffset:var(--off);
@@ -87,33 +94,27 @@ body[data-page="operations.html"] .op-sec .kicker{color:var(--sc-ink)}
   .op-aud:nth-child(3){grid-area:2/1}
   .op-aud:nth-child(4){grid-area:2/3}
   .op-ring{position:absolute;left:50%;top:50%;width:270px;margin:0;transform:translate(-50%,-50%);z-index:1}
-  /* a short connector from each card toward the ring */
-  .op-aud{overflow:visible}
-  .op-aud::before{border-start-start-radius:var(--r);border-end-start-radius:var(--r)}
-  .op-aud::after{content:"";position:absolute;top:50%;width:26px;height:2px;border-radius:2px;
-    background:linear-gradient(90deg,var(--ac),color-mix(in oklab,var(--ac) 10%,transparent))}
-  .op-aud:nth-child(odd)::after{inset-inline-end:-27px;transform:scaleX(-1)}
-  .op-aud:nth-child(even)::after{inset-inline-start:-27px}
+  .op-conn{display:block}
 }
 
 /* ------------------------------------------------------- s5: governance --- */
 .op-gov{display:grid;gap:clamp(24px,4vw,48px)}
-@media(min-width:1000px){
-  .op-gov{grid-template-columns:minmax(0,5fr) minmax(0,7fr);align-items:start}
-  .op-principle{position:sticky;top:calc(var(--nav-h) + 36px)}
-}
 .op-principle{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);
   padding:clamp(22px,3vw,34px);box-shadow:var(--shadow);overflow:hidden;isolation:isolate}
 .op-principle::before{content:"";position:absolute;inset:0;z-index:-1;
   background:radial-gradient(360px 220px at 100% 0,color-mix(in oklab,var(--brand) 10%,transparent),transparent 70%),
              radial-gradient(360px 220px at 0 100%,color-mix(in oklab,var(--sun) 10%,transparent),transparent 70%)}
+@media(min-width:1000px){
+  .op-gov{grid-template-columns:minmax(0,5fr) minmax(0,7fr);align-items:start}
+  .op-principle{position:sticky;top:calc(var(--nav-h) + 36px)}
+}
 .op-principle-ic{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;margin-bottom:14px;
   background:color-mix(in oklab,var(--brand) 13%,transparent);color:var(--sc-ink)}
 .op-principle-ic .i{width:24px;height:24px;transform:rotate(180deg)}
 .op-principle-t{font-family:var(--font-h);font-weight:500;color:var(--head);font-size:clamp(1.12rem,1.7vw,1.3rem);line-height:1.95}
 .op-principle-t .op-hl{font-weight:600}
 .op-tree{display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:22px;padding-top:22px;border-top:1px dashed var(--line-2)}
-.op-tree svg{width:100%;max-width:340px;height:auto;overflow:visible}
+.op-tree>svg{width:100%;max-width:340px;height:auto;overflow:visible}
 .op-tag{display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border-radius:999px;font-family:var(--font-h);font-weight:600;font-size:.92rem}
 .op-tag .i{width:17px;height:17px}
 .op-tag-a{background:color-mix(in oklab,var(--brand) 13%,transparent);color:color-mix(in oklab,var(--brand) 70%,var(--ink))}
@@ -124,15 +125,15 @@ body[data-page="operations.html"] .op-sec .kicker{color:var(--sc-ink)}
 .op-tn{transform-box:fill-box;transform-origin:center;transition:transform .5s var(--ease) var(--d,0s)}
 .op-tn-0{fill:var(--brand)}
 .op-tn-core{fill:var(--surface)}
-.op-tn-1{fill:color-mix(in oklab,var(--brand) 50%,var(--sun));--d:.3s}
+.op-tn-1{fill:var(--accent);--d:.3s}
 .op-tn-2{fill:var(--sun)}
 .js .op-tree:not(.in) .op-tl{stroke-dashoffset:1}
 .js .op-tree:not(.in) .op-tn-1,.js .op-tree:not(.in) .op-tn-2{transform:scale(0)}
 
 /* vertical flow: council → digital operation → leaders (with two branches) */
-.op-flow{position:relative;display:grid;gap:20px;--ics:52px}
-.op-flow::before{content:"";position:absolute;inset-inline-start:calc(var(--ics) / 2 - 1px);top:26px;height:calc(100% - 60px);width:2px;border-radius:2px;
-  background:linear-gradient(180deg,var(--brand),color-mix(in oklab,var(--brand) 40%,var(--sun)));opacity:.55}
+.op-flow{position:relative;display:grid;gap:var(--fg);--ics:52px;--fg:20px;list-style:none}
+.op-node:not(:last-child)::after{content:"";position:absolute;inset-inline-start:calc(var(--ics) / 2 - 1px);top:calc(var(--ics) + 6px);
+  bottom:calc(6px - var(--fg));width:2px;border-radius:2px;background:linear-gradient(180deg,var(--brand),var(--accent));opacity:.5}
 .op-node{position:relative;display:grid;grid-template-columns:var(--ics) minmax(0,1fr);gap:14px;align-items:start}
 .op-node-ic{position:relative;z-index:1;width:var(--ics);height:var(--ics);border-radius:16px;display:grid;place-items:center;
   background:var(--surface);color:var(--sc-ink);border:2px solid color-mix(in oklab,var(--brand) 38%,var(--line));box-shadow:var(--shadow-sm)}
@@ -146,32 +147,36 @@ body[data-page="operations.html"] .op-sec .kicker{color:var(--sc-ink)}
 [dir=rtl] .op-node-card::before{transform:rotate(-45deg)}
 .op-node-card h3{font-size:1.14rem;margin-bottom:4px}
 .op-node-card p{color:var(--ink-2);line-height:1.9}
-.op-node-parent h3{margin-bottom:0}
-.op-branches{position:relative;display:grid;gap:14px;margin-top:14px;padding-inline-start:22px}
-.op-branches::before{content:"";position:absolute;inset-inline-start:8px;top:-14px;bottom:30px;width:2px;border-radius:2px;
-  background:color-mix(in oklab,var(--accent) 45%,transparent)}
+.op-node>.op-node-card{grid-column:2}
+.op-node-fork .op-node-card h3{margin-bottom:0}
+/* branches: phones = a rail under the spine with a tick to each card; ≥700px = a fork under the parent card */
+.op-branches{grid-column:1/-1;position:relative;display:grid;gap:14px;list-style:none;padding-inline-start:calc(var(--ics) / 2 + 18px)}
+.op-node-fork::after{content:"";position:absolute;inset-inline-start:calc(var(--ics) / 2 - 1px);top:calc(var(--ics) + 6px);bottom:28px;
+  width:2px;border-radius:2px;background:color-mix(in oklab,var(--accent) 50%,transparent)}
 .op-br{position:relative;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-sm);padding:16px 18px 18px;
   transition:transform .35s var(--ease),border-color .35s}
 .op-br:hover{transform:translateY(-3px);border-color:color-mix(in oklab,var(--accent) 45%,var(--line))}
-.op-br::before{content:"";position:absolute;inset-inline-start:-15px;top:30px;width:14px;height:2px;border-radius:2px;
-  background:color-mix(in oklab,var(--accent) 45%,transparent)}
+.op-br::before{content:"";position:absolute;inset-inline-start:-18px;top:30px;width:17px;height:2px;border-radius:2px;
+  background:color-mix(in oklab,var(--accent) 50%,transparent)}
 .op-br-ic{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;margin-bottom:10px;
   background:color-mix(in oklab,var(--accent) 15%,transparent);color:color-mix(in oklab,var(--accent) 62%,var(--ink))}
 .op-br-ic .i{width:20px;height:20px}
 .op-br p{color:var(--ink-2);line-height:1.9}
 @media(min-width:700px){
-  .op-branches{grid-template-columns:1fr 1fr;padding-inline-start:0;margin-top:0;padding-top:28px}
-  .op-branches::before{inset-inline-start:calc(50% - 1px);top:0;bottom:auto;height:14px}
+  .op-node-fork::after{display:none}
+  .op-branches{grid-column:2;grid-template-columns:1fr 1fr;padding-inline-start:0;padding-top:28px}
+  .op-branches::before{content:"";position:absolute;inset-inline-start:calc(50% - 1px);top:-14px;height:27px;width:2px;
+    background:color-mix(in oklab,var(--accent) 50%,transparent)}
   .op-branches::after{content:"";position:absolute;top:13px;inset-inline:25%;height:2px;border-radius:2px;
-    background:color-mix(in oklab,var(--accent) 45%,transparent)}
-  .op-br::before{inset-inline-start:calc(50% - 1px);top:-15px;width:2px;height:14px}
+    background:color-mix(in oklab,var(--accent) 50%,transparent)}
+  .op-br::before{inset-inline-start:calc(50% - 1px);top:-15px;width:2px;height:15px}
 }
-@media(max-width:600px){.op-flow{--ics:44px;gap:16px}.op-node{gap:12px}.op-node-ic{border-radius:14px}.op-node-ic .i{width:21px;height:21px}
+@media(max-width:600px){.op-flow{--ics:44px;--fg:16px}.op-node{gap:12px}.op-node-ic{border-radius:14px}.op-node-ic .i{width:21px;height:21px}
   .op-node-card{padding:16px 18px 18px}}
 
 /* ---------------------------------------------------------- s6: finance --- */
 .op-fin{display:grid;gap:18px}
-@media(min-width:1000px){.op-fin{grid-template-columns:minmax(0,7fr) minmax(0,4.4fr);align-items:stretch}}
+@media(min-width:1200px){.op-fin{grid-template-columns:minmax(0,7fr) minmax(0,4.4fr);align-items:stretch}}
 .op-chart,.op-fgov{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);
   padding:clamp(22px,3vw,34px);box-shadow:var(--shadow-sm)}
 .op-chart h3,.op-fgov h3{display:flex;align-items:center;gap:12px;font-size:1.25rem;margin-bottom:18px}
@@ -181,7 +186,7 @@ body[data-page="operations.html"] .op-sec .kicker{color:var(--sc-ink)}
 .op-chart-body{display:grid;gap:22px;align-items:center}
 @media(min-width:680px){.op-chart-body{grid-template-columns:minmax(220px,250px) minmax(0,1fr);gap:30px}}
 .op-donut{position:relative;width:min(250px,72vw);aspect-ratio:1;margin-inline:auto}
-.op-donut svg{width:100%;height:100%;overflow:visible}
+.op-donut>svg{width:100%;height:100%;overflow:visible}
 .op-seg-track{fill:none;stroke:var(--surface-3);stroke-width:30}
 .op-seg{fill:none;stroke:var(--fc);stroke-width:30;stroke-dasharray:var(--len) var(--C);stroke-dashoffset:var(--off);
   transition:stroke-dasharray 1s var(--ease) var(--dl)}
@@ -193,14 +198,12 @@ body[data-page="operations.html"] .op-sec .kicker{color:var(--sc-ink)}
   background:color-mix(in oklab,var(--sc) 9%,var(--surface))}
 .op-donut-c .i{width:30px;height:30px}
 .op-legend{display:grid;gap:10px}
-.op-legend li{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 14px;align-items:center;
-  padding:12px 16px 12px 14px;border-radius:var(--r-sm);background:var(--surface-2);border:1px solid var(--line);overflow:hidden}
+.op-legend li{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 14px;align-items:center;
+  padding:12px 18px 12px 16px;border-radius:var(--r-sm);background:var(--surface-2);border:1px solid var(--line);overflow:hidden}
 .op-legend li::before{content:"";position:absolute;inset-block:0;inset-inline-start:0;width:5px;background:var(--fc)}
 .op-pct{font-family:var(--font-h);font-weight:700;font-size:1.55rem;line-height:1.2;min-width:2.6em;text-align:center;
   color:color-mix(in oklab,var(--fc) 70%,var(--ink));direction:ltr;unicode-bidi:isolate}
 .op-legend p{color:var(--ink-2);line-height:1.8;font-size:.98rem}
-.op-leg-ic{color:color-mix(in oklab,var(--fc) 60%,var(--muted));opacity:.75}
-.op-leg-ic .i{width:20px;height:20px}
 
 .op-fgov{display:flex;flex-direction:column;overflow:hidden;isolation:isolate}
 .op-fgov p{color:var(--ink-2);line-height:1.95}
@@ -217,6 +220,14 @@ body[data-page="operations.html"] .op-sec .kicker{color:var(--sc-ink)}
 .op-pcard-num{position:absolute;bottom:18%;inset-inline-start:11%;display:flex;gap:10px}
 .op-pcard-num i{display:block;width:30px;height:6px;border-radius:4px;background:rgba(255,255,255,.55)}
 .op-pcard-num i:last-child{width:18px}
+
+/* tablets: the governance card lies on its side (text | card illustration) */
+@media(min-width:680px) and (max-width:1199px){
+  .op-fgov{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"h c" "p c";column-gap:36px;align-items:center}
+  .op-fgov>h3{grid-area:h;align-self:end}
+  .op-fgov>p{grid-area:p;align-self:start}
+  .op-fgov>.op-pcard{grid-area:c;width:240px;margin:0}
+}
 
 /* ------------------------------------------------------- s7: legal/risk --- */
 .op-lgs{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr))}
@@ -236,7 +247,8 @@ body[data-page="operations.html"] .op-sec .kicker{color:var(--sc-ink)}
   background:repeating-linear-gradient(-45deg,transparent 0 14px,color-mix(in oklab,var(--sun) 7%,transparent) 14px 15px)}
 .op-risk-h{display:flex;align-items:center;gap:14px;margin-bottom:18px}
 .op-risk-ic{flex:none;width:50px;height:50px;border-radius:15px;display:grid;place-items:center;background:var(--sun);color:#fff}
-[data-theme=dark] .op-risk-ic{color:#1d1206}
+[data-theme=dark] .op-risk-ic{color:var(--on-brand)}
+[data-theme=dark] .op-risk{background:color-mix(in oklab,var(--sun) 7%,var(--surface));border-color:color-mix(in oklab,var(--sun) 26%,var(--line))}
 .op-risk-ic .i{width:25px;height:25px}
 .op-risk h3{font-size:clamp(1.2rem,2vw,1.4rem)}
 .op-scens{display:grid;gap:12px}
@@ -258,10 +270,9 @@ body[data-page="operations.html"] .op-sec .kicker{color:var(--sc-ink)}
 .op-int{display:grid;gap:clamp(18px,3vw,40px);align-items:center;margin-bottom:clamp(28px,4vw,44px)}
 @media(min-width:900px){.op-int{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
 .op-int-lead{font-family:var(--font-h);font-weight:500;color:var(--head);font-size:clamp(1.3rem,2.6vw,1.85rem);line-height:1.85;max-width:520px}
-.op-int-lead bdi{font-size:.72em;font-weight:600;color:var(--sc-ink);padding:2px 10px;border-radius:999px;vertical-align:.12em;
-  background:color-mix(in oklab,var(--sc) 12%,transparent)}
+.op-int-lead bdi{font-size:.82em;font-weight:600;color:var(--sc-ink)}
 .op-hub{position:relative;width:min(100%,400px);aspect-ratio:1;margin-inline:auto}
-.op-hub svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.op-hub>svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
 .op-hub-ln{fill:none;stroke:color-mix(in oklab,var(--sc) 55%,var(--line-2));stroke-width:2;vector-effect:non-scaling-stroke;
   stroke-dasharray:4 6;stroke-linecap:round}
 .op-hub-cut{stroke:color-mix(in oklab,var(--t3) 60%,var(--line-2));stroke-dasharray:2 7}
@@ -305,6 +316,19 @@ body[data-page="operations.html"] .op-sec .kicker{color:var(--sc-ink)}
 .op-s8 .tbl thead th{background:color-mix(in oklab,var(--t6) 78%,var(--head))}
 [data-theme=dark] .op-s8 .tbl thead th{background:color-mix(in oklab,var(--t6) 22%,var(--surface));color:var(--head)}
 @media(max-width:760px){.op-tbl tbody th{width:auto;color:var(--head)}}
+@media(min-width:761px) and (max-width:1000px){.op-tbl tbody th{width:25%}.op-ent .i{display:none}}
+
+/* ---------------------------------------------------------- phones ----- */
+@media(max-width:600px){
+  .op-idx-box{padding:8px;border-radius:var(--r)}
+  .op-idx{gap:12px;padding:9px 8px}
+  .op-idx-ic{width:40px;height:40px;border-radius:12px}
+  .op-idx-ic .i{width:20px;height:20px}
+  .op-idx-t span{font-size:.95rem}
+  .op-legend li{padding:12px 14px}
+  .op-pct{font-size:1.4rem}
+  .op-pcard{width:min(100%,230px)}
+}
 
 /* ---------------------------------------------------------- print ------ */
 @media print{

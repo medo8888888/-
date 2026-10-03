@@ -85,11 +85,11 @@
 .team-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
 .team-card{--tc:var(--brand);position:relative;display:flex;flex-direction:column;gap:6px;padding:24px 22px 20px;border-radius:var(--r);text-decoration:none;
   background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow-sm);overflow:hidden;
-  transition:transform .35s var(--ease),box-shadow .35s,border-color .35s}
+  transition:translate .35s var(--ease),box-shadow .35s,border-color .35s}
 .team-card::before{content:"";position:absolute;inset-inline:0;top:0;height:4px;background:var(--tc)}
 .team-card::after{content:"";position:absolute;inset-inline-end:-50px;top:-50px;width:140px;height:140px;border-radius:50%;
   background:radial-gradient(circle,color-mix(in oklab,var(--tc) 16%,transparent),transparent 70%);transition:transform .5s var(--ease)}
-.team-card:hover{transform:translateY(-5px);box-shadow:var(--shadow);border-color:color-mix(in oklab,var(--tc) 45%,var(--line))}
+.team-card:hover{translate:0 -5px;box-shadow:var(--shadow);border-color:color-mix(in oklab,var(--tc) 45%,var(--line))}
 .team-card:hover::after{transform:scale(1.4)}
 .tc-num{position:absolute;inset-inline-end:18px;top:14px;font-family:var(--font-h);font-weight:700;font-size:1.9rem;line-height:1;color:transparent;
   -webkit-text-stroke:1.2px color-mix(in oklab,var(--tc) 55%,transparent)}
@@ -128,8 +128,8 @@
 .principle{font-family:var(--font-h);font-weight:600;font-size:clamp(1.35rem,2.6vw,2rem);line-height:1.6;color:#fff;margin:18px 0 22px}
 .pillars{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:24px}
 .pillar{display:flex;flex-direction:column;gap:10px;padding:16px;border-radius:16px;text-decoration:none;color:#fff;
-  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);transition:background-color .25s,transform .25s var(--ease)}
-.pillar:hover{background:rgba(255,255,255,.11);transform:translateY(-3px)}
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);transition:background-color .25s,translate .25s var(--ease)}
+.pillar:hover{background:rgba(255,255,255,.11);translate:0 -3px}
 .pillar b{font-family:var(--font-h);font-weight:600;font-size:.98rem;line-height:1.55}
 .pl-ic{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:rgba(127,240,228,.14);color:#7ff0e4}
 .btn-ghost.on-dark{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.28);color:#fff}
@@ -201,8 +201,8 @@ mark{background:color-mix(in oklab,var(--accent) 22%,transparent);color:inherit;
 .init-card p{color:rgba(238,247,242,.86);font-size:1.05rem}
 .w-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:24px 0}
 .w-tile{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:16px;border-radius:18px;text-decoration:none;color:#fff;
-  background:rgba(255,255,255,.06);border:1px solid rgba(233,196,106,.22);transition:transform .3s var(--ease),background-color .3s}
-.w-tile:hover{transform:translateY(-4px);background:rgba(233,196,106,.1)}
+  background:rgba(255,255,255,.06);border:1px solid rgba(233,196,106,.22);transition:translate .3s var(--ease),background-color .3s}
+.w-tile:hover{translate:0 -4px;background:rgba(233,196,106,.1)}
 .w-ic{color:#e9c46a}
 .w-tile b{font-family:var(--font-h);font-size:1.7rem;line-height:1.2}
 .w-tile small{font-size:.8rem;line-height:1.5;color:rgba(238,247,242,.72)}
