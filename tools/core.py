@@ -204,6 +204,31 @@ def cta():
 def page(fn, title, body, desc, globe=False, css=(), js=()):
     links = ''.join(
         f'<a href="{h}"{" class=active aria-current=page" if h == fn else ""}>{t}</a>' for h, t, _ in PAGES)
+    def mi(h, t, icon, sub=''):
+        a = ' aria-current="page"' if h.split('#')[0] == fn and '#' not in h else ''
+        sb = f'<small>{sub}</small>' if sub else ''
+        return f'<a class="mm-item" href="{h}"{a}><span class="mm-ic">{ic(icon)}</span><span><b>{t}</b>{sb}</span></a>'
+    groups = [
+        ('عن تكامل', 'info', ['about.html', 'governance.html', 'expansion.html', 'dashboard.html', 'faq.html'], [
+            mi('about.html', 'من نحن', 'info', L(41)), mi('governance.html', 'الحوكمة والتمويل', 'shield', L(170)),
+            mi('expansion.html', 'خطة التوسع', 'globe', L(7)), mi('dashboard.html', 'لوحة القيادة', 'chart', L(2)),
+            mi('faq.html', 'دليل الإجابات', 'help', L(378)), mi('index.html#toc', L(12), 'book', L(1))]),
+        ('البرامج', 'sprout', ['initiatives.html'], [
+            mi('initiatives.html#s3-1', 'مبادرة «ينابيع»', 'droplet', L(77).split(':', 1)[-1].strip()),
+            mi('initiatives.html#s3-2', 'مبادرة «منافع»', 'coins', L(83).split(':', 1)[-1].strip()),
+            mi('initiatives.html#s3-3', 'التنسيق والتكامل المؤسسي', 'link', L(90)),
+            mi('initiatives.html#s6', L(158), 'users', L(159)), mi('support.html#programs', 'برامج تحتاج دعمك', 'heart')]),
+        ('شارك معنا', 'heart', ['support.html', 'join.html'], [
+            mi('support.html#donate', 'تبرع الآن', 'heart', L(211)), mi('support.html#volunteer', 'تطوّع معنا', 'users', L(326)[:70] + '…'),
+            mi('join.html#apply', 'طلب العضوية', 'check', L(184)), mi('join.html#s9', L(228), 'pinmark', L(229))]),
+    ]
+    mega = '<a class="mtop' + (' on' if fn == 'index.html' else '') + '" href="index.html">الرئيسية</a>'
+    for gi, (label, icon, pages_, items) in enumerate(groups):
+        on = ' on' if fn in pages_ else ''
+        mega += (f'<div class="mgroup"><button type="button" class="mtop{on}" aria-expanded="false" aria-controls="mm{gi}">{label}'
+                 f'<svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>'
+                 f'<div class="mpanel" id="mm{gi}"><div class="mgrid">{"".join(items)}</div></div></div>')
+    mega += '<a class="mtop" href="support.html#contact">تواصل معنا</a>'
     sheet = ''.join(
         f'<a class="sheet-item{" active" if h == fn else ""}" href="{h}">{ic(i)}<span>{t}</span></a>'
         for h, t, i in PAGES)
@@ -263,7 +288,8 @@ def page(fn, title, body, desc, globe=False, css=(), js=()):
       <img src="assets/logo.png" alt="" width="44" height="44">
       <span><b>تكامل</b><small>لبناء القيم والتنمية</small></span>
     </a>
-    <nav class="links" aria-label="القائمة الرئيسية">
+    <nav class="mega" aria-label="القائمة الرئيسية">{mega}</nav>
+    <nav class="links" aria-label="الصفحات">
       <span class="pill pill-hover" aria-hidden="true"></span><span class="pill pill-active" aria-hidden="true"></span>
       {links}
     </nav>

@@ -19,6 +19,18 @@
   $$('.grid, .toc-grid, .faq-list, .mini-steps, .cycle').forEach(g =>
     [...g.children].forEach((c, i) => c.style.setProperty('--d', Math.min(i, 8) * 0.07 + 's')));
   window.__takamulReady = true;
+  // desktop mega menu: hover (with delay) + click + keyboard
+  $$('.mgroup').forEach(g => {
+    const btn = $('.mtop', g); let t = 0;
+    const set = o => { g.classList.toggle('open', o); btn.setAttribute('aria-expanded', o); };
+    const closeOthers = () => $$('.mgroup.open').forEach(o => { if (o !== g) { o.classList.remove('open'); $('.mtop', o).setAttribute('aria-expanded', 'false'); } });
+    g.addEventListener('mouseenter', () => { clearTimeout(t); closeOthers(); set(true); });
+    g.addEventListener('mouseleave', () => { t = setTimeout(() => set(false), 180); });
+    btn.addEventListener('click', () => { closeOthers(); set(!g.classList.contains('open')); });
+    g.addEventListener('keydown', e => { if (e.key === 'Escape') { set(false); btn.focus(); } });
+    g.addEventListener('focusout', e => { if (!g.contains(e.relatedTarget)) set(false); });
+  });
+  document.addEventListener('click', e => { if (!e.target.closest('.mgroup')) $$('.mgroup.open').forEach(o => { o.classList.remove('open'); $('.mtop', o).setAttribute('aria-expanded', 'false'); }); });
   // phones/tablets: keep the current page visible in the scrollable page bar
   const activeLink = $('.links a.active');
   if (activeLink && innerWidth <= 1260) {
