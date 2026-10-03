@@ -22,7 +22,7 @@
 
   /* ---------------- theme ---------------- */
   const metaTheme = $('meta[name="theme-color"]');
-  const syncMeta = () => { if (metaTheme) metaTheme.content = root.dataset.theme === 'dark' ? '#09111b' : '#f7f4ec'; };
+  const syncMeta = () => { if (metaTheme) metaTheme.content = root.dataset.theme === 'dark' ? '#05070a' : '#f4f6f8'; };
   const setTheme = (t, persist) => {
     root.dataset.theme = t;
     if (persist) { try { localStorage.setItem('takamul-theme', t); } catch (e) { /* storage blocked */ } }
@@ -30,15 +30,21 @@
     window.dispatchEvent(new CustomEvent('themechange', { detail: t }));
   };
   syncMeta();
-  $$('.theme-toggle').forEach(b => b.addEventListener('click', () => {
+  const toggleTheme = () => {
     const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
     if (document.startViewTransition && !reduce) document.startViewTransition(() => setTheme(next, true));
     else setTheme(next, true);
-  }));
+  };
+  window.TakamulTheme = {
+    get: () => root.dataset.theme,
+    set: t => { if (t === 'light' || t === 'dark') setTheme(t, true); },
+    toggle: toggleTheme,
+  };
+  $$('.theme-toggle').forEach(b => b.addEventListener('click', toggleTheme));
   onMQ(matchMedia('(prefers-color-scheme: dark)'), e => {
     let stored = null;
     try { stored = localStorage.getItem('takamul-theme'); } catch (err) { /* ignore */ }
-    if (!stored) setTheme(e.matches ? 'dark' : 'light', false);
+    if (!stored) setTheme('dark', false);
   });
 
   /* ---------------- greeting ---------------- */

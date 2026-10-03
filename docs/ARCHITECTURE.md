@@ -1,7 +1,7 @@
 # Takamul site — architecture & contracts
 
 Arabic (RTL) site for «جمعية تكامل لبناء القيم والتنمية», generated from the
-membership brochure. Static pages in `site/` + a Cloudflare Worker (`worker/`)
+membership brochure. Default theme: dark (premium layer at the end of style.css). Static pages in `site/` + a Cloudflare Worker (`worker/`)
 for the Gemini assistant. No frameworks, no build toolchain beyond Python.
 
 ```
@@ -58,7 +58,8 @@ page(fn, title, body, desc, globe=False, css=(), js=())`.
 - `window.TAKAMUL_KB` — see schema in `tools/build_kb.py`.
 - `window.TAKAMUL_WORLD` — globe data (schema documented in `tools/build_world.mjs`); may be null.
 - `window.TakamulTheme = { get(), set('light'|'dark'), toggle() }` (main.js); fires `themechange` on window.
-- `window.TakamulChat = { open(), close(), ask(text) }` (chat.js).
+- `window.TakamulChat = { open(), close(), ask(text), isOpen(), mode() }` (chat.js).
+- `window.TakamulBrain` — offline brochure search/answer engine (chat.js; also `search(q,{limit})` for others).
 - `window.TakamulPalette = { open(query?), close() }` (palette.js).
 
 **DOM hooks:** `[data-open-chat]`, `[data-open-palette]`, `[data-open-sheet]`, `[data-close-sheet]`,

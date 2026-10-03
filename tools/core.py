@@ -64,6 +64,7 @@ ICONS = {
     'check': '<path d="M20 6 9 17l-5-5"/>',
     'pinmark': '<path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/>',
     'search': '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+    'command': '<path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3"/>',
     'chart': '<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m19 9-5 5-4-4-3 3"/>',
     'book': '<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
 }
@@ -220,7 +221,7 @@ def page(fn, title, body, desc, globe=False, css=(), js=()):
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 {'<base href="/">' if fn == '404.html' else ''}<title>{title} | جمعية تكامل لبناء القيم والتنمية</title>
 <meta name="description" content="{desc}">
-<meta name="theme-color" content="#f7f4ec">
+<meta name="theme-color" content="#06080b">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ar_AR">
 <meta property="og:title" content="{title} | جمعية تكامل لبناء القيم والتنمية">
@@ -228,7 +229,7 @@ def page(fn, title, body, desc, globe=False, css=(), js=()):
 <meta property="og:image" content="assets/logo.png">
 <link rel="icon" href="assets/logo.png">
 <link rel="apple-touch-icon" href="assets/logo.png">
-<script>(function(){{var t;try{{t=localStorage.getItem('takamul-theme')}}catch(e){{}}if(t!=='light'&&t!=='dark'){{t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}}var d=document.documentElement;d.dataset.theme=t;d.classList.add('js');setTimeout(function(){{if(!window.__takamulReady)d.classList.remove('js')}},2500)}})();</script>
+<script>(function(){{var t;try{{t=localStorage.getItem('takamul-theme')}}catch(e){{}}if(t!=='light'&&t!=='dark'){{t='dark'}}var d=document.documentElement;d.dataset.theme=t;d.classList.add('js');setTimeout(function(){{if(!window.__takamulReady)d.classList.remove('js')}},2500)}})();</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -258,6 +259,7 @@ def page(fn, title, body, desc, globe=False, css=(), js=()):
       {links}
     </nav>
     <div class="actions">
+      <button type="button" class="search-btn" data-open-palette aria-label="ابحث في الموقع (Ctrl+K)" aria-keyshortcuts="Control+K Meta+K">{ic('search')}<span class="search-label">ابحث في الكتيب</span><kbd class="kbd-hint">⌘K</kbd></button>
       <button type="button" class="icon-btn theme-toggle" aria-label="تبديل الوضع الليلي والنهاري" title="الوضع الليلي / النهاري">{ic('sun', 'i sun')}{ic('moon', 'i moon')}</button>
       <button type="button" class="btn-ai" data-open-chat>{ic('sparkles')}<span>اسأل المساعد</span></button>
       <button type="button" class="icon-btn menu-btn" data-open-sheet aria-label="القائمة">{ic('menu')}</button>
@@ -292,6 +294,7 @@ def page(fn, title, body, desc, globe=False, css=(), js=()):
     <div class="sheet-handle" aria-hidden="true"></div>
     <div class="sheet-head"><b>القائمة</b><button type="button" class="icon-btn" data-close-sheet aria-label="إغلاق">{ic('x')}</button></div>
     <div class="sheet-grid">{sheet}</div>
+    <button type="button" class="sheet-search" data-open-palette>{ic('search')}<span>ابحث في الكتيب…</span><kbd class="kbd-hint">⌘K</kbd></button>
     <div class="sheet-row">
       <button type="button" class="sheet-wide theme-toggle">{ic('sun', 'i sun')}{ic('moon', 'i moon')}<span class="label-light">الوضع الليلي</span><span class="label-dark">الوضع النهاري</span></button>
       <button type="button" class="sheet-wide ai" data-open-chat>{ic('sparkles')}<span>اسأل المساعد</span></button>

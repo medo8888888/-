@@ -61,6 +61,37 @@ def build_home():
   </div>
 </section>
 
+<section class="sec" id="hub">
+  <div class="wrap">
+    <div class="center"><span class="kicker rv">{L(1)}</span><h2 class="rv">كل ما تحتاجه في مكان واحد</h2></div>
+    <div class="bento" style="margin-top:30px">
+      <a class="tile t-dash rv" href="dashboard.html">
+        <span class="ic big">{ic('chart')}</span>
+        <h3>لوحة القيادة</h3>
+        <p>رؤية الجمعية ومبادراتها وحوكمتها وخطة توسعها في لوحة تفاعلية واحدة.</p>
+        <div class="dash-facts">
+          <div><b data-to="2035">2035</b><span>{L(2)}</span></div>
+          <div><b>2</b><span>{L(4)}: {L(5)}</span></div>
+          <div><b>7</b><span>{L(6)} — {L(7)}</span></div>
+        </div>
+        <span class="go">افتح لوحة القيادة {ic('arrow-left')}</span>
+      </a>
+      <button type="button" class="tile t-search rv" data-open-palette>
+        <span class="ic big">{ic('search')}</span>
+        <h3>ابحث في الكتيب كله</h3>
+        <p>اكتب أي كلمة وانتقل مباشرة إلى القسم أو الركيزة أو السؤال.</p>
+        <span class="fake-search">{ic('search')}<span>مثال: منافع، الحوكمة، أنقرة…</span><kbd class="kbd-hint">⌘K</kbd></span>
+      </button>
+      <button type="button" class="tile t-ai rv" data-open-chat>
+        <span class="ic big">{ic('sparkles')}</span>
+        <h3>اسأل المساعد الذكي</h3>
+        <p>إجابات فورية بالعربية من نص الكتيب التعريفي، مع روابط المصدر.</p>
+        <span class="go">ابدأ المحادثة {ic('arrow-left')}</span>
+      </button>
+    </div>
+  </div>
+</section>
+
 <section class="sec">
   <div class="wrap">
     <div class="center"><span class="kicker rv">{L(73)}</span><h2 class="rv">{L(74)}</h2><p class="lead rv center-text">{L(75)}</p></div>
