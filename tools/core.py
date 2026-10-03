@@ -156,6 +156,24 @@ def section(n, body, alt=False, lead=''):
 </section>'''
 
 
+HERO_PHOTO = {'about.html': 'courtyard', 'initiatives.html': 'classroom', 'expansion.html': 'istanbul',
+              'governance.html': 'courtyard', 'join.html': 'istanbul', 'faq.html': 'classroom'}
+
+
+def photo_layer(name):
+    return f'<div class="hero-photo" aria-hidden="true" style="--img:url(../assets/img/{name}.jpg)"></div>' if name else ''
+
+
+def image_credits():
+    try:
+        cr = json.loads((ROOT / 'content' / 'image-credits.json').read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return ''
+    lic = {'by': 'CC BY', 'cc0': 'CC0', 'pdm': 'ملكية عامة'}
+    items = ' · '.join(f'<a href="{c["url"]}" rel="noopener" target="_blank">{c["creator"] or c["title"]}</a> ({lic.get(c["license"], c["license"])})' for c in cr)
+    return f'<p class="img-credits">صور تعبيرية — المصادر: {items}</p>'
+
+
 def page_hero(fn, nums, visual=False):
     chips = ''.join(
         f'<a class="chip-link" href="#s{n}" style="--sc:var(--c-{SECTIONS[n][4]})"><b>{L(SECTIONS[n][0])}</b>{L(SECTIONS[n][1])}</a>'
@@ -163,8 +181,8 @@ def page_hero(fn, nums, visual=False):
     vis = ('<div class="hero-visual small" aria-hidden="true"><canvas class="globe" data-globe></canvas></div>'
            if visual else '')
     return f'''
-<section class="hero hero-small{' has-visual' if visual else ''}">
-  <div class="hero-bg" aria-hidden="true"></div>
+<section class="hero hero-small{' has-visual' if visual else ''}{' has-photo' if HERO_PHOTO.get(fn) else ''}">
+  <div class="hero-bg" aria-hidden="true"></div>{photo_layer(HERO_PHOTO.get(fn))}
   <div class="hero-aurora" aria-hidden="true"></div>
   <span class="hero-num" aria-hidden="true">{'·'.join(L(SECTIONS[n][0]) for n in nums)}</span>
   <div class="wrap hero-grid">
@@ -319,6 +337,7 @@ def page(fn, title, body, desc, globe=False, css=(), js=()):
       <div><h4>&nbsp;</h4>{toc_foot2}</div>
     </div>
     <div class="foot-bottom"><span>{HEADER_LINE}</span><span>{L(501)}</span></div>
+    {image_credits()}
   </div>
 </footer>
 

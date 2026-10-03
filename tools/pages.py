@@ -1,7 +1,7 @@
 """Page compositions for the Takamul site (home + inner pages + 404).
 Uses the components and shell from core.py. See docs/ARCHITECTURE.md."""
 from core import *  # noqa: F401,F403  (L, LS, ic, page, section, card, ...)
-from core import D, SECTIONS, SEC_ICON, PAGE_LABEL
+from core import D, SECTIONS, SEC_ICON, PAGE_LABEL, photo_layer
 
 
 # ================================================================ HOME ===
@@ -14,8 +14,8 @@ def build_home():
     stages = ''.join(
         f'<li class="rv"><span>{L(130 + 4 * i)}</span><b>{L(131 + 4 * i)}</b></li>' for i in range(7))
     body = f'''
-<section class="hero hero-home">
-  <div class="hero-bg" aria-hidden="true"></div>
+<section class="hero hero-home has-photo">
+  <div class="hero-bg" aria-hidden="true"></div>{photo_layer('istanbul')}
   <div class="wrap hero-grid">
     <div class="hero-copy">
       <h1 class="rv">جمعية <span class="grad">تكامل</span><br>لبناء القيم والتنمية</h1>
@@ -34,6 +34,17 @@ def build_home():
     <div class="rv"><b data-to="7">7</b><span>{L(6).split(' ',1)[1]} — {L(7)}</span></div>
   </div>
   <div class="impact-cta rv"><a class="btn btn-gold" href="support.html#donate">{ic('heart')}تبرع الآن</a><a class="btn btn-soft" href="support.html#volunteer">{ic('users')}تطوع معنا</a><a class="btn btn-soft" href="join.html#apply">{ic('check')}طلب العضوية</a></div>
+</div></section>
+
+<section class="sec photo-sec"><div class="wrap">
+  <div class="center"><span class="kicker rv">{L(74)}</span><h2 class="rv">مجالات عملنا</h2></div>
+  <div class="photo-band">
+    <a class="ph rv" href="initiatives.html#s3-1" style="--img:url(../assets/img/classroom.jpg)"><span class="ph-tag">«ينابيع»</span><b>{L(77).split(':',1)[-1].strip()}</b></a>
+    <a class="ph rv" href="initiatives.html#s3-2" style="--img:url(../assets/img/workshop.jpg)"><span class="ph-tag">«منافع»</span><b>{L(84)}</b></a>
+    <a class="ph rv" href="support.html#programs" style="--img:url(../assets/img/bakery.jpg)"><span class="ph-tag">«منافع»</span><b>{L(86)}</b></a>
+    <a class="ph rv" href="support.html#donate" style="--img:url(../assets/img/distribution.jpg)"><span class="ph-tag">التكافل</span><b>{L(87)}</b></a>
+  </div>
+  <p class="ph-note rv">صور تعبيرية</p>
 </div></section>
 
 <section class="welcome" id="welcome">
@@ -371,6 +382,7 @@ def _sel(name, label, opts, req=True):
             f'<option value="">— اختر —</option>{o}</select><em class="err" aria-live="polite"></em></label>')
 
 
+PHOTO_OF = {78: 'classroom', 79: 'courtyard', 80: 'istanbul', 81: 'classroom', 84: 'workshop', 85: 'workshop', 86: 'bakery', 87: 'distribution'}
 PROGRAMS = [(78, 'yanabee', 'droplet'), (79, 'yanabee', 'heart'), (80, 'yanabee', 'users'), (81, 'yanabee', 'shield'),
             (84, 'manafea', 'briefcase'), (85, 'manafea', 'link'), (86, 'manafea', 'coins'), (87, 'manafea', 'heart')]
 
@@ -378,7 +390,7 @@ PROGRAMS = [(78, 'yanabee', 'droplet'), (79, 'yanabee', 'heart'), (80, 'yanabee'
 def build_support():
     prog_names = [L(n) for n, _, _ in PROGRAMS]
     cards = ''.join(
-        f'<article class="prog-card tilt rv {kind}"><span class="ic">{ic(icon)}</span>'
+        f'<article class="prog-card tilt rv {kind}" style="--img:url(../assets/img/{PHOTO_OF[n]}.jpg)"><span class="ic">{ic(icon)}</span>'
         f'<span class="prog-tag">{"«ينابيع»" if kind == "yanabee" else "«منافع»"}</span>'
         f'<p>{L(n)}</p><button type="button" class="btn btn-soft prog-btn" data-program="{L(n)}">{ic("heart")}ادعم هذا البرنامج</button></article>'
         for n, kind, icon in PROGRAMS)
@@ -386,8 +398,8 @@ def build_support():
     depts = ''.join(f'<label class="pick"><input type="checkbox" name="area" value="{L(116 + 2 * i)}"><span>{L(116 + 2 * i)}</span></label>' for i in range(5))
     sources = ''.join(f'<li><span class="num">{L(208 + 2 * i)}</span>{L(209 + 2 * i)}</li>' for i in range(7))
     body = f'''
-<section class="hero hero-small support-hero">
-  <div class="hero-bg" aria-hidden="true"></div><div class="hero-aurora" aria-hidden="true"></div>
+<section class="hero hero-small support-hero has-photo">
+  <div class="hero-bg" aria-hidden="true"></div>{photo_layer('distribution')}<div class="hero-aurora" aria-hidden="true"></div>
   <div class="wrap hero-grid"><div class="hero-copy">
     <span class="eyebrow rv">{ic('heart')} {L(7)}</span>
     <h1 class="rv hero-title">ساهم معنا</h1>

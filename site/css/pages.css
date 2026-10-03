@@ -98,3 +98,5 @@
 .ci .btn{margin-top:10px;min-height:42px}
 .contact-grid .join-form,.contact-grid .join-done{margin-top:0}
 @media(max-width:900px){.contact-grid{grid-template-columns:1fr}}
+.prog-card.yanabee{background:linear-gradient(170deg,rgba(11,83,69,.94) 30%,rgba(15,63,92,.88)),var(--img) center/cover}
+.prog-card.manafea{background:linear-gradient(170deg,rgba(138,59,10,.94) 30%,rgba(90,31,23,.88)),var(--img) center/cover}
