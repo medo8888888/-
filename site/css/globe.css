@@ -1,1 +1,20 @@
-/* globe — see docs/ARCHITECTURE.md */
+/* globe — structural base (visual pass follows docs/DESIGN.md) */
+:root{
+  --globe-dot:#1b4a7a;--globe-hq:#b98f16;--globe-board:#0b8a6f;--globe-hover:#152132;
+  --globe-border:rgba(21,33,50,.22);--globe-grat:rgba(21,33,50,.06);
+  --globe-ocean:#ffffff;--globe-ocean-2:#e9e4d6;--globe-atmo:rgba(27,74,122,.18);--globe-rim:rgba(27,74,122,.3);
+  --globe-arc:#b98f16;--globe-arc-2:#1b4a7a;--globe-spec:rgba(255,255,255,.5);
+}
+:root[data-theme=dark]{
+  --globe-dot:#8ab8ea;--globe-hq:#e5c158;--globe-board:#4cc0a4;--globe-hover:#ffffff;
+  --globe-border:rgba(255,255,255,.16);--globe-grat:rgba(255,255,255,.05);
+  --globe-ocean:#101826;--globe-ocean-2:#04060b;--globe-atmo:rgba(110,170,240,.3);--globe-rim:rgba(160,200,255,.45);
+  --globe-arc:#f2d47a;--globe-arc-2:#8ab8ea;--globe-spec:rgba(255,255,255,.07);
+}
+.globe-host canvas[data-globe]{touch-action:pan-y;cursor:grab}
+.globe-pin,.globe-tip{position:absolute;top:0;left:0;pointer-events:none}
+.globe-tip{opacity:0}
+.globe-tip.is-on{opacity:1}
+.globe-legend{position:absolute;inset-inline-start:0;bottom:0}
+.globe-sr,.globe-live{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.globe-home{position:absolute;top:0;inset-inline-start:0}
