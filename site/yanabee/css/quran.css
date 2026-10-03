@@ -88,7 +88,7 @@ h3 .q-paren,h4 .q-paren{display:inline;font-size:.8em}
 .q-hero .eyebrow{color:var(--q-em)}
 .q-hero h1{display:flex;flex-direction:column;align-items:center;gap:0;margin:20px 0 6px;line-height:1.2}
 .q-h1-pre{font-size:clamp(1.15rem,2.2vw,1.5rem);font-weight:600;color:var(--q-gold)}
-.q-h1-main{display:inline-block;padding:.08em .1em .22em;font-family:var(--font-q);font-weight:700;font-size:clamp(2.9rem,8vw,5.4rem);line-height:1.25;
+.q-h1-main{display:inline-block;padding:.08em .1em .22em;font-family:var(--font-q);font-weight:700;font-size:clamp(2.4rem,11vw,5.4rem);line-height:1.25;
   background:linear-gradient(175deg,color-mix(in oklab,var(--q-em-2) 80%,var(--q-gold-2)) 0%,var(--q-em) 62%);
   -webkit-background-clip:text;background-clip:text;color:transparent}
 .q-q{-webkit-text-fill-color:var(--q-gold-2);font-weight:400}
