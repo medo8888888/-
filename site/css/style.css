@@ -895,6 +895,10 @@ tbody tr:nth-child(even){background:color-mix(in srgb,var(--surface-2) 50%,trans
   .hero-num{font-size:44vw;opacity:.4}
 }
 
+.hero-home .hero-visual{max-width:380px}
+@media(max-width:760px){.hero-home .hero-visual{max-width:300px}}
+.hero-home .hero-visual .globe-legend,.hero-home .hero-visual [class*="legend"]{font-size:12px}
+
 /* ---------- reduced motion ---------- */
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
