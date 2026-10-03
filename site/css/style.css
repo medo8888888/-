@@ -532,7 +532,7 @@ td:first-child{font-weight:700;color:var(--head)}
    ========================================================================== */
 @media (hover:hover) and (pointer:fine){
   html.has-cursor,html.has-cursor *{cursor:none!important}
-  html.has-cursor :is(input,textarea,[contenteditable="true"]){cursor:text!important}
+  html.has-cursor :is(input:not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit]),textarea,[contenteditable="true"]){cursor:text!important}
   html.has-cursor select{cursor:default!important}
 }
 .cursor{position:fixed;inset:0;pointer-events:none;z-index:400;opacity:0;transition:opacity .25s}
@@ -548,7 +548,8 @@ td:first-child{font-weight:700;color:var(--head)}
 .cursor.is-link .cursor-ring{--s:58px;background:color-mix(in srgb,var(--brand) 12%,transparent);border-color:var(--gold-2)}
 .cursor.is-link .cursor-leaf{--lw:14px}
 .cursor.has-label .cursor-ring{--s:74px;background:var(--brand);border-color:transparent}
-.cursor.has-label .cursor-label{opacity:1;transform:none}
+.cursor.has-label .cursor-label{opacity:1;transform:translateY(-14px)}
+.cursor.has-label .cursor-leaf{--lw:12px}
 .cursor.is-drag .cursor-ring{--s:82px;background:color-mix(in srgb,var(--gold-2) 85%,transparent);border-color:transparent}
 .cursor.is-drag .cursor-label{color:#1a1404}
 .cursor.is-dark .cursor-ring{border-color:rgba(255,255,255,.75)}
@@ -560,9 +561,10 @@ td:first-child{font-weight:700;color:var(--head)}
 .cursor.is-text .cursor-ring,.cursor.is-text .cursor-leaf{opacity:0}
 .cursor-bit{position:fixed;width:9px;height:9px;border-radius:0 100% 0 100%;pointer-events:none}
 
-/* hero spotlight that follows the cursor */
-.hero-bg::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;opacity:var(--spot,0);transition:opacity .5s;
-  background:radial-gradient(460px circle at var(--mx,50%) var(--my,40%),color-mix(in srgb,var(--gold-2) 22%,transparent),transparent 62%)}
+/* hero spotlight that follows the cursor (moved with transform only) */
+.hero-spot{position:absolute;left:0;top:0;z-index:-1;width:920px;height:920px;margin:-460px 0 0 -460px;border-radius:50%;pointer-events:none;
+  background:radial-gradient(closest-side,color-mix(in srgb,var(--gold-2) 22%,transparent),transparent);opacity:0;transition:opacity .5s;will-change:transform}
+.hero-spot.on{opacity:1}
 
 /* ---------- reduced motion ---------- */
 @media(prefers-reduced-motion:reduce){

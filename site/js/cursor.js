@@ -18,6 +18,8 @@
   wrap.innerHTML = `<div class="cursor-ring"><span class="cursor-label"></span></div><div class="cursor-leaf">${LEAF}</div>`;
   document.body.appendChild(wrap);
   const ring = wrap.firstElementChild, label = ring.firstElementChild, leaf = wrap.lastElementChild;
+  const ac = new AbortController();
+  const opt = { passive: true, signal: ac.signal };
 
   // what the pointer is over -> cursor state
   const TEXT = 'input:not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit]), textarea, select, [contenteditable="true"]';
@@ -69,35 +71,41 @@
       const dx = (x - (r.left + r.width / 2)) / r.width, dy = (y - (r.top + r.height / 2)) / r.height;
       magnet.style.translate = `${(dx * 10).toFixed(1)}px ${(dy * 8).toFixed(1)}px`;
     }
-  }, { passive: true });
-  addEventListener('pointerover', e => setState(e.target), { passive: true });
-  document.documentElement.addEventListener('pointerleave', hide);
-  addEventListener('blur', hide);
-  document.addEventListener('visibilitychange', () => { if (document.hidden) hide(); });
+  }, opt);
+  addEventListener('pointerover', e => setState(e.target), opt);
+  document.documentElement.addEventListener('pointerleave', hide, opt);
+  addEventListener('blur', hide, opt);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) hide(); }, opt);
   addEventListener('pointerdown', e => {
     if (e.pointerType !== 'mouse') return;
     wrap.classList.add('is-down');
     if (!wrap.classList.contains('is-text')) burst(e.clientX, e.clientY);
-  });
-  addEventListener('pointerup', () => wrap.classList.remove('is-down'));
+  }, opt);
+  addEventListener('pointerup', () => wrap.classList.remove('is-down'), opt);
   // keep the state right after the DOM changes under a still pointer (menus, chat)
   addEventListener('scroll', () => {
     if (!shown) return;
     const el = document.elementFromPoint(x, y);
     if (el) setState(el);
     spotlight();
-  }, { passive: true });
+  }, opt);
 
   const heroes = [...document.querySelectorAll('.hero')];
-  let lastSpot = null;
+  const spots = heroes.map(h => {
+    const sp = document.createElement('div');
+    sp.className = 'hero-spot';
+    sp.setAttribute('aria-hidden', 'true');
+    const bg = h.querySelector('.hero-bg');
+    bg ? bg.after(sp) : h.prepend(sp);
+    return sp;
+  });
   const spotlight = () => {
-    for (const h of heroes) {
+    heroes.forEach((h, i) => {
       const r = h.getBoundingClientRect();
       const inside = shown && x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
-      if (inside) { h.style.setProperty('--mx', `${x - r.left}px`); h.style.setProperty('--my', `${y - r.top}px`); }
-      if (inside !== (h === lastSpot)) h.style.setProperty('--spot', inside ? '1' : '0');
-      if (inside) lastSpot = h; else if (h === lastSpot) lastSpot = null;
-    }
+      spots[i].classList.toggle('on', inside);
+      if (inside) spots[i].style.transform = `translate3d(${(x - r.left).toFixed(1)}px, ${(y - r.top).toFixed(1)}px, 0)`;
+    });
   };
 
   let running = false, lastX = x, lastY = y;
@@ -139,8 +147,9 @@
   // user turns on reduced motion or switches to touch: give the system cursor back
   const off = () => {
     if (calm.matches || !fine.matches) {
+      ac.abort();
       hide();
-      heroes.forEach(h => h.style.setProperty('--spot', '0'));
+      spots.forEach(sp => sp.remove());
       wrap.remove();
     }
   };
