@@ -86,6 +86,7 @@ PAGES = [
     ('join.html', 'العضوية', 'users'),
     ('faq.html', 'دليل الإجابات', 'help'),
     ('dashboard.html', 'لوحة القيادة', 'chart'),
+    ('support.html', 'ساهم معنا', 'heart'),
 ]
 PAGE_LABEL = {f: t for f, t, _ in PAGES}
 
@@ -267,6 +268,7 @@ def page(fn, title, body, desc, globe=False, css=(), js=()):
       {links}
     </nav>
     <div class="actions">
+      <a class="btn-donate" href="support.html#donate">{ic('heart')}<span>تبرع الآن</span></a>
       <button type="button" class="search-btn" data-open-palette aria-label="ابحث في الموقع (Ctrl+K)" aria-keyshortcuts="Control+K Meta+K">{ic('search')}<span class="search-label">ابحث في الكتيب</span><kbd class="kbd-hint">⌘K</kbd></button>
       <button type="button" class="icon-btn theme-toggle" aria-label="تبديل الوضع الليلي والنهاري" title="الوضع الليلي / النهاري">{ic('sun', 'i sun')}{ic('moon', 'i moon')}</button>
       <button type="button" class="btn-ai" data-open-chat>{ic('sparkles')}<span>اسأل المساعد</span></button>

@@ -25,6 +25,17 @@ def build_home():
   <a class="scroll-cue" href="#welcome" aria-label="انتقل للأسفل"><span></span></a>
 </section>
 
+<section class="impact-band"><div class="wrap">
+  <div class="impact-grid">
+    <div class="rv"><b data-to="2">2</b><span>{L(4)}</span></div>
+    <div class="rv"><b data-to="8">8</b><span>برامج ميدانية</span></div>
+    <div class="rv"><b data-to="5">5</b><span>{L(113).split('  ')[-1]}</span></div>
+    <div class="rv"><b data-to="4">4</b><span>{L(158)}</span></div>
+    <div class="rv"><b data-to="7">7</b><span>{L(6).split(' ',1)[1]} — {L(7)}</span></div>
+  </div>
+  <div class="impact-cta rv"><a class="btn btn-gold" href="support.html#donate">{ic('heart')}تبرع الآن</a><a class="btn btn-soft" href="support.html#volunteer">{ic('users')}تطوع معنا</a><a class="btn btn-soft" href="join.html#apply">{ic('check')}طلب العضوية</a></div>
+</div></section>
+
 <section class="welcome" id="welcome">
   <div class="wrap welcome-grid">
     <div class="welcome-card tilt rv" aria-hidden="true"><img src="assets/logo.png" alt="" width="260" height="260"></div>
@@ -346,6 +357,147 @@ def build_404():
     page('404.html', 'الصفحة غير موجودة', body, L(42))
 
 
+def _fld(name, label, typ='text', req=True, extra='', full=False):
+    r = ' required' if req else ''
+    star = '<b aria-hidden="true">*</b>' if req else '<small>(اختياري)</small>'
+    return (f'<label class="fld{" full" if full else ""}"><span>{label} {star}</span>'
+            f'<input name="{name}" type="{typ}"{r}{extra}><em class="err" aria-live="polite"></em></label>')
+
+
+def _sel(name, label, opts, req=True):
+    o = ''.join(f'<option>{x}</option>' for x in opts)
+    star = '<b aria-hidden="true">*</b>' if req else '<small>(اختياري)</small>'
+    return (f'<label class="fld"><span>{label} {star}</span><select name="{name}"{" required" if req else ""}>'
+            f'<option value="">— اختر —</option>{o}</select><em class="err" aria-live="polite"></em></label>')
+
+
+PROGRAMS = [(78, 'yanabee', 'droplet'), (79, 'yanabee', 'heart'), (80, 'yanabee', 'users'), (81, 'yanabee', 'shield'),
+            (84, 'manafea', 'briefcase'), (85, 'manafea', 'link'), (86, 'manafea', 'coins'), (87, 'manafea', 'heart')]
+
+
+def build_support():
+    prog_names = [L(n) for n, _, _ in PROGRAMS]
+    cards = ''.join(
+        f'<article class="prog-card tilt rv {kind}"><span class="ic">{ic(icon)}</span>'
+        f'<span class="prog-tag">{"«ينابيع»" if kind == "yanabee" else "«منافع»"}</span>'
+        f'<p>{L(n)}</p><button type="button" class="btn btn-soft prog-btn" data-program="{L(n)}">{ic("heart")}ادعم هذا البرنامج</button></article>'
+        for n, kind, icon in PROGRAMS)
+    amounts = ''.join(f'<label class="pick amt"><input type="radio" name="amount_preset" value="{a}"><span>{a}</span></label>' for a in (100, 250, 500, 1000, 2500))
+    depts = ''.join(f'<label class="pick"><input type="checkbox" name="area" value="{L(116 + 2 * i)}"><span>{L(116 + 2 * i)}</span></label>' for i in range(5))
+    sources = ''.join(f'<li><span class="num">{L(208 + 2 * i)}</span>{L(209 + 2 * i)}</li>' for i in range(7))
+    body = f'''
+<section class="hero hero-small support-hero">
+  <div class="hero-bg" aria-hidden="true"></div><div class="hero-aurora" aria-hidden="true"></div>
+  <div class="wrap hero-grid"><div class="hero-copy">
+    <span class="eyebrow rv">{ic('heart')} {L(7)}</span>
+    <h1 class="rv hero-title">ساهم معنا</h1>
+    <p class="sub rv">{L(2)} — {L(3)}</p>
+    <div class="btns rv"><a class="btn btn-gold" href="#donate">{ic('heart')}تبرع الآن</a><a class="btn btn-soft" href="#volunteer">{ic('users')}تطوع معنا</a><a class="btn btn-soft" href="join.html#apply">{ic('check')}طلب العضوية</a><a class="btn btn-soft" href="#contact">{ic('send')}تواصل معنا</a></div>
+  </div></div>
+</section>
+{ticker()}
+<section class="sec" id="programs"><div class="wrap">
+  <div class="center"><span class="kicker rv">{L(73)}</span><h2 class="rv">برامج تحتاج دعمك</h2><p class="lead rv center-text">{L(75)}</p></div>
+  <div class="prog-grid">{cards}</div>
+</div></section>
+<section class="sec alt" id="donate"><div class="wrap">
+  <div class="donate-grid">
+    <div class="donate-info rv">
+      <span class="kicker">{L(207)}</span>
+      <h2>تبرّع لدعم البرامج</h2>
+      <ol class="src-list">{sources}</ol>
+    </div>
+    <div>
+      <form class="join-form donate-form rv" novalidate data-email="" data-title="تعهّد تبرّع">
+        <fieldset><legend><span class="step">1</span> قيمة التبرع</legend>
+          <div class="picks amounts">{amounts}</div>
+          <div class="fgrid">
+            {_fld('amount', 'المبلغ', 'number', extra=' min="1" step="1" inputmode="numeric" dir="ltr"')}
+            {_sel('currency', 'العملة', ['TRY ليرة تركية', 'USD دولار أمريكي', 'EUR يورو'])}
+            {_sel('frequency', 'نوع التبرع', ['مرة واحدة', 'شهري', 'سنوي'])}
+            {_sel('program', 'البرنامج', ['حيث الحاجة أكبر'] + prog_names)}
+          </div>
+        </fieldset>
+        <fieldset><legend><span class="step">2</span> بيانات المتبرع</legend>
+          <div class="fgrid">
+            {_fld('full_name', 'الاسم', extra=' autocomplete="name"')}
+            {_fld('phone', 'رقم الجوال (مع رمز الدولة)', 'tel', extra=' autocomplete="tel" dir="ltr" placeholder="+90 5xx xxx xx xx"')}
+            {_fld('email', 'البريد الإلكتروني', 'email', req=False, extra=' autocomplete="email" dir="ltr"')}
+          </div>
+          <label class="agree"><input type="checkbox" name="agree" required><span>أرغب في التبرع للجمعية، وأوافق على تواصل الجمعية معي لاستكمال إجراءات التبرع ({L(217)}).</span></label>
+          <em class="err agree-err" aria-live="polite"></em>
+        </fieldset>
+        <div class="factions"><button class="btn btn-gold" type="submit">{ic('heart')}تأكيد التبرع</button></div>
+      </form>
+      <div class="join-done" hidden tabindex="-1">
+        <div class="done-head"><span class="ic big">{ic('heart')}</span><div><h3>جزاك الله خيراً — تم تجهيز تعهّد التبرع</h3><p>احفظ التعهّد أو اطبعه، وسلّمه للجمعية لإتمام التبرع.</p></div></div>
+        <div class="done-sheet"></div>
+        <div class="factions"><button class="btn btn-primary" type="button" data-join-print>{ic('book')}طباعة / حفظ PDF</button><a class="btn btn-gold" data-join-mail hidden>{ic('send')}إرسال بالبريد الإلكتروني</a><button class="btn btn-soft" type="button" data-join-edit>تعديل</button></div>
+      </div>
+    </div>
+  </div>
+</div></section>
+<section class="sec" id="volunteer"><div class="wrap">
+  <div class="center"><span class="kicker rv">{L(113)}</span><h2 class="rv">تطوّع معنا</h2><p class="lead rv center-text">{L(326)}</p></div>
+  <form class="join-form rv" novalidate data-email="" data-title="طلب تطوّع">
+    <fieldset><legend><span class="step">1</span> بياناتك</legend>
+      <div class="fgrid">
+        {_fld('full_name', 'الاسم الكامل', extra=' autocomplete="name" minlength="5"')}
+        {_fld('phone', 'رقم الجوال (مع رمز الدولة)', 'tel', extra=' autocomplete="tel" dir="ltr" placeholder="+90 5xx xxx xx xx"')}
+        {_fld('email', 'البريد الإلكتروني', 'email', extra=' autocomplete="email" dir="ltr"')}
+        {_fld('city', 'المدينة / الولاية')}
+        {_fld('skills', 'المهارات والخبرات')}
+        {_sel('hours', 'الوقت المتاح أسبوعياً', ['أقل من 3 ساعات', '3 – 6 ساعات', '6 – 10 ساعات', 'أكثر من 10 ساعات'])}
+      </div>
+    </fieldset>
+    <fieldset><legend><span class="step">2</span> القسم الذي تود التطوع فيه</legend>
+      <div class="picks">{depts}</div>
+      <label class="agree"><input type="checkbox" name="agree" required><span>{L(236)}</span></label>
+      <em class="err agree-err" aria-live="polite"></em>
+    </fieldset>
+    <div class="factions"><button class="btn btn-primary" type="submit">{ic('users')}إرسال طلب التطوع</button></div>
+  </form>
+  <div class="join-done" hidden tabindex="-1">
+    <div class="done-head"><span class="ic big">{ic('check')}</span><div><h3>شكراً لك — تم تجهيز طلب التطوع</h3><p>احفظ الطلب أو اطبعه وسلّمه للجمعية.</p></div></div>
+    <div class="done-sheet"></div>
+    <div class="factions"><button class="btn btn-primary" type="button" data-join-print>{ic('book')}طباعة / حفظ PDF</button><a class="btn btn-gold" data-join-mail hidden>{ic('send')}إرسال بالبريد الإلكتروني</a><button class="btn btn-soft" type="button" data-join-edit>تعديل</button></div>
+  </div>
+</div></section>
+<section class="sec alt" id="contact"><div class="wrap">
+  <div class="center"><span class="kicker rv">{L(45)}</span><h2 class="rv">تواصل معنا</h2><p class="lead rv center-text">{L(46)} — {L(48)}</p></div>
+  <div class="contact-grid">
+    <div class="contact-info rv">
+      <div class="ci"><span class="ic">{ic('pin')}</span><div><b>{L(45)}</b><span>{L(46)}</span></div></div>
+      <div class="ci"><span class="ic">{ic('globe')}</span><div><b>{L(47)}</b><span>{L(48)}</span></div></div>
+      <div class="ci"><span class="ic">{ic('sparkles')}</span><div><b>اسأل المساعد الذكي</b><span>إجابات فورية من نص الكتيب.</span><button class="btn btn-soft" type="button" data-open-chat>ابدأ المحادثة</button></div></div>
+    </div>
+    <div>
+      <form class="join-form rv" novalidate data-email="" data-title="رسالة تواصل">
+        <fieldset><legend><span class="step">{ic('send')}</span> أرسل رسالتك</legend>
+          <div class="fgrid">
+            {_fld('full_name', 'الاسم', extra=' autocomplete="name"')}
+            {_fld('phone', 'رقم الجوال (مع رمز الدولة)', 'tel', extra=' autocomplete="tel" dir="ltr"')}
+            {_fld('email', 'البريد الإلكتروني', 'email', req=False, extra=' autocomplete="email" dir="ltr"')}
+            {_sel('topic', 'الموضوع', ['استفسار عام', 'العضوية', 'التبرع', 'التطوع', 'الشراكات والتعاون'])}
+          </div>
+          <label class="fld full"><span>الرسالة <b aria-hidden="true">*</b></span><textarea name="message" rows="5" required minlength="10" maxlength="1500"></textarea><em class="err" aria-live="polite"></em></label>
+          <label class="agree"><input type="checkbox" name="agree" required><span>أوافق على تواصل الجمعية معي بخصوص رسالتي.</span></label>
+          <em class="err agree-err" aria-live="polite"></em>
+        </fieldset>
+        <div class="factions"><button class="btn btn-primary" type="submit">{ic('send')}إرسال الرسالة</button></div>
+      </form>
+      <div class="join-done" hidden tabindex="-1">
+        <div class="done-head"><span class="ic big">{ic('check')}</span><div><h3>تم تجهيز رسالتك</h3><p>احفظها أو اطبعها، أو أرسلها بالبريد عند توفره.</p></div></div>
+        <div class="done-sheet"></div>
+        <div class="factions"><button class="btn btn-primary" type="button" data-join-print>{ic('book')}طباعة / حفظ PDF</button><a class="btn btn-gold" data-join-mail hidden>{ic('send')}إرسال بالبريد الإلكتروني</a><button class="btn btn-soft" type="button" data-join-edit>تعديل</button></div>
+      </div>
+    </div>
+  </div>
+</div></section>
+{cta()}'''
+    page('support.html', 'ساهم معنا', body, L(75), js=('js/join.js',))
+
+
 def build_pages():
     build_home()
     build_about()
@@ -355,3 +507,4 @@ def build_pages():
     build_join()
     build_faq()
     build_404()
+    build_support()
