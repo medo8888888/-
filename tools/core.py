@@ -97,6 +97,11 @@ ICONS = {
     'trash': '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
     'arrow-up': '<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>',
     'download': '<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>',
+    'calc': '<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8"/><path d="M8 11h.01M12 11h.01M16 11h.01M8 15h.01M12 15h.01M16 15h.01M8 19h.01M12 19h4"/>',
+    'gift': '<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C10 3 12 8 12 8s2-5 4.5-5a2.5 2.5 0 0 1 0 5"/>',
+    'share': '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.59 13.51 6.83 3.98M15.41 6.51l-6.82 3.98"/>',
+    'cart': '<circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>',
+    'file': '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 13H8M16 17H8M16 13h-2"/>',
     'arrow-left': '<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
     'arrow-right': '<path d="m12 5 7 7-7 7"/><path d="M5 12h14"/>',
     'menu': '<line x1="4" x2="20" y1="7" y2="7"/><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="17" y2="17"/>',
@@ -131,6 +136,7 @@ PAGES = [
     ('support.html', 'ساهم معنا', 'heart'),
 ]
 PAGE_LABEL = {f: t for f, t, _ in PAGES}
+PAGE_LABEL['transparency.html'] = 'الشفافية'
 
 # section number -> (number line, title line, subtitle line, page, colour token)
 SECTIONS = {
@@ -284,17 +290,18 @@ def page(fn, title, body, desc, globe=False, css=(), js=()):
         sb = f'<small>{sub}</small>' if sub else ''
         return f'<a class="mm-item" href="{h}"{a}><span class="mm-ic">{ic(icon)}</span><span><b>{t}</b>{sb}</span></a>'
     groups = [
-        ('عن تكامل', 'info', ['about.html', 'governance.html', 'expansion.html', 'dashboard.html', 'faq.html'], [
+        ('عن تكامل', 'info', ['about.html', 'governance.html', 'expansion.html', 'dashboard.html', 'faq.html', 'transparency.html'], [
             mi('about.html', 'من نحن', 'info', L(41)), mi('governance.html', 'الحوكمة والتمويل', 'shield', L(170)),
             mi('expansion.html', 'خطة التوسع', 'globe', L(7)), mi('dashboard.html', 'لوحة القيادة', 'chart', L(2)),
-            mi('faq.html', 'دليل الإجابات', 'help', L(378)), mi('index.html#toc', L(12), 'book', L(1))]),
+            mi('faq.html', 'دليل الإجابات', 'help', L(378)), mi('transparency.html', 'الشفافية', 'file', L(206)),
+            mi('index.html#toc', L(12), 'book', L(1))]),
         ('البرامج', 'sprout', ['initiatives.html'], [
             mi('initiatives.html#s3-1', 'مبادرة «ينابيع»', 'droplet', L(77).split(':', 1)[-1].strip()),
             mi('initiatives.html#s3-2', 'مبادرة «منافع»', 'coins', L(83).split(':', 1)[-1].strip()),
             mi('initiatives.html#s3-3', 'التنسيق والتكامل المؤسسي', 'link', L(90)),
             mi('initiatives.html#s6', L(158), 'users', L(159)), mi('support.html#programs', 'برامج تحتاج دعمك', 'heart')]),
         ('شارك معنا', 'heart', ['support.html', 'join.html'], [
-            mi('support.html#donate', 'تبرع الآن', 'heart', L(211)), mi('support.html#volunteer', 'تطوّع معنا', 'users', L(326)[:70] + '…'),
+            mi('support.html#donate', 'تبرع الآن', 'heart', L(211)), mi('support.html#zakat', 'حاسبة الزكاة', 'calc'), mi('support.html#volunteer', 'تطوّع معنا', 'users', L(326)[:70] + '…'),
             mi('join.html#apply', 'طلب العضوية', 'check', L(184)), mi('join.html#s9', L(228), 'pinmark', L(229))]),
     ]
     mega = '<a class="mtop' + (' on' if fn == 'index.html' else '') + '" href="index.html">الرئيسية</a>'
@@ -307,7 +314,7 @@ def page(fn, title, body, desc, globe=False, css=(), js=()):
     sheet = ''.join(
         f'<a class="sheet-item{" active" if h == fn else ""}" href="{h}">{ic(i)}<span>{t}</span></a>'
         for h, t, i in PAGES)
-    foot = ''.join(f'<a href="{h}">{t}</a>' for h, t, _ in PAGES)
+    foot = ''.join(f'<a href="{h}">{t}</a>' for h, t, _ in PAGES) + '<a href="transparency.html">الشفافية</a><a href="support.html#zakat">حاسبة الزكاة</a>'
     toc_foot = ''.join(f'<a href="{sec_link(n)}">{n}. {t}</a>' for n, t in toc_items()[:7])
     toc_foot2 = ''.join(f'<a href="{sec_link(n)}">{n}. {t}</a>' for n, t in toc_items()[7:])
 
@@ -359,6 +366,7 @@ def page(fn, title, body, desc, globe=False, css=(), js=()):
 <script src="js/palette.js" defer></script>
 <script src="js/cursor.js" defer></script>
 <script src="js/pwa.js" defer></script>
+<script src="js/share.js" defer></script>
 {globe_js}{extra_js}</head>
 <body data-page="{fn}">
 <div class="progress" aria-hidden="true"></div>

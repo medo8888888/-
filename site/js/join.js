@@ -64,13 +64,15 @@
     });
     const interests = data.getAll('interest');
     if (interests.length) rows.push(['مجالات المشاركة', interests.join('، ')]);
-    const today = new Date().toLocaleDateString('ar', { year: 'numeric', month: 'long', day: 'numeric' });
+    if (form._extraRows) rows.push(...form._extraRows());
+    const today = new Date().toLocaleDateString(document.documentElement.lang || 'ar', { year: 'numeric', month: 'long', day: 'numeric' });
     done.querySelector('.done-sheet').innerHTML =
       `<div class="sheet-title"><img src="assets/logo.png" alt="" width="56" height="56"><div><b>جمعية تكامل لبناء القيم والتنمية</b><span>${esc(form.dataset.title || 'استمارة طلب العضوية')} · ${esc(today)}</span></div></div>` +
       `<dl>${rows.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>` +
       `<p class="sheet-agree">✔ أقرّ مقدّم الطلب بصحة البيانات والتزامه بأهداف الجمعية ونظامها الأساسي وواجبات العضو.</p>` +
       `<div class="sheet-sign"><span>توقيع مقدّم الطلب: ..................</span><span>اعتماد الجمعية: ..................</span></div>`;
 
+    if (form._afterSheet) form._afterSheet(done);
     const to = form.dataset.email;
     const mail = done.querySelector('[data-join-mail]');
     if (to) {

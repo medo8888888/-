@@ -409,7 +409,8 @@ def build_support():
     cards = ''.join(
         f'<article class="prog-card tilt rv {kind}" style="--img:url(../assets/img/{PHOTO_OF[n]}.jpg)"><span class="ic">{ic(icon)}</span>'
         f'<span class="prog-tag">{"«ينابيع»" if kind == "yanabee" else "«منافع»"}</span>'
-        f'<p>{L(n)}</p><button type="button" class="btn btn-soft prog-btn" data-program="{L(n)}">{ic("heart")}ادعم هذا البرنامج</button></article>'
+        f'<p>{L(n)}</p><div class="prog-actions"><button type="button" class="btn btn-soft prog-btn" data-program="{L(n)}">{ic("heart")}ادعم هذا البرنامج</button>'
+        f'<button type="button" class="icon-btn share-btn" data-share data-share-title="{L(n)}" data-share-url="support.html#programs" aria-label="مشاركة البرنامج">{ic("share")}</button></div></article>'
         for n, kind, icon in PROGRAMS)
     amounts = ''.join(f'<label class="pick amt"><input type="radio" name="amount_preset" value="{a}"><span>{a}</span></label>' for a in (100, 250, 500, 1000, 2500))
     depts = ''.join(f'<label class="pick"><input type="checkbox" name="area" value="{L(116 + 2 * i)}"><span>{L(116 + 2 * i)}</span></label>' for i in range(5))
@@ -421,13 +422,46 @@ def build_support():
     <span class="eyebrow rv">{ic('heart')} {L(7)}</span>
     <h1 class="rv hero-title">ساهم معنا</h1>
     <p class="sub rv">{L(2)} — {L(3)}</p>
-    <div class="btns rv"><a class="btn btn-gold" href="#donate">{ic('heart')}تبرع الآن</a><a class="btn btn-soft" href="#volunteer">{ic('users')}تطوع معنا</a><a class="btn btn-soft" href="join.html#apply">{ic('check')}طلب العضوية</a><a class="btn btn-soft" href="#contact">{ic('send')}تواصل معنا</a></div>
+    <div class="btns rv"><a class="btn btn-gold" href="#donate">{ic('heart')}تبرع الآن</a><a class="btn btn-soft" href="#volunteer">{ic('users')}تطوع معنا</a><a class="btn btn-soft" href="join.html#apply">{ic('check')}طلب العضوية</a><a class="btn btn-soft" href="#zakat">{ic('calc')}حاسبة الزكاة</a><a class="btn btn-soft" href="#contact">{ic('send')}تواصل معنا</a></div>
   </div></div>
 </section>
 {ticker()}
 <section class="sec" id="programs"><div class="wrap">
   <div class="center"><span class="kicker rv">{L(73)}</span><h2 class="rv">برامج تحتاج دعمك</h2><p class="lead rv center-text">{L(75)}</p></div>
   <div class="prog-grid">{cards}</div>
+</div></section>
+<section class="sec" id="zakat"><div class="wrap">
+  <div class="center"><span class="kicker rv">{ic('calc')} أداة مجانية</span><h2 class="rv">حاسبة الزكاة</h2>
+    <p class="lead rv center-text">احسب زكاة مالك في دقيقة: أدخل ما تملكه وسعر غرام الذهب اليوم، وستظهر لك قيمة الزكاة مباشرة.</p></div>
+  <form class="zakat rv" data-zakat novalidate>
+    <div class="zk-grid">
+      <div class="zk-card">
+        <h3>{ic('coins')} الإعدادات</h3>
+        <label class="fld"><span>العملة</span><select name="zk_cur"><option>TRY</option><option>USD</option><option>EUR</option><option>SAR</option><option>QAR</option><option>KWD</option><option>AED</option></select></label>
+        <label class="fld"><span>أساس النصاب</span><select name="zk_basis"><option value="gold">الذهب (85 غراماً)</option><option value="silver">الفضة (595 غراماً)</option></select></label>
+        <label class="fld"><span>سعر غرام الذهب اليوم</span><input name="zk_gold_price" type="number" min="0" step="any" inputmode="decimal" dir="ltr" placeholder="0"></label>
+        <label class="fld"><span>سعر غرام الفضة اليوم</span><input name="zk_silver_price" type="number" min="0" step="any" inputmode="decimal" dir="ltr" placeholder="0"></label>
+      </div>
+      <div class="zk-card">
+        <h3>{ic('chart')} ما تملكه منذ عام هجري</h3>
+        <label class="fld"><span>النقد في اليد والحسابات البنكية</span><input name="zk_cash" type="number" min="0" step="any" inputmode="decimal" dir="ltr" placeholder="0"></label>
+        <label class="fld"><span>الذهب (بالغرام)</span><input name="zk_gold_g" type="number" min="0" step="any" inputmode="decimal" dir="ltr" placeholder="0"></label>
+        <label class="fld"><span>الفضة (بالغرام)</span><input name="zk_silver_g" type="number" min="0" step="any" inputmode="decimal" dir="ltr" placeholder="0"></label>
+        <label class="fld"><span>عروض التجارة والأسهم والاستثمارات</span><input name="zk_trade" type="number" min="0" step="any" inputmode="decimal" dir="ltr" placeholder="0"></label>
+        <label class="fld"><span>ديون لك مرجوّة السداد</span><input name="zk_recv" type="number" min="0" step="any" inputmode="decimal" dir="ltr" placeholder="0"></label>
+        <label class="fld"><span>ديون عليك حالّة (تُخصم)</span><input name="zk_debt" type="number" min="0" step="any" inputmode="decimal" dir="ltr" placeholder="0"></label>
+      </div>
+      <div class="zk-card zk-result" aria-live="polite">
+        <h3>{ic('check')} النتيجة</h3>
+        <div class="zk-row"><span>إجمالي المال الخاضع للزكاة</span><b data-zk="total">—</b></div>
+        <div class="zk-row"><span>قيمة النصاب</span><b data-zk="nisab">—</b></div>
+        <div class="zk-big"><span>زكاتك المستحقة (2.5%)</span><b data-zk="zakat">—</b></div>
+        <p class="zk-status" data-zk="status">أدخل سعر غرام الذهب أو الفضة لمعرفة النصاب.</p>
+        <button type="button" class="btn btn-gold" data-zk-donate disabled>{ic('heart')}تبرّع بهذا المبلغ</button>
+      </div>
+    </div>
+    <p class="zk-note">الحاسبة للاستئناس فقط: تُحسب الزكاة بنسبة 2.5% (ربع العشر) إذا بلغ المال النصاب ومرّ عليه حول هجري كامل. لحالتك الخاصة راجع أهل العلم، وتأكّد من الجمعية من آلية استلام أموال الزكاة وصرفها.</p>
+  </form>
 </div></section>
 <section class="sec alt" id="donate"><div class="wrap">
   <div class="donate-grid">
@@ -442,12 +476,37 @@ def build_support():
           <div class="picks amounts">{amounts}</div>
           <div class="fgrid">
             {_fld('amount', 'المبلغ', 'number', extra=' min="1" step="1" inputmode="numeric" dir="ltr"')}
-            {_sel('currency', 'العملة', ['TRY ليرة تركية', 'USD دولار أمريكي', 'EUR يورو'])}
+            {_sel('currency', 'العملة', ['TRY ليرة تركية', 'USD دولار أمريكي', 'EUR يورو', 'SAR ريال سعودي', 'QAR ريال قطري', 'KWD دينار كويتي', 'AED درهم إماراتي'])}
             {_sel('frequency', 'نوع التبرع', ['مرة واحدة', 'شهري', 'سنوي'])}
             {_sel('program', 'البرنامج', ['حيث الحاجة أكبر'] + prog_names)}
           </div>
+          <div class="basket" data-basket>
+            <button type="button" class="btn btn-soft basket-add" data-basket-add>{ic('cart')}أضف إلى سلة التبرعات</button>
+            <p class="basket-hint">يمكنك دعم أكثر من برنامج في تعهّد واحد: اختر البرنامج والمبلغ ثم أضفه إلى السلة.</p>
+            <div class="basket-box" hidden>
+              <div class="basket-head"><b>{ic('cart')} سلة التبرعات</b><span class="basket-count"></span></div>
+              <ul class="basket-list"></ul>
+              <div class="basket-total"><span>الإجمالي</span><b data-basket-total></b></div>
+            </div>
+          </div>
         </fieldset>
-        <fieldset><legend><span class="step">2</span> بيانات المتبرع</legend>
+        <fieldset class="gift-set"><legend><span class="step">2</span> لمن هذا التبرع؟</legend>
+          <div class="picks gift-picks">
+            <label class="pick"><input type="radio" name="gift_mode" value="self" checked><span>{ic('heart')}عن نفسي</span></label>
+            <label class="pick"><input type="radio" name="gift_mode" value="behalf"><span>{ic('users')}عن شخص آخر</span></label>
+            <label class="pick"><input type="radio" name="gift_mode" value="gift"><span>{ic('gift')}إهداء لشخص عزيز</span></label>
+          </div>
+          <div class="fgrid gift-fields" data-gift="behalf" hidden>
+            {_fld('behalf_name', 'اسم من تتبرع عنه', extra=' disabled')}
+          </div>
+          <div class="fgrid gift-fields" data-gift="gift" hidden>
+            {_fld('gift_to', 'اسم المُهدى إليه', extra=' disabled')}
+            {_fld('gift_from', 'الاسم الذي يظهر على البطاقة', req=False, extra=' disabled')}
+            <label class="fld full"><span>رسالة الإهداء <small>(اختياري)</small></span><textarea name="gift_msg" rows="2" maxlength="240" disabled></textarea><em class="err" aria-live="polite"></em></label>
+          </div>
+          <p class="gift-note">سنجهّز لك بطاقة إهداء أنيقة باسم من تحب لتطبعها أو ترسلها له مع التعهّد.</p>
+        </fieldset>
+        <fieldset><legend><span class="step">3</span> بيانات المتبرع</legend>
           <div class="fgrid">
             {_fld('full_name', 'الاسم', extra=' autocomplete="name"')}
             {_fld('phone', 'رقم الجوال (مع رمز الدولة)', 'tel', extra=' autocomplete="tel" dir="ltr" placeholder="+90 5xx xxx xx xx"')}
@@ -461,6 +520,7 @@ def build_support():
       <div class="join-done" hidden tabindex="-1">
         <div class="done-head"><span class="ic big">{ic('heart')}</span><div><h3>جزاك الله خيراً — تم تجهيز تعهّد التبرع</h3><p>احفظ التعهّد أو اطبعه، وسلّمه للجمعية لإتمام التبرع.</p></div></div>
         <div class="done-sheet"></div>
+        <div class="gift-card" hidden></div>
         <div class="factions"><button class="btn btn-primary" type="button" data-join-print>{ic('book')}طباعة / حفظ PDF</button><a class="btn btn-gold" data-join-mail hidden>{ic('send')}إرسال بالبريد الإلكتروني</a><button class="btn btn-soft" type="button" data-join-edit>تعديل</button></div>
       </div>
     </div>
@@ -525,10 +585,61 @@ def build_support():
   </div>
 </div></section>
 {cta()}'''
-    page('support.html', 'ساهم معنا', body, L(75), js=('js/join.js',))
+    page('support.html', 'ساهم معنا', body, L(75), js=('js/donate.js', 'js/join.js'))
+
+
+# ======================================================== TRANSPARENCY ===
+def build_transparency():
+    def col(title_l, items, kind, img):
+        return (f'<article class="tp-col rv {kind}" style="--img:url(../assets/img/{img}.jpg)"><div class="tp-photo" aria-hidden="true"></div>'
+                f'<div class="tp-body"><h3>{L(title_l)}</h3>{ul(items, "diamond" if kind == "manafea" else "check")}</div></article>')
+    sources = ''.join(f'<li><span class="num">{L(208 + 2 * i)}</span>{L(209 + 2 * i)}</li>' for i in range(7))
+    org = ''.join(
+        f'<article class="org-card tilt rv"><div class="org-big">{L(a)}</div><div><h3>{L(a + 1)} <small dir="ltr">{L(a + 2)}</small></h3><p>{L(a + 3)}</p></div></article>'
+        for a in (172, 180))
+    body = f'''
+<section class="hero hero-small has-photo">
+  <div class="hero-bg" aria-hidden="true"></div>{photo_layer('board')}<div class="hero-aurora" aria-hidden="true"></div>
+  <div class="wrap hero-grid"><div class="hero-copy">
+    <span class="eyebrow rv">{ic('file')} {L(206)}</span>
+    <h1 class="rv hero-title">الشفافية</h1>
+    <p class="sub rv">كيف تُموَّل الجمعية، وأين تذهب التبرعات، ومن يراقب ذلك — من نص الكتيب التعريفي.</p>
+    <div class="btns rv"><a class="btn btn-gold" href="support.html#donate">{ic('heart')}تبرع الآن</a><a class="btn btn-soft" href="#reports">{ic('file')}التقارير السنوية</a>
+      <button type="button" class="btn btn-soft" data-share data-share-title="الشفافية — جمعية تكامل لبناء القيم والتنمية">{ic('share')}مشاركة</button></div>
+  </div></div>
+</section>
+{ticker()}
+<section class="sec" id="where"><div class="wrap">
+  <div class="center"><span class="kicker rv">{L(74)}</span><h2 class="rv">أين تذهب تبرعاتك</h2><p class="lead rv center-text">{L(75)}</p></div>
+  <div class="tp-cols">{col(76, LS(78, 81), 'yanabee', 'reading')}{col(82, LS(84, 87), 'manafea', 'workshop')}</div>
+</div></section>
+<section class="sec alt" id="income"><div class="wrap">
+  <div class="donate-grid">
+    <div class="donate-info rv"><span class="kicker">{L(205)}</span><h2>{L(207)}</h2><ol class="src-list">{sources}</ol></div>
+    <div class="tp-stack">
+      <h3 class="rv tp-sub">{L(222)}</h3>
+      {card(L(223), L(224), 'scale')}{card(L(225), L(226), 'tree')}
+    </div>
+  </div>
+</div></section>
+<section class="sec" id="oversight"><div class="wrap">
+  <div class="center"><span class="kicker rv">{L(170)}</span><h2 class="rv">الرقابة والمساءلة</h2></div>
+  <div class="org tp-org">{org}</div>
+  <div class="grid g2" style="margin-top:22px">{card(L(202), L(203), 'chart')}{card(L(245), L(246), 'link')}</div>
+</div></section>
+<section class="sec alt" id="reports"><div class="wrap">
+  <div class="tp-reports rv">
+    <span class="ic big">{ic('file')}</span>
+    <div><h2>التقارير السنوية والمالية</h2><p>ستُنشر هنا التقارير المالية والسنوية للجمعية فور صدورها، ليطّلع عليها الأعضاء والمتبرعون.</p></div>
+    <a class="btn btn-soft" href="support.html#contact">{ic('send')}استفسار عن التقارير</a>
+  </div>
+</div></section>
+{cta()}'''
+    page('transparency.html', 'الشفافية', body, L(206))
 
 
 def build_pages():
+    build_transparency()
     build_home()
     build_about()
     build_initiatives()

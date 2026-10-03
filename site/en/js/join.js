@@ -64,13 +64,15 @@
     });
     const interests = data.getAll('interest');
     if (interests.length) rows.push(['Areas of participation', interests.join(', ')]);
-    const today = new Date().toLocaleDateString('ar', { year: 'numeric', month: 'long', day: 'numeric' });
+    if (form._extraRows) rows.push(...form._extraRows());
+    const today = new Date().toLocaleDateString(document.documentElement.lang || 'ar', { year: 'numeric', month: 'long', day: 'numeric' });
     done.querySelector('.done-sheet').innerHTML =
       `<div class="sheet-title"><img src="assets/logo.png" alt="" width="56" height="56"><div><b>Takamul Association for Building Values and Development</b><span>${esc(form.dataset.title || 'Membership Application Form')} · ${esc(today)}</span></div></div>` +
       `<dl>${rows.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>` +
       `<p class="sheet-agree">✔ The applicant confirms that the information is accurate and commits to the Association’s objectives, its bylaws and the member duties.</p>` +
       `<div class="sheet-sign"><span>Applicant’s signature: ..................</span><span>Association approval: ..................</span></div>`;
 
+    if (form._afterSheet) form._afterSheet(done);
     const to = form.dataset.email;
     const mail = done.querySelector('[data-join-mail]');
     if (to) {

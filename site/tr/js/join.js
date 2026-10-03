@@ -64,13 +64,15 @@
     });
     const interests = data.getAll('interest');
     if (interests.length) rows.push(['Katılım alanları', interests.join(', ')]);
-    const today = new Date().toLocaleDateString('ar', { year: 'numeric', month: 'long', day: 'numeric' });
+    if (form._extraRows) rows.push(...form._extraRows());
+    const today = new Date().toLocaleDateString(document.documentElement.lang || 'ar', { year: 'numeric', month: 'long', day: 'numeric' });
     done.querySelector('.done-sheet').innerHTML =
       `<div class="sheet-title"><img src="assets/logo.png" alt="" width="56" height="56"><div><b>Takamul Değerler İnşası ve Kalkınma Derneği</b><span>${esc(form.dataset.title || 'Üyelik Başvuru Formu')} · ${esc(today)}</span></div></div>` +
       `<dl>${rows.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>` +
       `<p class="sheet-agree">✔ Başvuru sahibi, verdiği bilgilerin doğruluğunu ve derneğin hedeflerine, tüzüğüne ve üye yükümlülüklerine bağlılığını beyan eder.</p>` +
       `<div class="sheet-sign"><span>Başvuru sahibinin imzası: ..................</span><span>Dernek onayı: ..................</span></div>`;
 
+    if (form._afterSheet) form._afterSheet(done);
     const to = form.dataset.email;
     const mail = done.querySelector('[data-join-mail]');
     if (to) {

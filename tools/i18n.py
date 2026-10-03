@@ -47,7 +47,9 @@ def localize(lang):
     # JS: per-language copies
     (out / 'js').mkdir(exist_ok=True)
     for f in (core.SITE / 'js').glob('*.js'):
-        (out / 'js' / f.name).write_text(_translate(f.read_text(encoding='utf-8'), m, f.name), encoding='utf-8')
+        t = f.read_text(encoding='utf-8')
+        # files marked @i18n-self carry their own ar/en/tr strings and are copied unchanged
+        (out / 'js' / f.name).write_text(t if '@i18n-self' in t[:200] else _translate(t, m, f.name), encoding='utf-8')
     w = core.SITE / 'data' / 'world.js'
     (out / 'data' / 'world.js').write_text(_translate(w.read_text(encoding='utf-8'), m, 'world.js'), encoding='utf-8')
     kb = out / 'data' / 'kb.js'
@@ -74,6 +76,8 @@ def report(lang):
     out, seen, m = core.OUT, {}, ui_map(lang)
     for f in list(out.glob('*.html')) + list((out / 'js').glob('*.js')) + [out / 'data' / 'kb.js', out / 'data' / 'world.js']:
         t = f.read_text(encoding='utf-8')
+        if f.suffix == '.js' and '@i18n-self' in t[:200]:
+            continue
         for mo in AR_RUN.finditer(re.sub(r'<div class="lang-switch[^"]*"[^>]*>.*?</div>', '', t, flags=re.S)):
             r = mo.group(0).strip()
             if r in KEEP or m.get(f'{f.name}::{r}', m.get(r)) == r:

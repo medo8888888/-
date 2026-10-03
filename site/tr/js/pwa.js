@@ -1,3 +1,4 @@
+// @i18n-self — carries its own ar/en/tr strings.
 // Installable app: registers the service worker and drives every [data-install] button.
 // Chrome/Edge/Android: native install prompt. iOS Safari: short "Add to Home Screen" hint.
 (() => {
