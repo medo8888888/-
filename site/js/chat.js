@@ -168,6 +168,13 @@
     vizyon: 'رويه', misyon: 'رساله', hedef: 'اهداف', finansman: 'تمويل', kurul: 'kurul', genel: 'genel',
   };
 
+  // en/tr sites: short or inflected words → the forms the translated brochure uses
+  const LATIN_ALIAS = {
+    uye: ['uyelik', 'uyenin', 'uyeler'], uyesi: ['uyelik'], olmak: ['uyelik'], katilmak: ['uyelik'], katilim: ['uyelik'],
+    join: ['membership', 'joining'], joining: ['membership'], member: ['membership'], apply: ['membership'],
+    bagis: ['bagislar', 'gelir'], para: ['gelir', 'finansman'], money: ['income', 'funding'], donate: ['donations', 'income'],
+  };
+
   /* ---------- safe markdown (escape FIRST, then format) ---------- */
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const SAFE_URL = /^(?:https:\/\/[^\s<>"']+|(?:\.\/)?[\w-]+\.html(?:#[\w-]+)?|#[\w-]+)$/i;
@@ -288,6 +295,7 @@
     };
     content.forEach((t, i) => {
       if (EN[t] && !IX.latin) { words(EN[t]).forEach(m => addTerm(m, 1, 'q', i)); return; }
+      if (IX.latin && LATIN_ALIAS[t]) LATIN_ALIAS[t].forEach(m => addTerm(m, 0.8, 'q', i));
       if (!ARABIC.test(t) && !/^\d+$/.test(t) && !variants(t).some(v => IX.df.has(v))
         && !(IX.latin && t.length >= 5)) return; // unknown foreign word (kept on en/tr sites for typo matching)
       addTerm(t, KEEP.has(t) ? 0.35 : 1, 'q', i);

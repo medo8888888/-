@@ -131,3 +131,7 @@
 [dir=ltr] .g-track{animation-name:g-scroll-ltr}
 @keyframes tick-ltr{to{transform:translateX(-50%)}}
 @keyframes g-scroll-ltr{to{transform:translateX(calc(-50% - 8px))}}
+[dir=ltr] .hero-home h1{font-size:clamp(36px,5.6vw,80px);line-height:1.08}
+[dir=ltr] .mtop{white-space:nowrap}
+[dir=ltr] .brand small{white-space:nowrap}
+@media(max-width:1380px){[dir=ltr] .mega .mtop{padding-inline:9px;font-size:13.5px}}
