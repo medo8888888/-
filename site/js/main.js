@@ -19,6 +19,12 @@
   $$('.grid, .toc-grid, .faq-list, .mini-steps, .cycle').forEach(g =>
     [...g.children].forEach((c, i) => c.style.setProperty('--d', Math.min(i, 8) * 0.07 + 's')));
   window.__takamulReady = true;
+  // phones/tablets: keep the current page visible in the scrollable page bar
+  const activeLink = $('.links a.active');
+  if (activeLink && innerWidth <= 1260) {
+    const bar = activeLink.parentElement;
+    bar.scrollLeft = activeLink.offsetLeft - (bar.clientWidth - activeLink.offsetWidth) / 2;
+  }
 
   /* ---------------- theme ---------------- */
   const metaTheme = $('meta[name="theme-color"]');

@@ -841,6 +841,60 @@ tbody tr:nth-child(even){background:color-mix(in srgb,var(--surface-2) 50%,trans
 .ticker:hover .ticker-track{animation-play-state:paused}
 @keyframes tick{to{transform:translateX(50%)}}
 
+
+/* ---------- PHONE UPGRADE: desktop-grade experience on small screens ---------- */
+@media(max-width:1260px){
+  .menu-btn{display:none}
+  .nav-bar{flex-wrap:wrap;height:auto;row-gap:6px;padding-bottom:8px}
+  .links{display:flex;order:5;flex:1 0 100%;margin:0;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 2px 2px;scroll-snap-type:x proximity;
+    -webkit-mask-image:linear-gradient(90deg,transparent,#000 18px,#000 calc(100% - 18px),transparent);mask-image:linear-gradient(90deg,transparent,#000 18px,#000 calc(100% - 18px),transparent)}
+  .links::-webkit-scrollbar{display:none}
+  .links .pill{display:none}
+  .links a{flex:none;scroll-snap-align:center;padding:8px 14px;font-size:13.5px;border-radius:999px;border:1px solid var(--line);
+    background:color-mix(in srgb,var(--surface) 55%,transparent)}
+  .links a:active{scale:.95}
+  .links a.active{color:var(--accent-ink);border-color:transparent;background:linear-gradient(135deg,var(--accent),color-mix(in srgb,var(--accent) 45%,var(--brand)));box-shadow:0 6px 18px -8px var(--accent)}
+}
+@media(max-width:1260px) and (min-width:761px){:root{--nav-h:118px}.nav-bar{height:auto}}
+@media(max-width:760px){
+  :root{--nav-h:104px}
+  .nav-bar{height:auto;padding-top:calc(8px + env(safe-area-inset-top))}
+  .brand img{width:38px;height:38px}
+  .hero{padding-top:calc(var(--nav-h) + 26px)}
+  .hero-small{padding-top:calc(var(--nav-h) + 22px)}
+  h1{font-size:clamp(34px,10.5vw,46px)}
+  .hero-title{font-size:clamp(42px,13vw,60px)}
+  h2{font-size:clamp(26px,7.6vw,34px)}
+  .sec,.welcome,.toc-sec{padding:52px 0}
+  .lead{font-size:16.5px;margin-bottom:22px}
+  .card p,.list li{font-size:15.5px}
+  /* hero: globe right after the buttons, stats as a tight 3-up row */
+  .hero-home .hero-visual{margin-top:4px}
+  .hero-stats>div{padding:12px 10px;border-radius:16px}
+  .hero-stats dt{font-size:19px}
+  /* welcome logo smaller */
+  .welcome-card{width:150px;padding:12px;border-radius:24px}
+  .welcome .big{font-size:17px}
+  /* contents: compact 2-column grid */
+  .toc-grid{grid-template-columns:1fr 1fr;gap:10px;margin-top:22px}
+  .toc-item{flex-direction:column;align-items:flex-start;gap:10px;padding:14px;border-radius:18px;min-height:118px}
+  .toc-item .toc-go{display:none}
+  .toc-num{width:36px;height:36px;font-size:16px;border-radius:12px}
+  .toc-title{font-size:14px;line-height:1.55}
+  /* hub tiles */
+  .tile{padding:20px}
+  .dash-facts{grid-template-columns:1fr;gap:8px}
+  .dash-facts div{display:flex;align-items:center;gap:14px;padding:10px 14px}
+  .dash-facts b{font-size:28px;min-width:84px}
+  .fake-search{font-size:14px;padding:12px}
+  .fake-search .kbd-hint{display:none}
+  /* bigger tap targets */
+  .btn{min-height:52px}
+  .chip-link{padding:9px 14px}
+  .ticker{padding:10px 0}.ticker-track{font-size:15px;gap:30px}
+  .hero-num{font-size:44vw;opacity:.4}
+}
+
 /* ---------- reduced motion ---------- */
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}

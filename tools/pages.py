@@ -18,18 +18,8 @@ def build_home():
   <div class="hero-bg" aria-hidden="true"></div>
   <div class="wrap hero-grid">
     <div class="hero-copy">
-      <span class="eyebrow rv">{ic('book')} {L(1)}</span>
       <h1 class="rv">جمعية <span class="grad">تكامل</span><br>لبناء القيم والتنمية</h1>
       <p class="sub rv">{L(3)} — {L(8)}</p>
-      <div class="btns rv">
-        <a class="btn btn-primary" href="#toc">{ic('book')}{L(12)}</a>
-        <button class="btn btn-soft" type="button" data-open-chat>{ic('sparkles')}اسأل المساعد الذكي</button>
-      </div>
-      <dl class="hero-stats rv">
-        <div><dt data-to="2035">2035</dt><dd>{L(2)}</dd></div>
-        <div><dt>{L(4)}</dt><dd>{L(5)}</dd></div>
-        <div><dt>{L(6)}</dt><dd>{L(7)}</dd></div>
-      </dl>
     </div>
     <div class="hero-visual" aria-hidden="true">
       <canvas class="globe" data-globe data-arcs="1"></canvas>
