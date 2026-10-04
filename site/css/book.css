@@ -1,0 +1,203 @@
+/* ==========================================================================
+   BOOK THEME — the look of the printed brochure (default, data-theme=light).
+   White pages, Arial, one strong colour per section (exact brochure colours),
+   tinted header bars with a solid numbered square, tinted cards, gold rules,
+   navy cover band with gold text. Loaded last; dark theme stays as an option.
+   ========================================================================== */
+
+/* ---------- brochure section colours (both themes; dark gets lighter tones) ---------- */
+:root{
+  --c-blue:#1f4e79;--c-teal:#0e7c7b;--c-red:#b03a2e;--c-purple:#6c3483;--c-amber:#b9770e;--c-green:#196f3d;
+  --c-rust:#a04000;--c-slate:#2e4053;--c-cyan:#117a8b;--c-violet:#884ea0;--c-forest:#0b5345;--c-navy:#154360;
+  --c-maroon:#7b241c;--c-gold:#c9a227;--c-leaf:#1d8348;--c-orange:#a04000;
+}
+:root[data-theme=dark]{
+  --c-blue:#7cb4ee;--c-teal:#4fd6cf;--c-red:#ff8f84;--c-purple:#c9a0ea;--c-amber:#f5c15c;--c-green:#63d08f;
+  --c-rust:#ffa36b;--c-slate:#a9bdd3;--c-cyan:#5fd3e6;--c-violet:#d7a8ee;--c-forest:#53d1ae;--c-navy:#86b9ec;
+  --c-maroon:#ff8d84;--c-gold:#f2c14e;--c-leaf:#5fe08f;--c-orange:#ffa868;
+}
+
+/* ---------- tokens ---------- */
+:root[data-theme=light]{
+  color-scheme:light;
+  --bg:#ffffff;--bg-2:#f6f8fa;--surface:#ffffff;--surface-2:#f7f9fb;--surface-3:#eef2f5;
+  --ink:#1f2a37;--ink-2:#334155;--muted:#5f6b7a;--line:#e1e6ec;--line-2:#cfd7e0;
+  --brand:#14284b;--brand-2:#1f4e79;--on-brand:#ffffff;--head:#14284b;
+  --gold:#a8850f;--gold-2:#c9a227;--leaf:#1d8348;--accent:#0e7c7b;--accent-2:#1f4e79;--accent-ink:#ffffff;
+  --glass:#ffffff;--glass-line:#e1e6ec;
+  --hero-1:transparent;--hero-2:transparent;--hero-3:transparent;
+  --mesh-1:transparent;--mesh-2:transparent;--mesh-3:transparent;--grain:0;
+  --globe-land:#1f4e79;--globe-glow:rgba(31,78,121,.12);--globe-arc:#c9a227;--globe-rim:rgba(31,78,121,.22);
+  --shadow-sm:0 1px 2px rgba(20,40,75,.06);
+  --shadow:0 6px 18px -8px rgba(20,40,75,.18);
+  --shadow-lg:0 18px 40px -16px rgba(20,40,75,.28);
+  --edge:none;
+  --r:8px;--r-sm:6px;
+  --font:Arial,'IBM Plex Sans Arabic','Segoe UI',Tahoma,sans-serif;
+  --font-h:Arial,'IBM Plex Sans Arabic','Segoe UI',Tahoma,sans-serif;
+}
+[data-theme=light] body{background:#fff;color:var(--ink);font-family:var(--font)}
+[data-theme=light] body::before,[data-theme=light] body::after,
+[data-theme=light] .hero-aurora,[data-theme=light] .hero-num,[data-theme=light] .cta-glow{display:none!important}
+[data-theme=light] h1,[data-theme=light] h2,[data-theme=light] h3,[data-theme=light] h4{font-family:var(--font-h);letter-spacing:0}
+
+/* ---------- page header = the brochure's running header (logo + gold rule) ---------- */
+[data-theme=light] .nav{background:transparent}
+[data-theme=light] .nav-bar{background:#fff;border:0;border-bottom:2px solid var(--c-gold);border-radius:0;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
+[data-theme=light] .nav.scrolled .nav-bar{box-shadow:0 6px 16px -10px rgba(20,40,75,.25)}
+[data-theme=light] .brand b{color:var(--c-navy)}
+[data-theme=light] .brand small{color:var(--muted)}
+[data-theme=light] .mtop{color:var(--ink-2)}
+[data-theme=light] .mtop.on,[data-theme=light] .mtop:hover{color:var(--c-navy)}
+[data-theme=light] .mpanel{background:#fff;border:1px solid var(--line);border-top:3px solid var(--c-gold);border-radius:0 0 8px 8px;box-shadow:var(--shadow-lg)}
+[data-theme=light] .mm-ic{background:#eef3f8;color:var(--c-navy);border-radius:6px}
+[data-theme=light] .links a{color:var(--ink-2)}
+[data-theme=light] .pill-active{background:var(--c-navy)}
+[data-theme=light] .links a.active{color:#fff}
+[data-theme=light] .pill-hover{background:#eef3f8}
+[data-theme=light] .lang-switch{background:#f3f5f8;border-color:var(--line)}
+[data-theme=light] .lang-switch a.on{background:var(--c-navy);color:#fff}
+[data-theme=light] .search-btn,[data-theme=light] .icon-btn{background:#f3f5f8;border-color:var(--line);color:var(--ink-2)}
+[data-theme=light] .btn-ai{background:var(--c-teal);color:#fff;box-shadow:none}
+[data-theme=light] .btn-ai::after{display:none}
+[data-theme=light] .progress{background:var(--c-gold)}
+
+/* ---------- buttons ---------- */
+[data-theme=light] .btn{border-radius:6px;box-shadow:none}
+[data-theme=light] .btn-primary{background:var(--c-navy);color:#fff;border-color:var(--c-navy)}
+[data-theme=light] .btn-gold,[data-theme=light] .btn-donate{background:var(--c-gold);color:#14284b;border-color:var(--c-gold);box-shadow:none}
+[data-theme=light] .btn-soft,[data-theme=light] .btn-ghost{background:#fff;color:var(--c-navy);border:1px solid var(--line-2)}
+[data-theme=light] .btn-soft:hover,[data-theme=light] .btn-ghost:hover{border-color:var(--c-navy);background:#f3f6fa}
+
+/* ---------- heroes: white page, quiet photo, navy title like the cover ---------- */
+[data-theme=light] .hero{background:#fff}
+[data-theme=light] .hero-bg{background:none}
+[data-theme=light] .hero-photo{opacity:.16;filter:grayscale(.2)}
+[data-theme=light] .hero-photo::after{background:linear-gradient(180deg,rgba(255,255,255,.55),#fff 92%)}
+[data-theme=light] .hero-home.has-photo .hero-photo{opacity:.2}
+[data-theme=light] .hero h1,[data-theme=light] .hero-title{color:var(--c-navy);-webkit-text-fill-color:currentColor;background:none;text-shadow:none}
+[data-theme=light] .hero .grad{background:none;-webkit-text-fill-color:var(--c-gold);color:var(--c-gold)}
+[data-theme=light] .hero .sub{color:var(--muted)}
+[data-theme=light] .eyebrow,[data-theme=light] .chip-link{background:#f3f6fa;border:1px solid var(--line);color:var(--c-navy);border-radius:6px}
+[data-theme=light] .chip-link b{color:var(--sc)}
+/* the cover band: navy strip with gold text under the home title */
+[data-theme=light] .hero-home .sub{display:inline-block;margin-top:22px;padding:16px 28px;background:#14284b;color:#c9a227;font-weight:700;border-radius:0;font-size:clamp(16px,2vw,21px)}
+[data-theme=light] .scroll-cue{border-color:var(--line-2)}
+
+/* ---------- ticker = slim tinted band ---------- */
+[data-theme=light] .ticker{background:#f6f8fa;border-block:1px solid var(--line)}
+[data-theme=light] .ticker-track{color:var(--c-navy)}
+
+/* ---------- section headers exactly like the brochure ---------- */
+[data-theme=light] .sec,[data-theme=light] .sec.alt,[data-theme=light] .toc-sec,[data-theme=light] .welcome{background:#fff}
+[data-theme=light] .sec-head{display:flex;align-items:stretch;gap:0;padding:0;background:color-mix(in srgb,var(--sc,var(--c-navy)) 9%,#fff);border-radius:0;overflow:hidden;margin-bottom:26px}
+[data-theme=light] .sec-num{flex:none;display:grid;place-items:center;width:clamp(58px,7vw,76px);min-height:clamp(58px,7vw,76px);margin:0;border-radius:0;background:var(--sc,var(--c-navy));color:#fff;font-family:Arial,sans-serif;font-size:clamp(26px,3.4vw,34px);font-weight:700;box-shadow:none;-webkit-text-fill-color:#fff}
+[data-theme=light] .sec-head>div{padding:12px 20px;display:flex;flex-direction:column;justify-content:center}
+[data-theme=light] .sec-head h2{margin:0;color:var(--sc,var(--c-navy));font-size:clamp(22px,2.6vw,30px);font-weight:700}
+[data-theme=light] .sec-sub{margin:4px 0 0;color:var(--muted);font-size:14.5px}
+[data-theme=light] .subhead h3,[data-theme=light] .subhead{color:var(--sc,var(--c-navy))}
+[data-theme=light] .kicker{color:var(--c-gold)}
+[data-theme=light] .center h2,[data-theme=light] .welcome h2{color:var(--c-navy)}
+[data-theme=light] .lead{color:var(--ink-2)}
+
+/* ---------- cards: tinted with the section colour, flat, small radius ---------- */
+[data-theme=light] .card,[data-theme=light] .org-card,[data-theme=light] .init-card,[data-theme=light] .tile,
+[data-theme=light] .pillar,[data-theme=light] .zk-card,[data-theme=light] .join-form fieldset,[data-theme=light] .tp-col,
+[data-theme=light] .prog-card,[data-theme=light] .welcome-card{
+  background:color-mix(in srgb,var(--sc,var(--c-navy)) 6%,#fff);border:1px solid color-mix(in srgb,var(--sc,var(--c-navy)) 16%,#fff);
+  border-radius:6px;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
+[data-theme=light] .card::before,[data-theme=light] .card::after,[data-theme=light] .tile::before,[data-theme=light] .tile::after,
+[data-theme=light] .toc-item::before,[data-theme=light] .toc-item::after{display:none}
+[data-theme=light] .card h3,[data-theme=light] .org-card h3,[data-theme=light] .pillar h3,[data-theme=light] .tile h3{color:var(--sc,var(--c-navy))}
+[data-theme=light] .card p,[data-theme=light] .card li,[data-theme=light] .org-card p{color:var(--ink-2)}
+[data-theme=light] .card .ic,[data-theme=light] .tile .ic,[data-theme=light] .feature .ic{background:var(--sc,var(--c-navy));color:#fff;border-radius:6px;box-shadow:none}
+[data-theme=light] .feature{--sc:var(--fc)}
+[data-theme=light] .tag{background:#fff;border:1px solid color-mix(in srgb,var(--sc,var(--c-navy)) 25%,#fff);color:var(--sc,var(--c-navy))}
+[data-theme=light] .num,[data-theme=light] .org-big{color:var(--sc,var(--c-navy))}
+[data-theme=light] .card .num{background:var(--sc,var(--c-navy));color:#fff;border-radius:4px}
+[data-theme=light] .tilt:hover{box-shadow:var(--shadow)}
+
+/* contents (TOC): white rows with the section's number square, like the brochure contents page */
+[data-theme=light] .toc-item{background:#fff;border:1px solid var(--line);border-radius:4px;box-shadow:none}
+[data-theme=light] .toc-num{background:var(--sc);color:#fff;border-radius:0;-webkit-text-fill-color:#fff}
+[data-theme=light] .toc-ic{color:var(--sc)}
+[data-theme=light] .toc-title{color:var(--sc)}
+[data-theme=light] .toc-item:hover{background:color-mix(in srgb,var(--sc) 7%,#fff)}
+
+/* initiatives: solid colour title bar like «ينابيع» (red) and «منافع» (red) in the brochure */
+[data-theme=light] .init-card{--sc:var(--c-red)}
+[data-theme=light] .init-card h3{margin:-1px -1px 12px;padding:12px 16px;background:var(--sc);color:#fff;border-radius:6px 6px 0 0}
+[data-theme=light] .init-card .focus{color:var(--sc)}
+
+/* tables: coloured header row */
+[data-theme=light] .rt th{background:var(--sc,var(--c-navy));color:#fff}
+[data-theme=light] .rt td{background:#fff;border-color:var(--line)}
+[data-theme=light] .rt tr:nth-child(even) td{background:color-mix(in srgb,var(--sc,var(--c-navy)) 4%,#fff)}
+[data-theme=light] .table-wrap{border-radius:4px;border:1px solid var(--line);box-shadow:none}
+
+/* work cycle (7.3) and expansion stages: solid boxes in the section colour */
+[data-theme=light] .cycle li{background:var(--sc);color:#fff;border:0;border-radius:4px}
+[data-theme=light] .cycle li:nth-child(2){background:color-mix(in srgb,var(--sc) 88%,#fff)}
+[data-theme=light] .cycle li:nth-child(3){background:color-mix(in srgb,var(--sc) 76%,#fff)}
+[data-theme=light] .cycle li:nth-child(4){background:color-mix(in srgb,var(--sc) 64%,#fff)}
+[data-theme=light] .cycle li h3,[data-theme=light] .cycle li p,[data-theme=light] .cycle .num{color:#fff}
+[data-theme=light] .tl-n{background:var(--sc);color:#fff;-webkit-text-fill-color:#fff}
+[data-theme=light] .tl .card{background:color-mix(in srgb,var(--sc) 6%,#fff)}
+[data-theme=light] .tl-fill{background:var(--sc)}
+
+/* pillars (12): number in a coloured block like the brochure's numbered side bars */
+[data-theme=light] .pillar .num{background:var(--sc);color:#fff;border-radius:4px}
+[data-theme=light] .flag{background:var(--c-cyan);color:#fff;border-radius:2px}
+
+/* forms */
+[data-theme=light] .fld input,[data-theme=light] .fld select,[data-theme=light] .fld textarea{background:#fff;border:1px solid var(--line-2);border-radius:4px}
+[data-theme=light] .step{background:var(--c-navy);color:#fff;border-radius:4px}
+[data-theme=light] .pick span{border-radius:6px;background:#fff;border-color:var(--line-2)}
+[data-theme=light] .pick input:checked+span{background:var(--c-navy);color:#fff;border-color:var(--c-navy)}
+
+/* home blocks */
+[data-theme=light] .impact-band{background:#f6f8fa;border-block:1px solid var(--line)}
+[data-theme=light] .impact-grid>div{background:#fff;border:1px solid var(--line);border-radius:4px}
+[data-theme=light] .impact-grid b{color:var(--c-navy);-webkit-text-fill-color:var(--c-navy);background:none}
+[data-theme=light] .impact-grid>div:nth-child(2) b{color:var(--c-teal);-webkit-text-fill-color:var(--c-teal)}
+[data-theme=light] .impact-grid>div:nth-child(3) b{color:var(--c-purple);-webkit-text-fill-color:var(--c-purple)}
+[data-theme=light] .impact-grid>div:nth-child(4) b{color:var(--c-amber);-webkit-text-fill-color:var(--c-amber)}
+[data-theme=light] .impact-grid>div:nth-child(5) b{color:var(--c-red);-webkit-text-fill-color:var(--c-red)}
+[data-theme=light] .ph,[data-theme=light] .pstrip-item,[data-theme=light] .g-item{border-radius:6px}
+[data-theme=light] .welcome-card{background:#fff;border:1px solid var(--line)}
+[data-theme=light] .welcome .big{color:var(--ink)}
+[data-theme=light] .bento .tile{--sc:var(--c-navy)}
+[data-theme=light] .bento .t-search{--sc:var(--c-teal)}
+[data-theme=light] .bento .t-ai{--sc:var(--c-purple)}
+
+/* CTA + footer = the brochure's closing page (navy with gold) */
+[data-theme=light] .cta{background:#14284b;color:#fff;border-radius:0}
+[data-theme=light] .cta h2,[data-theme=light] .cta h3{color:#c9a227}
+[data-theme=light] .cta p{color:#dbe3ee}
+[data-theme=light] .footer{background:#14284b;color:#dbe3ee;border-top:3px solid #c9a227}
+[data-theme=light] .footer h4{color:#c9a227}
+[data-theme=light] .footer a{color:#dbe3ee}
+[data-theme=light] .foot-bottom{border-color:rgba(255,255,255,.15);color:#aeb9c8}
+
+/* phone tab bar + sheet */
+[data-theme=light] .tabbar{background:#fff;border-top:2px solid var(--c-gold);box-shadow:0 -6px 16px -10px rgba(20,40,75,.25)}
+[data-theme=light] .tabbar a,[data-theme=light] .tabbar button{color:var(--muted)}
+[data-theme=light] .tabbar .active{color:var(--c-navy)}
+[data-theme=light] .tab-ai{background:var(--c-teal);color:#fff}
+[data-theme=light] .sheet-panel{background:#fff;border-top:3px solid var(--c-gold)}
+[data-theme=light] .chat-fab{background:var(--c-teal);color:#fff;box-shadow:0 10px 24px -10px rgba(14,124,123,.6)}
+[data-theme=light] .chat-panel{background:#fff;border:1px solid var(--line)}
+[data-theme=light] .chat-head{background:#14284b;color:#fff}
+
+/* dashboard keeps its own layout; just calm the glass */
+[data-theme=light] .db-card,[data-theme=light] .db-tile{background:#fff;border:1px solid var(--line);box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
+[data-theme=light] .sec-num{transform:none!important;clip-path:none!important;rotate:none!important}
+[data-theme=light] .welcome-card{box-shadow:none;filter:none}
+[data-theme=light] .welcome-card::before,[data-theme=light] .welcome-card::after{display:none}
+/* governance bodies side by side, centred — as on brochure page 7 */
+@media(min-width:900px){
+  [data-theme=light] .org{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  [data-theme=light] .tp-org{grid-template-columns:repeat(2,1fr)}
+  [data-theme=light] .org-card{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px}
+  [data-theme=light] .org-card h3 small{display:block;margin-top:2px}
+}

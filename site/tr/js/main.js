@@ -40,10 +40,10 @@
 
   /* ---------------- theme ---------------- */
   const metaTheme = $('meta[name="theme-color"]');
-  const syncMeta = () => { if (metaTheme) metaTheme.content = root.dataset.theme === 'dark' ? '#05070a' : '#f4f6f8'; };
+  const syncMeta = () => { if (metaTheme) metaTheme.content = root.dataset.theme === 'dark' ? '#05070a' : '#ffffff'; };
   const setTheme = (t, persist) => {
     root.dataset.theme = t;
-    if (persist) { try { localStorage.setItem('takamul-theme', t); } catch (e) { /* storage blocked */ } }
+    if (persist) { try { localStorage.setItem('takamul-theme-v2', t); } catch (e) { /* storage blocked */ } }
     syncMeta();
     window.dispatchEvent(new CustomEvent('themechange', { detail: t }));
   };
@@ -61,8 +61,8 @@
   $$('.theme-toggle').forEach(b => b.addEventListener('click', toggleTheme));
   onMQ(matchMedia('(prefers-color-scheme: dark)'), e => {
     let stored = null;
-    try { stored = localStorage.getItem('takamul-theme'); } catch (err) { /* ignore */ }
-    if (!stored) setTheme('dark', false);
+    try { stored = localStorage.getItem('takamul-theme-v2'); } catch (err) { /* ignore */ }
+    if (!stored) setTheme('light', false);
   });
 
   /* ---------------- greeting ---------------- */

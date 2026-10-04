@@ -140,19 +140,20 @@ PAGE_LABEL['transparency.html'] = 'الشفافية'
 
 # section number -> (number line, title line, subtitle line, page, colour token)
 SECTIONS = {
-    1: (39, 40, 41, 'about.html', 'teal'),
-    2: (49, 50, 51, 'about.html', 'navy'),
-    3: (72, 73, 74, 'initiatives.html', 'leaf'),
+    # colours = the brochure's section colours (see css/book.css)
+    1: (39, 40, 41, 'about.html', 'blue'),
+    2: (49, 50, 51, 'about.html', 'teal'),
+    3: (72, 73, 74, 'initiatives.html', 'red'),
     4: (97, 98, 99, 'about.html', 'purple'),
-    5: (126, 127, 128, 'expansion.html', 'orange'),
-    6: (157, 158, 159, 'initiatives.html', 'maroon'),
-    7: (168, 169, 170, 'governance.html', 'navy'),
-    8: (204, 205, 206, 'governance.html', 'gold'),
-    9: (227, 228, 229, 'join.html', 'leaf'),
-    10: (240, 241, 242, 'initiatives.html', 'teal'),
-    11: (249, 250, 251, 'join.html', 'maroon'),
-    12: (301, 302, 303, 'join.html', 'orange'),
-    13: (376, 377, 378, 'faq.html', 'purple'),
+    5: (126, 127, 128, 'expansion.html', 'amber'),
+    6: (157, 158, 159, 'initiatives.html', 'green'),
+    7: (168, 169, 170, 'governance.html', 'rust'),
+    8: (204, 205, 206, 'governance.html', 'slate'),
+    9: (227, 228, 229, 'join.html', 'cyan'),
+    10: (240, 241, 242, 'initiatives.html', 'violet'),
+    11: (249, 250, 251, 'join.html', 'forest'),
+    12: (301, 302, 303, 'join.html', 'navy'),
+    13: (376, 377, 378, 'faq.html', 'maroon'),
 }
 SEC_ICON = {1: 'landmark', 2: 'eye', 3: 'sprout', 4: 'scale', 5: 'globe', 6: 'users', 7: 'shield',
             8: 'coins', 9: 'check', 10: 'chart', 11: 'pinmark', 12: 'heart', 13: 'help'}
@@ -337,7 +338,7 @@ def page(fn, title, body, desc, globe=False, css=(), js=()):
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 {'<base href="/">' if fn == '404.html' else ''}<title>{title} | جمعية تكامل لبناء القيم والتنمية</title>
 <meta name="description" content="{desc}">
-<meta name="theme-color" content="#06080b">
+<meta name="theme-color" content="#ffffff">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ar_AR">
 <meta property="og:title" content="{title} | جمعية تكامل لبناء القيم والتنمية">
@@ -351,7 +352,7 @@ def page(fn, title, body, desc, globe=False, css=(), js=()):
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="تكامل">
 {alternates(fn)}
-<script>(function(){{var t;try{{t=localStorage.getItem('takamul-theme')}}catch(e){{}}if(t!=='light'&&t!=='dark'){{t='dark'}}var d=document.documentElement;d.dataset.theme=t;d.classList.add('js');setTimeout(function(){{if(!window.__takamulReady)d.classList.remove('js')}},2500)}})();</script>
+<script>(function(){{var t;try{{t=localStorage.getItem('takamul-theme-v2')}}catch(e){{}}if(t!=='light'&&t!=='dark'){{t='light'}}var d=document.documentElement;d.dataset.theme=t;d.classList.add('js');setTimeout(function(){{if(!window.__takamulReady)d.classList.remove('js')}},2500)}})();</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -360,7 +361,8 @@ def page(fn, title, body, desc, globe=False, css=(), js=()):
 <link rel="stylesheet" href="css/chat-plus.css">
 <link rel="stylesheet" href="css/palette.css">
 <link rel="stylesheet" href="css/globe.css">
-{extra_css}<script src="data/kb.js" defer></script>
+{extra_css}<link rel="stylesheet" href="css/book.css">
+<script src="data/kb.js" defer></script>
 <script src="js/main.js" defer></script>
 <script src="js/chat.js" defer></script>
 <script src="js/palette.js" defer></script>
