@@ -33,6 +33,146 @@ def program_cards(share=False, link='support.html#donate'):
     return out
 
 
+PILLAR_L = [306, 314, 323, 330, 334, 342, 348, 354, 363, 367]
+PILLAR_IC = ['shield', 'globe', 'link', 'target', 'heart', 'sparkles', 'sprout', 'refresh', 'briefcase', 'coins']
+
+
+def pillar_flips():
+    out = ''
+    for i, a in enumerate(PILLAR_L):
+        out += (f'<div class="flip rv" role="button" tabindex="0" aria-pressed="false" style="--fc:var(--c-{SECTIONS[(i % 13) + 1][4]})">'
+                f'<div class="flip-in"><div class="flip-front"><b class="fnum">{L(a)}</b><span class="fic">{ic(PILLAR_IC[i])}</span>'
+                f'<h3>{L(a + 1)}</h3><small>{L(a + 2)}</small><span class="fhint">{ic("refresh")}اضغط للتفاصيل</span></div>'
+                f'<div class="flip-back"><h3>{L(a + 1)}</h3><p>{L(a + 3)}</p></div></div></div>')
+    return out
+
+
+def role_quiz():
+    ini = {'yanabee': _after_dash(76), 'manafea': _after_dash(82), 'coord': (L(88).split('  ', 1)[-1], L(90))}
+    prog = {'yanabee': L(78), 'manafea': L(84), 'coord': 'حيث الحاجة أكبر'}
+    dept = {'yanabee': (116, 117), 'manafea': (120, 121), 'coord': (118, 119)}
+    q2 = ''.join(f'<button type="button" class="q-opt" data-a="{k}">{ic(i)}<b>{ini[k][0]}</b><small>{ini[k][1]}</small></button>'
+                 for k, i in (('yanabee', 'droplet'), ('manafea', 'coins'), ('coord', 'link')))
+    res = ''
+    for k in ini:
+        d1, d2 = dept[k]
+        res += (f'<template data-r="money-{k}"><span class="r-ic">{ic("heart")}</span><span class="kicker">نقترح عليك</span><h3>التبرع لدعم {ini[k][0]}</h3>'
+                f'<p>{ini[k][1]}</p><a class="btn btn-gold btn-lg" href="support.html?program={prog[k]}#donate">{ic("heart")}تبرع الآن</a></template>'
+                f'<template data-r="time-{k}"><span class="r-ic">{ic("users")}</span><span class="kicker">نقترح عليك</span><h3>التطوع في {L(d1)}</h3>'
+                f'<p>{L(d2)}</p><a class="btn btn-gold btn-lg" href="support.html#volunteer">{ic("users")}تطوّع معنا</a></template>'
+                f'<template data-r="member-{k}"><span class="r-ic">{ic("check")}</span><span class="kicker">نقترح عليك</span><h3>العضوية في «تكامل»</h3>'
+                f'<p>{L(234) if k != "coord" else L(233)}</p><a class="btn btn-gold btn-lg" href="join.html#apply">{ic("check")}طلب العضوية</a></template>')
+    return f'''
+<div class="quiz rv" data-quiz>
+  <div class="quiz-side">
+    <span class="kicker">اختبار قصير</span>
+    <h2>اكتشف دورك في «تكامل»</h2>
+    <p>أجب عن سؤالين لنقترح عليك أنسب طريقة للمشاركة.</p>
+    <ol class="q-progress"><li class="is-on">1</li><li>2</li><li>{ic('check')}</li></ol>
+  </div>
+  <div class="quiz-main">
+    <div class="q-step is-on" data-step="1"><h3>كيف تحب أن تساهم؟</h3><div class="q-opts">
+      <button type="button" class="q-opt" data-a="money">{ic('heart')}<b>بالمال</b><small>التبرع لبرامج الجمعية</small></button>
+      <button type="button" class="q-opt" data-a="time">{ic('users')}<b>بالوقت والخبرة</b><small>التطوع في أحد الأقسام التنفيذية</small></button>
+      <button type="button" class="q-opt" data-a="member">{ic('check')}<b>أن أكون عضواً</b><small>المشاركة في القرار والتصويت</small></button>
+    </div></div>
+    <div class="q-step" data-step="2"><h3>أي مجال يلامس قلبك أكثر؟</h3><div class="q-opts">{q2}</div></div>
+    <div class="q-step q-result" data-step="3" aria-live="polite"><div class="q-out"></div>
+      <button type="button" class="btn btn-soft q-restart">{ic('refresh')}ابدأ من جديد</button></div>
+    {res}
+  </div>
+</div>'''
+
+
+def splitter():
+    y, m = _after_dash(76)[0], _after_dash(82)[0]
+    return f'''
+<div class="splitter rv" data-splitter data-a="{y}" data-b="{m}">
+  <div class="sp-copy">
+    <span class="kicker">تبرّع بطريقتك</span>
+    <h2>وزّع تبرعك بين المبادرتين</h2>
+    <p>حرّك المؤشرين لتختار المبلغ وطريقة توزيعه، ثم أضفه إلى سلة التبرعات.</p>
+    <label class="sp-row"><span>المبلغ <output data-out="amount"></output></span>
+      <input type="range" min="50" max="5000" step="50" value="500" data-in="amount" aria-label="المبلغ"></label>
+    <label class="sp-row"><span class="sp-ends"><b class="a">{y}</b><b class="b">{m}</b></span>
+      <input type="range" min="0" max="100" step="5" value="50" data-in="split" aria-label="التوزيع"></label>
+    <div class="sp-cur" role="radiogroup" aria-label="العملة">
+      <label><input type="radio" name="sp_cur" value="TRY" checked><span>TRY</span></label>
+      <label><input type="radio" name="sp_cur" value="USD"><span>USD</span></label>
+      <label><input type="radio" name="sp_cur" value="EUR"><span>EUR</span></label>
+    </div>
+    <a class="btn btn-gold btn-lg" href="support.html#donate" data-sp-go>{ic('cart')}أضف التوزيع إلى السلة</a>
+  </div>
+  <div class="sp-viz" aria-hidden="true">
+    <svg viewBox="0 0 200 200" class="donut"><circle cx="100" cy="100" r="80" class="d-bg"/><circle cx="100" cy="100" r="80" class="d-a" pathLength="100"/><circle cx="100" cy="100" r="80" class="d-b" pathLength="100"/></svg>
+    <div class="d-center"><b data-out="total"></b><small data-out="cur"></small></div>
+    <ul class="d-legend"><li class="a"><i></i><span>{y}</span><b data-out="a"></b></li><li class="b"><i></i><span>{m}</span><b data-out="b"></b></li></ul>
+  </div>
+</div>'''
+
+
+def journey():
+    steps = ''.join(f'<button type="button" role="tab" class="jr-step{" is-on" if i == 0 else ""}" data-i="{i}" aria-selected="{"true" if i == 0 else "false"}">'
+                    f'<span class="st-n">{L(130 + 4 * i)}</span><b>{L(131 + 4 * i)}</b></button>' for i in range(7))
+    panels = ''.join(f'<div class="jr-panel{" is-on" if i == 0 else ""}" role="tabpanel" data-i="{i}"><span class="jr-big">{L(130 + 4 * i)}</span>'
+                     f'<div><span class="kicker">{L(129)} {L(130 + 4 * i)}</span><h3>{L(131 + 4 * i)}</h3><p>{L(132 + 4 * i)}</p></div></div>' for i in range(7))
+    return (f'<div class="jr" data-journey><div class="jr-track" role="tablist">{steps}</div>'
+            f'<div class="jr-bar"><span class="jr-fill"></span></div><div class="jr-panels">{panels}</div></div>')
+
+
+TREE = [  # (branch path, leaf x, leaf y, angle, colour)
+    ('M300 420 C260 400 220 380 172 332', 160, 320, -40, 'teal'),
+    ('M300 400 C340 380 390 360 438 312', 450, 300, 40, 'amber'),
+    ('M300 340 C262 318 224 288 202 232', 196, 214, -60, 'green'),
+    ('M300 330 C344 305 380 272 400 218', 405, 200, 60, 'red'),
+    ('M300 282 C286 242 270 202 252 152', 246, 134, -75, 'blue'),
+    ('M300 272 C318 232 334 192 354 142', 360, 124, 75, 'purple'),
+    ('M300 252 C300 202 300 150 300 96', 300, 76, 90, 'gold'),
+]
+
+
+def growth_tree():
+    leaves = [(L(101), L(103)), (L(104), L(106)), (L(107), L(109)), (L(110), L(112)),
+              (_after_dash(76)[0], L(77)), (_after_dash(82)[0], L(83)), (L(52), L(2))]
+    branches = ''.join(f'<path class="br" d="{d}" style="--i:{i}"/>' for i, (d, *_rest) in enumerate(TREE))
+    nodes = ''.join(
+        f'<g class="lf{" is-on" if i == 0 else ""}" tabindex="0" role="button" data-i="{i}" style="--i:{i};--lc:var(--c-{c})" '
+        f'transform="translate({x} {y})" aria-label="{t}"><circle r="34" class="lf-hit"/>'
+        f'<ellipse rx="30" ry="16" transform="rotate({-a})" class="lf-shape"/><text y="5" class="lf-n">{i + 1}</text></g>'
+        for i, ((_, x, y, a, c), (t, _d)) in enumerate(zip(TREE, leaves)))
+    info = ''.join(f'<div class="ti{" is-on" if i == 0 else ""}" data-i="{i}"><span class="ti-n" style="--lc:var(--c-{TREE[i][4]})">{i + 1}</span>'
+                   f'<h3>{t}</h3><p>{d}</p></div>' for i, (t, d) in enumerate(leaves))
+    return f'''
+<div class="tree-wrap" data-tree>
+  <div class="tree-art">
+    <svg viewBox="0 0 600 540" class="tree-svg" aria-hidden="false" role="group" aria-label="{L(100).split('  ', 1)[-1]}">
+      <ellipse cx="300" cy="522" rx="170" ry="16" class="ground"/>
+      <path class="trunk" d="M300 524 C300 462 294 420 300 360 C305 320 300 290 300 250"/>
+      {branches}
+      <g class="planted"></g>
+      {nodes}
+    </svg>
+  </div>
+  <div class="tree-info">
+    <span class="kicker">{L(100).split('  ', 1)[-1]}</span>
+    <h2>ازرع أثرك معنا</h2>
+    <p class="muted">هذه الشجرة تنمو بقيمنا ومبادراتنا. اضغط على أي ورقة لتتعرّف عليها، ثم ازرع ورقتك.</p>
+    <div class="ti-box">{info}</div>
+    <div class="tree-actions">
+      <button type="button" class="btn btn-gold" data-plant>{ic('sprout')}ازرع ورقة</button>
+      <span class="planted-count" aria-live="polite"><b data-count>0</b> ورقة زرعتها أنت</span>
+    </div>
+  </div>
+</div>'''
+
+
+def kinetic():
+    words = [L(101), L(104), L(107), L(110), L(52), L(54), L(4)]
+    row = ''.join(f'<span>{w}</span><i>✦</i>' for w in words)
+    return (f'<section class="kinetic" aria-hidden="true"><div class="kin-row" data-dir="1"><div class="kin-track">{row}{row}</div></div>'
+            f'<div class="kin-row outline" data-dir="-1"><div class="kin-track">{row}{row}</div></div></section>')
+
+
 def build_home():
     y_t, y_s = _after_dash(76)
     m_t, m_s = _after_dash(82)
@@ -71,6 +211,7 @@ def build_home():
     faqs = ''.join(qa(a, s_, e, f'hf{i + 1}') for i, (a, s_, e) in enumerate(F[:4]))
     body = f'''
 <section class="hero-slider" aria-roledescription="carousel" aria-label="{L(1)}" data-slider>
+  <canvas class="constellation" aria-hidden="true"></canvas>
   {slides_html}
   <div class="slider-ui wrap">
     <div class="dots" role="tablist">{dots}</div>
@@ -90,6 +231,8 @@ def build_home():
 
 <section class="stats-band"><div class="wrap stats">{stats_html}</div></section>
 
+{kinetic()}
+
 <section class="sec about-split" id="welcome"><div class="wrap split">
   <div class="split-media rv">
     <div class="sm-main" style="--img:url(../assets/img/courtyard.jpg)"></div>
@@ -98,7 +241,7 @@ def build_home():
   <div class="split-copy">
     <span class="kicker rv">{L(41)}</span>
     <h2 class="rv">{L(9)}</h2>
-    <p class="big rv">{L(42)}</p>
+    <p class="big rv" data-words>{L(42)}</p>
     <p class="rv muted">{L(10)}</p>
     <ul class="values rv">{values}</ul>
     <div class="btns rv"><a class="btn btn-primary" href="about.html">{ic('info')}اعرف المزيد عنا</a><a class="btn btn-soft" href="transparency.html">{ic('file')}الشفافية</a></div>
@@ -116,15 +259,26 @@ def build_home():
   <div class="center rv" style="margin-top:28px"><a class="btn btn-primary" href="initiatives.html">{ic('sprout')}{L(73)}</a></div>
 </div></section>
 
-<section class="sec" id="help"><div class="wrap">
+<section class="sec split-sec"><div class="wrap">{splitter()}</div></section>
+
+<section class="sec alt" id="help"><div class="wrap">
   <div class="sec-title rv"><span class="kicker">ساهم معنا</span><h2>كيف تساهم في صناعة الأثر؟</h2></div>
   <div class="ways">{ways_html}</div>
 </div></section>
 
 <section class="journey" style="--img:url(../assets/img/bosphorus.jpg)"><div class="wrap">
   <div class="sec-title light rv"><span class="kicker">{L(127)}</span><h2>{L(7)}</h2><p>{L(128)}</p></div>
-  <ol class="stages">{stages}</ol>
+  {journey()}
   <div class="center rv"><a class="btn btn-gold" href="expansion.html">{ic('globe')}{L(127)}</a></div>
+</div></section>
+
+<section class="sec tree-sec" id="grow"><div class="wrap">{growth_tree()}</div></section>
+
+<section class="sec alt" id="role"><div class="wrap">{role_quiz()}</div></section>
+
+<section class="sec" id="why"><div class="wrap">
+  <div class="sec-title rv"><span class="kicker">{L(303)}</span><h2>{L(302)}</h2><p>{L(305)}</p></div>
+  <div class="flips">{pillar_flips()}</div>
 </div></section>
 
 <section class="sec" id="vision"><div class="wrap vm">

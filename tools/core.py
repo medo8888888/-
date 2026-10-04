@@ -375,6 +375,7 @@ def page(fn, title, body, desc, globe=False, css=(), js=()):
 <script src="js/cursor.js" defer></script>
 <script src="js/pwa.js" defer></script>
 <script src="js/share.js" defer></script>
+<script src="js/interact.js" defer></script>
 {globe_js}{extra_js}</head>
 <body data-page="{fn}">
 <div class="progress" aria-hidden="true"></div>

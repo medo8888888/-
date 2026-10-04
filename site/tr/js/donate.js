@@ -104,6 +104,16 @@
     E.amount.value = num(qs.get('amount'));
     form.querySelectorAll('[name=amount_preset]').forEach(r => { r.checked = r.value === E.amount.value; });
   }
+  if (qs.get('currency')) {
+    const o = [...E.currency.options].find(x => x.value.split(' ')[0] === qs.get('currency'));
+    if (o) E.currency.value = o.value;
+  }
+  // lines=label~amount;label~amount (from the home page splitter) → basket items
+  const linesParam = qs.get('lines');
+  if (linesParam) setTimeout(() => linesParam.split(';').forEach(x => {
+    const [label, v] = x.split('~');
+    if (label && num(v)) add(label, num(v));
+  }), 0);
   if (qs.get('program')) {
     const opt = [...E.program.options].find(o => o.value === qs.get('program') || o.text === qs.get('program'));
     if (opt) E.program.value = opt.value;
