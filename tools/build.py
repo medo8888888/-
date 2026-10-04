@@ -29,6 +29,22 @@ def build_knowledge():
         f'export const KNOWLEDGE = {json.dumps(text, ensure_ascii=False)};\n', encoding='utf-8')
 
 
+def add_versions():
+    """Cache-busting: every local css/js/data reference gets ?v=<content hash>, so browsers and the
+    service worker always load the file that matches the page (no stale styles after a deploy)."""
+    import re
+    rx = re.compile(r'((?:href|src)=")((?:\.\./)?(?:css|js|data)/[\w.-]+\.(?:css|js))(")')
+    for page_ in list(SITE.glob('*.html')) + list(SITE.glob('*/*.html')):
+        html = page_.read_text(encoding='utf-8')
+
+        def ver(m):
+            f = (page_.parent / m.group(2)).resolve()
+            if not f.exists():
+                return m.group(0)
+            return f'{m.group(1)}{m.group(2)}?v={hashlib.sha256(f.read_bytes()).hexdigest()[:10]}{m.group(3)}'
+        page_.write_text(rx.sub(ver, html), encoding='utf-8')
+
+
 def build_sw():
     """Service worker with a content-hash version, so every deploy refreshes caches."""
     files = sorted(p for p in SITE.rglob('*') if p.is_file() and p.name != 'sw.js'
@@ -60,4 +76,5 @@ if __name__ == '__main__':
                 print(f'[{lang}] {len(left)} untranslated UI strings, e.g.:', list(left)[:8], file=sys.stderr)
         print(f'built [{lang}]', len(list(core.OUT.glob('*.html'))), 'pages | kb items:', len(kb['items']))
     set_lang('ar')
+    add_versions()
     build_sw()
