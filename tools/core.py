@@ -116,8 +116,8 @@ ICONS = {
 
 
 def ic(name, cls='i'):
-    if LANG != 'ar' and name == 'arrow-left':  # "forward" points right in LTR pages
-        name = 'arrow-right'
+    if LANG != 'ar' and name in ('arrow-left', 'arrow-right'):  # mirror arrows on LTR pages
+        name = {'arrow-left': 'arrow-right', 'arrow-right': 'arrow-left'}[name]
     return (f'<svg class="{cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" '
             f'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{ICONS[name]}</svg>')
 
@@ -247,21 +247,25 @@ def page_hero(fn, nums, visual=False):
     return f'''
 <section class="hero hero-small{' has-visual' if visual else ''}{' has-photo' if HERO_PHOTO.get(fn) else ''}">
   <div class="hero-bg" aria-hidden="true"></div>{photo_layer(HERO_PHOTO.get(fn))}
-  <div class="hero-aurora" aria-hidden="true"></div>
-  <span class="hero-num" aria-hidden="true">{'·'.join(L(SECTIONS[n][0]) for n in nums)}</span>
   <div class="wrap hero-grid">
     <div class="hero-copy">
-      <span class="eyebrow rv">{ic('book')} {L(1)}</span>
+      {crumbs(PAGE_LABEL[fn])}
       <h1 class="rv hero-title">{PAGE_LABEL[fn]}</h1>
-      <nav class="chips rv" aria-label="أقسام الصفحة">{chips}</nav>
+      <p class="sub rv">{L(SECTIONS[nums[0]][2])}</p>
     </div>
     {vis}
   </div>
 </section>
-{ticker()}'''
+<nav class="page-tabs" aria-label="أقسام الصفحة"><div class="wrap">{chips}</div></nav>'''
+
+
+def crumbs(label):
+    return (f'<nav class="crumbs rv" aria-label="breadcrumb"><a href="index.html">{ic("home")}الرئيسية</a>'
+            f'<span aria-hidden="true">/</span><b aria-current="page">{label}</b></nav>')
 
 
 def ticker():
+    return ''  # (the scrolling band was removed in the website redesign)
     items = ''.join(f'<span>✦ {L(n)}</span>' for n in (307, 315, 324, 331, 335, 343, 349, 355, 364, 368))
     return f'<div class="ticker" aria-hidden="true"><div class="ticker-track">{items}{items}</div></div>'
 
@@ -269,6 +273,7 @@ def ticker():
 def cta():
     return f'''
 <section class="cta">
+  <div class="cta-leaves" aria-hidden="true"><span class="leaf"></span><span class="leaf"></span><span class="leaf"></span><span class="leaf"></span><span class="leaf"></span></div>
   <div class="cta-glow" aria-hidden="true"></div>
   <div class="wrap rv">
     <img src="assets/logo.png" alt="" width="84" height="84" class="cta-logo">
@@ -362,6 +367,7 @@ def page(fn, title, body, desc, globe=False, css=(), js=()):
 <link rel="stylesheet" href="css/palette.css">
 <link rel="stylesheet" href="css/globe.css">
 {extra_css}<link rel="stylesheet" href="css/book.css">
+<link rel="stylesheet" href="css/web.css">
 <script src="data/kb.js" defer></script>
 <script src="js/main.js" defer></script>
 <script src="js/chat.js" defer></script>
@@ -375,6 +381,14 @@ def page(fn, title, body, desc, globe=False, css=(), js=()):
 <a class="skip" href="#main">تخطَّ إلى المحتوى</a>
 
 <header class="nav">
+  <div class="topbar"><div class="topbar-in">
+    <span class="tb-item">{ic('sprout')}{L(2)} · {L(3)}</span>
+    <span class="tb-item tb-loc">{ic('pin')}{L(8)}</span>
+    <span class="tb-spacer"></span>
+    <a class="tb-link" href="transparency.html">{ic('file')}الشفافية</a>
+    <a class="tb-link" href="support.html#zakat">{ic('calc')}حاسبة الزكاة</a>
+    {lang_switch(fn, 'lang-switch tb-lang')}
+  </div></div>
   <div class="nav-bar">
     <a class="brand" href="index.html" aria-label="جمعية تكامل – الرئيسية">
       <img src="assets/logo.png" alt="" width="44" height="44">
@@ -386,7 +400,6 @@ def page(fn, title, body, desc, globe=False, css=(), js=()):
       {links}
     </nav>
     <div class="actions">
-      {lang_switch(fn)}
       <a class="btn-donate" href="support.html#donate">{ic('heart')}<span>تبرع الآن</span></a>
       <button type="button" class="search-btn" data-open-palette aria-label="ابحث في الموقع (Ctrl+K)" aria-keyshortcuts="Control+K Meta+K">{ic('search')}<span class="search-label">ابحث في الكتيب</span><kbd class="kbd-hint">⌘K</kbd></button>
       <button type="button" class="icon-btn theme-toggle" aria-label="تبديل الوضع الليلي والنهاري" title="الوضع الليلي / النهاري">{ic('sun', 'i sun')}{ic('moon', 'i moon')}</button>

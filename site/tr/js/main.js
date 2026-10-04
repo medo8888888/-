@@ -16,7 +16,7 @@
   } else {
     $$('.rv, .tl').forEach(el => el.classList.add('in'));
   }
-  $$('.grid, .toc-grid, .faq-list, .mini-steps, .cycle').forEach(g =>
+  $$('.grid, .toc-grid, .faq-list, .mini-steps, .cycle, .pgrid, .ways, .stats, .stages, .values, .vm').forEach(g =>
     [...g.children].forEach((c, i) => c.style.setProperty('--d', Math.min(i, 8) * 0.07 + 's')));
   window.__takamulReady = true;
   // desktop mega menu: hover (with delay) + click + keyboard
@@ -224,6 +224,112 @@
       });
       if (empty) empty.hidden = shown > 0;
     });
+  }
+
+  /* ---------------- hero slider ---------------- */
+  const slider = $('[data-slider]');
+  if (slider) {
+    const slides = $$('.slide', slider), dots = $$('.dot', slider);
+    const MS = 6500;
+    slider.style.setProperty('--slide-ms', MS + 'ms');
+    let cur = 0, timer = 0;
+    const show = i => {
+      cur = (i + slides.length) % slides.length;
+      slides.forEach((s, k) => { s.classList.toggle('is-on', k === cur); s.setAttribute('aria-hidden', k === cur ? 'false' : 'true'); });
+      dots.forEach((d, k) => { d.classList.remove('is-on'); if (k === cur) { void d.offsetWidth; d.classList.add('is-on'); } d.setAttribute('aria-selected', k === cur); });
+      $$('a, button', slider).forEach(el => { if (el.closest('.slide')) el.tabIndex = el.closest('.slide').classList.contains('is-on') ? 0 : -1; });
+    };
+    const play = () => { clearInterval(timer); if (!reduce) timer = setInterval(() => show(cur + 1), MS); slider.classList.remove('paused'); };
+    const pause = () => { clearInterval(timer); slider.classList.add('paused'); };
+    dots.forEach(d => d.addEventListener('click', () => { show(+d.dataset.go); play(); }));
+    const prev = $('[data-prev]', slider), next = $('[data-next]', slider);
+    const rtl = root.dir !== 'ltr';
+    prev && prev.addEventListener('click', () => { show(cur - 1); play(); });
+    next && next.addEventListener('click', () => { show(cur + 1); play(); });
+    slider.addEventListener('mouseenter', pause); slider.addEventListener('mouseleave', play);
+    slider.addEventListener('focusin', pause); slider.addEventListener('focusout', play);
+    document.addEventListener('visibilitychange', () => (document.hidden ? pause() : play()));
+    let x0 = null;
+    slider.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; }, { passive: true });
+    slider.addEventListener('touchend', e => {
+      if (x0 === null) return;
+      const dx = e.changedTouches[0].clientX - x0; x0 = null;
+      if (Math.abs(dx) > 45) { show(cur + ((dx > 0) === rtl ? 1 : -1)); play(); }
+    });
+    show(0); play();
+  }
+
+  /* ---------------- program filter tabs ---------------- */
+  $$('.filter-tabs').forEach(tabs => {
+    const grid = tabs.parentElement.querySelector('[data-filter-grid]');
+    if (!grid) return;
+    $$('.ft', tabs).forEach(b => b.addEventListener('click', () => {
+      $$('.ft', tabs).forEach(x => x.classList.toggle('is-on', x === b));
+      const f = b.dataset.filter;
+      $$('.pcard', grid).forEach(c => {
+        const hide = f !== 'all' && c.dataset.kind !== f;
+        c.classList.toggle('is-hidden', hide);
+        if (!hide && !reduce) c.animate([{ opacity: 0, transform: 'scale(.94)' }, { opacity: 1, transform: 'none' }], { duration: 450, easing: 'cubic-bezier(.22,.8,.24,1)' });
+      });
+    }));
+  });
+
+  /* ---------------- quick donate → support page, pre-filled ---------------- */
+  const qd = $('[data-quick-donate]');
+  if (qd) qd.addEventListener('submit', e => {
+    e.preventDefault();
+    const custom = qd.elements.amount_custom.value.trim();
+    const preset = (qd.querySelector('[name=amount]:checked') || {}).value || '';
+    const q = new URLSearchParams({ amount: custom || preset, program: qd.elements.program.value });
+    location.href = qd.getAttribute('action') + '?' + q + '#donate';
+  });
+  if (qd) qd.elements.amount_custom.addEventListener('input', () => { if (qd.elements.amount_custom.value) $$('[name=amount]', qd).forEach(r => { r.checked = false; }); });
+
+  /* ---------------- stage line draws when visible ---------------- */
+  if ('IntersectionObserver' in window) {
+    const so = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('drawn'); so.unobserve(e.target); } }), { threshold: 0.3 });
+    $$('.stages').forEach(el => { so.observe(el); $$('.st-n', el).forEach((n, i) => n.style.setProperty('--i', i)); });
+  }
+
+  /* ---------------- pointer spotlight on cards + parallax ---------------- */
+  if (finePointer && !reduce) {
+    document.addEventListener('pointermove', e => {
+      const c = e.target.closest && e.target.closest('.pcard, .way, .stat, .vm-card');
+      if (!c) return;
+      const r = c.getBoundingClientRect();
+      c.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+      c.style.setProperty('--my', (e.clientY - r.top) + 'px');
+    }, { passive: true });
+  }
+  if (!reduce) {
+    const par = $$('.journey, .hero-small');
+    if (par.length) {
+      let pt = false;
+      const upd = () => {
+        par.forEach(el => {
+          const r = el.getBoundingClientRect();
+          if (r.bottom < 0 || r.top > innerHeight) return;
+          el.style.setProperty('--py', ((r.top + r.height / 2 - innerHeight / 2) * -0.12).toFixed(1));
+        });
+        pt = false;
+      };
+      addEventListener('scroll', () => { if (!pt) { pt = true; requestAnimationFrame(upd); } }, { passive: true });
+      upd();
+    }
+  }
+
+  /* ---------------- first-visit intro (logo bloom, curtain lifts) ---------------- */
+  if (!reduce && document.body.dataset.page === 'index.html') {
+    let seen = false;
+    try { seen = sessionStorage.getItem('takamul-intro') === '1'; sessionStorage.setItem('takamul-intro', '1'); } catch (e) { seen = true; }
+    if (!seen) {
+      const logo = $('.brand img');
+      const cur = document.createElement('div');
+      cur.className = 'intro-curtain'; cur.setAttribute('aria-hidden', 'true');
+      cur.innerHTML = `<img src="${logo ? logo.getAttribute('src') : 'assets/logo.png'}" alt="">`;
+      document.body.appendChild(cur);
+      setTimeout(() => cur.remove(), 1900);
+    }
   }
 
   /* ---------------- open details when linked ---------------- */

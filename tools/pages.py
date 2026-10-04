@@ -8,127 +8,141 @@ from core import D, SECTIONS, SEC_ICON, PAGE_LABEL, photo_layer, photo_strip, ga
 # ================================================================ HOME ===
 def hero_name():
     if core.LANG == 'ar':
-        return 'جمعية <span class="grad">تكامل</span><br>لبناء القيم والتنمية'
+        return 'جمعية <span class="grad">تكامل</span> لبناء القيم والتنمية'
     return L(501).split('  |  ')[0].strip().replace('Takamul', '<span class="grad">Takamul</span>', 1)
 
 
+def _after_dash(n):
+    """'3.1  مبادرة «ينابيع» – البناء ...' → ('مبادرة «ينابيع»', 'البناء ...') (verbatim pieces)."""
+    t = L(n).split('  ', 1)[-1]
+    a, _, b = t.partition(' – ')
+    return a.strip(), b.strip()
+
+
+def program_cards(share=False, link='support.html#donate'):
+    out = ''
+    for n, kind, icon in PROGRAMS:
+        tag = _after_dash(76 if kind == 'yanabee' else 82)[0]
+        sh = (f'<button type="button" class="icon-btn share-btn" data-share data-share-title="{L(n)}" data-share-url="support.html#programs" '
+              f'aria-label="مشاركة البرنامج">{ic("share")}</button>') if share else ''
+        act = (f'<button type="button" class="btn btn-soft prog-btn" data-program="{L(n)}">{ic("heart")}ادعم هذا البرنامج</button>' if share
+               else f'<a class="btn btn-soft prog-btn" href="{link}">{ic("heart")}ادعم هذا البرنامج</a>')
+        out += (f'<article class="pcard rv {kind}" data-kind="{kind}"><div class="pcard-img" style="--img:url(../assets/img/{PHOTO_OF[n]}.jpg)">'
+                f'<span class="pcard-tag">{tag}</span></div><div class="pcard-body"><span class="pcard-ic">{ic(icon)}</span>'
+                f'<p>{L(n)}</p><div class="prog-actions">{act}{sh}</div></div></article>')
+    return out
+
+
 def build_home():
-    toc = ''.join(
-        f'<a class="toc-item tilt rv" href="{sec_link(n)}" style="--sc:var(--c-{SECTIONS[n][4]})">'
-        f'<span class="toc-num">{n}</span><span class="toc-ic">{ic(SEC_ICON[n])}</span>'
-        f'<span class="toc-title">{t}</span><span class="toc-go">{ic("arrow-left")}</span></a>'
-        for n, t in toc_items())
-    stages = ''.join(
-        f'<li class="rv"><span>{L(130 + 4 * i)}</span><b>{L(131 + 4 * i)}</b></li>' for i in range(7))
+    y_t, y_s = _after_dash(76)
+    m_t, m_s = _after_dash(82)
+    slides = [
+        ('istanbul', L(1), hero_name(), f'{L(3)} — {L(8)}',
+         f'<a class="btn btn-gold btn-lg" href="support.html#donate">{ic("heart")}تبرع الآن</a><a class="btn btn-glass btn-lg" href="join.html#apply">{ic("users")}انضم إلينا</a>'),
+        ('reading', y_t, y_s, L(77),
+         f'<a class="btn btn-gold btn-lg" href="support.html#programs">{ic("heart")}ادعم «ينابيع»</a><a class="btn btn-glass btn-lg" href="initiatives.html#s3-1">اكتشف المبادرة {ic("arrow-left")}</a>'),
+        ('workshop', m_t, m_s, L(83),
+         f'<a class="btn btn-gold btn-lg" href="support.html#programs">{ic("heart")}ادعم «منافع»</a><a class="btn btn-glass btn-lg" href="initiatives.html#s3-2">اكتشف المبادرة {ic("arrow-left")}</a>'),
+        ('bosphorus', L(2), L(7), L(53),
+         f'<a class="btn btn-gold btn-lg" href="expansion.html">{ic("globe")}{L(127)}</a><a class="btn btn-glass btn-lg" href="about.html#s2">{L(52)} {ic("arrow-left")}</a>'),
+    ]
+    slides_html = ''.join(
+        f'<div class="slide{" is-on" if i == 0 else ""}" data-slide="{i}" aria-hidden="{"false" if i == 0 else "true"}">'
+        f'<div class="slide-bg" style="--img:url(../assets/img/{img}.jpg)"></div>'
+        f'<div class="wrap slide-copy"><span class="slide-kicker">{k}</span>'
+        f'<{"h1" if i == 0 else "h2"} class="slide-title">{t}</{"h1" if i == 0 else "h2"}><p class="slide-text">{tx}</p>'
+        f'<div class="slide-btns">{btns}</div></div></div>'
+        for i, (img, k, t, tx, btns) in enumerate(slides))
+    dots = ''.join(f'<button type="button" class="dot{" is-on" if i == 0 else ""}" data-go="{i}" aria-label="{i + 1}"></button>' for i in range(len(slides)))
+    amounts = ''.join(f'<label class="qd-amt"><input type="radio" name="amount" value="{a}"{" checked" if a == 250 else ""}><span>{a}</span></label>'
+                      for a in (100, 250, 500, 1000))
+    progs = ''.join(f'<option>{L(n)}</option>' for n, _, _ in PROGRAMS)
+    stats = [('2', L(4), 'sprout'), ('8', 'برامج ميدانية', 'heart'), ('5', L(113).split('  ')[-1], 'grid'),
+             ('4', L(158), 'users'), ('7', f'{L(6).split(" ", 1)[1]} — {L(7)}', 'globe')]
+    stats_html = ''.join(f'<div class="stat rv"><span class="stat-ic">{ic(i)}</span><b data-to="{n}">{n}</b><span>{t}</span></div>' for n, t, i in stats)
+    values = ''.join(f'<li><span>{ic("check")}</span><b>{L(101 + 3 * i)}</b><small>{L(103 + 3 * i)}</small></li>' for i in range(4))
+    ways = [('support.html#donate', 'heart', 'تبرّع', L(211), 'gold'),
+            ('support.html#volunteer', 'users', 'تطوّع معنا', L(161), 'teal'),
+            ('join.html#apply', 'check', 'طلب العضوية', L(184).split('  ', 1)[-1], 'blue'),
+            ('support.html#zakat', 'calc', 'حاسبة الزكاة', 'احسب زكاة مالك في دقيقة', 'purple')]
+    ways_html = ''.join(f'<a class="way rv" href="{h}" style="--wc:var(--c-{c})"><span class="way-ic">{ic(i)}</span><h3>{t}</h3><p>{d}</p>'
+                        f'<span class="way-go">{ic("arrow-left")}</span></a>' for h, i, t, d, c in ways)
+    stages = ''.join(f'<li class="rv"><span class="st-n">{L(130 + 4 * i)}</span><b>{L(131 + 4 * i)}</b><small>{L(132 + 4 * i)}</small></li>' for i in range(7))
+    faqs = ''.join(qa(a, s_, e, f'hf{i + 1}') for i, (a, s_, e) in enumerate(F[:4]))
     body = f'''
-<section class="hero hero-home has-photo">
-  <div class="hero-bg" aria-hidden="true"></div>{photo_layer('istanbul')}
-  <div class="wrap hero-grid">
-    <div class="hero-copy">
-      <h1 class="rv">{hero_name()}</h1>
-      <p class="sub rv">{L(3)} — {L(8)}</p>
-    </div>
-  </div>
-  <a class="scroll-cue" href="#welcome" aria-label="انتقل للأسفل"><span></span></a>
-</section>
-
-<section class="impact-band"><div class="wrap">
-  <div class="impact-grid">
-    <div class="rv"><b data-to="2">2</b><span>{L(4)}</span></div>
-    <div class="rv"><b data-to="8">8</b><span>برامج ميدانية</span></div>
-    <div class="rv"><b data-to="5">5</b><span>{L(113).split('  ')[-1]}</span></div>
-    <div class="rv"><b data-to="4">4</b><span>{L(158)}</span></div>
-    <div class="rv"><b data-to="7">7</b><span>{L(6).split(' ',1)[1]} — {L(7)}</span></div>
-  </div>
-  <div class="impact-cta rv"><a class="btn btn-gold" href="support.html#donate">{ic('heart')}تبرع الآن</a><a class="btn btn-soft" href="support.html#volunteer">{ic('users')}تطوع معنا</a><a class="btn btn-soft" href="join.html#apply">{ic('check')}طلب العضوية</a></div>
-</div></section>
-
-<section class="sec photo-sec"><div class="wrap">
-  <div class="center"><span class="kicker rv">{L(74)}</span><h2 class="rv">مجالات عملنا</h2></div>
-  <div class="photo-band">
-    <a class="ph rv" href="initiatives.html#s3-1" style="--img:url(../assets/img/classroom.jpg)"><span class="ph-tag">«ينابيع»</span><b>{L(77).split(':',1)[-1].strip()}</b></a>
-    <a class="ph rv" href="initiatives.html#s3-2" style="--img:url(../assets/img/workshop.jpg)"><span class="ph-tag">«منافع»</span><b>{L(84)}</b></a>
-    <a class="ph rv" href="support.html#programs" style="--img:url(../assets/img/bakery.jpg)"><span class="ph-tag">«منافع»</span><b>{L(86)}</b></a>
-    <a class="ph rv" href="support.html#donate" style="--img:url(../assets/img/distribution.jpg)"><span class="ph-tag">التكافل</span><b>{L(87)}</b></a>
-  </div>
-  <p class="ph-note rv">صور تعبيرية</p>
-</div></section>
-
-<section class="welcome" id="welcome">
-  <div class="wrap welcome-grid">
-    <div class="welcome-card tilt rv" aria-hidden="true"><img src="assets/logo.png" alt="" width="260" height="260"></div>
-    <div>
-      <span class="kicker rv">{L(2)}</span>
-      <h2 class="rv">{L(9)}</h2>
-      <p class="big rv">{L(10)}</p>
-      <p class="rv muted">{L(11)}</p>
-    </div>
+<section class="hero-slider" aria-roledescription="carousel" aria-label="{L(1)}" data-slider>
+  {slides_html}
+  <div class="slider-ui wrap">
+    <div class="dots" role="tablist">{dots}</div>
+    <div class="arrows"><button type="button" class="arrow" data-prev aria-label="السابق">{ic('arrow-right')}</button><button type="button" class="arrow" data-next aria-label="التالي">{ic('arrow-left')}</button></div>
   </div>
 </section>
+
+<section class="quick-donate-wrap"><div class="wrap">
+  <form class="quick-donate rv" action="support.html" method="get" data-quick-donate>
+    <div class="qd-head"><span class="qd-ic">{ic('heart')}</span><div><b>تبرّع سريع</b><small>{L(211)}</small></div></div>
+    <div class="qd-amts" role="radiogroup" aria-label="المبلغ">{amounts}</div>
+    <label class="qd-field"><span>المبلغ</span><input type="number" name="amount_custom" min="1" inputmode="numeric" dir="ltr" placeholder="مبلغ آخر"></label>
+    <label class="qd-field qd-prog"><span>البرنامج</span><select name="program"><option>حيث الحاجة أكبر</option>{progs}</select></label>
+    <button class="btn btn-gold btn-lg" type="submit">{ic('heart')}تبرع الآن</button>
+  </form>
+</div></section>
+
+<section class="stats-band"><div class="wrap stats">{stats_html}</div></section>
+
+<section class="sec about-split" id="welcome"><div class="wrap split">
+  <div class="split-media rv">
+    <div class="sm-main" style="--img:url(../assets/img/courtyard.jpg)"></div>
+    <div class="sm-badge"><img src="assets/logo.png" alt="" width="84" height="84"><b>{L(2)}</b></div>
+  </div>
+  <div class="split-copy">
+    <span class="kicker rv">{L(41)}</span>
+    <h2 class="rv">{L(9)}</h2>
+    <p class="big rv">{L(42)}</p>
+    <p class="rv muted">{L(10)}</p>
+    <ul class="values rv">{values}</ul>
+    <div class="btns rv"><a class="btn btn-primary" href="about.html">{ic('info')}اعرف المزيد عنا</a><a class="btn btn-soft" href="transparency.html">{ic('file')}الشفافية</a></div>
+  </div>
+</div></section>
+
+<section class="sec alt" id="programs"><div class="wrap">
+  <div class="sec-title rv"><span class="kicker">{L(73)}</span><h2>برامجنا</h2><p>{L(75)}</p></div>
+  <div class="filter-tabs rv" role="tablist">
+    <button type="button" class="ft is-on" data-filter="all">الكل</button>
+    <button type="button" class="ft" data-filter="yanabee">{_after_dash(76)[0]}</button>
+    <button type="button" class="ft" data-filter="manafea">{_after_dash(82)[0]}</button>
+  </div>
+  <div class="pgrid" data-filter-grid>{program_cards()}</div>
+  <div class="center rv" style="margin-top:28px"><a class="btn btn-primary" href="initiatives.html">{ic('sprout')}{L(73)}</a></div>
+</div></section>
+
+<section class="sec" id="help"><div class="wrap">
+  <div class="sec-title rv"><span class="kicker">ساهم معنا</span><h2>كيف تساهم في صناعة الأثر؟</h2></div>
+  <div class="ways">{ways_html}</div>
+</div></section>
+
+<section class="journey" style="--img:url(../assets/img/bosphorus.jpg)"><div class="wrap">
+  <div class="sec-title light rv"><span class="kicker">{L(127)}</span><h2>{L(7)}</h2><p>{L(128)}</p></div>
+  <ol class="stages">{stages}</ol>
+  <div class="center rv"><a class="btn btn-gold" href="expansion.html">{ic('globe')}{L(127)}</a></div>
+</div></section>
+
+<section class="sec" id="vision"><div class="wrap vm">
+  <article class="vm-card rv" style="--vc:var(--c-teal)"><span class="vm-ic">{ic('eye')}</span><span class="kicker">{L(2)}</span><h3>{L(52)}</h3><p>{L(53)}</p></article>
+  <article class="vm-card rv" style="--vc:var(--c-gold)"><span class="vm-ic">{ic('target')}</span><span class="kicker">{L(5)}</span><h3>{L(54)}</h3><p>{L(55)}</p></article>
+</div></section>
 
 <section class="gallery-sec">
-  <div class="wrap center"><span class="kicker rv">{L(1)}</span><h2 class="rv">من أجواء عملنا</h2></div>
+  <div class="wrap sec-title rv"><span class="kicker">{L(1)}</span><h2>من أجواء عملنا</h2></div>
   {gallery()}
   <p class="ph-note">صور تعبيرية</p>
 </section>
 
-<section class="toc-sec alt" id="toc">
-  <div class="wrap">
-    <div class="center"><span class="kicker rv">{L(1)}</span><h2 class="rv">{L(12)}</h2></div>
-    <div class="toc-grid">{toc}</div>
-  </div>
-</section>
-
-<section class="sec" id="hub">
-  <div class="wrap">
-    <div class="center"><span class="kicker rv">{L(1)}</span><h2 class="rv">كل ما تحتاجه في مكان واحد</h2></div>
-    <div class="bento" style="margin-top:30px">
-      <a class="tile t-dash rv" href="dashboard.html">
-        <span class="ic big">{ic('chart')}</span>
-        <h3>لوحة القيادة</h3>
-        <p>رؤية الجمعية ومبادراتها وحوكمتها وخطة توسعها في لوحة تفاعلية واحدة.</p>
-        <div class="dash-facts">
-          <div><b data-to="2035">2035</b><span>{L(2)}</span></div>
-          <div><b>2</b><span>{L(4)}: {L(5)}</span></div>
-          <div><b>7</b><span>{L(6)} — {L(7)}</span></div>
-        </div>
-        <span class="go">افتح لوحة القيادة {ic('arrow-left')}</span>
-      </a>
-      <button type="button" class="tile t-search rv" data-open-palette>
-        <span class="ic big">{ic('search')}</span>
-        <h3>ابحث في الكتيب كله</h3>
-        <p>اكتب أي كلمة وانتقل مباشرة إلى القسم أو الركيزة أو السؤال.</p>
-        <span class="fake-search">{ic('search')}<span>مثال: منافع، الحوكمة، أنقرة…</span><kbd class="kbd-hint">⌘K</kbd></span>
-      </button>
-      <button type="button" class="tile t-ai rv" data-open-chat>
-        <span class="ic big">{ic('sparkles')}</span>
-        <h3>اسأل المساعد الذكي</h3>
-        <p>إجابات فورية بالعربية من نص الكتيب التعريفي، مع روابط المصدر.</p>
-        <span class="go">ابدأ المحادثة {ic('arrow-left')}</span>
-      </button>
-    </div>
-  </div>
-</section>
-
-<section class="sec">
-  <div class="wrap">
-    <div class="center"><span class="kicker rv">{L(73)}</span><h2 class="rv">{L(74)}</h2><p class="lead rv center-text">{L(75)}</p></div>
-    <div class="grid g2">
-      <a class="init-card tilt rv yanabee" href="{sec_link(3)}">
-        <span class="ic big">{ic('droplet')}</span><h3>{L(76)}</h3><p>{L(77)}</p><span class="more">{ic('arrow-left')}</span></a>
-      <a class="init-card tilt rv manafea" href="{sec_link(3)}">
-        <span class="ic big">{ic('coins')}</span><h3>{L(82)}</h3><p>{L(83)}</p><span class="more">{ic('arrow-left')}</span></a>
-    </div>
-  </div>
-</section>
-
-<section class="sec alt">
-  <div class="wrap">
-    <div class="center"><span class="kicker rv">{L(127)}</span><h2 class="rv">{L(7)}</h2><p class="lead rv center-text">{L(128)}</p></div>
-    <ol class="mini-steps">{stages}</ol>
-    <div class="center rv"><a class="btn btn-primary" href="expansion.html">{ic('globe')}{L(127)}</a></div>
-  </div>
-</section>
+<section class="sec alt" id="faq-teaser"><div class="wrap faq-split">
+  <div class="rv"><span class="kicker">{L(377)}</span><h2>أسئلة شائعة</h2><p class="muted">{L(378)}</p>
+    <div class="btns"><a class="btn btn-primary" href="faq.html">{ic('help')}{L(377)}</a><button type="button" class="btn btn-soft" data-open-chat>{ic('sparkles')}اسأل المساعد</button></div></div>
+  <div class="faq-list">{faqs}</div>
+</div></section>
 {cta()}'''
     page('index.html', 'الرئيسية', body, L(10))
 
@@ -156,7 +170,8 @@ def build_about():
     <div class="grid g4">{phil}</div>
     {subhead(L(113), id='s4-2')}
     <div class="table-wrap rv"><table class="rt"><thead><tr><th>{L(114)}</th><th>{L(115)}</th></tr></thead><tbody>{rows}</tbody></table></div>''')
-    page('about.html', 'من نحن', page_hero('about.html', [1, 2, 4]) + s1 + s2 + s4 + cta(), L(42))
+    intro = f'<section class="sec intro-sec"><div class="wrap intro rv"><span class="kicker">{L(1)}</span><h2>{L(9)}</h2><p class="big">{L(10)}</p><p class="muted">{L(11)}</p></div></section>'
+    page('about.html', 'من نحن', page_hero('about.html', [1, 2, 4]) + intro + s1 + s2 + s4 + cta(), L(42))
 
 
 # ========================================================= INITIATIVES ===
@@ -406,12 +421,6 @@ PROGRAMS = [(78, 'yanabee', 'droplet'), (79, 'yanabee', 'heart'), (80, 'yanabee'
 
 def build_support():
     prog_names = [L(n) for n, _, _ in PROGRAMS]
-    cards = ''.join(
-        f'<article class="prog-card tilt rv {kind}" style="--img:url(../assets/img/{PHOTO_OF[n]}.jpg)"><span class="ic">{ic(icon)}</span>'
-        f'<span class="prog-tag">{"«ينابيع»" if kind == "yanabee" else "«منافع»"}</span>'
-        f'<p>{L(n)}</p><div class="prog-actions"><button type="button" class="btn btn-soft prog-btn" data-program="{L(n)}">{ic("heart")}ادعم هذا البرنامج</button>'
-        f'<button type="button" class="icon-btn share-btn" data-share data-share-title="{L(n)}" data-share-url="support.html#programs" aria-label="مشاركة البرنامج">{ic("share")}</button></div></article>'
-        for n, kind, icon in PROGRAMS)
     amounts = ''.join(f'<label class="pick amt"><input type="radio" name="amount_preset" value="{a}"><span>{a}</span></label>' for a in (100, 250, 500, 1000, 2500))
     depts = ''.join(f'<label class="pick"><input type="checkbox" name="area" value="{L(116 + 2 * i)}"><span>{L(116 + 2 * i)}</span></label>' for i in range(5))
     sources = ''.join(f'<li><span class="num">{L(208 + 2 * i)}</span>{L(209 + 2 * i)}</li>' for i in range(7))
@@ -428,7 +437,7 @@ def build_support():
 {ticker()}
 <section class="sec" id="programs"><div class="wrap">
   <div class="center"><span class="kicker rv">{L(73)}</span><h2 class="rv">برامج تحتاج دعمك</h2><p class="lead rv center-text">{L(75)}</p></div>
-  <div class="prog-grid">{cards}</div>
+  <div class="pgrid">{program_cards(share=True)}</div>
 </div></section>
 <section class="sec" id="zakat"><div class="wrap">
   <div class="center"><span class="kicker rv">{ic('calc')} أداة مجانية</span><h2 class="rv">حاسبة الزكاة</h2>

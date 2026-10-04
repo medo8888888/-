@@ -98,6 +98,17 @@
   });
   E.currency.addEventListener('change', render);
 
+  /* ---------------- pre-fill from the home page quick-donate box ---------------- */
+  const qs = new URLSearchParams(location.search);
+  if (qs.get('amount') && num(qs.get('amount'))) {
+    E.amount.value = num(qs.get('amount'));
+    form.querySelectorAll('[name=amount_preset]').forEach(r => { r.checked = r.value === E.amount.value; });
+  }
+  if (qs.get('program')) {
+    const opt = [...E.program.options].find(o => o.value === qs.get('program') || o.text === qs.get('program'));
+    if (opt) E.program.value = opt.value;
+  }
+
   /* ---------------- on behalf of / gift ---------------- */
   const mode = () => (form.querySelector('[name=gift_mode]:checked') || {}).value || 'self';
   function syncGift() {
