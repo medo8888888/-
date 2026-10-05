@@ -1,0 +1,8 @@
+/* lab page shell (owned by the integrator) */
+.lab-hero{padding-bottom:28px}
+.lab-note{max-width:820px;margin-top:14px;padding:10px 16px;border-radius:14px;font-size:.95rem;color:var(--ink-2);background:color-mix(in oklab,var(--sun) 12%,var(--surface));border:1px dashed color-mix(in oklab,var(--sun) 50%,var(--line-2))}
+.lab-tablist{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px}
+.lab-tablist [role=tab]{display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:999px;font-family:var(--font-h);font-weight:600;color:var(--ink-2);background:var(--surface);border:1px solid var(--line-2);min-height:46px}
+.lab-tablist [role=tab][aria-selected=true]{background:var(--grad);color:#fff;border-color:transparent;box-shadow:0 10px 22px -10px rgba(16,143,176,.8)}
+[data-theme=dark] .lab-tablist [role=tab][aria-selected=true]{color:#03171c}
+.lab-stub{padding:40px;text-align:center;color:var(--muted)}

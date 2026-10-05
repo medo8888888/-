@@ -54,7 +54,7 @@ SUB_ICON = {
     'media': 'video', 'outreach': 'megaphone', 'support': 'handshake', 'structure': 'network',
     'followup': 'calendar', 'periodic': 'award', 'annual': 'trophy', 'levels': 'layers', 'kpis': 'chart',
 }
-PAGE_TONE = {'index.html': 'brand', 'teams.html': 'accent', 'operations.html': 'sky', 'quran.html': 't1', 'learn.html': 'sun'}
+PAGE_TONE = {'index.html': 'brand', 'teams.html': 'accent', 'operations.html': 'sky', 'quran.html': 't1', 'learn.html': 'sun', 'lab.html': 'accent'}
 UI_ICONS = ['search', 'sparkles', 'arrow-left', 'file-text', 'x', 'book-open', 'users', 'home', 'shield', 'gauge']
 
 

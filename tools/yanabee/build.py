@@ -11,7 +11,7 @@ import importlib
 import sys
 import traceback
 
-MODULES = ['page_index', 'page_teams', 'page_operations', 'page_quran', 'page_learn', 'page_404', 'build_kb']
+MODULES = ['page_index', 'page_teams', 'page_operations', 'page_quran', 'page_learn', 'page_lab', 'page_404', 'build_kb']
 
 if __name__ == '__main__':
     only = sys.argv[1:]

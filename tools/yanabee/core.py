@@ -169,6 +169,7 @@ PAGES = [
     ('operations.html', 'التشغيل والحوكمة', 'shield'),
     ('quran.html', 'حفظ، فهم، تطبيق', 'book-open'),
     ('learn.html', 'تعلّم والعب', 'sparkles'),
+    ('lab.html', 'مختبر ينابيع', 'target'),
 ]
 PAGE_LABEL = {f: label for f, label, _ in PAGES}
 

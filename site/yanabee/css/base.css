@@ -450,3 +450,7 @@ html:not(.js) .tabbar{grid-template-columns:repeat(3,1fr)}
 @media(min-width:861px){.footer{padding-bottom:96px}}
 
 .foot-credit{font-size:.85rem;color:#86a6a9}.footer .foot-credit a{display:inline;padding:0;text-decoration:underline;font-size:inherit}
+
+/* six menu links: make room on mid-size screens */
+@media(max-width:1200px){.btn-ai span{display:none}.btn-ai{padding:9px 12px}.nav-bar{gap:10px}.links a{padding:8px 10px;font-size:.92rem}}
+@media(max-width:1060px){.links a{padding:8px 8px;font-size:.86rem}.brand b{font-size:1.15rem}.search-btn{display:none}}
