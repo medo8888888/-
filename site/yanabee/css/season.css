@@ -469,3 +469,4 @@ body:has(.nav.hide) .ss-hud{top:8px}
 .ss-tl-d{color:var(--head)!important;background:color-mix(in oklab,var(--vc) 24%,var(--surface))!important;border:2px solid var(--vc)}
 .ss-tl li.q1 .ss-tl-d{color:var(--head)!important}
 .ss .chips{margin-top:2px}
+.ss{padding-bottom:72px}

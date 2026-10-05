@@ -316,6 +316,22 @@ for (const [w, theme] of [[390, 'light'], [390, 'dark'], [1440, 'light'], [1440,
   await ctx.close();
 }
 
+// ================================================================== 7b. lab tabs still switch after the panel was used
+console.log('lab tabs');
+{
+  const { ctx, p, errs } = await open();
+  await p.evaluate(() => window.YanabeeSeason.seed(9));
+  await pickQ(p, D, 2); await advance(p);
+  check('season panel has no role=tab of its own', (await p.$$('#season [role="tab"]')).length === 0);
+  await p.click('#tab-studio');
+  check('Studio tab shows, season panel hides', await p.evaluate(() => !document.getElementById('panel-studio').hidden && document.getElementById('panel-season').hidden));
+  await p.click('#tab-season');
+  check('Season tab shows again with the game state intact', await p.evaluate(() => document.getElementById('panel-studio').hidden && !document.getElementById('panel-season').hidden && window.YanabeeSeason.state().w === 1));
+  check('bottom padding keeps controls clear of the passport chip', await p.$eval('#season', e => parseInt(getComputedStyle(e).paddingBottom) >= 72));
+  check('no console errors', errs.length === 0, errs.join(' | '));
+  await ctx.close();
+}
+
 // ================================================================== 8. motion on: animations run, confetti on success
 console.log('motion');
 {

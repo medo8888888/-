@@ -7,3 +7,4 @@
 [data-theme=dark] .lab-tablist [role=tab][aria-selected=true]{color:#03171c}
 .lab-stub{padding:40px;text-align:center;color:var(--muted)}
 .lab.sec{padding-top:12px}
+body[data-page="lab.html"] .yb-pass{display:none}
