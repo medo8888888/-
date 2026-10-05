@@ -137,6 +137,8 @@ PAGES = [
 ]
 PAGE_LABEL = {f: t for f, t, _ in PAGES}
 PAGE_LABEL['transparency.html'] = 'الشفافية'
+PAGE_LABEL['portal.html'] = 'بوابة الأعضاء'
+PAGE_LABEL['admin.html'] = 'لوحة الإدارة'
 
 # section number -> (number line, title line, subtitle line, page, colour token)
 SECTIONS = {
@@ -306,8 +308,9 @@ def page(fn, title, body, desc, globe=False, css=(), js=()):
             mi('initiatives.html#s3-2', 'مبادرة «منافع»', 'coins', L(83).split(':', 1)[-1].strip()),
             mi('initiatives.html#s3-3', 'التنسيق والتكامل المؤسسي', 'link', L(90)),
             mi('initiatives.html#s6', L(158), 'users', L(159)), mi('support.html#programs', 'برامج تحتاج دعمك', 'heart')]),
-        ('شارك معنا', 'heart', ['support.html', 'join.html'], [
+        ('شارك معنا', 'heart', ['support.html', 'join.html', 'portal.html'], [
             mi('support.html#donate', 'تبرع الآن', 'heart', L(211)), mi('support.html#zakat', 'حاسبة الزكاة', 'calc'), mi('support.html#volunteer', 'تطوّع معنا', 'users', L(326)[:70] + '…'),
+            mi('portal.html', 'بوابة الأعضاء', 'users', 'استمارة العضوية، الاشتراك، الإشعارات'),
             mi('join.html#apply', 'طلب العضوية', 'check', L(184)), mi('join.html#s9', L(228), 'pinmark', L(229))]),
     ]
     mega = '<a class="mtop' + (' on' if fn == 'index.html' else '') + '" href="index.html">الرئيسية</a>'
@@ -319,7 +322,7 @@ def page(fn, title, body, desc, globe=False, css=(), js=()):
     mega += '<a class="mtop" href="support.html#contact">تواصل معنا</a>'
     sheet = ''.join(
         f'<a class="sheet-item{" active" if h == fn else ""}" href="{h}">{ic(i)}<span>{t}</span></a>'
-        for h, t, i in PAGES)
+        for h, t, i in PAGES + [('portal.html', 'بوابة الأعضاء', 'users')])
     foot = ''.join(f'<a href="{h}">{t}</a>' for h, t, _ in PAGES) + '<a href="transparency.html">الشفافية</a><a href="support.html#zakat">حاسبة الزكاة</a>'
     toc_foot = ''.join(f'<a href="{sec_link(n)}">{n}. {t}</a>' for n, t in toc_items()[:7])
     toc_foot2 = ''.join(f'<a href="{sec_link(n)}">{n}. {t}</a>' for n, t in toc_items()[7:])
@@ -386,6 +389,7 @@ def page(fn, title, body, desc, globe=False, css=(), js=()):
     <span class="tb-item">{ic('sprout')}{L(2)} · {L(3)}</span>
     <span class="tb-item tb-loc">{ic('pin')}{L(8)}</span>
     <span class="tb-spacer"></span>
+    <a class="tb-link" href="portal.html">{ic('users')}بوابة الأعضاء</a>
     <a class="tb-link" href="transparency.html">{ic('file')}الشفافية</a>
     <a class="tb-link" href="support.html#zakat">{ic('calc')}حاسبة الزكاة</a>
     {lang_switch(fn, 'lang-switch tb-lang')}
@@ -401,6 +405,7 @@ def page(fn, title, body, desc, globe=False, css=(), js=()):
       {links}
     </nav>
     <div class="actions">
+      <a class="btn-portal" href="portal.html" aria-label="بوابة الأعضاء">{ic('users')}<span>دخول الأعضاء</span></a>
       <a class="btn-donate" href="support.html#donate">{ic('heart')}<span>تبرع الآن</span></a>
       <button type="button" class="search-btn" data-open-palette aria-label="ابحث في الموقع (Ctrl+K)" aria-keyshortcuts="Control+K Meta+K">{ic('search')}<span class="search-label">ابحث في الكتيب</span><kbd class="kbd-hint">⌘K</kbd></button>
       <button type="button" class="icon-btn theme-toggle" aria-label="تبديل الوضع الليلي والنهاري" title="الوضع الليلي / النهاري">{ic('sun', 'i sun')}{ic('moon', 'i moon')}</button>

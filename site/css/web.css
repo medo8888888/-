@@ -608,3 +608,14 @@
 
 @media(max-width:900px){.tree-wrap{grid-template-columns:1fr;gap:10px}.tree-info{text-align:center}.tree-actions{justify-content:center}.tree-info .kicker{justify-content:center}}
 @media(max-width:760px){.tree-svg{max-width:100%}.kinetic{padding:22px 0}.ti{padding:18px}}
+/* member portal entry points */
+.btn-portal{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:12px;border:1.5px solid var(--line-2);color:var(--head);font-weight:800;text-decoration:none;white-space:nowrap}
+.btn-portal .i{width:18px;height:18px;color:var(--c-teal)}
+.btn-portal:hover{border-color:var(--c-teal)}
+@media(max-width:1180px){.btn-portal span{display:none}.btn-portal{padding:10px}}
+.portal-cta-sec{padding:36px 0 0}
+.portal-cta{display:flex;align-items:center;gap:20px;padding:24px 28px;border-radius:24px;text-decoration:none;color:#fff;background:linear-gradient(135deg,#14284b,#0e3a5a 60%,#0e7c7b);box-shadow:var(--shadow-lg)}
+.portal-cta b{display:block;font-size:20px;color:#fff}.portal-cta div span{color:#cdd8e6;line-height:1.8}
+.pc-ic{flex:none;width:58px;height:58px;display:grid;place-items:center;border-radius:18px;background:#c9a227;color:#14284b}.pc-ic .i{width:28px;height:28px}
+.portal-cta .btn{margin-inline-start:auto;flex:none}
+@media(max-width:760px){.portal-cta{flex-direction:column;align-items:flex-start}.portal-cta .btn{margin-inline-start:0}}

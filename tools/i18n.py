@@ -50,6 +50,8 @@ def localize(lang):
         t = f.read_text(encoding='utf-8')
         # files marked @i18n-self carry their own ar/en/tr strings and are copied unchanged
         (out / 'js' / f.name).write_text(t if '@i18n-self' in t[:200] else _translate(t, m, f.name), encoding='utf-8')
+    if (core.SITE / 'js' / 'vendor').is_dir():  # third-party libraries: copied as-is
+        shutil.copytree(core.SITE / 'js' / 'vendor', out / 'js' / 'vendor', dirs_exist_ok=True)
     w = core.SITE / 'data' / 'world.js'
     (out / 'data' / 'world.js').write_text(_translate(w.read_text(encoding='utf-8'), m, 'world.js'), encoding='utf-8')
     kb = out / 'data' / 'kb.js'

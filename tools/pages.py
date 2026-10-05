@@ -493,7 +493,11 @@ def build_join():
         for r in range(7))
     s11 = section(11, f'''<div class="table-wrap rv"><table class="rt founders"><thead><tr>{''.join(f'<th>{h}</th>' for h in heads)}</tr></thead><tbody>{rows}</tbody></table></div>
     <p class="footnote rv">{L(300)}</p>''')
-    page('join.html', 'العضوية', page_hero('join.html', [9, 12, 11]) + membership_form() + s9 + s12 + s11 + cta(), L(304), js=('js/join.js',))
+    portal_cta = (f'<section class="sec portal-cta-sec"><div class="wrap"><a class="portal-cta rv" href="portal.html">'
+                  f'<span class="pc-ic">{ic("users")}</span><div><b>قدّم طلبك إلكترونياً عبر بوابة الأعضاء</b>'
+                  f'<span>أنشئ حسابك، املأ الاستمارة، ارفع إيصال الاشتراك، وتابع حالة عضويتك وإشعاراتك.</span></div>'
+                  f'<span class="btn btn-gold">{ic("arrow-left")}الدخول إلى البوابة</span></a></div></section>')
+    page('join.html', 'العضوية', page_hero('join.html', [9, 12, 11]) + portal_cta + membership_form() + s9 + s12 + s11 + cta(), L(304), js=('js/join.js',))
 
 
 # ================================================================= FAQ ===
@@ -801,7 +805,284 @@ def build_transparency():
     page('transparency.html', 'الشفافية', body, L(206))
 
 
+# ============================================================ PORTAL ===
+def build_portal():
+    depts = ''.join(f'<label class="pick"><input type="checkbox" name="interests" value="{L(116 + 2 * i)}"><span>{L(116 + 2 * i)}</span></label>' for i in range(5))
+    rights = ''.join(f'<li>{L(232 + i)}</li>' for i in range(4))
+    duties = ''.join(f'<li>{L(236 + i)}</li>' for i in range(4))
+    tab = lambda k, i, t: f'<button type="button" class="pt-tab" data-tab="{k}">{ic(i)}<span>{t}</span><b class="pt-badge" data-badge="{k}" hidden></b></button>'
+    body = f'''
+<section class="hero hero-small has-photo portal-hero">
+  <div class="hero-bg" aria-hidden="true"></div>{photo_layer('hands')}
+  <div class="wrap hero-grid"><div class="hero-copy">
+    {crumbs('بوابة الأعضاء')}
+    <h1 class="rv hero-title">بوابة الأعضاء</h1>
+    <p class="sub rv">استمارة العضوية، وسداد الاشتراك، وتاريخ عضويتك، والإشعارات والملاحظات — كلها في حسابك.</p>
+  </div></div>
+</section>
+
+<section class="sec portal" data-portal><div class="wrap">
+  <div class="pt-loading" data-view="loading"><span class="spin"></span></div>
+
+  <!-- ===== sign in / register ===== -->
+  <div class="pt-auth" data-view="auth" hidden>
+    <div class="pt-auth-card">
+      <div class="pt-auth-tabs" role="tablist">
+        <button type="button" class="is-on" data-auth="login">تسجيل الدخول</button>
+        <button type="button" data-auth="register">حساب جديد</button>
+      </div>
+      <form class="pt-form" data-form="login">
+        <label class="fld"><span>البريد الإلكتروني</span><input name="email" type="email" required autocomplete="email" dir="ltr"></label>
+        <label class="fld"><span>كلمة المرور</span><input name="password" type="password" required autocomplete="current-password" minlength="8" dir="ltr"></label>
+        <button class="btn btn-primary btn-lg" type="submit">{ic('users')}دخول</button>
+        <button type="button" class="pt-link" data-forgot>نسيت كلمة المرور؟</button>
+      </form>
+      <form class="pt-form" data-form="register" hidden>
+        <label class="fld"><span>الاسم الكامل</span><input name="full_name" required minlength="5" autocomplete="name"></label>
+        <label class="fld"><span>البريد الإلكتروني</span><input name="email" type="email" required autocomplete="email" dir="ltr"></label>
+        <label class="fld"><span>كلمة المرور (8 أحرف على الأقل)</span><input name="password" type="password" required minlength="8" autocomplete="new-password" dir="ltr"></label>
+        <button class="btn btn-gold btn-lg" type="submit">{ic('check')}إنشاء الحساب</button>
+        <p class="pt-fine">بعد إنشاء الحساب تصلك رسالة تأكيد على بريدك، ثم تُكمل استمارة العضوية من حسابك.</p>
+      </form>
+      <p class="pt-msg" data-auth-msg aria-live="polite"></p>
+    </div>
+    <aside class="pt-auth-side">
+      <span class="kicker">{L(184).split('  ', 1)[-1]}</span>
+      <h2>خطوات العضوية</h2>
+      <ol class="pt-steps">
+        <li><b>1</b><span>أنشئ حسابك</span></li>
+        <li><b>2</b><span>املأ استمارة العضوية</span></li>
+        <li><b>3</b><span>مراجعة الطلب من الإدارة</span></li>
+        <li><b>4</b><span>سداد الاشتراك السنوي</span></li>
+        <li><b>5</b><span>تفعيل العضوية وبطاقة العضو</span></li>
+      </ol>
+      <p class="muted">{L(185)}</p>
+    </aside>
+  </div>
+
+  <!-- ===== member area ===== -->
+  <div class="pt-app" data-view="app" hidden>
+    <nav class="pt-side" aria-label="حسابي">
+      <div class="pt-me"><span class="pt-avatar" data-me="initial"></span><div><b data-me="name"></b><small data-me="email"></small></div></div>
+      {tab('overview', 'grid', 'نظرة عامة')}
+      {tab('application', 'file', 'استمارة العضوية')}
+      {tab('payments', 'coins', 'الاشتراكات والدفع')}
+      {tab('notifications', 'send', 'الإشعارات')}
+      {tab('violations', 'shield', 'الملاحظات والمخالفات')}
+      {tab('profile', 'users', 'بياناتي')}
+      <a class="pt-tab pt-admin-link" href="{'admin.html' if core.LANG == 'ar' else '../admin.html'}" hidden>{ic('chart')}<span>لوحة الإدارة</span></a>
+      <button type="button" class="pt-tab pt-out" data-logout>{ic('arrow-right')}<span>تسجيل الخروج</span></button>
+    </nav>
+
+    <div class="pt-main">
+      <!-- overview -->
+      <section class="pt-panel" data-panel="overview">
+        <div class="mcard">
+          <div class="mcard-top"><img src="assets/logo.png" alt="" width="56" height="56"><div><b>بطاقة العضوية</b><small>{L(501).split('  |  ')[0]}</small></div><span class="st-badge" data-me="status"></span></div>
+          <div class="mcard-name" data-me="name"></div>
+          <div class="mcard-grid">
+            <div><small>رقم العضوية</small><b data-me="no">—</b></div>
+            <div><small>تاريخ الانضمام</small><b data-me="joined">—</b></div>
+            <div><small>تنتهي في</small><b data-me="expires">—</b></div>
+          </div>
+          <div class="mcard-ring" aria-hidden="true"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" class="r-bg"/><circle cx="60" cy="60" r="52" class="r-fg" pathLength="100"/></svg><div><b data-me="days">—</b><small>يوماً متبقية</small></div></div>
+        </div>
+        <div class="next-step" data-next></div>
+        <div class="ov-grid">
+          <button type="button" class="ov" data-go="notifications">{ic('send')}<b data-count="unread">0</b><span>إشعارات غير مقروءة</span></button>
+          <button type="button" class="ov" data-go="payments">{ic('coins')}<b data-count="payments">0</b><span>دفعات مسجّلة</span></button>
+          <button type="button" class="ov" data-go="violations">{ic('shield')}<b data-count="violations">0</b><span>ملاحظات مفتوحة</span></button>
+        </div>
+        <div class="grid g2 pt-rights">
+          <article class="card"><h3>{L(230)}</h3><ul class="list">{rights}</ul></article>
+          <article class="card"><h3>{L(231)}</h3><ul class="list diamond">{duties}</ul></article>
+        </div>
+      </section>
+
+      <!-- application -->
+      <section class="pt-panel" data-panel="application" hidden>
+        <div class="pt-head"><h2>استمارة طلب العضوية</h2><span class="st-badge" data-me="status"></span></div>
+        <p class="pt-lock" data-app-lock hidden>{ic('shield')}تم اعتماد طلبك، لذلك أصبحت بيانات الهوية مقفلة. لتعديلها تواصل مع الإدارة.</p>
+        <form class="pt-form app-form" data-form="application">
+          <fieldset><legend><span class="step">1</span> البيانات الشخصية</legend><div class="fgrid">
+            <label class="fld"><span>الاسم الكامل *</span><input name="full_name" required minlength="5"></label>
+            <label class="fld"><span>الجنسية *</span><input name="nationality" required></label>
+            <label class="fld"><span>رقم الهوية / الإقامة *</span><input name="id_number" required dir="ltr"></label>
+            <label class="fld"><span>تاريخ الميلاد *</span><input name="birth_date" type="date" required dir="ltr"></label>
+            <label class="fld"><span>رقم الجوال (مع رمز الدولة) *</span><input name="phone" type="tel" required dir="ltr" placeholder="+90 5xx xxx xx xx"></label>
+            <label class="fld"><span>نوع الإقامة في تركيا *</span><select name="residence_status" required><option value="">— اختر —</option><option>مواطن تركي</option><option>إقامة قانونية سارية</option><option>حماية مؤقتة</option><option>أخرى</option></select></label>
+          </div></fieldset>
+          <fieldset><legend><span class="step">2</span> العنوان والعمل</legend><div class="fgrid">
+            <label class="fld"><span>المدينة / الولاية *</span><input name="city" required></label>
+            <label class="fld"><span>العنوان</span><input name="address"></label>
+            <label class="fld"><span>المهنة *</span><input name="occupation" required></label>
+            <label class="fld"><span>المؤهل العلمي</span><input name="education"></label>
+            <label class="fld full"><span>المهارات والخبرات</span><textarea name="skills" rows="3"></textarea></label>
+          </div></fieldset>
+          <fieldset><legend><span class="step">3</span> مجالات المشاركة</legend><div class="picks">{depts}</div></fieldset>
+          <fieldset><legend><span class="step">4</span> الإقرار</legend>
+            <p class="muted">{L(185)}<br>{L(186)}</p>
+            <label class="agree"><input type="checkbox" name="agree" required><span>{L(236)}</span></label>
+          </fieldset>
+          <div class="factions"><button class="btn btn-gold btn-lg" type="submit">{ic('send')}إرسال الطلب</button></div>
+        </form>
+      </section>
+
+      <!-- payments -->
+      <section class="pt-panel" data-panel="payments" hidden>
+        <div class="pt-head"><h2>الاشتراكات والدفع</h2></div>
+        <div class="pay-grid">
+          <article class="pay-fee">
+            <span class="kicker">الاشتراك السنوي</span>
+            <b class="fee" data-set="fee">—</b>
+            <dl class="bank">
+              <div><dt>البنك</dt><dd data-set="bank_name">—</dd></div>
+              <div><dt>اسم الحساب</dt><dd data-set="account_holder">—</dd></div>
+              <div><dt>IBAN</dt><dd dir="ltr" data-set="iban">—</dd><button type="button" class="icon-btn" data-copy-iban aria-label="نسخ">{ic('file')}</button></div>
+            </dl>
+            <p class="muted" data-set="payment_note"></p>
+          </article>
+          <form class="pt-form pay-form" data-form="payment">
+            <h3>{ic('coins')} رفع إيصال الدفع</h3>
+            <div class="fgrid">
+              <label class="fld"><span>المبلغ *</span><input name="amount" type="number" min="1" step="0.01" required dir="ltr"></label>
+              <label class="fld"><span>العملة</span><select name="currency"><option>TRY</option><option>USD</option><option>EUR</option></select></label>
+              <label class="fld"><span>تاريخ الدفع *</span><input name="paid_on" type="date" required dir="ltr"></label>
+              <label class="fld"><span>طريقة الدفع</span><select name="method"><option value="bank_transfer">تحويل بنكي</option><option value="cash">نقداً في مقر الجمعية</option><option value="other">أخرى</option></select></label>
+              <label class="fld full"><span>رقم العملية / المرجع</span><input name="reference" dir="ltr"></label>
+              <label class="fld full drop"><span>صورة الإيصال (JPG / PNG / PDF — حتى 5MB)</span><input name="receipt" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"></label>
+            </div>
+            <button class="btn btn-gold btn-lg" type="submit">{ic('send')}إرسال للمراجعة</button>
+          </form>
+        </div>
+        <h3 class="pt-sub">سجلّ الدفعات</h3>
+        <div class="table-wrap"><table class="rt pt-table"><thead><tr><th>التاريخ</th><th>المبلغ</th><th>الطريقة</th><th>الحالة</th><th>الفترة</th><th>ملاحظة</th></tr></thead><tbody data-list="payments"></tbody></table></div>
+      </section>
+
+      <!-- notifications -->
+      <section class="pt-panel" data-panel="notifications" hidden>
+        <div class="pt-head"><h2>الإشعارات</h2><button type="button" class="btn btn-soft" data-read-all>{ic('check')}تعليم الكل كمقروء</button></div>
+        <div class="nt-list" data-list="notifications"></div>
+      </section>
+
+      <!-- violations -->
+      <section class="pt-panel" data-panel="violations" hidden>
+        <div class="pt-head"><h2>الملاحظات والمخالفات</h2></div>
+        <p class="muted">{L(239)}</p>
+        <div class="vl-list" data-list="violations"></div>
+      </section>
+
+      <!-- profile -->
+      <section class="pt-panel" data-panel="profile" hidden>
+        <div class="pt-head"><h2>بياناتي</h2></div>
+        <div class="grid g2">
+          <form class="pt-form card" data-form="contact">
+            <h3>بيانات التواصل</h3>
+            <label class="fld"><span>رقم الجوال</span><input name="phone" type="tel" dir="ltr"></label>
+            <label class="fld"><span>المدينة / الولاية</span><input name="city"></label>
+            <label class="fld"><span>العنوان</span><input name="address"></label>
+            <button class="btn btn-primary" type="submit">{ic('check')}حفظ</button>
+          </form>
+          <form class="pt-form card" data-form="password">
+            <h3>تغيير كلمة المرور</h3>
+            <label class="fld"><span>كلمة المرور الجديدة</span><input name="password" type="password" minlength="8" required autocomplete="new-password" dir="ltr"></label>
+            <button class="btn btn-primary" type="submit">{ic('shield')}تحديث</button>
+          </form>
+        </div>
+      </section>
+    </div>
+  </div>
+</div></section>'''
+    page('portal.html', 'بوابة الأعضاء', body, L(184), css=('css/portal.css',), js=('js/vendor/supabase.js', 'js/sb.js', 'js/portal.js'))
+
+
+# ============================================================= ADMIN ===
+def build_admin():
+    if core.LANG != 'ar':  # the association's staff panel is Arabic only
+        return
+    tab = lambda k, i, t: f'<button type="button" class="pt-tab" data-tab="{k}">{ic(i)}<span>{t}</span><b class="pt-badge" data-badge="{k}" hidden></b></button>'
+    body = f'''
+<section class="hero hero-small has-photo portal-hero">
+  <div class="hero-bg" aria-hidden="true"></div>{photo_layer('board')}
+  <div class="wrap hero-grid"><div class="hero-copy">
+    {crumbs('لوحة الإدارة')}
+    <h1 class="rv hero-title">لوحة إدارة العضوية</h1>
+    <p class="sub rv">مراجعة الطلبات، وتأكيد الاشتراكات، ومتابعة الأعضاء والمخالفات والإشعارات.</p>
+  </div></div>
+</section>
+<section class="sec portal" data-admin><div class="wrap">
+  <div class="pt-loading" data-view="loading"><span class="spin"></span></div>
+  <div class="pt-denied card" data-view="denied" hidden>{ic('shield')}<h2>هذه الصفحة لمسؤولي الجمعية فقط</h2>
+    <p>سجّل الدخول بحساب له صلاحية الإدارة من <a href="portal.html">بوابة الأعضاء</a>.</p></div>
+  <div class="pt-app" data-view="app" hidden>
+    <nav class="pt-side" aria-label="الإدارة">
+      <div class="pt-me"><span class="pt-avatar" data-me="initial"></span><div><b data-me="name"></b><small>مسؤول</small></div></div>
+      {tab('stats', 'chart', 'الإحصاءات')}
+      {tab('applications', 'file', 'طلبات العضوية')}
+      {tab('members', 'users', 'الأعضاء')}
+      {tab('payments', 'coins', 'المدفوعات')}
+      {tab('violations', 'shield', 'المخالفات')}
+      {tab('notify', 'send', 'إرسال إشعار')}
+      {tab('settings', 'wrench', 'الإعدادات')}
+      <a class="pt-tab" href="portal.html">{ic('home')}<span>حسابي</span></a>
+    </nav>
+    <div class="pt-main">
+      <section class="pt-panel" data-panel="stats">
+        <div class="pt-head"><h2>الإحصاءات</h2><button type="button" class="btn btn-soft" data-refresh>{ic('refresh')}تحديث</button></div>
+        <div class="kpis" data-kpis></div>
+        <h3 class="pt-sub">عضويات تنتهي خلال 30 يوماً</h3>
+        <div class="table-wrap"><table class="rt pt-table"><thead><tr><th>العضو</th><th>رقم العضوية</th><th>تنتهي في</th><th></th></tr></thead><tbody data-list="expiring"></tbody></table></div>
+      </section>
+      <section class="pt-panel" data-panel="applications" hidden>
+        <div class="pt-head"><h2>طلبات العضوية الجديدة</h2></div>
+        <div class="ad-cards" data-list="applications"></div>
+      </section>
+      <section class="pt-panel" data-panel="members" hidden>
+        <div class="pt-head"><h2>الأعضاء</h2>
+          <div class="ad-filters"><input type="search" placeholder="بحث بالاسم أو الرقم أو البريد" data-q>
+          <select data-status><option value="">كل الحالات</option><option value="pending">قيد المراجعة</option><option value="approved">مقبول – بانتظار الدفع</option><option value="active">فعّال</option><option value="expired">منتهية</option><option value="suspended">معلّق</option><option value="rejected">مرفوض</option></select>
+          <button type="button" class="btn btn-soft" data-export>{ic('download')}تصدير CSV</button></div></div>
+        <div class="table-wrap"><table class="rt pt-table"><thead><tr><th>رقم</th><th>الاسم</th><th>الجوال</th><th>الحالة</th><th>الانضمام</th><th>الانتهاء</th></tr></thead><tbody data-list="members"></tbody></table></div>
+      </section>
+      <section class="pt-panel" data-panel="payments" hidden>
+        <div class="pt-head"><h2>المدفوعات</h2>
+          <div class="ad-filters"><select data-pay-status><option value="pending">بانتظار التأكيد</option><option value="approved">مؤكدة</option><option value="rejected">مرفوضة</option><option value="">الكل</option></select></div></div>
+        <div class="table-wrap"><table class="rt pt-table"><thead><tr><th>العضو</th><th>المبلغ</th><th>تاريخ الدفع</th><th>الطريقة / المرجع</th><th>الإيصال</th><th>الحالة</th><th></th></tr></thead><tbody data-list="payments"></tbody></table></div>
+      </section>
+      <section class="pt-panel" data-panel="violations" hidden>
+        <div class="pt-head"><h2>الملاحظات والمخالفات</h2></div>
+        <div class="vl-list" data-list="violations"></div>
+      </section>
+      <section class="pt-panel" data-panel="notify" hidden>
+        <div class="pt-head"><h2>إرسال إشعار</h2></div>
+        <form class="pt-form card" data-form="notify">
+          <label class="fld"><span>إلى</span><select name="to"><option value="">جميع الأعضاء</option></select></label>
+          <label class="fld"><span>العنوان *</span><input name="title" required maxlength="120"></label>
+          <label class="fld"><span>النص</span><textarea name="body" rows="4" maxlength="2000"></textarea></label>
+          <button class="btn btn-gold" type="submit">{ic('send')}إرسال</button>
+        </form>
+      </section>
+      <section class="pt-panel" data-panel="settings" hidden>
+        <div class="pt-head"><h2>إعدادات الاشتراك والدفع</h2></div>
+        <form class="pt-form card" data-form="settings"><div class="fgrid">
+          <label class="fld"><span>قيمة الاشتراك السنوي</span><input name="annual_fee" type="number" min="0" step="0.01" dir="ltr"></label>
+          <label class="fld"><span>العملة</span><select name="currency"><option>TRY</option><option>USD</option><option>EUR</option></select></label>
+          <label class="fld"><span>اسم البنك</span><input name="bank_name"></label>
+          <label class="fld"><span>اسم صاحب الحساب</span><input name="account_holder"></label>
+          <label class="fld full"><span>IBAN</span><input name="iban" dir="ltr"></label>
+          <label class="fld full"><span>ملاحظة تظهر للأعضاء</span><textarea name="payment_note" rows="2"></textarea></label>
+        </div><button class="btn btn-primary" type="submit">{ic('check')}حفظ الإعدادات</button></form>
+      </section>
+    </div>
+  </div>
+</div></section>
+<dialog class="ad-drawer" data-drawer><div class="ad-drawer-in" data-drawer-body></div></dialog>'''
+    page('admin.html', 'لوحة الإدارة', body, L(170), css=('css/portal.css',), js=('js/vendor/supabase.js', 'js/sb.js', 'js/admin.js'))
+
+
 def build_pages():
+    build_portal()
+    build_admin()
     build_transparency()
     build_home()
     build_about()
