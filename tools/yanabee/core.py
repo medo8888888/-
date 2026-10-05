@@ -168,6 +168,7 @@ PAGES = [
     ('teams.html', 'الفرق السبع', 'users'),
     ('operations.html', 'التشغيل والحوكمة', 'shield'),
     ('quran.html', 'حفظ، فهم، تطبيق', 'book-open'),
+    ('learn.html', 'تعلّم والعب', 'sparkles'),
 ]
 PAGE_LABEL = {f: label for f, label, _ in PAGES}
 
@@ -354,12 +355,15 @@ def page(fn, title, body, desc, css=(), js=(), base=None):
 <link href="{FONTS}" rel="stylesheet">
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/assist.css">
+<link rel="stylesheet" href="css/art.css">
 {extra_css}<link rel="stylesheet" href="css/fx.css">
+<link rel="stylesheet" href="css/play.css">
 <script src="data/kb.js" defer></script>
 <script src="js/main.js" defer></script>
 <script src="js/search.js" defer></script>
 <script src="js/chat.js" defer></script>
 <script src="js/fx.js" defer></script>
+<script src="js/play.js" defer></script>
 {extra_js}</head>
 <body data-page="{fn}">
 <div class="progress" aria-hidden="true"></div>
