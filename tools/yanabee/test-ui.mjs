@@ -126,7 +126,7 @@ try {
   check('Ctrl+K opens the search overlay', s.open);
   check('focus moves to the search input', s.focusInInput);
   check('page behind is inert + scroll locked', s.mainInert === true && s.overflow === 'hidden');
-  check('empty query shows quick links (4 pages + 7 teams)', s.hrefs.length === 11 && s.hrefs.includes('teams.html#t7'), s.hrefs.join(' '));
+  check('empty query shows quick links (every page + 7 teams)', s.hrefs.length === 12 && s.hrefs.includes('teams.html#t7') && s.hrefs.includes('learn.html'), s.hrefs.join(' '));
   await p.keyboard.type('الكشافة');
   await p.waitForTimeout(120);
   s = await state(p);
