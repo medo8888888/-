@@ -70,7 +70,7 @@ def hub():
         streams += (f'<g class="tm-st" style="{tc(tid)};--k:{k}"><path class="tm-st-a" d="{d}"/>'
                     f'<path class="tm-st-b" d="{d}" pathLength="100"/></g>')
         s = 26
-        nodes += (f'<g class="tm-node" style="{tc(tid)};--k:{k}"><circle class="tm-node-h" cx="{x:.1f}" cy="{y:.1f}" r="{NR + 9}"/>'
+        nodes += (f'<g class="tm-node" data-goto="{tid}" style="{tc(tid)};--k:{k}"><circle class="tm-node-h" cx="{x:.1f}" cy="{y:.1f}" r="{NR + 9}"/>'
                   f'<circle class="tm-node-c" cx="{x:.1f}" cy="{y:.1f}" r="{NR}"/>'
                   f'<svg x="{x - s / 2:.1f}" y="{y - s / 2:.1f}" width="{s}" height="{s}" viewBox="0 0 24 24" fill="none" '
                   f'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">{ICONS[TEAMS[tid]]}</svg></g>')

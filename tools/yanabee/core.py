@@ -354,10 +354,12 @@ def page(fn, title, body, desc, css=(), js=(), base=None):
 <link href="{FONTS}" rel="stylesheet">
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/assist.css">
-{extra_css}<script src="data/kb.js" defer></script>
+{extra_css}<link rel="stylesheet" href="css/fx.css">
+<script src="data/kb.js" defer></script>
 <script src="js/main.js" defer></script>
 <script src="js/search.js" defer></script>
 <script src="js/chat.js" defer></script>
+<script src="js/fx.js" defer></script>
 {extra_js}</head>
 <body data-page="{fn}">
 <div class="progress" aria-hidden="true"></div>

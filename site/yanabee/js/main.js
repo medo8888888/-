@@ -32,10 +32,17 @@
     window.dispatchEvent(new CustomEvent('themechange', { detail: t }));
   };
   syncMeta();
-  const toggleTheme = () => {
+  const toggleTheme = e => {
     const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
-    if (document.startViewTransition && !reduce) document.startViewTransition(() => setTheme(next, true));
-    else setTheme(next, true);
+    if (document.startViewTransition && !reduce) {
+      // circular reveal growing out of the pressed button (falls back to the centre when called without an event)
+      const b = e && e.currentTarget && e.currentTarget.getBoundingClientRect ? e.currentTarget.getBoundingClientRect() : null;
+      root.style.setProperty('--vt-x', (b ? b.left + b.width / 2 : innerWidth / 2) + 'px');
+      root.style.setProperty('--vt-y', (b ? b.top + b.height / 2 : 0) + 'px');
+      root.classList.add('vt-theme');
+      const t = document.startViewTransition(() => setTheme(next, true));
+      t.finished.finally(() => root.classList.remove('vt-theme'));
+    } else setTheme(next, true);
   };
   $$('.theme-toggle').forEach(b => b.addEventListener('click', toggleTheme));
   onMQ(matchMedia('(prefers-color-scheme: dark)'), e => {

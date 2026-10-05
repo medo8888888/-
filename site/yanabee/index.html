@@ -21,11 +21,14 @@
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/assist.css">
 <link rel="stylesheet" href="css/home.css">
+<link rel="stylesheet" href="css/fx.css">
 <script src="data/kb.js" defer></script>
 <script src="js/main.js" defer></script>
 <script src="js/search.js" defer></script>
 <script src="js/chat.js" defer></script>
+<script src="js/fx.js" defer></script>
 <script src="js/springs.js" defer></script>
+<script src="js/home.js" defer></script>
 </head>
 <body data-page="index.html">
 <div class="progress" aria-hidden="true"></div>
@@ -77,7 +80,8 @@
       </div>
     </div>
     <div class="hero-visual" aria-hidden="true">
-      <canvas class="springs" data-springs></canvas>
+      <canvas class="springs" data-springs data-teams="[{&quot;t&quot;: &quot;t1&quot;, &quot;name&quot;: &quot;فرقة القرآن الكريم وبناء القيم والسلوك&quot;, &quot;href&quot;: &quot;teams.html#t1&quot;}, {&quot;t&quot;: &quot;t2&quot;, &quot;name&quot;: &quot;فرقة الكشافة والخدمة العامة&quot;, &quot;href&quot;: &quot;teams.html#t2&quot;}, {&quot;t&quot;: &quot;t3&quot;, &quot;name&quot;: &quot;الفرق الرياضية الجماعية&quot;, &quot;href&quot;: &quot;teams.html#t3&quot;}, {&quot;t&quot;: &quot;t4&quot;, &quot;name&quot;: &quot;فرق العلوم والتكنولوجيا وصناعة الحلول&quot;, &quot;href&quot;: &quot;teams.html#t4&quot;}, {&quot;t&quot;: &quot;t5&quot;, &quot;name&quot;: &quot;فرق الصحة والبيئة&quot;, &quot;href&quot;: &quot;teams.html#t5&quot;}, {&quot;t&quot;: &quot;t6&quot;, &quot;name&quot;: &quot;فرق الوعي والإعلام&quot;, &quot;href&quot;: &quot;teams.html#t6&quot;}, {&quot;t&quot;: &quot;t7&quot;, &quot;name&quot;: &quot;فرق التكافل والمساعدات&quot;, &quot;href&quot;: &quot;teams.html#t7&quot;}]"></canvas>
+      <p class="stream-hint">اضغط على أي نبع لتستكشف فريقه</p>
       <div class="spring-core"><svg class="core-logo" width="64" height="64" viewBox="0 0 48 48" aria-hidden="true">
 <defs><linearGradient id="lg-core" x1="10" y1="6" x2="38" y2="44" gradientUnits="userSpaceOnUse">
 <stop offset="0" stop-color="#2fd3c6"/><stop offset=".55" stop-color="#14a3b8"/><stop offset="1" stop-color="#2c63d6"/></linearGradient></defs>
@@ -194,7 +198,7 @@
       <div class="model-fund">
         <span class="kicker on-dark fund-k"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/></svg>سادساً · الإدارة المالية والمحاسبية</span>
         <h3>مصادر التمويل</h3>
-        <a class="donut" href="operations.html#s6" style="--a:60;--b:90" aria-label="مصادر التمويل: 60% / 30% / 10%">
+        <a class="donut" href="operations.html#s6" data-shares="60,30,10" style="--a:60;--b:90" aria-label="مصادر التمويل: 60% / 30% / 10%">
           <span class="donut-hole"><b>60%</b></span>
         </a>
         <ul class="fund-legend"><li style="--fc:var(--f1)"><b>60%</b><span>إعادة توجيه ومزيج للميزانيات المشتتة للأنشطة في الوزارات المشاركة دون تكبيد الخزانة العامة أعباء مستحدثة ضخمة.</span></li><li style="--fc:var(--f2)"><b>30%</b><span>شراكات المسؤولية المجتمعية (<bdi lang="en">CSR</bdi>) مع شركات الاتصالات والتكنولوجيا والبنوك.</span></li><li style="--fc:var(--f3)"><b>10%</b><span>المساهمات الأهلية وصناديق الدعم الاجتماعي.</span></li></ul>

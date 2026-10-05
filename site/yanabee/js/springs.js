@@ -12,6 +12,13 @@
   let running = false, visible = true, raf = 0, t0 = performance.now();
   const pointer = { x: 0, y: 0, k: 0, tk: 0 };
   const ripples = [];
+  let teams = [];
+  try { teams = JSON.parse(canvas.dataset.teams || '[]'); } catch (e) { teams = []; }
+  const geoms = [];
+  let hover = -1;
+  const tip = document.createElement('div');
+  tip.className = 'stream-tip';
+  canvas.parentElement.appendChild(tip);
 
   const readColors = () => {
     const cs = getComputedStyle(document.documentElement);
@@ -90,13 +97,16 @@
     ctx.globalCompositeOperation = dark ? 'lighter' : 'source-over';
     seeds.forEach((s, i) => {
       const g = geom(s, reduce ? 1.2 : t), col = colors[i];
+      geoms[i] = g;
+      const isH = hover === i, dim = hover >= 0 && !isH;
+      if (isH) { tip.style.left = g[6] + 'px'; tip.style.top = g[7] + 'px'; }
       const lg = ctx.createLinearGradient(g[0], g[1], g[6], g[7]);
       lg.addColorStop(0, alpha(col, 0.95)); lg.addColorStop(0.7, alpha(col, 0.55)); lg.addColorStop(1, alpha(col, 0.04));
       // soft glow, then the crisp stream
       ctx.lineCap = 'round';
-      ctx.strokeStyle = lg; ctx.globalAlpha = dark ? 0.22 : 0.14; ctx.lineWidth = 10;
+      ctx.strokeStyle = lg; ctx.globalAlpha = (dark ? 0.22 : 0.14) * (isH ? 2.6 : 1) * (dim ? 0.35 : 1); ctx.lineWidth = isH ? 16 : 10;
       ctx.beginPath(); ctx.moveTo(g[0], g[1]); ctx.bezierCurveTo(g[2], g[3], g[4], g[5], g[6], g[7]); ctx.stroke();
-      ctx.globalAlpha = 1; ctx.lineWidth = 2.4;
+      ctx.globalAlpha = dim ? 0.38 : 1; ctx.lineWidth = isH ? 4 : 2.4;
       ctx.beginPath(); ctx.moveTo(g[0], g[1]); ctx.bezierCurveTo(g[2], g[3], g[4], g[5], g[6], g[7]); ctx.stroke();
       // droplets
       s.drops.forEach(d => {
@@ -109,11 +119,45 @@
       });
       // a bright bead at the tip
       const [tx, ty] = bez(g, 0.985);
-      ctx.fillStyle = alpha(col, 0.35);
-      ctx.beginPath(); ctx.arc(tx, ty, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = alpha(col, isH ? 0.8 : 0.35);
+      ctx.beginPath(); ctx.arc(tx, ty, isH ? 8 : 5, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
     });
     ctx.globalCompositeOperation = 'source-over';
     if (running) raf = requestAnimationFrame(frame);
+  }
+
+  // nearest stream to a point (canvas coordinates), -1 when none is close enough
+  const hit = (px, py, reach) => {
+    let best = -1, bd = reach;
+    geoms.forEach((g, i) => {
+      if (!g) return;
+      for (let u = 0.25; u <= 1.001; u += 0.05) {
+        const [x, y] = bez(g, u), d = Math.hypot(x - px, y - py);
+        if (d < bd) { bd = d; best = i; }
+      }
+    });
+    return best;
+  };
+  const setHover = i => {
+    if (i === hover) return;
+    hover = i;
+    canvas.style.cursor = i >= 0 ? 'pointer' : '';
+    if (i >= 0 && teams[i]) {
+      tip.textContent = teams[i].name;
+      tip.style.setProperty('--tc', `var(--t${i + 1})`);
+      tip.classList.add('on');
+    } else tip.classList.remove('on');
+    if (!running) frame(performance.now());
+  };
+  if (teams.length) {
+    const local = e => { const r = canvas.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+    canvas.addEventListener('pointermove', e => { const [x, y] = local(e); setHover(hit(x, y, e.pointerType === 'touch' ? 34 : 26)); });
+    canvas.addEventListener('pointerleave', () => setHover(-1));
+    canvas.addEventListener('click', e => {
+      const [x, y] = local(e), i = hit(x, y, e.pointerType === 'touch' ? 38 : 28);
+      if (i >= 0 && teams[i]) location.href = teams[i].href;
+    });
   }
 
   const start = () => { if (!running && visible && !reduce && !document.hidden) { running = true; raf = requestAnimationFrame(frame); } };

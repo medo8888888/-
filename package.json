@@ -8,7 +8,7 @@
     "deploy": "wrangler deploy",
     "test": "node tools/test-worker.mjs",
     "check": "python3 tools/check_content.py && python3 tools/yanabee/check_content.py",
-    "test:yanabee": "node tools/yanabee/test-ui.mjs"
+    "test:yanabee": "node tools/yanabee/test-ui.mjs && node tools/yanabee/test-fx.mjs"
   },
   "devDependencies": {
     "wrangler": "^4"

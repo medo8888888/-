@@ -1,5 +1,7 @@
 """Home page: hero (springs canvas), s1 vision/mission/goal, the seven teams,
 the operating model, s9 growth phases + impact index, the Quran initiative."""
+import html as _html
+import json
 import re
 
 from core import (PAGE_LABEL, PLATFORM as P, QURAN as Q, TEAMS, TEAM_IDS, btn, cta, ic, logo, page, paren,
@@ -21,6 +23,8 @@ def _item(node, label):
 def hero():
     sub = P.meta['subtitle'].strip('()')
     dots = ''.join(f'<i style="--c:var(--{tid})"></i>' for tid in TEAM_IDS)
+    streams = json.dumps([{'t': tid, 'name': short(P['s2'][tid].title), 'href': f'teams.html#{tid}'} for tid in TEAM_IDS],
+                         ensure_ascii=False)  # the seven streams of the hero canvas are the seven teams
     s2_main = split_kicker(P['s2'].title)[1]
     teams_label = s2_main.split(' وأثرها')[0]  # 'الفرق السبع التخصصية'
     g = P['s9']['phases'].items[1]  # النمو (العام 2): … 1,000 قائد موهوب … 100 مبادرة …
@@ -46,7 +50,8 @@ def hero():
       {stats}
     </div>
     <div class="hero-visual" aria-hidden="true">
-      <canvas class="springs" data-springs></canvas>
+      <canvas class="springs" data-springs data-teams="{_html.escape(streams, quote=True)}"></canvas>
+      <p class="stream-hint">اضغط على أي نبع لتستكشف فريقه</p>
       <div class="spring-core">{logo(64, 'core', 'core-logo')}</div>
     </div>
   </div>
@@ -154,7 +159,7 @@ def model():
       <div class="model-fund">
         <span class="kicker on-dark fund-k">{ic('coins')}{t(k6)} · {t(main6)}</span>
         <h3>{t(strip_colon(fund.label))}</h3>
-        <a class="donut" href="operations.html#s6" style="--a:{a};--b:{b}" aria-label="{plain(strip_colon(fund.label))}: {' / '.join(f'{x}%' for x in shares)}">
+        <a class="donut" href="operations.html#s6" data-shares="{','.join(str(x) for x in shares)}" style="--a:{a};--b:{b}" aria-label="{plain(strip_colon(fund.label))}: {' / '.join(f'{x}%' for x in shares)}">
           <span class="donut-hole"><b>{shares[0]}%</b></span>
         </a>
         <ul class="fund-legend">{legend}</ul>
@@ -262,5 +267,5 @@ def build():
                   f'<button type="button" class="btn btn-primary" data-open-chat>{ic("sparkles")}<span>اسأل مساعد ينابيع</span></button>'
                   f'<button type="button" class="btn btn-ghost" data-open-search>{ic("search")}<span>ابحث في الموقع</span></button>'))
     desc = P['s1']['vision'].paras[0]
-    page('index.html', 'مشروع «ينابيع»', body, desc, css=('css/home.css',), js=('js/springs.js',))
+    page('index.html', 'مشروع «ينابيع»', body, desc, css=('css/home.css',), js=('js/springs.js', 'js/home.js'))
     return 'index.html'

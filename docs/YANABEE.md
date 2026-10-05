@@ -26,7 +26,11 @@ tools/yanabee/shot.mjs         Playwright screenshots + console/overflow check (
 site/yanabee/css/base.css      design system: tokens, base, components, shell (nav, footer, tab bar, sheet, search, chat)
 site/yanabee/css/assist.css    extra styles for search + assistant
 site/yanabee/css/<page>.css    page layouts (home.css, teams.css, operations.css, quran.css)
-site/yanabee/js/main.js        theme, nav, sheet, reveal, counters, rings, tabs, scroll-spy, print
+site/yanabee/js/main.js        theme (circular reveal), nav, sheet, reveal, counters, rings, tabs, scroll-spy, print
+site/yanabee/js/fx.js          interactivity layer on every page: press ripples, card tilt + light, magnetic buttons, hero light,
+                               section dots, select-text-to-ask, Quran verse word reveal, operations donut <-> legend, [data-goto]
+site/yanabee/css/fx.css        styles for fx.js (loaded last, after the page stylesheet)
+site/yanabee/js/home.js        home: funding donut hover, growth phases highlight
 site/yanabee/js/search.js      Ctrl+K search overlay over window.YANABEE_KB
 site/yanabee/js/chat.js        «مساعد ينابيع»: Gemini via /api/chat (site: "yanabee"), offline answers from the KB
 site/yanabee/js/<page>.js      page-only behaviour (springs.js = home hero canvas, …)
@@ -121,4 +125,14 @@ wording such as «ليكادوا يكونوا», «الأثرية», «والم�
 python3 tools/yanabee/build.py && python3 tools/yanabee/check_content.py
 node tools/yanabee/shot.mjs teams.html --w 390,1440 --theme light,dark   # → scratch/shots/*.png
 node tools/test-worker.mjs
+node tools/yanabee/test-ui.mjs      # search + assistant
+node tools/yanabee/test-fx.mjs      # interactivity layer
 ```
+
+## Interactivity (enhancement only)
+
+Pointer effects need a fine pointer and no `prefers-reduced-motion`; touch gets the ripples, the select-to-ask
+button and the tappable hero springs. Without JavaScript every page is still complete (JS-only controls are hidden).
+The hero canvas's seven streams are the seven teams (`data-teams` on the canvas, built from the content): hover shows
+the team, a press opens `teams.html#tN`. Elements with `data-goto="id"` scroll to that id. The select-to-ask text is UI
+chrome; the question sent to the assistant is the selected content text in «…».
