@@ -200,7 +200,10 @@ def team(tid, n):
             <ul class="tm-chips">{chips}</ul>
           </div>
         </div>
-        {art.frame(art.team_scene(tid, 'tm' + tid), 'tm-art')}
+        <div class="tm-media" aria-hidden="true">
+          <div class="tm-photo rv">{art.photo('team-' + tid)}</div>
+          <div class="tm-sticker">{art.team_scene(tid, 'tm' + tid)}</div>
+        </div>
       </div>
       <ul class="tm-imps">{imps}</ul>{extra}
     </article>'''
@@ -224,7 +227,8 @@ def s3():
     for it, (ico, col) in zip(s.items, looks):
         cards += (f'<li class="tm-inc rv" style="--tc:var({col})">{ripple(ico, 3, "tm-rip tm-rip-lg")}'
                   f'<h3>{t(strip_colon(it.label))}</h3><p>{t(it.body)}</p></li>')
-    return section('s3', s.title, f'<ul class="tm-incs" data-stagger>{cards}</ul>', icon='accessibility', cls='alt tm-s3')
+    pic = f'<figure class="tm-incl-photo tm-photo rv" aria-hidden="true">{art.photo("inclusion")}</figure>'
+    return section('s3', s.title, pic + f'<ul class="tm-incs" data-stagger>{cards}</ul>', icon='accessibility', cls='alt tm-s3')
 
 
 # ------------------------------------------------------------------ page ---

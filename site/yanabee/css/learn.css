@@ -342,3 +342,9 @@ body:has(.nav.hide) .ln-nav{top:12px}
 .ln-pk-card li b{font-family:var(--font-h);color:var(--tc-ink);font-size:.94rem}
 .ln-pk-card li span{color:var(--ink-2);font-size:.98rem}
 .ln-pk-card .btn{align-self:flex-start;margin-top:auto}
+
+@media (max-width:480px){
+  .ln-seg button{padding:0 11px;font-size:.88rem}
+  .fc-card{height:340px}
+  .ln-q-clock{margin-inline-start:auto}
+}

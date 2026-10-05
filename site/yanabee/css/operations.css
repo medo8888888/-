@@ -336,3 +336,21 @@ body[data-page="operations.html"] main bdi{white-space:nowrap}
   .op-principle{position:static}
   .op-donut{width:180px}
 }
+
+/* ==========================================================================
+   Illustrations + photo (tools/yanabee/art.py)
+   ========================================================================== */
+.op-photo{position:absolute;inset:0;z-index:-1;overflow:hidden;opacity:.4;pointer-events:none;
+  -webkit-mask-image:linear-gradient(to bottom,#000 35%,transparent 96%);mask-image:linear-gradient(to bottom,#000 35%,transparent 96%)}
+.op-photo .ph{width:100%;height:100%;object-fit:cover;filter:saturate(.85)}
+.op-photo::after{content:"";position:absolute;inset:0;background:linear-gradient(to left,var(--bg) 6%,color-mix(in oklab,var(--bg) 62%,transparent) 55%,color-mix(in oklab,var(--bg) 30%,transparent))}
+[data-theme=dark] .op-photo{opacity:.3}
+[data-theme=dark] .op-photo .ph{filter:brightness(.75) saturate(.9)}
+@media (prefers-reduced-motion:no-preference){.op-photo .ph{animation:op-kb 24s ease-in-out infinite alternate}}
+@keyframes op-kb{from{scale:1.04}to{scale:1.14}}
+.op-banner{margin-top:clamp(20px,3vw,36px);position:relative}
+.op-banner .art{height:132px}
+@media (min-width:700px){.op-banner .art{height:auto}}
+.op-sec>.wrap{position:relative}
+.op-sec .art-spot{position:absolute;top:clamp(-8px,-1vw,0px);inset-inline-end:24px;width:clamp(120px,14vw,170px)}
+@media (max-width:760px){.op-sec .art-spot{position:static;width:116px;margin:-14px 0 14px}}

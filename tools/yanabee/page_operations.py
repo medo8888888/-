@@ -8,6 +8,7 @@ that repeat nearby words (principle tree, integration hub) are aria-hidden.
 import math
 import re
 
+import art
 from core import (PAGE_LABEL, PLATFORM as P, QURAN as Q, SEC_ICON, btn, cta, ic, logo, page, paren, short,
                   split_kicker, strip_colon, svg, t, table_html)
 
@@ -59,11 +60,16 @@ def head(sid):
             f'<h2>{h2}</h2></div></header>')
 
 
+SPOT = {'s4': 'marketing', 's6': 'funding', 's7': 'legal', 's8': 'integration'}
+
+
 def sec(sid, body, cls=''):
+    spot = art.spot(SPOT[sid], 'o' + sid) if sid in SPOT else ''
     return f'''
 <section class="sec op-sec {cls}" id="{sid}" style="--sc:var({COL[sid]})">
   <div class="wrap">
     {head(sid)}
+    {spot}
     {body}
   </div>
 </section>'''
@@ -83,6 +89,7 @@ def hero():
     return f'''
 <section class="hero hero-page op-hero">
   <div class="hero-bg" aria-hidden="true"><span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span></div>
+  <div class="op-photo" aria-hidden="true">{art.photo('hero-operations', eager=True)}</div>
   <div class="wrap hero-grid">
     <div class="hero-copy">
       <span class="eyebrow rv">{logo(22, 'eb-operations', 'eb-logo')}{t(P.meta['title'])}</span>
@@ -94,6 +101,7 @@ def hero():
       <ol class="op-idx-list op-stg" data-reveal>{rows}</ol>
     </nav>
   </div>
+  <div class="wrap op-banner" aria-hidden="true">{art.ops_banner('opb')}</div>
 </section>'''
 
 

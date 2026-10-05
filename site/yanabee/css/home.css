@@ -251,10 +251,22 @@ mark{background:color-mix(in oklab,var(--accent) 22%,transparent);color:inherit;
 .b-vision .art-spot,.b-mission .art-spot{position:absolute;inset-inline-end:clamp(10px,2vw,22px);bottom:clamp(8px,1.6vw,16px);width:clamp(104px,13vw,150px)}
 .bento>.b-vision{padding-bottom:clamp(120px,13vw,160px)}
 .bento>.b-mission{padding-bottom:clamp(110px,11vw,140px)}
-.tc-art{display:block;margin:-24px -22px 0;aspect-ratio:480/205;overflow:hidden;line-height:0}
-.tc-art .art{width:100%;height:100%}
+.tc-art{position:relative;display:block;margin:-24px -22px 0;aspect-ratio:3/2;overflow:hidden;line-height:0;background:color-mix(in oklab,var(--tc) 20%,var(--surface-2))}
+.tc-art .ph{width:100%;height:100%;object-fit:cover;transition:scale .9s var(--ease)}
+.tc-art::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,color-mix(in oklab,var(--tc) 55%,transparent),transparent 55%),linear-gradient(160deg,color-mix(in oklab,var(--tc) 22%,transparent),transparent 50%)}
+[data-theme=dark] .tc-art .ph{filter:brightness(.85)}
+@media(hover:hover){.team-card:hover .tc-art .ph{scale:1.08}}
+@media(prefers-reduced-motion:no-preference){
+  .js .team-card.rv .tc-art{clip-path:inset(0 0 100% 0);transition:clip-path 1s var(--ease) .15s}
+  .js .team-card.rv.in .tc-art{clip-path:inset(0)}
+}
+.b-photo{position:absolute;inset:0;z-index:-1;overflow:hidden;
+  -webkit-mask-image:linear-gradient(to right,#000 0,rgba(0,0,0,.85) 30%,transparent 78%);mask-image:linear-gradient(to right,#000 0,rgba(0,0,0,.85) 30%,transparent 78%)}
+.b-photo .ph{width:100%;height:100%;object-fit:cover;filter:brightness(.5) saturate(.85) contrast(1.05);mix-blend-mode:luminosity;opacity:.75}
+@media(max-width:860px){.b-photo{-webkit-mask-image:linear-gradient(to top,#000 0,rgba(0,0,0,.7) 35%,transparent 80%);mask-image:linear-gradient(to top,#000 0,rgba(0,0,0,.7) 35%,transparent 80%)}}
 .team-card .tc-art+.tc-ic{position:relative;z-index:1;margin-top:-26px;border:3px solid var(--surface);background:color-mix(in oklab,var(--tc) 14%,var(--surface))}
 .team-card .tc-num{z-index:2;color:#fff;text-shadow:0 1px 8px rgba(0,0,0,.45)}
 .phases-wrap,.impact{position:relative}
 .phases-wrap>.art-spot,.impact>.art-spot{position:absolute;inset-inline-end:0;top:-26px;width:clamp(96px,11vw,132px)}
 @media(max-width:900px){.phases-wrap>.art-spot,.impact>.art-spot{top:-30px;width:92px}}
+@media(max-width:900px){.hero-home{padding-bottom:132px}.hero-art{opacity:.65}}

@@ -76,6 +76,7 @@ def s1():
     <div class="bento">
       <article class="b-vision rv" id="vision">
         <div class="b-glow" aria-hidden="true"></div>
+        <div class="b-photo" aria-hidden="true">{art.photo('hero-home')}</div>
         <span class="b-label">{ic('eye')}<h3>{t(v.title)}</h3></span>
         <p class="vision-text">{t(v.paras[0])}</p>
         {art.spot('vision', 'sv', dark=True)}
@@ -105,7 +106,7 @@ def teams():
         cards += f'''
       <a class="team-card rv" href="teams.html#{tid}" style="--tc:var(--{tid})">
         <span class="tc-num" aria-hidden="true">{i:02d}</span>
-        <span class="tc-art" aria-hidden="true">{art.team_scene(tid, 'hc' + tid, '0 92 480 205', 'xMidYMid slice')}</span>
+        <span class="tc-art" aria-hidden="true">{art.photo('team-' + tid)}</span>
         <span class="tc-ic">{ic(TEAMS[tid])}</span>
         <h3>{t(short(node.title))}</h3>
         {f'<p class="tc-sub">{t(sub)}</p>' if sub else ''}

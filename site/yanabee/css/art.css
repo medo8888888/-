@@ -150,3 +150,4 @@
 .art-q .qg-l{stroke:var(--q-gold-2,#c79a34);fill:none;stroke-linecap:round}
 .art-q .qs{stop-color:var(--q-gold-hi,#e8c873)}
 .art-q :is(.qg,.qg2,.qy,.qa){stroke:none}
+.art-spot{display:block}

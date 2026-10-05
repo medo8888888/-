@@ -647,3 +647,20 @@ def spot(name, uid, dark=False, cls=''):
 
 def frame(svg, cls=''):
     return f'<div class="art-frame {cls}" aria-hidden="true">{svg}</div>'
+
+
+# ============================================================ PHOTOS ===
+PHOTOS = {  # file: (width, height, default object-position)
+    'team-t1': (1200, 1500, '50% 72%'), 'team-t2': (1200, 802, '50% 45%'), 'team-t3': (1200, 857, '58% 40%'),
+    'team-t4': (1200, 800, '50% 45%'), 'team-t5': (1200, 1800, '50% 58%'), 'team-t6': (1200, 1800, '50% 38%'),
+    'team-t7': (1200, 800, '45% 50%'), 'inclusion': (1200, 800, '50% 35%'), 'hero-home': (1200, 800, '50% 45%'),
+    'hero-operations': (1200, 800, '40% 45%'), 'hero-quran': (1200, 1800, '50% 55%'), 'quran-dark': (1200, 800, '50% 50%'),
+}
+
+
+def photo(name, cls='', pos=None, eager=False):
+    """A decorative photo (assets/photos/<name>.jpg, relative URL so file:// works). alt is empty on purpose."""
+    w, h, p = PHOTOS[name]
+    load = 'fetchpriority="high" decoding="async"' if eager else 'loading="lazy" decoding="async"'
+    return (f'<img class="ph {cls}" src="assets/photos/{name}.jpg" alt="" width="{w}" height="{h}" {load} '
+            f'style="object-position:{pos or p}">')

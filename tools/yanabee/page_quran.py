@@ -7,6 +7,7 @@ big digits, the ayah marker) are numbers that appear in the adjacent text.
 import math
 import re
 
+import art
 from core import (PLATFORM as P, QURAN as Q, SEC_ICON, btn, cta, ic, logo, page, paren, short,
                   split_kicker, strip_colon, svg, t, table_html)
 
@@ -115,10 +116,14 @@ def head(sec, n=None):
     return f'<header class="q-head rv">{mark}<div class="q-head-t">{k}<h2>{title_parts(main)}</h2></div></header>'
 
 
+QSPOT = {'a9': 'funding', 'a11': 'kpi'}
+
+
 def sec(node, body, n=None, cls=''):
+    sp = art.spot(QSPOT[node.id], 'q' + node.id) if node.id in QSPOT else ''
     return f'''
 <section class="q-sec {cls}" id="{node.id}">
-  {head(node, n)}
+  {head(node, n)}{sp}
   {body}
 </section>'''
 
@@ -146,7 +151,7 @@ def hero():
                   f'<span class="q-tile-go" aria-hidden="true">{ic("arrow-left")}</span></a></li>')
     return f'''
 <section class="hero q-hero">
-  <div class="q-hero-bg" aria-hidden="true">{pattern_svg('hero')}<span class="q-glow g1"></span><span class="q-glow g2"></span>{rosette()}</div>
+  <div class="q-hero-bg" aria-hidden="true"><div class="q-photo">{art.photo('hero-quran', eager=True)}</div>{art.quran_hero('qh')}{art.quran_hero('qhn', True)}{pattern_svg('hero')}<span class="q-glow g1"></span><span class="q-glow g2"></span>{rosette()}</div>
   <div class="wrap q-hero-in">
     <span class="eyebrow rv">{logo(22, 'eb-quran', 'eb-logo')}{t(Q.meta['project'])}</span>
     <h1 class="rv">{h1}</h1>
@@ -186,6 +191,7 @@ def s_intro():
     close_html = emph(t(closing), '"حفظ، فهم، تطبيق"', 'strong')
     body = f'''
   <p class="q-opening rv">{t(opening)}</p>
+  <figure class="q-picture rv" aria-hidden="true">{art.photo('quran-dark')}</figure>
   <figure class="q-frame rv">
     {pattern_svg('frame')}{corners()}
     <figcaption class="q-frame-cap">{t(verse_lead)}</figcaption>
