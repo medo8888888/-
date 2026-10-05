@@ -6,3 +6,4 @@
 .lab-tablist [role=tab][aria-selected=true]{background:var(--grad);color:#fff;border-color:transparent;box-shadow:0 10px 22px -10px rgba(16,143,176,.8)}
 [data-theme=dark] .lab-tablist [role=tab][aria-selected=true]{color:#03171c}
 .lab-stub{padding:40px;text-align:center;color:var(--muted)}
+.lab.sec{padding-top:12px}
