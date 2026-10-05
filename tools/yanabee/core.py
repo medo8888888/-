@@ -404,7 +404,7 @@ def page(fn, title, body, desc, css=(), js=(), base=None):
       <nav aria-label="{plain(P.meta['title'])}"><h2 class="foot-h">{t(P.meta['title'])}</h2>{foot_secs}</nav>
       <nav aria-label="{plain(QURAN.meta['title'])}"><h2 class="foot-h">{t(QURAN.meta['title'])}</h2>{foot_axes}</nav>
     </div>
-    <div class="foot-bottom"><span>{t(P.meta['title'])} {t(P.meta['subtitle'])}</span><button type="button" class="link-btn" data-print>{ic('printer')}طباعة الصفحة</button></div>
+    <div class="foot-bottom"><span>{t(P.meta['title'])} {t(P.meta['subtitle'])}</span><span class="foot-credit">الصور: <a href="https://www.pexels.com" rel="noopener" target="_blank">Pexels</a></span><button type="button" class="link-btn" data-print>{ic('printer')}طباعة الصفحة</button></div>
   </div>
 </footer>
 

@@ -241,3 +241,20 @@ mark{background:color-mix(in oklab,var(--accent) 22%,transparent);color:inherit;
   .b-vision *,.model-card *,.init-card *{color:#000!important}
   .team-grid{grid-template-columns:repeat(2,1fr)}
 }
+
+/* ==========================================================================
+   Illustrations (tools/yanabee/art.py)
+   ========================================================================== */
+.hero-art{position:absolute;inset-inline:0;bottom:0;z-index:-1;pointer-events:none;opacity:.75;
+  -webkit-mask-image:linear-gradient(transparent,#000 42%);mask-image:linear-gradient(transparent,#000 42%)}
+.hero-art .art{width:100%;height:clamp(130px,15vw,216px)}
+.b-vision .art-spot,.b-mission .art-spot{position:absolute;inset-inline-end:clamp(10px,2vw,22px);bottom:clamp(8px,1.6vw,16px);width:clamp(104px,13vw,150px)}
+.bento>.b-vision{padding-bottom:clamp(120px,13vw,160px)}
+.bento>.b-mission{padding-bottom:clamp(110px,11vw,140px)}
+.tc-art{display:block;margin:-24px -22px 0;aspect-ratio:480/205;overflow:hidden;line-height:0}
+.tc-art .art{width:100%;height:100%}
+.team-card .tc-art+.tc-ic{position:relative;z-index:1;margin-top:-26px;border:3px solid var(--surface);background:color-mix(in oklab,var(--tc) 14%,var(--surface))}
+.team-card .tc-num{z-index:2;color:#fff;text-shadow:0 1px 8px rgba(0,0,0,.45)}
+.phases-wrap,.impact{position:relative}
+.phases-wrap>.art-spot,.impact>.art-spot{position:absolute;inset-inline-end:0;top:-26px;width:clamp(96px,11vw,132px)}
+@media(max-width:900px){.phases-wrap>.art-spot,.impact>.art-spot{top:-30px;width:92px}}

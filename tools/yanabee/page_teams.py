@@ -8,6 +8,7 @@ ordinals of the seven teams named in the s2 title.
 """
 import math
 
+import art
 from core import (ICONS, PLATFORM as P, QURAN as Q, TEAMS, btn, cta, ic, logo, page, page_hero, paren,
                   section, short, split_kicker, strip_colon, svg, t)
 
@@ -96,7 +97,10 @@ def hero():
              for tid in IDS]
     html = page_hero(PAGE, t(P.meta['title']), h1, t(s2.paras[0]), chips, hub(), 'has-visual tm-hero')
     html = html.replace('<h1 class="rv">', f'<p class="tm-h1-k rv">{t(kicker)}</p><h1 class="rv">', 1)  # ordinal outside the h1
-    return html.replace('<nav class="chips rv"', '<nav class="chips tm-chips-nav rv"', 1)
+    html = html.replace('<nav class="chips rv"', '<nav class="chips tm-chips-nav rv"', 1)
+    banner = f'<div class="wrap tm-banner rv" aria-hidden="true">{art.teams_banner("tmb")}</div>'
+    head, _, tail = html.rpartition('</section>')
+    return head + banner + '</section>' + tail
 
 
 # --------------------------------------------------------- impact lens ---
@@ -185,13 +189,18 @@ def team(tid, n):
         <span class="tm-team-ic" aria-hidden="true">{ic(TEAMS[tid])}</span>
         <h2 id="{tid}-h">{title_html(node.title)}</h2>
       </header>
-      <div class="tm-nature">
-        <h3 class="tm-k">{icon('briefcase')}{t(strip_colon(nat.label))}</h3>
-        <p>{t(nat.body)}</p>
-      </div>
-      <div class="tm-bodies">
-        <h3 class="tm-k">{ic('landmark')}{t(strip_colon(bod.label))}</h3>
-        <ul class="tm-chips">{chips}</ul>
+      <div class="tm-top">
+        <div class="tm-top-text">
+          <div class="tm-nature">
+            <h3 class="tm-k">{icon('briefcase')}{t(strip_colon(nat.label))}</h3>
+            <p>{t(nat.body)}</p>
+          </div>
+          <div class="tm-bodies">
+            <h3 class="tm-k">{ic('landmark')}{t(strip_colon(bod.label))}</h3>
+            <ul class="tm-chips">{chips}</ul>
+          </div>
+        </div>
+        {art.frame(art.team_scene(tid, 'tm' + tid), 'tm-art')}
       </div>
       <ul class="tm-imps">{imps}</ul>{extra}
     </article>'''

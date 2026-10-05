@@ -309,3 +309,21 @@ body:has(.nav.hide) .tm-aside{top:24px}
   .tm-team,.tm-inc{box-shadow:none;break-inside:avoid}
   .tm-lens-card{box-shadow:none;break-inside:auto}
 }
+
+/* ==========================================================================
+   Illustrations (tools/yanabee/art.py): hero banner + one scene per team
+   ========================================================================== */
+.tm-banner{margin-top:clamp(18px,3vw,34px)}
+.tm-banner .art{height:132px}
+@media (min-width:700px){.tm-banner .art{height:auto}}
+.tm-top{display:grid;grid-template-columns:minmax(0,1fr) minmax(250px,36%);gap:clamp(18px,2.6vw,32px);align-items:start;margin-bottom:26px}
+.tm-top .tm-nature{margin-bottom:20px}
+.tm-top .tm-bodies{margin-bottom:0}
+.tm-art{aspect-ratio:3/2;border:1px solid var(--tc-line);box-shadow:var(--shadow-sm)}
+.tm-art .art{height:100%}
+@media (max-width:900px){
+  .tm-top{grid-template-columns:1fr;gap:18px;margin-bottom:22px}
+  .tm-art{order:-1;aspect-ratio:12/7}
+  .tm-top .tm-nature{margin-bottom:18px}
+}
+@media (max-width:560px){.tm-art{aspect-ratio:3/2;border-radius:var(--r-sm)}}

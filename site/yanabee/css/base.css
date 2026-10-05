@@ -448,3 +448,5 @@ html:not(.js) [data-open-chat],html:not(.js) [data-open-search],html:not(.js) .t
 html:not(.js) .tabbar{grid-template-columns:repeat(3,1fr)}
 /* desktop: keep the floating assistant button clear of the footer controls */
 @media(min-width:861px){.footer{padding-bottom:96px}}
+
+.foot-credit{font-size:.85rem;color:#86a6a9}.footer .foot-credit a{display:inline;padding:0;text-decoration:underline;font-size:inherit}

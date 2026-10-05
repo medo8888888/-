@@ -4,6 +4,7 @@ import html as _html
 import json
 import re
 
+import art
 from core import (PAGE_LABEL, PLATFORM as P, QURAN as Q, TEAMS, TEAM_IDS, btn, cta, ic, logo, page, paren,
                   plain, short, split_kicker, strip_colon, t)
 
@@ -38,6 +39,7 @@ def hero():
     return f'''
 <section class="hero hero-home">
   <div class="hero-bg" aria-hidden="true"><span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span></div>
+  <div class="hero-art" aria-hidden="true">{art.home_band('hb')}</div>
   <div class="wrap hero-grid">
     <div class="hero-copy">
       <a class="eyebrow team-dots rv" href="teams.html"><span class="dots" aria-hidden="true">{dots}</span>{t(teams_label)}{ic('arrow-left')}</a>
@@ -76,10 +78,12 @@ def s1():
         <div class="b-glow" aria-hidden="true"></div>
         <span class="b-label">{ic('eye')}<h3>{t(v.title)}</h3></span>
         <p class="vision-text">{t(v.paras[0])}</p>
+        {art.spot('vision', 'sv', dark=True)}
       </article>
       <article class="b-mission rv" id="mission">
         <span class="b-label">{ic('route')}<h3>{t(m.title)}</h3></span>
         <p>{t(m.paras[0])}</p>
+        {art.spot('mission', 'sm')}
       </article>
       <article class="b-goal rv" id="goal">
         <span class="b-label">{ic('target')}<h3>{t(g.title)}</h3></span>
@@ -101,6 +105,7 @@ def teams():
         cards += f'''
       <a class="team-card rv" href="teams.html#{tid}" style="--tc:var(--{tid})">
         <span class="tc-num" aria-hidden="true">{i:02d}</span>
+        <span class="tc-art" aria-hidden="true">{art.team_scene(tid, 'hc' + tid, '0 92 480 205', 'xMidYMid slice')}</span>
         <span class="tc-ic">{ic(TEAMS[tid])}</span>
         <h3>{t(short(node.title))}</h3>
         {f'<p class="tc-sub">{t(sub)}</p>' if sub else ''}
@@ -198,6 +203,7 @@ def s9():
     <header class="sec-head rv"><div><span class="kicker">{ic('chart')}{t(k)}</span><h2>{t(main)}</h2></div></header>
     <div class="phases-wrap" id="phases">
       <h3 class="sub-h rv">{ic('route')}<span>{t(strip_colon(ph.title))}</span></h3>
+      {art.spot('growth', 'sg')}
       <div class="phases-track">
         <div class="river" aria-hidden="true"><svg viewBox="0 0 1000 80" preserveAspectRatio="none"><path d="M0 40 C 120 24, 230 56, 340 40 S 560 24, 670 40 S 880 56, 1000 40"/></svg></div>
         <ol class="phases">{steps}
@@ -206,6 +212,7 @@ def s9():
     </div>
     <div class="impact" id="impact">
       <h3 class="sub-h rv">{ic('gauge')}<span>{t(strip_colon(im.title))}</span></h3>
+      {art.spot('kpi', 'sk')}
       <div class="impact-grid">
         <article class="card imp rv" style="--sc:var(--sky)">
           <div class="ic">{ic('chart')}</div>
