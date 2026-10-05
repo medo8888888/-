@@ -4,7 +4,7 @@
 (() => {
   const root = document.querySelector('[data-portal]');
   if (!root || !window.TakamulSB) return;
-  const { client: sb, esc, date, money, daysLeft, toast, lang, retry } = window.TakamulSB;
+  const { client: sb, esc, date, money, daysLeft, toast, lang, locale, retry, qrSvg, verifyUrl, printReceipt, printCard } = window.TakamulSB;
   const $ = (s, r = root) => r.querySelector(s);
   const $$ = (s, r = root) => [...r.querySelectorAll(s)];
 
@@ -32,6 +32,9 @@
       noPayments: 'لا توجد دفعات بعد.', noNotes: 'لا توجد إشعارات.', noViol: 'لا توجد ملاحظات على عضويتك. شكراً لالتزامك 🌿',
       respond: 'ردّك على الملاحظة', send: 'إرسال الرد', yourReply: 'ردّك', adminNote: 'ملاحظة الإدارة', pwd: 'تم تحديث كلمة المرور ✓',
       receipt: 'الإيصال', copied: 'تم نسخ IBAN ✓', all: 'إشعار عام',
+      ev: { register: 'سجّلني', cancel: 'إلغاء التسجيل', full: 'اكتمل العدد', registered: 'مسجّل ✓', attended: 'حضرت ✓', absent: 'لم يُسجَّل حضور', closed: 'التسجيل مغلق', cancelled: 'أُلغي النشاط', seats: 'مقعد', left: 'متبقٍ', hours: 'ساعة تطوعية', noUp: 'لا توجد أنشطة قادمة حالياً. سيصلك إشعار عند الإعلان عن نشاط جديد.', noPast: 'لم تشارك في أنشطة بعد.', regOk: 'تم تسجيلك في النشاط ✓', cancelOk: 'تم إلغاء التسجيل', notActive: 'التسجيل في الأنشطة متاح للأعضاء المقبولين والفعّالين.', fullErr: 'اكتمل العدد في هذا النشاط.' },
+      rq: { kind: { certificate: 'شهادة عضوية', data_change: 'تعديل بيانات', complaint: 'شكوى', suggestion: 'اقتراح', other: 'أخرى' }, st: { open: 'قيد المتابعة', answered: 'تم الرد', closed: 'مغلق' }, none: 'لا توجد طلبات بعد.', sent: 'تم إرسال طلبك ✓ — سيصلك إشعار عند الرد', reply: 'ردّ الإدارة' },
+      printReceipt: 'سند القبض', photoOk: 'تم تحديث الصورة ✓', bigPhoto: 'حجم الصورة أكبر من 2MB.',
     },
     en: {
       st: { pending: 'Under review', approved: 'Approved – awaiting fee', active: 'Active membership', expired: 'Expired', suspended: 'Suspended', rejected: 'Not accepted', draft: 'Not submitted' },
@@ -56,6 +59,9 @@
       noPayments: 'No payments yet.', noNotes: 'No notifications.', noViol: 'No notes on your membership. Thank you 🌿',
       respond: 'Your reply', send: 'Send reply', yourReply: 'Your reply', adminNote: 'Administration note', pwd: 'Password updated ✓',
       receipt: 'Receipt', copied: 'IBAN copied ✓', all: 'General notice',
+      ev: { register: 'Register', cancel: 'Cancel registration', full: 'Fully booked', registered: 'Registered ✓', attended: 'Attended ✓', absent: 'No attendance recorded', closed: 'Registration closed', cancelled: 'Cancelled', seats: 'seats', left: 'left', hours: 'volunteer hours', noUp: 'No upcoming activities right now. You will be notified when a new one is announced.', noPast: 'You have not taken part in any activities yet.', regOk: 'You are registered ✓', cancelOk: 'Registration cancelled', notActive: 'Activity registration is open to approved and active members.', fullErr: 'This activity is fully booked.' },
+      rq: { kind: { certificate: 'Membership certificate', data_change: 'Data change', complaint: 'Complaint', suggestion: 'Suggestion', other: 'Other' }, st: { open: 'In progress', answered: 'Answered', closed: 'Closed' }, none: 'No requests yet.', sent: 'Request sent ✓ — you will be notified of the reply', reply: 'Reply from the administration' },
+      printReceipt: 'Receipt', photoOk: 'Photo updated ✓', bigPhoto: 'The photo is larger than 2MB.',
     },
     tr: {
       st: { pending: 'İnceleniyor', approved: 'Onaylandı – aidat bekleniyor', active: 'Aktif üyelik', expired: 'Süresi doldu', suspended: 'Askıya alındı', rejected: 'Kabul edilmedi', draft: 'Gönderilmedi' },
@@ -80,10 +86,13 @@
       noPayments: 'Henüz ödeme yok.', noNotes: 'Bildirim yok.', noViol: 'Üyeliğinizle ilgili not yok. Teşekkürler 🌿',
       respond: 'Yanıtınız', send: 'Yanıtı gönder', yourReply: 'Yanıtınız', adminNote: 'Yönetim notu', pwd: 'Şifre güncellendi ✓',
       receipt: 'Dekont', copied: 'IBAN kopyalandı ✓', all: 'Genel bildirim',
+      ev: { register: 'Kaydol', cancel: 'Kaydı iptal et', full: 'Kontenjan doldu', registered: 'Kayıtlı ✓', attended: 'Katıldım ✓', absent: 'Katılım kaydı yok', closed: 'Kayıt kapalı', cancelled: 'İptal edildi', seats: 'kişilik', left: 'kalan', hours: 'gönüllü saat', noUp: 'Şu anda yaklaşan etkinlik yok. Yeni bir etkinlik duyurulduğunda bildirim alacaksınız.', noPast: 'Henüz bir etkinliğe katılmadınız.', regOk: 'Etkinliğe kaydoldunuz ✓', cancelOk: 'Kayıt iptal edildi', notActive: 'Etkinlik kaydı onaylı ve aktif üyelere açıktır.', fullErr: 'Bu etkinliğin kontenjanı doldu.' },
+      rq: { kind: { certificate: 'Üyelik belgesi', data_change: 'Bilgi değişikliği', complaint: 'Şikâyet', suggestion: 'Öneri', other: 'Diğer' }, st: { open: 'İşlemde', answered: 'Yanıtlandı', closed: 'Kapandı' }, none: 'Henüz talep yok.', sent: 'Talebiniz gönderildi ✓ — yanıtlandığında bildirim alacaksınız', reply: 'Yönetimin yanıtı' },
+      printReceipt: 'Makbuz', photoOk: 'Fotoğraf güncellendi ✓', bigPhoto: 'Fotoğraf 2MB’tan büyük.',
     },
   }[lang] || {};
 
-  let user = null, me = null, settings = null;
+  let user = null, me = null, settings = null, photoUrl = null, payRows = [];
   const view = v => $$('[data-view]').forEach(x => { x.hidden = x.dataset.view !== v; });
   const setMsg = m => { $('[data-auth-msg]').textContent = m || ''; };
   const busy = (form, on) => { const b = form.querySelector('[type=submit]'); if (b) { b.disabled = on; b.classList.toggle('is-busy', on); } };
@@ -148,7 +157,7 @@
     renderMe();
     fillApplication();
     renderSettings();
-    await Promise.all([loadPayments(), loadNotifications(), loadViolations()]);
+    await Promise.all([loadPhoto(), loadPayments(), loadNotifications(), loadViolations(), loadEvents(), loadRequests()]);
     go((location.hash || '').slice(1) || 'overview');
   }
 
@@ -173,7 +182,41 @@
       `<button type="button" class="btn btn-gold" data-go="${n[2]}">${esc(n[3])}</button>`;
     $('[data-next]').dataset.st = key;
     $('[data-app-lock]').hidden = !['approved', 'active', 'suspended', 'expired'].includes(st);
+    paintPhoto();
+    const card = $('[data-card-actions]');
+    card.hidden = !me.member_no;
+    if (me.member_no) {
+      $('[data-qr]').innerHTML = qrSvg(verifyUrl(me.member_no, me.verify_code));
+      $('[data-verify-link]').href = verifyUrl(me.member_no, me.verify_code);
+      $('[data-me=vcode]').textContent = me.verify_code;
+    }
   }
+
+  /* ---------------- photo ---------------- */
+  function paintPhoto() {
+    const init = esc((me.full_name || user.email || '?').trim().charAt(0));
+    $$('[data-me=photo], .pt-me .pt-avatar').forEach(x => { x.innerHTML = photoUrl ? `<img src="${esc(photoUrl)}" alt="">` : init; });
+  }
+  async function loadPhoto() {
+    photoUrl = null;
+    if (me.avatar_path) {
+      const { data } = await sb.storage.from('avatars').createSignedUrl(me.avatar_path, 3600);
+      photoUrl = data ? data.signedUrl : null;
+    }
+    paintPhoto();
+  }
+  $('[data-form=avatar]').photo.addEventListener('change', async e => {
+    const file = e.target.files[0]; if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { toast(T.bigPhoto, 'err'); return; }
+    const ext = { 'image/png': 'png', 'image/webp': 'webp' }[file.type] || 'jpg';
+    const path = `${user.id}/avatar-${Date.now()}.${ext}`;
+    const up = await sb.storage.from('avatars').upload(path, file, { contentType: file.type, upsert: true });
+    if (up.error) { toast(T.err, 'err'); return; }
+    const { error } = await sb.from('profiles').update({ avatar_path: path }).eq('id', user.id);
+    if (error) { toast(T.err, 'err'); return; }
+    me.avatar_path = path; await loadPhoto(); toast(T.photoOk); e.target.value = '';
+  });
+  $('[data-print-card]').addEventListener('click', () => printCard(me, photoUrl));
 
   function fillApplication() {
     const f = $('[data-form=application]');
@@ -199,15 +242,85 @@
 
   async function loadPayments() {
     const { data } = await retry(() => sb.from('payments').select('*').order('created_at', { ascending: false }));
-    const rows = data || [];
+    const rows = payRows = data || [];
     $('[data-count=payments]').textContent = rows.length;
     $('[data-list=payments]').innerHTML = rows.length ? rows.map(p =>
       `<tr><td>${date(p.paid_on)}</td><td><b>${esc(money(p.amount, p.currency))}</b></td><td>${esc(T.method[p.method] || p.method)}${p.reference ? `<br><small dir="ltr">${esc(p.reference)}</small>` : ''}</td>` +
       `<td><span class="st-badge" data-st="pay-${p.status}">${esc(T.pay[p.status])}</span></td>` +
-      `<td>${p.period_start ? `${date(p.period_start)} → ${date(p.period_end)}` : '—'}</td><td>${esc(p.admin_note || '')}</td></tr>`).join('')
+      `<td>${p.period_start ? `${date(p.period_start)} → ${date(p.period_end)}` : '—'}</td><td>${esc(p.admin_note || '')}` +
+      `${p.status === 'approved' && p.receipt_no ? ` <button type="button" class="btn btn-soft btn-sm" data-print-receipt="${p.id}">${esc(T.printReceipt)}</button>` : ''}</td></tr>`).join('')
       : `<tr><td colspan="6" class="empty">${esc(T.noPayments)}</td></tr>`;
     badge('payments', rows.filter(p => p.status === 'pending').length);
   }
+
+  $('[data-list=payments]').addEventListener('click', e => {
+    const b = e.target.closest('[data-print-receipt]'); if (!b) return;
+    const p = payRows.find(x => x.id === b.dataset.printReceipt); if (p) printReceipt(p, { ...me, email: user.email });
+  });
+
+  /* ---------------- activities ---------------- */
+  const dtf = new Intl.DateTimeFormat(locale, { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+  const evCard = (e, past) => {
+    const d = new Date(e.starts_at);
+    const left = e.capacity ? Math.max(0, e.capacity - e.registered) : null;
+    let act = '';
+    if (past) act = e.mine ? `<span class="st-badge" data-st="${e.attended ? 'active' : 'draft'}">${esc(e.attended ? T.ev.attended : T.ev.absent)}</span>` : '';
+    else if (e.status === 'cancelled') act = `<span class="st-badge" data-st="rejected">${esc(T.ev.cancelled)}</span>`;
+    else if (e.mine) act = `<span class="st-badge" data-st="active">${esc(T.ev.registered)}</span> <button type="button" class="btn btn-soft btn-sm" data-ev-cancel="${e.id}">${esc(T.ev.cancel)}</button>`;
+    else if (e.status !== 'open') act = `<span class="st-badge">${esc(T.ev.closed)}</span>`;
+    else if (left === 0) act = `<span class="st-badge" data-st="pending">${esc(T.ev.full)}</span>`;
+    else act = `<button type="button" class="btn btn-gold btn-sm" data-ev-reg="${e.id}">${esc(T.ev.register)}</button>`;
+    return `<article class="ev${e.mine ? ' is-mine' : ''}" data-status="${e.status}">` +
+      `<div class="ev-date"><b>${d.toLocaleDateString(locale, { day: 'numeric' })}</b><span>${d.toLocaleDateString(locale, { month: 'short' })}</span></div>` +
+      `<div class="ev-body"><h3>${esc(e.title)}</h3><p class="ev-meta">${esc(dtf.format(d))}${e.place ? ` · ${esc(e.place)}` : ''}` +
+      `${+e.hours ? ` · ${esc(+e.hours)} ${esc(T.ev.hours)}` : ''}${e.capacity && !past ? ` · ${esc(e.registered)}/${esc(e.capacity)} ${esc(T.ev.seats)}` : ''}</p>` +
+      `${e.description ? `<p>${esc(e.description)}</p>` : ''}</div><div class="ev-act">${act}</div></article>`;
+  };
+  async function loadEvents() {
+    const { data } = await retry(() => sb.rpc('list_events'));
+    const all = data || [], now = Date.now();
+    const up = all.filter(e => new Date(e.starts_at) >= now && e.status !== 'cancelled').reverse();
+    const past = all.filter(e => new Date(e.starts_at) < now && e.mine);
+    const done = past.filter(e => e.attended);
+    $('[data-ev=upcoming]').textContent = up.filter(e => e.mine).length;
+    $('[data-ev=attended]').textContent = done.length;
+    $('[data-ev=hours]').textContent = done.reduce((a, e) => a + (+e.hours || 0), 0);
+    $('[data-count=events]').textContent = up.length;
+    badge('events', up.filter(e => !e.mine && e.status === 'open').length);
+    $('[data-list=events-up]').innerHTML = up.length ? up.map(e => evCard(e, false)).join('') : `<p class="empty">${esc(T.ev.noUp)}</p>`;
+    $('[data-list=events-past]').innerHTML = past.length ? past.map(e => evCard(e, true)).join('') : `<p class="empty">${esc(T.ev.noPast)}</p>`;
+  }
+  root.addEventListener('click', async e => {
+    const r = e.target.closest('[data-ev-reg]'), c = e.target.closest('[data-ev-cancel]');
+    if (!r && !c) return;
+    (r || c).disabled = true;
+    const { error } = r ? await sb.rpc('register_event', { p_event: r.dataset.evReg }) : await sb.rpc('cancel_registration', { p_event: c.dataset.evCancel });
+    if (error) {
+      const m = String(error.message || '');
+      toast(/not active/.test(m) ? T.ev.notActive : /full/.test(m) ? T.ev.fullErr : /closed/.test(m) ? T.ev.closed : T.err, 'err');
+    } else toast(r ? T.ev.regOk : T.ev.cancelOk);
+    loadEvents();
+  });
+
+  /* ---------------- requests ---------------- */
+  async function loadRequests() {
+    const { data } = await retry(() => sb.from('requests').select('*').order('created_at', { ascending: false }));
+    const rows = data || [];
+    badge('requests', rows.filter(r => r.status === 'answered').length);
+    $('[data-list=requests]').innerHTML = rows.length ? rows.map(r =>
+      `<article class="rq" data-st="${r.status}"><header><span class="st-badge" data-st="rq-${r.status}">${esc(T.rq.st[r.status])}</span>` +
+      `<span class="st-badge">${esc(T.rq.kind[r.kind])}</span><small>${date(r.created_at)}</small></header>` +
+      `<h3>${esc(r.subject)}</h3><p>${esc(r.body)}</p>` +
+      `${r.admin_reply ? `<div class="vl-reply"><b>${esc(T.rq.reply)}</b> <small>${date(r.replied_at)}</small><br>${esc(r.admin_reply)}</div>` : ''}</article>`).join('')
+      : `<p class="empty">${esc(T.rq.none)}</p>`;
+  }
+  $('[data-form=request]').addEventListener('submit', async e => {
+    e.preventDefault(); const f = e.target; if (!f.reportValidity()) return; busy(f, true);
+    const { error } = await sb.from('requests').insert({ member_id: user.id, kind: f.kind.value, subject: f.subject.value.trim(), body: f.body.value.trim() });
+    busy(f, false);
+    if (error) { toast(T.err, 'err'); return; }
+    toast(T.rq.sent); f.reset(); loadRequests();
+  });
 
   let reads = new Set();
   async function loadNotifications() {

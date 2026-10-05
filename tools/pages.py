@@ -868,6 +868,8 @@ def build_portal():
       {tab('application', 'file', 'استمارة العضوية')}
       {tab('payments', 'coins', 'الاشتراكات والدفع')}
       {tab('notifications', 'send', 'الإشعارات')}
+      {tab('events', 'calendar', 'الأنشطة والفعاليات')}
+      {tab('requests', 'file', 'طلباتي ومراسلاتي')}
       {tab('violations', 'shield', 'الملاحظات والمخالفات')}
       {tab('profile', 'users', 'بياناتي')}
       <a class="pt-tab pt-admin-link" href="{'admin.html' if core.LANG == 'ar' else '../admin.html'}" hidden>{ic('chart')}<span>لوحة الإدارة</span></a>
@@ -879,7 +881,7 @@ def build_portal():
       <section class="pt-panel" data-panel="overview">
         <div class="mcard">
           <div class="mcard-top"><img src="assets/logo.png" alt="" width="56" height="56"><div><b>بطاقة العضوية</b><small>{L(501).split('  |  ')[0]}</small></div><span class="st-badge" data-me="status"></span></div>
-          <div class="mcard-name" data-me="name"></div>
+          <div class="mcard-id"><span class="mcard-photo" data-me="photo"></span><div class="mcard-name" data-me="name"></div></div>
           <div class="mcard-grid">
             <div><small>رقم العضوية</small><b data-me="no">—</b></div>
             <div><small>تاريخ الانضمام</small><b data-me="joined">—</b></div>
@@ -887,11 +889,19 @@ def build_portal():
           </div>
           <div class="mcard-ring" aria-hidden="true"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" class="r-bg"/><circle cx="60" cy="60" r="52" class="r-fg" pathLength="100"/></svg><div><b data-me="days">—</b><small>يوماً متبقية</small></div></div>
         </div>
+        <div class="mcard-actions" data-card-actions hidden>
+          <div class="mcard-qr" data-qr aria-label="رمز التحقق من العضوية"></div>
+          <div><b>بطاقتك الرقمية</b><p class="muted">امسح الرمز للتحقق من صلاحية العضوية، أو اطبع البطاقة واحملها معك.</p>
+            <div class="row-btns"><button type="button" class="btn btn-primary" data-print-card>{ic('printer')}طباعة البطاقة</button>
+            <a class="btn btn-soft" data-verify-link href="verify.html" target="_blank" rel="noopener">{ic('shield')}صفحة التحقق</a></div>
+            <p class="vcode">رمز التحقق: <code dir="ltr" data-me="vcode"></code></p></div>
+        </div>
         <div class="next-step" data-next></div>
         <div class="ov-grid">
           <button type="button" class="ov" data-go="notifications">{ic('send')}<b data-count="unread">0</b><span>إشعارات غير مقروءة</span></button>
           <button type="button" class="ov" data-go="payments">{ic('coins')}<b data-count="payments">0</b><span>دفعات مسجّلة</span></button>
           <button type="button" class="ov" data-go="violations">{ic('shield')}<b data-count="violations">0</b><span>ملاحظات مفتوحة</span></button>
+          <button type="button" class="ov" data-go="events">{ic('calendar')}<b data-count="events">0</b><span>نشاطاً قادماً</span></button>
         </div>
         <div class="grid g2 pt-rights">
           <article class="card"><h3>{L(230)}</h3><ul class="list">{rights}</ul></article>
@@ -965,6 +975,36 @@ def build_portal():
         <div class="nt-list" data-list="notifications"></div>
       </section>
 
+      <!-- events -->
+      <section class="pt-panel" data-panel="events" hidden>
+        <div class="pt-head"><h2>الأنشطة والفعاليات</h2></div>
+        <div class="ev-stats">
+          <div><b data-ev="upcoming">0</b><span>تسجيلاتي القادمة</span></div>
+          <div><b data-ev="attended">0</b><span>نشاطاً حضرته</span></div>
+          <div><b data-ev="hours">0</b><span>ساعة تطوعية</span></div>
+        </div>
+        <h3 class="pt-sub">الأنشطة القادمة</h3>
+        <div class="ev-list" data-list="events-up"></div>
+        <h3 class="pt-sub">سجلّ مشاركاتي</h3>
+        <div class="ev-list" data-list="events-past"></div>
+      </section>
+
+      <!-- requests -->
+      <section class="pt-panel" data-panel="requests" hidden>
+        <div class="pt-head"><h2>طلباتي ومراسلاتي</h2></div>
+        <form class="pt-form card" data-form="request">
+          <h3>{ic('send')} طلب أو رسالة جديدة إلى الإدارة</h3>
+          <div class="fgrid">
+            <label class="fld"><span>نوع الطلب *</span><select name="kind" required><option value="certificate">طلب شهادة عضوية</option><option value="data_change">تعديل بيانات</option><option value="suggestion">اقتراح</option><option value="complaint">شكوى</option><option value="other">أخرى</option></select></label>
+            <label class="fld"><span>الموضوع *</span><input name="subject" required minlength="3" maxlength="200"></label>
+            <label class="fld full"><span>التفاصيل *</span><textarea name="body" rows="4" required minlength="3" maxlength="4000"></textarea></label>
+          </div>
+          <button class="btn btn-gold" type="submit">{ic('send')}إرسال</button>
+        </form>
+        <h3 class="pt-sub">طلباتي السابقة</h3>
+        <div class="rq-list" data-list="requests"></div>
+      </section>
+
       <!-- violations -->
       <section class="pt-panel" data-panel="violations" hidden>
         <div class="pt-head"><h2>الملاحظات والمخالفات</h2></div>
@@ -975,6 +1015,11 @@ def build_portal():
       <!-- profile -->
       <section class="pt-panel" data-panel="profile" hidden>
         <div class="pt-head"><h2>بياناتي</h2></div>
+        <form class="pt-form card av-form" data-form="avatar">
+          <span class="av-preview" data-me="photo"></span>
+          <div><h3>الصورة الشخصية</h3><p class="muted">تظهر على بطاقة العضوية فقط (JPG / PNG — حتى 2MB).</p>
+          <label class="btn btn-soft av-pick">{ic('download')}اختيار صورة<input name="photo" type="file" accept="image/jpeg,image/png,image/webp" hidden></label></div>
+        </form>
         <div class="grid g2">
           <form class="pt-form card" data-form="contact">
             <h3>بيانات التواصل</h3>
@@ -992,8 +1037,66 @@ def build_portal():
       </section>
     </div>
   </div>
+</div></section>
+{print_templates()}'''
+    page('portal.html', 'بوابة الأعضاء', body, L(184), css=('css/portal.css',), js=('js/vendor/supabase.js', 'js/vendor/qrcode.js', 'js/sb.js', 'js/portal.js'))
+
+
+def print_templates():
+    """Printable receipt + member card, filled in by sb.js (labels go through the normal translation)."""
+    org = L(501).split('  |  ')[0]
+    return f'''<template data-tpl="receipt"><div class="ps-receipt">
+  <header><img src="assets/logo.png" alt="" width="70" height="70"><div><b>{org}</b><small>بوابة الأعضاء</small></div>
+    <div class="ps-title"><b>سند قبض</b><span>رقم السند: <i data-r="no"></i></span></div></header>
+  <dl>
+    <div><dt>استلمنا من</dt><dd data-r="name"></dd></div>
+    <div><dt>رقم العضوية</dt><dd data-r="member"></dd></div>
+    <div><dt>المبلغ</dt><dd data-r="amount" class="ps-amount"></dd></div>
+    <div><dt>طريقة الدفع</dt><dd data-r="method"></dd></div>
+    <div><dt>تاريخ الدفع</dt><dd data-r="paid"></dd></div>
+    <div><dt>رقم العملية / المرجع</dt><dd data-r="ref"></dd></div>
+    <div class="ps-wide"><dt>وذلك عن</dt><dd>اشتراك العضوية السنوي للفترة من <b data-r="from"></b> إلى <b data-r="to"></b></dd></div>
+  </dl>
+  <footer><span>تاريخ الإصدار: <i data-r="issued"></i></span><span>صدر هذا السند إلكترونياً من بوابة أعضاء الجمعية.</span></footer>
+</div></template>
+<template data-tpl="card"><div class="ps-card">
+  <div class="mcard ps-mcard">
+    <div class="mcard-top"><img src="assets/logo.png" alt="" width="56" height="56"><div><b>بطاقة العضوية</b><small>{org}</small></div></div>
+    <div class="mcard-id"><span class="mcard-photo" data-r="photo"></span><div class="mcard-name" data-r="name"></div></div>
+    <div class="mcard-grid">
+      <div><small>رقم العضوية</small><b data-r="no"></b></div>
+      <div><small>تاريخ الانضمام</small><b data-r="joined"></b></div>
+      <div><small>تنتهي في</small><b data-r="expires"></b></div>
+    </div>
+    <div class="ps-qr" data-r="qr"></div>
+    <p class="ps-code">رمز التحقق: <code dir="ltr" data-r="code"></code></p>
+  </div>
+  <p class="ps-note">امسح الرمز للتحقق من صلاحية العضوية.</p>
+</div></template>'''
+
+
+def build_verify():
+    body = f'''
+<section class="hero hero-small has-photo portal-hero">
+  <div class="hero-bg" aria-hidden="true"></div>{photo_layer('hands')}
+  <div class="wrap hero-grid"><div class="hero-copy">
+    {crumbs('التحقق من العضوية')}
+    <h1 class="rv hero-title">التحقق من العضوية</h1>
+    <p class="sub rv">امسح الرمز الموجود على بطاقة العضو، أو أدخل رقم العضوية ورمز التحقق.</p>
+  </div></div>
+</section>
+<section class="sec portal" data-verify><div class="wrap vf-wrap">
+  <form class="pt-form card" data-form="verify">
+    <div class="fgrid">
+      <label class="fld"><span>رقم العضوية</span><input name="n" inputmode="numeric" pattern="[0-9]+" required dir="ltr"></label>
+      <label class="fld"><span>رمز التحقق</span><input name="c" required dir="ltr" autocomplete="off"></label>
+    </div>
+    <button class="btn btn-primary" type="submit">{ic('shield')}تحقّق</button>
+  </form>
+  <div class="vf-result" data-result aria-live="polite"></div>
+  <p class="muted vf-fine">تعرض هذه الصفحة حالة العضوية فقط، ولا تعرض أي بيانات شخصية للعضو.</p>
 </div></section>'''
-    page('portal.html', 'بوابة الأعضاء', body, L(184), css=('css/portal.css',), js=('js/vendor/supabase.js', 'js/sb.js', 'js/portal.js'))
+    page('verify.html', 'التحقق من العضوية', body, L(184), css=('css/portal.css',), js=('js/vendor/supabase.js', 'js/sb.js', 'js/verify.js'))
 
 
 # ============================================================= ADMIN ===
@@ -1021,6 +1124,8 @@ def build_admin():
       {tab('applications', 'file', 'طلبات العضوية')}
       {tab('members', 'users', 'الأعضاء')}
       {tab('payments', 'coins', 'المدفوعات')}
+      {tab('events', 'calendar', 'الأنشطة')}
+      {tab('requests', 'file', 'طلبات الأعضاء')}
       {tab('violations', 'shield', 'المخالفات')}
       {tab('notify', 'send', 'إرسال إشعار')}
       {tab('settings', 'wrench', 'الإعدادات')}
@@ -1032,6 +1137,8 @@ def build_admin():
         <div class="kpis" data-kpis></div>
         <h3 class="pt-sub">عضويات تنتهي خلال 30 يوماً</h3>
         <div class="table-wrap"><table class="rt pt-table"><thead><tr><th>العضو</th><th>رقم العضوية</th><th>تنتهي في</th><th></th></tr></thead><tbody data-list="expiring"></tbody></table></div>
+        <h3 class="pt-sub">التقارير</h3>
+        <div class="rp-grid" data-reports></div>
       </section>
       <section class="pt-panel" data-panel="applications" hidden>
         <div class="pt-head"><h2>طلبات العضوية الجديدة</h2></div>
@@ -1052,6 +1159,29 @@ def build_admin():
       <section class="pt-panel" data-panel="violations" hidden>
         <div class="pt-head"><h2>الملاحظات والمخالفات</h2></div>
         <div class="vl-list" data-list="violations"></div>
+      </section>
+      <section class="pt-panel" data-panel="events" hidden>
+        <div class="pt-head"><h2>الأنشطة والفعاليات</h2></div>
+        <form class="pt-form card" data-form="event">
+          <h3>{ic('calendar')} إضافة نشاط جديد</h3>
+          <div class="fgrid">
+            <label class="fld full"><span>عنوان النشاط *</span><input name="title" required minlength="3" maxlength="200"></label>
+            <label class="fld"><span>البداية *</span><input name="starts_at" type="datetime-local" required dir="ltr"></label>
+            <label class="fld"><span>النهاية</span><input name="ends_at" type="datetime-local" dir="ltr"></label>
+            <label class="fld"><span>المكان</span><input name="place"></label>
+            <label class="fld"><span>عدد المقاعد (فارغ = غير محدود)</span><input name="capacity" type="number" min="1" dir="ltr"></label>
+            <label class="fld"><span>الساعات التطوعية المحتسبة</span><input name="hours" type="number" min="0" step="0.5" value="0" dir="ltr"></label>
+            <label class="fld full"><span>الوصف</span><textarea name="description" rows="3"></textarea></label>
+            <label class="agree full"><input type="checkbox" name="announce" checked><span>إرسال إشعار بالنشاط لجميع الأعضاء</span></label>
+          </div>
+          <button class="btn btn-gold" type="submit">{ic('check')}إضافة النشاط</button>
+        </form>
+        <div class="table-wrap"><table class="rt pt-table"><thead><tr><th>النشاط</th><th>الموعد</th><th>المسجّلون</th><th>الحالة</th><th></th></tr></thead><tbody data-list="events"></tbody></table></div>
+      </section>
+      <section class="pt-panel" data-panel="requests" hidden>
+        <div class="pt-head"><h2>طلبات ومراسلات الأعضاء</h2>
+          <div class="ad-filters"><select data-rq-status><option value="open">قيد المتابعة</option><option value="answered">تم الرد</option><option value="closed">مغلقة</option><option value="">الكل</option></select></div></div>
+        <div class="rq-list" data-list="requests"></div>
       </section>
       <section class="pt-panel" data-panel="notify" hidden>
         <div class="pt-head"><h2>إرسال إشعار</h2></div>
@@ -1076,12 +1206,14 @@ def build_admin():
     </div>
   </div>
 </div></section>
-<dialog class="ad-drawer" data-drawer><div class="ad-drawer-in" data-drawer-body></div></dialog>'''
-    page('admin.html', 'لوحة الإدارة', body, L(170), css=('css/portal.css',), js=('js/vendor/supabase.js', 'js/sb.js', 'js/admin.js'))
+<dialog class="ad-drawer" data-drawer><div class="ad-drawer-in" data-drawer-body></div></dialog>
+{print_templates()}'''
+    page('admin.html', 'لوحة الإدارة', body, L(170), css=('css/portal.css',), js=('js/vendor/supabase.js', 'js/vendor/qrcode.js', 'js/sb.js', 'js/admin.js'))
 
 
 def build_pages():
     build_portal()
+    build_verify()
     build_admin()
     build_transparency()
     build_home()

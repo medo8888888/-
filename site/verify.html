@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>لوحة الإدارة | جمعية تكامل لبناء القيم والتنمية</title>
-<meta name="description" content="الهيكل التنظيمي وآليات اتخاذ القرار">
+<title>التحقق من العضوية | جمعية تكامل لبناء القيم والتنمية</title>
+<meta name="description" content="7.2  شروط العضوية والمشاركة الرقمية">
 <meta name="theme-color" content="#ffffff">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ar_AR">
-<meta property="og:title" content="لوحة الإدارة | جمعية تكامل لبناء القيم والتنمية">
-<meta property="og:description" content="الهيكل التنظيمي وآليات اتخاذ القرار">
+<meta property="og:title" content="التحقق من العضوية | جمعية تكامل لبناء القيم والتنمية">
+<meta property="og:description" content="7.2  شروط العضوية والمشاركة الرقمية">
 <meta property="og:image" content="assets/logo.png">
 <link rel="icon" href="assets/logo.png">
 <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
@@ -18,7 +18,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="تكامل">
-<link rel="alternate" hreflang="ar" href="admin.html"><link rel="alternate" hreflang="en" href="en/admin.html"><link rel="alternate" hreflang="tr" href="tr/admin.html">
+<link rel="alternate" hreflang="ar" href="verify.html"><link rel="alternate" hreflang="en" href="en/verify.html"><link rel="alternate" hreflang="tr" href="tr/verify.html">
 <script>(function(){var t;try{t=localStorage.getItem('takamul-theme-v2')}catch(e){}if(t!=='light'&&t!=='dark'){t='light'}var d=document.documentElement;d.dataset.theme=t;d.classList.add('js');setTimeout(function(){if(!window.__takamulReady)d.classList.remove('js')},2500)})();</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -40,11 +40,10 @@
 <script src="js/share.js?v=adf69157ef" defer></script>
 <script src="js/interact.js?v=1fd7f4b547" defer></script>
 <script src="js/vendor/supabase.js" defer></script>
-<script src="js/vendor/qrcode.js" defer></script>
 <script src="js/sb.js?v=b034c810ab" defer></script>
-<script src="js/admin.js?v=7b5e510b49" defer></script>
+<script src="js/verify.js?v=4f3de62a88" defer></script>
 </head>
-<body data-page="admin.html">
+<body data-page="verify.html">
 <div class="progress" aria-hidden="true"></div>
 <a class="skip" href="#main">تخطَّ إلى المحتوى</a>
 
@@ -56,7 +55,7 @@
     <a class="tb-link" href="portal.html"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>بوابة الأعضاء</a>
     <a class="tb-link" href="transparency.html"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 13H8M16 17H8M16 13h-2"/></svg>الشفافية</a>
     <a class="tb-link" href="support.html#zakat"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8"/><path d="M8 11h.01M12 11h.01M16 11h.01M8 15h.01M12 15h.01M16 15h.01M8 19h.01M12 19h4"/></svg>حاسبة الزكاة</a>
-    <div class="lang-switch tb-lang" role="group" aria-label="Language"><a href="admin.html" hreflang="ar" lang="ar" title="العربية" class="on" aria-current="true">عربي</a><a href="en/admin.html" hreflang="en" lang="en" title="English">EN</a><a href="tr/admin.html" hreflang="tr" lang="tr" title="Türkçe">TR</a></div>
+    <div class="lang-switch tb-lang" role="group" aria-label="Language"><a href="verify.html" hreflang="ar" lang="ar" title="العربية" class="on" aria-current="true">عربي</a><a href="en/verify.html" hreflang="en" lang="en" title="English">EN</a><a href="tr/verify.html" hreflang="tr" lang="tr" title="Türkçe">TR</a></div>
   </div></div>
   <div class="nav-bar">
     <a class="brand" href="index.html" aria-label="جمعية تكامل – الرئيسية">
@@ -82,135 +81,24 @@
 <main id="main">
 
 <section class="hero hero-small has-photo portal-hero">
-  <div class="hero-bg" aria-hidden="true"></div><div class="hero-photo" aria-hidden="true" style="--img:url(../assets/img/board.jpg)"></div>
+  <div class="hero-bg" aria-hidden="true"></div><div class="hero-photo" aria-hidden="true" style="--img:url(../assets/img/hands.jpg)"></div>
   <div class="wrap hero-grid"><div class="hero-copy">
-    <nav class="crumbs rv" aria-label="breadcrumb"><a href="index.html"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>الرئيسية</a><span aria-hidden="true">/</span><b aria-current="page">لوحة الإدارة</b></nav>
-    <h1 class="rv hero-title">لوحة إدارة العضوية</h1>
-    <p class="sub rv">مراجعة الطلبات، وتأكيد الاشتراكات، ومتابعة الأعضاء والمخالفات والإشعارات.</p>
+    <nav class="crumbs rv" aria-label="breadcrumb"><a href="index.html"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>الرئيسية</a><span aria-hidden="true">/</span><b aria-current="page">التحقق من العضوية</b></nav>
+    <h1 class="rv hero-title">التحقق من العضوية</h1>
+    <p class="sub rv">امسح الرمز الموجود على بطاقة العضو، أو أدخل رقم العضوية ورمز التحقق.</p>
   </div></div>
 </section>
-<section class="sec portal" data-admin><div class="wrap">
-  <div class="pt-loading" data-view="loading"><span class="spin"></span></div>
-  <div class="pt-denied card" data-view="denied" hidden><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg><h2>هذه الصفحة لمسؤولي الجمعية فقط</h2>
-    <p>سجّل الدخول بحساب له صلاحية الإدارة من <a href="portal.html">بوابة الأعضاء</a>.</p></div>
-  <div class="pt-app" data-view="app" hidden>
-    <nav class="pt-side" aria-label="الإدارة">
-      <div class="pt-me"><span class="pt-avatar" data-me="initial"></span><div><b data-me="name"></b><small>مسؤول</small></div></div>
-      <button type="button" class="pt-tab" data-tab="stats"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m19 9-5 5-4-4-3 3"/></svg><span>الإحصاءات</span><b class="pt-badge" data-badge="stats" hidden></b></button>
-      <button type="button" class="pt-tab" data-tab="applications"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 13H8M16 17H8M16 13h-2"/></svg><span>طلبات العضوية</span><b class="pt-badge" data-badge="applications" hidden></b></button>
-      <button type="button" class="pt-tab" data-tab="members"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>الأعضاء</span><b class="pt-badge" data-badge="members" hidden></b></button>
-      <button type="button" class="pt-tab" data-tab="payments"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/></svg><span>المدفوعات</span><b class="pt-badge" data-badge="payments" hidden></b></button>
-      <button type="button" class="pt-tab" data-tab="events"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/></svg><span>الأنشطة</span><b class="pt-badge" data-badge="events" hidden></b></button>
-      <button type="button" class="pt-tab" data-tab="requests"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 13H8M16 17H8M16 13h-2"/></svg><span>طلبات الأعضاء</span><b class="pt-badge" data-badge="requests" hidden></b></button>
-      <button type="button" class="pt-tab" data-tab="violations"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg><span>المخالفات</span><b class="pt-badge" data-badge="violations" hidden></b></button>
-      <button type="button" class="pt-tab" data-tab="notify"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg><span>إرسال إشعار</span><b class="pt-badge" data-badge="notify" hidden></b></button>
-      <button type="button" class="pt-tab" data-tab="settings"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg><span>الإعدادات</span><b class="pt-badge" data-badge="settings" hidden></b></button>
-      <a class="pt-tab" href="portal.html"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>حسابي</span></a>
-    </nav>
-    <div class="pt-main">
-      <section class="pt-panel" data-panel="stats">
-        <div class="pt-head"><h2>الإحصاءات</h2><button type="button" class="btn btn-soft" data-refresh><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>تحديث</button></div>
-        <div class="kpis" data-kpis></div>
-        <h3 class="pt-sub">عضويات تنتهي خلال 30 يوماً</h3>
-        <div class="table-wrap"><table class="rt pt-table"><thead><tr><th>العضو</th><th>رقم العضوية</th><th>تنتهي في</th><th></th></tr></thead><tbody data-list="expiring"></tbody></table></div>
-        <h3 class="pt-sub">التقارير</h3>
-        <div class="rp-grid" data-reports></div>
-      </section>
-      <section class="pt-panel" data-panel="applications" hidden>
-        <div class="pt-head"><h2>طلبات العضوية الجديدة</h2></div>
-        <div class="ad-cards" data-list="applications"></div>
-      </section>
-      <section class="pt-panel" data-panel="members" hidden>
-        <div class="pt-head"><h2>الأعضاء</h2>
-          <div class="ad-filters"><input type="search" placeholder="بحث بالاسم أو الرقم أو البريد" data-q>
-          <select data-status><option value="">كل الحالات</option><option value="pending">قيد المراجعة</option><option value="approved">مقبول – بانتظار الدفع</option><option value="active">فعّال</option><option value="expired">منتهية</option><option value="suspended">معلّق</option><option value="rejected">مرفوض</option></select>
-          <button type="button" class="btn btn-soft" data-export><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>تصدير CSV</button></div></div>
-        <div class="table-wrap"><table class="rt pt-table"><thead><tr><th>رقم</th><th>الاسم</th><th>الجوال</th><th>الحالة</th><th>الانضمام</th><th>الانتهاء</th></tr></thead><tbody data-list="members"></tbody></table></div>
-      </section>
-      <section class="pt-panel" data-panel="payments" hidden>
-        <div class="pt-head"><h2>المدفوعات</h2>
-          <div class="ad-filters"><select data-pay-status><option value="pending">بانتظار التأكيد</option><option value="approved">مؤكدة</option><option value="rejected">مرفوضة</option><option value="">الكل</option></select></div></div>
-        <div class="table-wrap"><table class="rt pt-table"><thead><tr><th>العضو</th><th>المبلغ</th><th>تاريخ الدفع</th><th>الطريقة / المرجع</th><th>الإيصال</th><th>الحالة</th><th></th></tr></thead><tbody data-list="payments"></tbody></table></div>
-      </section>
-      <section class="pt-panel" data-panel="violations" hidden>
-        <div class="pt-head"><h2>الملاحظات والمخالفات</h2></div>
-        <div class="vl-list" data-list="violations"></div>
-      </section>
-      <section class="pt-panel" data-panel="events" hidden>
-        <div class="pt-head"><h2>الأنشطة والفعاليات</h2></div>
-        <form class="pt-form card" data-form="event">
-          <h3><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/></svg> إضافة نشاط جديد</h3>
-          <div class="fgrid">
-            <label class="fld full"><span>عنوان النشاط *</span><input name="title" required minlength="3" maxlength="200"></label>
-            <label class="fld"><span>البداية *</span><input name="starts_at" type="datetime-local" required dir="ltr"></label>
-            <label class="fld"><span>النهاية</span><input name="ends_at" type="datetime-local" dir="ltr"></label>
-            <label class="fld"><span>المكان</span><input name="place"></label>
-            <label class="fld"><span>عدد المقاعد (فارغ = غير محدود)</span><input name="capacity" type="number" min="1" dir="ltr"></label>
-            <label class="fld"><span>الساعات التطوعية المحتسبة</span><input name="hours" type="number" min="0" step="0.5" value="0" dir="ltr"></label>
-            <label class="fld full"><span>الوصف</span><textarea name="description" rows="3"></textarea></label>
-            <label class="agree full"><input type="checkbox" name="announce" checked><span>إرسال إشعار بالنشاط لجميع الأعضاء</span></label>
-          </div>
-          <button class="btn btn-gold" type="submit"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>إضافة النشاط</button>
-        </form>
-        <div class="table-wrap"><table class="rt pt-table"><thead><tr><th>النشاط</th><th>الموعد</th><th>المسجّلون</th><th>الحالة</th><th></th></tr></thead><tbody data-list="events"></tbody></table></div>
-      </section>
-      <section class="pt-panel" data-panel="requests" hidden>
-        <div class="pt-head"><h2>طلبات ومراسلات الأعضاء</h2>
-          <div class="ad-filters"><select data-rq-status><option value="open">قيد المتابعة</option><option value="answered">تم الرد</option><option value="closed">مغلقة</option><option value="">الكل</option></select></div></div>
-        <div class="rq-list" data-list="requests"></div>
-      </section>
-      <section class="pt-panel" data-panel="notify" hidden>
-        <div class="pt-head"><h2>إرسال إشعار</h2></div>
-        <form class="pt-form card" data-form="notify">
-          <label class="fld"><span>إلى</span><select name="to"><option value="">جميع الأعضاء</option></select></label>
-          <label class="fld"><span>العنوان *</span><input name="title" required maxlength="120"></label>
-          <label class="fld"><span>النص</span><textarea name="body" rows="4" maxlength="2000"></textarea></label>
-          <button class="btn btn-gold" type="submit"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg>إرسال</button>
-        </form>
-      </section>
-      <section class="pt-panel" data-panel="settings" hidden>
-        <div class="pt-head"><h2>إعدادات الاشتراك والدفع</h2></div>
-        <form class="pt-form card" data-form="settings"><div class="fgrid">
-          <label class="fld"><span>قيمة الاشتراك السنوي</span><input name="annual_fee" type="number" min="0" step="0.01" dir="ltr"></label>
-          <label class="fld"><span>العملة</span><select name="currency"><option>TRY</option><option>USD</option><option>EUR</option></select></label>
-          <label class="fld"><span>اسم البنك</span><input name="bank_name"></label>
-          <label class="fld"><span>اسم صاحب الحساب</span><input name="account_holder"></label>
-          <label class="fld full"><span>IBAN</span><input name="iban" dir="ltr"></label>
-          <label class="fld full"><span>ملاحظة تظهر للأعضاء</span><textarea name="payment_note" rows="2"></textarea></label>
-        </div><button class="btn btn-primary" type="submit"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>حفظ الإعدادات</button></form>
-      </section>
+<section class="sec portal" data-verify><div class="wrap vf-wrap">
+  <form class="pt-form card" data-form="verify">
+    <div class="fgrid">
+      <label class="fld"><span>رقم العضوية</span><input name="n" inputmode="numeric" pattern="[0-9]+" required dir="ltr"></label>
+      <label class="fld"><span>رمز التحقق</span><input name="c" required dir="ltr" autocomplete="off"></label>
     </div>
-  </div>
+    <button class="btn btn-primary" type="submit"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>تحقّق</button>
+  </form>
+  <div class="vf-result" data-result aria-live="polite"></div>
+  <p class="muted vf-fine">تعرض هذه الصفحة حالة العضوية فقط، ولا تعرض أي بيانات شخصية للعضو.</p>
 </div></section>
-<dialog class="ad-drawer" data-drawer><div class="ad-drawer-in" data-drawer-body></div></dialog>
-<template data-tpl="receipt"><div class="ps-receipt">
-  <header><img src="assets/logo.png" alt="" width="70" height="70"><div><b>جمعية تكامل لبناء القيم والتنمية</b><small>بوابة الأعضاء</small></div>
-    <div class="ps-title"><b>سند قبض</b><span>رقم السند: <i data-r="no"></i></span></div></header>
-  <dl>
-    <div><dt>استلمنا من</dt><dd data-r="name"></dd></div>
-    <div><dt>رقم العضوية</dt><dd data-r="member"></dd></div>
-    <div><dt>المبلغ</dt><dd data-r="amount" class="ps-amount"></dd></div>
-    <div><dt>طريقة الدفع</dt><dd data-r="method"></dd></div>
-    <div><dt>تاريخ الدفع</dt><dd data-r="paid"></dd></div>
-    <div><dt>رقم العملية / المرجع</dt><dd data-r="ref"></dd></div>
-    <div class="ps-wide"><dt>وذلك عن</dt><dd>اشتراك العضوية السنوي للفترة من <b data-r="from"></b> إلى <b data-r="to"></b></dd></div>
-  </dl>
-  <footer><span>تاريخ الإصدار: <i data-r="issued"></i></span><span>صدر هذا السند إلكترونياً من بوابة أعضاء الجمعية.</span></footer>
-</div></template>
-<template data-tpl="card"><div class="ps-card">
-  <div class="mcard ps-mcard">
-    <div class="mcard-top"><img src="assets/logo.png" alt="" width="56" height="56"><div><b>بطاقة العضوية</b><small>جمعية تكامل لبناء القيم والتنمية</small></div></div>
-    <div class="mcard-id"><span class="mcard-photo" data-r="photo"></span><div class="mcard-name" data-r="name"></div></div>
-    <div class="mcard-grid">
-      <div><small>رقم العضوية</small><b data-r="no"></b></div>
-      <div><small>تاريخ الانضمام</small><b data-r="joined"></b></div>
-      <div><small>تنتهي في</small><b data-r="expires"></b></div>
-    </div>
-    <div class="ps-qr" data-r="qr"></div>
-    <p class="ps-code">رمز التحقق: <code dir="ltr" data-r="code"></code></p>
-  </div>
-  <p class="ps-note">امسح الرمز للتحقق من صلاحية العضوية.</p>
-</div></template>
 </main>
 
 <footer class="footer">
@@ -237,7 +125,7 @@
   <div class="sheet-panel" role="dialog" aria-modal="true" aria-label="القائمة">
     <div class="sheet-handle" aria-hidden="true"></div>
     <div class="sheet-head"><b>القائمة</b><button type="button" class="icon-btn" data-close-sheet aria-label="إغلاق"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
-    <div class="lang-switch sheet-lang" role="group" aria-label="Language"><a href="admin.html" hreflang="ar" lang="ar" title="العربية" class="on" aria-current="true">عربي</a><a href="en/admin.html" hreflang="en" lang="en" title="English">EN</a><a href="tr/admin.html" hreflang="tr" lang="tr" title="Türkçe">TR</a></div>
+    <div class="lang-switch sheet-lang" role="group" aria-label="Language"><a href="verify.html" hreflang="ar" lang="ar" title="العربية" class="on" aria-current="true">عربي</a><a href="en/verify.html" hreflang="en" lang="en" title="English">EN</a><a href="tr/verify.html" hreflang="tr" lang="tr" title="Türkçe">TR</a></div>
     <div class="sheet-grid"><a class="sheet-item" href="index.html"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>الرئيسية</span></a><a class="sheet-item" href="about.html"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg><span>من نحن</span></a><a class="sheet-item" href="initiatives.html"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 20h10"/><path d="M10 20c5.5-2.5.8-6.4 3-10"/><path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z"/><path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z"/></svg><span>المبادرات</span></a><a class="sheet-item" href="expansion.html"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg><span>خطة التوسع</span></a><a class="sheet-item" href="governance.html"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg><span>الحوكمة والتمويل</span></a><a class="sheet-item" href="join.html"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>العضوية</span></a><a class="sheet-item" href="faq.html"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg><span>دليل الإجابات</span></a><a class="sheet-item" href="dashboard.html"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m19 9-5 5-4-4-3 3"/></svg><span>لوحة القيادة</span></a><a class="sheet-item" href="support.html"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg><span>ساهم معنا</span></a><a class="sheet-item" href="portal.html"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>بوابة الأعضاء</span></a></div>
     <button type="button" class="sheet-search" data-open-palette><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><span>ابحث في الكتيب…</span><kbd class="kbd-hint">⌘K</kbd></button>
     <div class="sheet-row">

@@ -36,5 +36,48 @@
     }
     return last;
   }
-  window.TakamulSB = { client, lang, locale, esc, date, money, daysLeft, toast, retry };
+  // QR code as inline SVG (vendor/qrcode.js); returns '' when the library is not on the page
+  function qrSvg(text) {
+    if (!window.qrcode) return '';
+    const q = window.qrcode(0, 'M'); q.addData(text); q.make();
+    return q.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
+  }
+  // public verification link for a member card (works from /, /en/, /tr/)
+  const verifyUrl = (no, code) => new URL(`verify.html?n=${encodeURIComponent(no)}&c=${encodeURIComponent(code)}`, location.href).href;
+
+  // print one filled <template data-tpl=...> on its own sheet (receipt, member card)
+  function printTpl(name, fill) {
+    const tpl = document.querySelector(`template[data-tpl="${name}"]`);
+    if (!tpl) return;
+    const sheet = document.createElement('div');
+    sheet.className = 'print-sheet';
+    sheet.appendChild(tpl.content.cloneNode(true));
+    const set = (k, v, html) => sheet.querySelectorAll(`[data-r="${k}"]`).forEach(x => { if (html) x.innerHTML = v; else x.textContent = v == null || v === '' ? '—' : v; });
+    fill(set);
+    document.body.appendChild(sheet);
+    document.body.classList.add('is-printing');
+    const done = () => { sheet.remove(); document.body.classList.remove('is-printing'); window.removeEventListener('afterprint', done); };
+    window.addEventListener('afterprint', done);
+    const imgs = [...sheet.querySelectorAll('img')].filter(i => !i.complete);
+    Promise.all(imgs.map(i => new Promise(r => { i.onload = i.onerror = r; }))).then(() => setTimeout(() => { window.print(); setTimeout(done, 1500); }, 60));
+  }
+  const METHOD = { ar: { bank_transfer: 'تحويل بنكي', cash: 'نقداً', other: 'أخرى' }, en: { bank_transfer: 'Bank transfer', cash: 'Cash', other: 'Other' }, tr: { bank_transfer: 'Banka havalesi', cash: 'Nakit', other: 'Diğer' } }[lang] || {};
+  function printReceipt(p, member) {
+    printTpl('receipt', set => {
+      set('no', String(p.receipt_no || '').padStart(5, '0'));
+      set('name', member.full_name || member.email); set('member', member.member_no);
+      set('amount', money(p.amount, p.currency)); set('method', METHOD[p.method] || p.method);
+      set('paid', date(p.paid_on)); set('ref', p.reference); set('from', date(p.period_start)); set('to', date(p.period_end));
+      set('issued', date(new Date().toISOString()));
+    });
+  }
+  function printCard(member, photoUrl) {
+    printTpl('card', set => {
+      set('name', member.full_name); set('no', member.member_no); set('joined', date(member.joined_at)); set('expires', date(member.expires_at));
+      set('photo', photoUrl ? `<img src="${esc(photoUrl)}" alt="">` : esc((member.full_name || '?').trim().charAt(0)), true);
+      set('qr', member.member_no ? qrSvg(verifyUrl(member.member_no, member.verify_code)) : '', true);
+      set('code', member.verify_code);
+    });
+  }
+  window.TakamulSB = { client, lang, locale, esc, date, money, daysLeft, toast, retry, qrSvg, verifyUrl, printReceipt, printCard };
 })();

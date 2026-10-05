@@ -28,7 +28,7 @@
 <link rel="stylesheet" href="../css/chat-plus.css?v=5b90dc14d4">
 <link rel="stylesheet" href="../css/palette.css?v=6f47d6aa7e">
 <link rel="stylesheet" href="../css/globe.css?v=f245a0bc23">
-<link rel="stylesheet" href="../css/portal.css?v=c12d34e32b">
+<link rel="stylesheet" href="../css/portal.css?v=415e0b9dcb">
 <link rel="stylesheet" href="../css/book.css?v=a6c0d8c53a">
 <link rel="stylesheet" href="../css/web.css?v=873a59378a">
 <script src="data/kb.js?v=0ee668b154" defer></script>
@@ -40,8 +40,9 @@
 <script src="js/share.js?v=adf69157ef" defer></script>
 <script src="js/interact.js?v=5bb6355b8f" defer></script>
 <script src="js/vendor/supabase.js" defer></script>
-<script src="js/sb.js?v=2ac56fa4b6" defer></script>
-<script src="js/portal.js?v=8489ea0d60" defer></script>
+<script src="js/vendor/qrcode.js" defer></script>
+<script src="js/sb.js?v=b034c810ab" defer></script>
+<script src="js/portal.js?v=9626167c60" defer></script>
 </head>
 <body data-page="portal.html">
 <div class="progress" aria-hidden="true"></div>
@@ -136,6 +137,8 @@
       <button type="button" class="pt-tab" data-tab="application"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 13H8M16 17H8M16 13h-2"/></svg><span>Membership form</span><b class="pt-badge" data-badge="application" hidden></b></button>
       <button type="button" class="pt-tab" data-tab="payments"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/></svg><span>Subscriptions & payment</span><b class="pt-badge" data-badge="payments" hidden></b></button>
       <button type="button" class="pt-tab" data-tab="notifications"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg><span>Notifications</span><b class="pt-badge" data-badge="notifications" hidden></b></button>
+      <button type="button" class="pt-tab" data-tab="events"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/></svg><span>Activities & Events</span><b class="pt-badge" data-badge="events" hidden></b></button>
+      <button type="button" class="pt-tab" data-tab="requests"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 13H8M16 17H8M16 13h-2"/></svg><span>My Requests & Messages</span><b class="pt-badge" data-badge="requests" hidden></b></button>
       <button type="button" class="pt-tab" data-tab="violations"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg><span>Notes & violations</span><b class="pt-badge" data-badge="violations" hidden></b></button>
       <button type="button" class="pt-tab" data-tab="profile"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>My details</span><b class="pt-badge" data-badge="profile" hidden></b></button>
       <a class="pt-tab pt-admin-link" href="../admin.html" hidden><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m19 9-5 5-4-4-3 3"/></svg><span>Admin dashboard</span></a>
@@ -147,7 +150,7 @@
       <section class="pt-panel" data-panel="overview">
         <div class="mcard">
           <div class="mcard-top"><img src="../assets/logo.png" alt="" width="56" height="56"><div><b>Membership card</b><small>Takamul Association for Building Values and Development</small></div><span class="st-badge" data-me="status"></span></div>
-          <div class="mcard-name" data-me="name"></div>
+          <div class="mcard-id"><span class="mcard-photo" data-me="photo"></span><div class="mcard-name" data-me="name"></div></div>
           <div class="mcard-grid">
             <div><small>Membership no.</small><b data-me="no">—</b></div>
             <div><small>Join date</small><b data-me="joined">—</b></div>
@@ -155,11 +158,19 @@
           </div>
           <div class="mcard-ring" aria-hidden="true"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" class="r-bg"/><circle cx="60" cy="60" r="52" class="r-fg" pathLength="100"/></svg><div><b data-me="days">—</b><small>days left</small></div></div>
         </div>
+        <div class="mcard-actions" data-card-actions hidden>
+          <div class="mcard-qr" data-qr aria-label="Membership verification code"></div>
+          <div><b>Your digital card</b><p class="muted">Scan the code to check the membership is valid, or print the card and carry it with you.</p>
+            <div class="row-btns"><button type="button" class="btn btn-primary" data-print-card><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3h12v6"/><rect x="6" y="14" width="12" height="8" rx="1"/></svg>Print card</button>
+            <a class="btn btn-soft" data-verify-link href="verify.html" target="_blank" rel="noopener"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>Verification page</a></div>
+            <p class="vcode">Verification code: <code dir="ltr" data-me="vcode"></code></p></div>
+        </div>
         <div class="next-step" data-next></div>
         <div class="ov-grid">
           <button type="button" class="ov" data-go="notifications"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg><b data-count="unread">0</b><span>Unread notifications</span></button>
           <button type="button" class="ov" data-go="payments"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/></svg><b data-count="payments">0</b><span>Recorded payments</span></button>
           <button type="button" class="ov" data-go="violations"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg><b data-count="violations">0</b><span>Open notes</span></button>
+          <button type="button" class="ov" data-go="events"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/></svg><b data-count="events">0</b><span>upcoming activities</span></button>
         </div>
         <div class="grid g2 pt-rights">
           <article class="card"><h3>Member Rights</h3><ul class="list"><li>Participating in General Assembly meetings and voting on resolutions.</li><li>Standing for membership of committees and assignments in the various executive departments.</li><li>Submitting proposals and initiatives to develop “Yanabee” and “Manafea”.</li><li>Benefiting from the training programs and events organized by the Association.</li></ul></article>
@@ -233,6 +244,36 @@
         <div class="nt-list" data-list="notifications"></div>
       </section>
 
+      <!-- events -->
+      <section class="pt-panel" data-panel="events" hidden>
+        <div class="pt-head"><h2>Activities & Events</h2></div>
+        <div class="ev-stats">
+          <div><b data-ev="upcoming">0</b><span>My upcoming registrations</span></div>
+          <div><b data-ev="attended">0</b><span>activities attended</span></div>
+          <div><b data-ev="hours">0</b><span>volunteer hours</span></div>
+        </div>
+        <h3 class="pt-sub">Upcoming activities</h3>
+        <div class="ev-list" data-list="events-up"></div>
+        <h3 class="pt-sub">My participation history</h3>
+        <div class="ev-list" data-list="events-past"></div>
+      </section>
+
+      <!-- requests -->
+      <section class="pt-panel" data-panel="requests" hidden>
+        <div class="pt-head"><h2>My Requests & Messages</h2></div>
+        <form class="pt-form card" data-form="request">
+          <h3><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg> New request or message to the administration</h3>
+          <div class="fgrid">
+            <label class="fld"><span>Request type *</span><select name="kind" required><option value="certificate">Membership certificate request</option><option value="data_change">Data change</option><option value="suggestion">Suggestion</option><option value="complaint">Complaint</option><option value="other">Other</option></select></label>
+            <label class="fld"><span>Subject *</span><input name="subject" required minlength="3" maxlength="200"></label>
+            <label class="fld full"><span>Details *</span><textarea name="body" rows="4" required minlength="3" maxlength="4000"></textarea></label>
+          </div>
+          <button class="btn btn-gold" type="submit"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg>Send</button>
+        </form>
+        <h3 class="pt-sub">My previous requests</h3>
+        <div class="rq-list" data-list="requests"></div>
+      </section>
+
       <!-- violations -->
       <section class="pt-panel" data-panel="violations" hidden>
         <div class="pt-head"><h2>Notes & violations</h2></div>
@@ -243,6 +284,11 @@
       <!-- profile -->
       <section class="pt-panel" data-panel="profile" hidden>
         <div class="pt-head"><h2>My details</h2></div>
+        <form class="pt-form card av-form" data-form="avatar">
+          <span class="av-preview" data-me="photo"></span>
+          <div><h3>Profile photo</h3><p class="muted">Shown on the membership card only (JPG / PNG — up to 2MB).</p>
+          <label class="btn btn-soft av-pick"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>Choose a photo<input name="photo" type="file" accept="image/jpeg,image/png,image/webp" hidden></label></div>
+        </form>
         <div class="grid g2">
           <form class="pt-form card" data-form="contact">
             <h3>Contact Details</h3>
@@ -261,6 +307,34 @@
     </div>
   </div>
 </div></section>
+<template data-tpl="receipt"><div class="ps-receipt">
+  <header><img src="../assets/logo.png" alt="" width="70" height="70"><div><b>Takamul Association for Building Values and Development</b><small>Members Portal</small></div>
+    <div class="ps-title"><b>Payment Receipt</b><span>Receipt no.: <i data-r="no"></i></span></div></header>
+  <dl>
+    <div><dt>Received from</dt><dd data-r="name"></dd></div>
+    <div><dt>Membership no.</dt><dd data-r="member"></dd></div>
+    <div><dt>Amount</dt><dd data-r="amount" class="ps-amount"></dd></div>
+    <div><dt>Payment method</dt><dd data-r="method"></dd></div>
+    <div><dt>Payment date</dt><dd data-r="paid"></dd></div>
+    <div><dt>Transaction / reference no.</dt><dd data-r="ref"></dd></div>
+    <div class="ps-wide"><dt>For</dt><dd>Annual membership subscription for the period from <b data-r="from"></b> to <b data-r="to"></b></dd></div>
+  </dl>
+  <footer><span>Issue date: <i data-r="issued"></i></span><span>This receipt was issued electronically from the Association's members portal.</span></footer>
+</div></template>
+<template data-tpl="card"><div class="ps-card">
+  <div class="mcard ps-mcard">
+    <div class="mcard-top"><img src="../assets/logo.png" alt="" width="56" height="56"><div><b>Membership card</b><small>Takamul Association for Building Values and Development</small></div></div>
+    <div class="mcard-id"><span class="mcard-photo" data-r="photo"></span><div class="mcard-name" data-r="name"></div></div>
+    <div class="mcard-grid">
+      <div><small>Membership no.</small><b data-r="no"></b></div>
+      <div><small>Join date</small><b data-r="joined"></b></div>
+      <div><small>Expires on</small><b data-r="expires"></b></div>
+    </div>
+    <div class="ps-qr" data-r="qr"></div>
+    <p class="ps-code">Verification code: <code dir="ltr" data-r="code"></code></p>
+  </div>
+  <p class="ps-note">Scan the code to check the membership is valid.</p>
+</div></template>
 </main>
 
 <footer class="footer">
