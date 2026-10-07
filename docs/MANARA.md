@@ -139,22 +139,36 @@ Components: `.wrap(.wide) .sec(.alt) .sec-head .eyebrow .sec-title .sec-lead .gr
 Delivered to every other open MANARA tab (BroadcastChannel `manara`, with a localStorage
 fallback). `send()` adds `ts` (epoch ms), `from` (page file) and a unique `_k`. The last message of
 each `type` is kept, so a page opened later can read it with `Manara.link.last(type)`.
-Coordinates are simulation grid cells (`x` east, `y` south, map is north-up, 1 cell = 10 m).
+Coordinates are simulation grid cells (`x` east, `y` south, the map is north-up, **1 cell = 5 m**,
+grid 96 × 64). Text is always `{ar, en}`. One alert schema serves all six hazards.
+`ManaraSim.busAlert(sim, personKey)` and `ManaraSim.busDispatch(sim)` build exactly these messages.
 
 ```js
 // mission → phone: a new public alert (and every ~2 s an 'alert-update' with the same shape)
-{ type:'alert', id:'A1', level:'watch'|'warning'|'evacuate',
-  area:{ar:'حي النخيل', en:'Al Nakheel district'},
-  fire:{x:61, y:34}, radiusM:400, wind:{deg:315, speed:6},       // wind blowing FROM deg, m/s
-  you:{x:52, y:40}, distanceM:108, bearingDeg:56,                // demo citizen → fire
-  safe:{x:30, y:52, name:{ar:'نقطة التجمع — ساحة المدرسة', en:'Assembly point — school yard'}},
-  route:[[52,40],[50,41],…,[30,52]],                             // safe walking route for the demo citizen
-  etaMin:7,                                                      // forecast: minutes until fire may reach "you" (null if not forecast)
+{ type:'alert', id:'A1', hazard:'fire'|'gas'|'flood'|'dust'|'heat'|'sos',
+  level:'watch'|'shelter'|'evacuate',                            // 'shelter' = stay in, close windows ('warning' is accepted as an alias)
+  area:{ar:'الحيّ التجريبي (محاكاة)', en:'Demo district (simulation)'},
+  at:{x:59.5, y:19.5}, fire:{x:59.5, y:19.5}, radiusM:400,       // where the hazard is; `fire` is an alias present only when hazard = 'fire'
+  wind:{deg:315, speed:4},                                       // wind blowing FROM deg, m/s
+  you:{x:52, y:40}, distanceM:108, bearingDeg:56,                // the demo citizen → the hazard
+  safe:{x:30, y:52, name:{ar:'نقطة التجمع — ساحة المدرسة', en:'Assembly point — school yard'}} | null,   // where the live route ends
+  route:[[52,40],[50,41],…,[30,52]],                             // live hazard-aware route for this person ([] when told to stay)
+  etaMin:7,                                                      // forecast minutes until the hazard reaches "you" (the dust front today; null if not forecast)
+  action:'fire.exit'|'fire.refuge'|'fire.shelter'|'fire.watch'|'gas.crosswind'|'gas.shelter'|'flood.upstairs'|'flood.stay'|'dust.shelter'|'heat.stopwork'|'sos.victim'|'sos.volunteer'|…,   // message key for messages.js
+  lang:'ml', formats:['sound','vibration','text','pictogram'],   // this person's language and delivery formats (strobe for Deaf, voice for blind, card for children)
+  persona:'adult'|'elderly'|'child'|'wheelchair',
   instructions:[{ar:'…', en:'…'}, …],
   map:'data:image/png;base64,…' }                                // optional small north-up thumbnail (≤ 60 kB)
 { type:'alert-clear', id:'A1' }
+// mission → phone: nearest-responder dispatch = the unit that reaches the scene FASTEST given SIMULATED traffic (fictional units)
+{ type:'dispatch', id:'D1',
+  units:[{ kind:'fire'|'ambulance'|'police'|'rescue', name:{ar:'…', en:'Civil Defence Station A (demo)'}, etaMin:4.2,
+           status:'recommended'|'approved'|'dispatched'|'en-route'|'on-scene'|'cleared',
+           why:{ar:'…', en:'Station B is 1 km farther but 47 s faster because rush-hour traffic on "West Arterial"'} }],
+  hospital:{ name:{ar:'…', en:'Emergency Trauma Centre (demo)'}, etaMin:2.1 } | null,
+  state:'recommended'|…, origin:'manara'|'ordinary', scene:{node:'BLD', x:59, y:27} }     // state/origin/scene are optional extras for readers
 // phone → mission
-{ type:'citizen', id:'A1', status:'ack'|'safe'|'help', needs:['wheelchair'|'deaf'|'blind'|'elderly'|'child'], lang:'ar' }
+{ type:'citizen', id:'A1', status:'ack'|'safe'|'help', needs:['wheelchair'|'deaf'|'blind'|'elderly'|'child'], lang:'ar', room:'203' }
 // detector → mission / phone
 { type:'detection', source:'camera'|'image'|'video', state:'suspect'|'fire'|'smoke'|'clear',
   confidence:0.86, fireRatio:0.031, smokeRatio:0.004, snapshot:'data:image/jpeg;base64,…' }  // snapshot ≤ 40 kB
@@ -162,16 +176,33 @@ Coordinates are simulation grid cells (`x` east, `y` south, map is north-up, 1 c
 
 ## Engines
 
-**`window.ManaraSim`** (`js/sim.js`, owned by the Mission Control builder) — a pure, seeded,
-deterministic simulation (no DOM; attaches to `globalThis`, so Node tests can load it with
-`vm`). Fire spread uses a published cellular-automaton model (Alexandridis et al., 2008:
-`p_burn = p_h (1+p_veg)(1+p_den) p_w`, wind factor `p_w = exp(c1·V)·exp(c2·V·(cos θ − 1))`,
-`c1 = 0.045`, `c2 = 0.131`), smoke is advected downwind, a Monte-Carlo ensemble produces the
-fire forecast, people follow a safety field (multi-source Dijkstra from the assembly points
-that avoids fire, forecast fire and smoke), drones run a state machine
-(patrol → suspect → confirm → alert → track/guide/search/drop → return to base), and a baseline
-world without drones (detection only when a citizen notices and calls) runs in lockstep for
-the with/without comparison. Its exact API is documented at the top of `sim.js`.
+**`window.ManaraSim`** (`js/sim.js`) — a pure, seeded, deterministic multi-hazard simulation (no DOM, no
+network; attaches to `globalThis`, so Node tests load it with `vm`). The exact API is the header
+comment of `sim.js`; the tests are `tools/manara/test-sim.mjs` (about 250 checks, ~75 s). In one paragraph:
+a Doha-style block (96 × 64 cells of 5 m) with a 3-floor workers' residence and a 2-floor school (each
+with its own indoor graph: rooms, corridor, Stair A/B, roof door, refuge balcony, guard desk), an LPG
+store, a road underpass, a park, a road graph with **time-varying simulated traffic** and fictional
+responders (2 fire stations, 2 police posts, an ambulance point, 2 hospitals with capability flags).
+Seven presets (`fire-night` default, `gas-night`, `flood-day`, `dust-day`, `heat-day`, `sos-day`,
+`school-fire-day`). One pipeline for every hazard — sensors with noise/drift/warm-up → a **two-key**
+verification state machine (SUSPECT → CONFIRMED needs two independent keys; the public alert needs the
+operator's approval; the local alarm never waits) → alert composer (zones, per-person language/format,
+night wake-up ladder T+0/+30/+60/+90 s that stops on confirmation) → hazard-aware routing (multi-source
+Dijkstra from the hazard's safe targets, exit states OPEN/SMOKE/FIRE/LOCKED, instant re-route, only
+affected people messaged) → headcount against the register → hand-off card data and an OASIS CAP 1.2
+string (status Exercise, one `<info>` per language). Fire spread is a published cellular automaton
+(Alexandridis et al., 2008: `p_burn = p_h (1+p_veg)(1+p_den) p_w p_s`, `p_w = exp(c1·V)·exp(c2·V·(cos θ − 1))`,
+`c1 = 0.045`, `c2 = 0.131`, `p_h = 0.58`; values checked in Russo et al., Chem. Eng. Trans. 36, 2014), run outdoors on
+the grid and indoors on the room graph; gas is a wind-advected, diffusing, heavier-than-air plume; flood is
+a rising depth field over a height map; dust is an advancing PM10 front; heat is WBGT-driven strain. A docked
+**drone** follows PATROL → TRACK → HOLD and yields to firefighting assets.
+**Dispatch** picks, per required unit type, the unit with the **fastest ETA given traffic** (not the nearest by distance),
+shows it with the runner-up and the "why", recomputes ETA every second, re-routes en-route units, and re-dispatches
+automatically when a road closes, traffic worsens or a unit becomes busy; hospitals are chosen by capability and capacity.
+`ManaraSim.ab()` runs the SAME seed as an *ordinary alarm* world and a *MANARA* world and returns comparable metrics;
+every assumption is a named parameter in `ManaraSim.PARAMS` (default, range, unit, bilingual description, source) for
+Mission Control's sliders, and `ManaraSim.sweep()` shows how the A/B gap changes with one assumption. All results are
+labelled **SIMULATION — a mechanism check, not proof of impact**.
 
 **`window.ManaraFire`** (`js/fire.js`, owned by the detector builder) — pure functions on
 `{data, width, height}` RGBA frames: per-pixel fire rules (YCbCr, Çelik & Demirel 2009;
