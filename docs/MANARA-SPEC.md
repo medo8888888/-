@@ -88,12 +88,23 @@ help) and recommends **which nearest available unit of each required type should
 | Extreme heat | nearest **ambulance** + cooling support · nearest **hospital** (destination) |
 | Someone needs help (SOS) | nearest **ambulance** + nearest trained volunteer + drone AED (authority-operated) · destination **hospital** |
 
-How "nearest" is decided (the algorithm the student can defend): for each unit type, take every
-station/hospital on the map, compute **road travel time** with Dijkstra over the road graph
-(speed per road class × a traffic factor; **roads closed by flood/fire/cordon are removed**),
-skip units that are **busy** (assumption: availability per unit, adjustable), pick the minimum
-ETA, and show it **with the runner-up** ("why this unit"). If a road closes or the unit becomes
-busy, **re-dispatch automatically** and tell the operator. For patients, choose the **nearest
+"Nearest" means **whoever reaches the scene fastest given traffic — not the closest by
+distance**. The algorithm the student can defend: for each unit type, take every
+station/hospital on the map, compute **road travel time** with Dijkstra over the road graph where
+each road segment's cost is `length / (free-flow speed × congestion(segment, time))`.
+**Congestion is time-varying and simulated**: a daily profile (morning and evening peaks, a
+midday and a night level — labelled assumptions), per-segment hot-spots (junctions, the road
+past the school at pick-up time), incident slow-downs (e.g. crowds, the fire itself), and
+**roads closed by flood/fire/cordon are removed**; the operator can drag a **"traffic" slider** or
+**jam a road by clicking it** and watch the choice change. Skip units that are **busy**
+(assumption: availability per unit, adjustable), pick the minimum **ETA**, and show it **with the
+runner-up** and the distance for comparison ("why this unit": e.g. *Station B is 2.1 km farther
+but 3 min faster because Corniche-style road A is jammed*). While the unit drives, **ETA is
+recomputed continuously** and the unit **re-routes** around new jams; if a road closes, traffic
+worsens or the unit becomes busy, **re-dispatch automatically** (a farther unit may take over)
+and tell the operator. Demo scenarios must include at least one **"farther but faster"** case.
+In real life this would use a live traffic/routing provider and the authority's own CAD
+vehicle-location data — MANARA's demo traffic is **simulated (SIM)** and says so. For patients, choose the **nearest
 hospital that can take them** (capability flag + a labelled capacity assumption), not merely the
 nearest building. Dispatch states: *recommended → approved → dispatched → en route → on scene →
 cleared*, each with a timestamp, ETA countdown and route drawn on the map. Residents see calm,
