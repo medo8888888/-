@@ -1,0 +1,186 @@
+# SAQR («صقر») — architecture & contracts
+
+Bilingual (Arabic-first RTL + English LTR) competition project: **a drone that detects fire
+early, alerts the people nearby, and helps them reach safety**. It lives at **`/saqr/`**
+(`site/saqr/` is inside the Worker's assets directory) and is fully self-contained: the
+folder can be opened from `file://` or uploaded alone to any static host, and it works
+**offline** (a competition booth often has no internet).
+
+```
+site/saqr/index.html      landing: problem → idea → how it works → signature features → demo → impact → hardware → team
+site/saqr/mission.html    Mission Control: the live simulation (fire spread with wind, drones, alerts, evacuation, rescue)
+site/saqr/detect.html     AI fire & smoke detector on the webcam / an image / a video (rule-based computer vision, in the browser)
+site/saqr/alert.html      Citizen phone: receives the alert, inclusive (siren, vibration, flash, voice, languages), two-way
+site/saqr/build.html      Build guide: hardware paths, parts list, wiring, code, safety, test protocol
+site/saqr/pitch.html      Pitch deck (presentation mode) + 3-minute script + judge Q&A
+site/saqr/css/base.css    design system: tokens (both themes), base, components, nav, footer, toasts  (shared — do not fork)
+site/saqr/css/<page>.css  page styles (owned by the page)
+site/saqr/js/core.js      shell: icons, theme, language, i18n, nav/footer, reveal, toasts, Saqr.link bus  (shared)
+site/saqr/js/sim.js       simulation engine (pure, no DOM, deterministic, Node-testable)      → window.SaqrSim
+site/saqr/js/fire.js      fire/smoke detection engine (pure, no DOM, Node-testable)            → window.SaqrFire
+site/saqr/js/<page>.js    page behaviour (mission.js, detect.js, alert.js, home.js, pitch.js, build.js)
+site/saqr/kit/            downloadable hardware code (Python for a Tello EDU drone, Arduino/ESP32 sensor payload)
+site/saqr/assets/         logo.svg, sample images (with CREDITS.txt), other static assets
+tools/saqr/lib.mjs        shared Playwright helpers (launch, openPage, overflow, check, done)
+tools/saqr/shot.mjs       screenshots + console/overflow check: node tools/saqr/shot.mjs mission.html --w 390,1440 --lang ar,en
+tools/saqr/test-*.mjs     browser + engine tests (one per module); test_kit.py for the Python kit
+```
+
+## Laws
+
+1. **Classic scripts only** (`<script defer>`, IIFE, no ES modules, no `fetch()`/XHR of local
+   files): everything must work from `file://`. Data ships as scripts that set globals.
+2. **No frameworks, libraries or CDNs** (Google Fonts only, and the page must still work
+   when they fail to load). Hand-written CSS on the tokens in `base.css`.
+3. **RTL first, LTR ready.** Arabic is the default (`dir=rtl`); English flips the page to
+   `dir=ltr`. Use logical properties only (`inset-inline-*`, `margin-inline-*`,
+   `padding-inline-*`, `text-align:start`, `border-inline-*`). Never `letter-spacing` on
+   Arabic. Canvas drawings and code blocks are direction-neutral (maps are north-up).
+4. **Bilingual, every string.** Arabic must be natural Modern Standard Arabic written for a
+   Gulf audience (not a literal translation); English must be clear and simple.
+   - Long text in HTML: author both, `<span data-l="ar">…</span><span data-l="en">…</span>`
+     (or on blocks: `<p data-l="ar">`, `<p data-l="en">`). CSS shows only the active one.
+   - Short UI strings: `Saqr.strings({'mission.start': {ar:'ابدأ', en:'Start'}})` then
+     `<button data-i18n="mission.start">`; attributes via
+     `data-i18n-attr="aria-label:mission.start;title:mission.start"`.
+   - Strings built in JS: `Saqr.L({ar:'…', en:'…'})`. Re-render on `window` `langchange`.
+   - `<title data-en="English title">العنوان العربي</title>`.
+5. **Both themes** (`html[data-theme=dark|light]`, colours from tokens only — canvases read
+   tokens with `getComputedStyle` and re-draw on `themechange`), **phones first** (360–390px)
+   up to 1440px+, **no horizontal page scroll**, `prefers-reduced-motion` respected (no
+   flashing for reduced-motion users), keyboard + screen-reader accessible (real
+   buttons/links, labels, focus states, `aria-live` for alerts/logs).
+6. **Honesty is a feature.** No invented real-world facts or statistics: every real-world
+   number shown on the site comes from the sourced list in `docs/SAQR-SOURCES.md` and shows
+   its source. Simulation outputs are always labelled as simulation results. The detector is
+   described accurately: *rule-based computer vision (colour models + flicker/motion analysis)*,
+   not "deep learning". Limitations are stated openly (judges reward this).
+7. **Safety of content.** Never assign bus-delivered, uploaded or user-typed text to
+   `innerHTML` — use `textContent`/DOM nodes. Static strings authored in the code are fine.
+8. **Ownership.** Each page owns its `<page>.html`, `css/<page>.css`, `js/<page>.js` and its
+   test file. `base.css` and `core.js` are shared: do not edit them from a page; put
+   page-specific overrides in the page CSS and report any needed shared change.
+
+## Page skeleton
+
+```html
+<!doctype html>
+<html lang="ar" dir="rtl" data-lang="ar">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title data-en="SAQR — Mission Control">صقر — غرفة العمليات</title>
+<meta name="description" content="…">
+<meta name="theme-color" content="#0a0e15">
+<meta name="color-scheme" content="light dark">
+<script>/* copy verbatim from site/saqr/index.html: applies theme + language before paint */</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/mission.css">
+<script src="js/core.js" defer></script>
+<script src="js/sim.js" defer></script>
+<script src="js/mission.js" defer></script>
+</head>
+<body data-page="mission.html">
+<a class="skip" href="#main">تخطَّ إلى المحتوى</a>
+<header class="nav" data-nav></header>      <!-- core.js renders nav, language + theme buttons, mobile menu -->
+<main id="main">…</main>
+<footer class="foot" data-footer></footer>  <!-- core.js renders the footer (a full-screen app page may omit it) -->
+</body>
+</html>
+```
+
+`?lang=en` in the URL forces English (handy for links from the English pitch).
+`[data-icon="fire"]` on any element prepends that icon (names: see `ICONS` in core.js).
+
+## Design tokens (base.css, both themes)
+
+`--bg --bg-2 --surface --surface-2 --surface-3 --ink --ink-2 --muted --line --line-2 --head
+--brand --brand-2 --on-brand --accent --accent-2 --safe --warn --danger --info --fire-1 --fire-2
+--fire-3 --grad --grad-cool --grad-soft --glass --glass-line --shadow-sm --shadow --shadow-lg
+--r --r-sm --r-lg --font --font-h --font-m --ease --nav-h`
+
+Meaning is fixed across pages: **brand/fire = ember orange**, **accent = drone/tech cyan**,
+**safe = green** (safe zone, "I'm safe"), **warn = amber** (forecast, smoke), **danger = red**
+(fire, evacuate, "need help"), **info = blue** (civil defence).
+
+Components: `.wrap(.wide) .sec(.alt) .sec-head .eyebrow .sec-title .sec-lead .grid .g2 .g3 .g4
+.card(.ico) .panel(.panel-h) .kpi(.safe|.warn|.danger|.cool) .note(.warn|.danger|.safe)
+.btn(.btn-primary|.btn-cool|.btn-ghost|.btn-danger|.btn-safe|.btn-sm) .icon-btn .chip .tag
+(.safe|.warn|.danger|.info|.cool) .dot(.live) .table-wrap .table pre.code .field .switch .page-hero
+.rv (reveal) .num/.mono (tabular figures) .sr-only`.
+
+## core.js API — `window.Saqr`
+
+| Member | |
+|---|---|
+| `NAME`, `TAGLINE` | `{ar, en}` product name and tagline (rename in one place) |
+| `lang()`, `setLang('ar'\|'en')`, `toggleLang()` | fires `langchange` on `window` (detail = lang) |
+| `L({ar,en})`, `s(key)`, `strings(dict)`, `applyI18n(root?)` | i18n helpers |
+| `num(n, digits?)`, `clock(seconds)` | number formatting (Western digits in both languages), `mm:ss` |
+| `theme.get()`, `theme.set(t)`, `theme.toggle()` | fires `themechange` on `window` |
+| `icon(name, cls?)`, `logo(size?)` | inline SVG strings (static, safe for innerHTML) |
+| `toast(text\|{ar,en}, kind?, ms?)` | kind: `danger`/`safe`/`warn` |
+| `reveal(root?)` | re-run scroll reveal for dynamically added `.rv` |
+| `link.send(msg)`, `link.on(fn) → unsubscribe`, `link.last(type)`, `link.clear(type)` | cross-tab bus |
+| `$`, `$$`, `store(k, v?)`, `reduce`, `page()` | small helpers |
+
+`window.__saqrReady === true` once the shell has rendered (tests wait for it).
+
+## Cross-tab bus — `Saqr.link` messages
+
+Delivered to every other open SAQR tab (BroadcastChannel `saqr`, with a localStorage
+fallback). `send()` adds `ts` (epoch ms), `from` (page file) and a unique `_k`. The last message of
+each `type` is kept, so a page opened later can read it with `Saqr.link.last(type)`.
+Coordinates are simulation grid cells (`x` east, `y` south, map is north-up, 1 cell = 10 m).
+
+```js
+// mission → phone: a new public alert (and every ~2 s an 'alert-update' with the same shape)
+{ type:'alert', id:'A1', level:'watch'|'warning'|'evacuate',
+  area:{ar:'حي النخيل', en:'Al Nakheel district'},
+  fire:{x:61, y:34}, radiusM:400, wind:{deg:315, speed:6},       // wind blowing FROM deg, m/s
+  you:{x:52, y:40}, distanceM:108, bearingDeg:56,                // demo citizen → fire
+  safe:{x:30, y:52, name:{ar:'نقطة التجمع — ساحة المدرسة', en:'Assembly point — school yard'}},
+  route:[[52,40],[50,41],…,[30,52]],                             // safe walking route for the demo citizen
+  etaMin:7,                                                      // forecast: minutes until fire may reach "you" (null if not forecast)
+  instructions:[{ar:'…', en:'…'}, …],
+  map:'data:image/png;base64,…' }                                // optional small north-up thumbnail (≤ 60 kB)
+{ type:'alert-clear', id:'A1' }
+// phone → mission
+{ type:'citizen', id:'A1', status:'ack'|'safe'|'help', needs:['wheelchair'|'deaf'|'blind'|'elderly'|'child'], lang:'ar' }
+// detector → mission / phone
+{ type:'detection', source:'camera'|'image'|'video', state:'suspect'|'fire'|'smoke'|'clear',
+  confidence:0.86, fireRatio:0.031, smokeRatio:0.004, snapshot:'data:image/jpeg;base64,…' }  // snapshot ≤ 40 kB
+```
+
+## Engines
+
+**`window.SaqrSim`** (`js/sim.js`, owned by the Mission Control builder) — a pure, seeded,
+deterministic simulation (no DOM; attaches to `globalThis`, so Node tests can load it with
+`vm`). Fire spread uses a published cellular-automaton model (Alexandridis et al., 2008:
+`p_burn = p_h (1+p_veg)(1+p_den) p_w`, wind factor `p_w = exp(c1·V)·exp(c2·V·(cos θ − 1))`,
+`c1 = 0.045`, `c2 = 0.131`), smoke is advected downwind, a Monte-Carlo ensemble produces the
+fire forecast, people follow a safety field (multi-source Dijkstra from the assembly points
+that avoids fire, forecast fire and smoke), drones run a state machine
+(patrol → suspect → confirm → alert → track/guide/search/drop → return to base), and a baseline
+world without drones (detection only when a citizen notices and calls) runs in lockstep for
+the with/without comparison. Its exact API is documented at the top of `sim.js`.
+
+**`window.SaqrFire`** (`js/fire.js`, owned by the detector builder) — pure functions on
+`{data, width, height}` RGBA frames: per-pixel fire rules (YCbCr, Çelik & Demirel 2009;
+RGB/HSI, Chen et al. 2004), smoke cues, connected regions, and a temporal detector
+(flicker + growth + hysteresis) that outputs `clear | suspect | fire | smoke` with a
+confidence. Its exact API is documented at the top of `fire.js`.
+
+## Commands
+
+```bash
+node tools/saqr/shot.mjs mission.html --w 390,1440 --theme dark,light --lang ar,en   # look at it
+node tools/saqr/test-engine.mjs        # SaqrSim + SaqrFire unit tests (Node, no browser)
+node tools/saqr/test-ui.mjs            # every page: loads clean, both languages/themes, no overflow
+python3 tools/saqr/test_kit.py         # the Python kit's detection function
+cd site && python3 -m http.server 8765 # then open http://localhost:8765/saqr/
+```
