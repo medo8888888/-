@@ -1,6 +1,6 @@
-// Screenshots + console/overflow check for SAQR pages (Playwright, Chromium, file:// URLs).
+// Screenshots + console/overflow check for MANARA pages (Playwright, Chromium, file:// URLs).
 //
-//   node tools/saqr/shot.mjs mission.html [options]
+//   node tools/manara/shot.mjs mission.html [options]
 //
 // Options:
 //   --w 390,1440          viewport widths (default 390,1440)
@@ -11,7 +11,7 @@
 //   --wait 600            extra ms to wait before the shot (animations, simulations)
 //   --click "#start"      click a selector before the shot (repeatable, in order)
 //   --fonts               load Google Fonts through the proxy (default: blocked, fallback fonts)
-//   --out DIR             output dir (default: $SAQR_SHOTS or /tmp/saqr-shots)
+//   --out DIR             output dir (default: $MANARA_SHOTS or /tmp/manara-shots)
 // Prints the PNG paths plus any console errors / failed requests / horizontal overflow.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -29,7 +29,7 @@ const maxH = +opt('max-h', 6000);
 const scrollY = +opt('scroll', 0);
 const wait = +opt('wait', 400);
 const clicks = all('click');
-const out = opt('out', process.env.SAQR_SHOTS || '/tmp/saqr-shots');
+const out = opt('out', process.env.MANARA_SHOTS || '/tmp/manara-shots');
 fs.mkdirSync(out, { recursive: true });
 
 const proxy = process.env.HTTPS_PROXY || process.env.https_proxy;
@@ -41,7 +41,7 @@ for (const lang of langs) for (const theme of themes) for (const w of widths) {
     viewport: { width: w, height: w < 600 ? 844 : 900 }, deviceScaleFactor: w < 600 ? 2 : 1,
     colorScheme: theme, reducedMotion: 'reduce', hasTouch: w < 600, isMobile: w < 600, ignoreHTTPSErrors: true,
   });
-  await ctx.addInitScript(([l, t]) => { try { localStorage.setItem('saqr-lang', l); localStorage.setItem('saqr-theme', t); } catch (e) { /* ignore */ } }, [lang, theme]);
+  await ctx.addInitScript(([l, t]) => { try { localStorage.setItem('manara-lang', l); localStorage.setItem('manara-theme', t); } catch (e) { /* ignore */ } }, [lang, theme]);
   const p = await ctx.newPage();
   const errs = [];
   p.on('console', m => { if (m.type() === 'error' && !/fonts\.g|ERR_FAILED|ERR_ABORTED|net::/.test(m.text() + (m.location()?.url || ''))) errs.push('console: ' + m.text()); });
@@ -49,7 +49,7 @@ for (const lang of langs) for (const theme of themes) for (const w of widths) {
   p.on('requestfailed', r => { if (r.url().startsWith('file:')) errs.push('requestfailed: ' + r.url()); });
   if (!fonts) await p.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
   await p.goto(url(page), { waitUntil: 'load' });
-  await p.waitForFunction(() => window.__saqrReady === true, null, { timeout: 5000 }).catch(() => errs.push('core.js never set window.__saqrReady'));
+  await p.waitForFunction(() => window.__manaraReady === true, null, { timeout: 5000 }).catch(() => errs.push('core.js never set window.__manaraReady'));
   for (const c of clicks) { try { await p.click(c, { timeout: 3000 }); await p.waitForTimeout(150); } catch (e) { errs.push('click failed: ' + c); } }
   if (scrollY) await p.evaluate(y => window.scrollTo(0, y), scrollY);
   await p.waitForTimeout(wait);

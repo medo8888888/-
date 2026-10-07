@@ -1,8 +1,8 @@
-// SAQR («صقر») shell, loaded first on every page: icons, theme, language (ar/en),
+// MANARA («منارة») shell, loaded first on every page: icons, theme, language (ar/en),
 // i18n strings, nav + footer rendering, mobile menu, reveal, toasts, and the
-// cross-tab message bus (Saqr.link). Classic script (no modules): the site must
+// cross-tab message bus (Manara.link). Classic script (no modules): the site must
 // also work when opened from file:// or uploaded as plain static files.
-// Contract: docs/SAQR.md (names stay; new members may be added).
+// Contract: docs/MANARA.md (names stay; new members may be added).
 (function () {
   'use strict';
   var d = document.documentElement;
@@ -18,8 +18,8 @@
   }
 
   /* ---------------- product identity (one place to rename) ---------------- */
-  var NAME = { ar: 'صقر', en: 'SAQR' };
-  var TAGLINE = { ar: 'درون الإنذار والإنقاذ من الحرائق', en: 'Fire alert & rescue drone' };
+  var NAME = { ar: 'منارة', en: 'MANARA' };
+  var TAGLINE = { ar: 'ترى الحريق… توقظ الجميع… وتُضيء طريق النجاة', en: 'Sees the fire. Wakes everyone. Lights the way out.' };
 
   /* ---------------- icons (24px stroke icons, currentColor) ---------------- */
   var ICONS = {
@@ -73,39 +73,43 @@
     return '<svg class="i' + (cls ? ' ' + cls : '') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
       'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' + (ICONS[name] || ICONS.help) + '</svg>';
   }
-  // Logo: a quad-rotor drone holding a flame-eye, drawn inline so it themes and needs no file.
+  // Logo: a lighthouse whose lamp is a small drone, throwing two beams. Inline so it needs no file.
   function logo(size) {
     var s = size || 38;
     return '<svg width="' + s + '" height="' + s + '" viewBox="0 0 64 64" aria-hidden="true" focusable="false">' +
-      '<defs><linearGradient id="sq-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffb04a"/><stop offset=".5" stop-color="#f05a28"/><stop offset="1" stop-color="#d0263f"/></linearGradient></defs>' +
+      '<defs><linearGradient id="mn-b" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffd166" stop-opacity=".0"/><stop offset="1" stop-color="#ffd166" stop-opacity=".85"/></linearGradient>' +
+      '<linearGradient id="mn-b2" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#ffd166" stop-opacity=".0"/><stop offset="1" stop-color="#ffd166" stop-opacity=".85"/></linearGradient></defs>' +
       '<rect x="2" y="2" width="60" height="60" rx="18" fill="#0d1320"/>' +
-      '<g stroke="#3ad6e6" stroke-width="3" stroke-linecap="round" fill="none"><path d="M17 17l10 10M47 17L37 27M17 47l10-10M47 47L37 37"/>' +
-      '<circle cx="15" cy="15" r="6"/><circle cx="49" cy="15" r="6"/><circle cx="15" cy="49" r="6"/><circle cx="49" cy="49" r="6"/></g>' +
-      '<path d="M32 46c6 0 9.5-3.8 9.5-9 0-4.6-3.4-7.7-5.4-10.6-.5 2.3-1.7 3.8-3.6 4.6.4-4-1.6-7.8-4.8-10.7.4 4.3-4.7 7.8-4.7 13.6C23 42 26.6 46 32 46z" fill="url(#sq-g)"/>' +
-      '<circle cx="32" cy="38" r="3.2" fill="#fff"/></svg>';
+      '<path d="M4 12L28 19v4L4 30z" fill="url(#mn-b)"/><path d="M60 12L36 19v4l24 7z" fill="url(#mn-b2)"/>' +
+      '<path d="M26.5 27h11l3 27h-17z" fill="#f3f5f9"/><path d="M25.4 37h13.2l.7 6H24.7zM24 49h16l.5 5h-17z" fill="#ff7a45"/>' +
+      '<rect x="25" y="16" width="14" height="10" rx="3" fill="#ffd166"/><circle cx="32" cy="21" r="2.6" fill="#0d1320"/>' +
+      '<g stroke="#3ad6e6" stroke-width="2.2" stroke-linecap="round" fill="none"><circle cx="22.5" cy="14.5" r="3"/><circle cx="41.5" cy="14.5" r="3"/><path d="M25 16l2 1.5M39 16l-2 1.5"/></g>' +
+      '<path d="M18 56h28" stroke="#3ad6e6" stroke-width="2.4" stroke-linecap="round"/></svg>';
   }
 
   /* ---------------- strings (i18n) ---------------- */
   var STR = {
     'nav.home': { ar: 'الرئيسية', en: 'Home' },
     'nav.mission': { ar: 'غرفة العمليات', en: 'Mission Control' },
-    'nav.detect': { ar: 'الكاشف الذكي', en: 'AI Detector' },
-    'nav.alert': { ar: 'هاتف المواطن', en: 'Citizen Phone' },
+    'nav.detect': { ar: 'مختبر الأدلة', en: 'Evidence Lab' },
+    'nav.alert': { ar: 'هواتف السكان', en: 'Resident Phones' },
     'nav.build': { ar: 'بناء النموذج', en: 'Build It' },
     'nav.pitch': { ar: 'العرض التقديمي', en: 'Pitch' },
+    'nav.report': { ar: 'التقرير العلمي', en: 'Report' },
+    'nav.poster': { ar: 'لوحة العرض', en: 'Display Board' },
     'ui.menu': { ar: 'القائمة', en: 'Menu' },
     'ui.close': { ar: 'إغلاق', en: 'Close' },
     'ui.theme': { ar: 'تبديل الوضع الليلي/النهاري', en: 'Toggle dark/light mode' },
     'ui.lang': { ar: 'Switch to English', en: 'التبديل إلى العربية' },
     'ui.skip': { ar: 'تخطَّ إلى المحتوى', en: 'Skip to content' },
     'foot.about': {
-      ar: 'مشروع ابتكار طلابي: درون يرصد الحريق مبكراً بالذكاء الاصطناعي، وينذر الناس القريبين فوراً، ويرشدهم إلى طريق آمن ويساعد فرق الدفاع المدني على إنقاذ العالقين.',
-      en: 'A student innovation project: a drone that spots fires early with AI, warns nearby people instantly, guides them along a safe route, and helps civil-defence teams reach anyone trapped.'
+      ar: 'مشروع ابتكار طلابي يكمّل منظومة الدفاع المدني في «آخر مئة متر»: يتحقق من الحريق قبل أن يُنذِر، ويوقظ كل إنسان قريب بلغته وبالطريقة التي تناسبه، ويدلّه على مخرج مفتوح فعلاً، ويتأكد أن الجميع خرجوا.',
+      en: 'A student innovation project for the "last 100 metres" of a fire: it verifies the fire before alerting, wakes every nearby person in their own language and format, guides them to an exit that is really open, and checks that everyone got out.'
     },
     'foot.demo': { ar: 'العرض الحي', en: 'Live demo' },
     'foot.project': { ar: 'المشروع', en: 'The project' },
     'foot.offline': { ar: 'يعمل دون إنترنت — افتح الملفات مباشرة من الجهاز.', en: 'Works offline — open the files straight from the device.' },
-    'foot.made': { ar: 'نموذج أولي لمسابقة الابتكار', en: 'Prototype for the innovation competition' }
+    'foot.made': { ar: 'نموذج أولي لمسابقة الابتكار — الصقور تكافح النار، والمنارة تُخرج الجميع بأمان', en: 'Innovation-competition prototype — the falcons fight the fire; the lighthouse gets everyone out' }
   };
   function lang() { return d.dataset.lang === 'en' ? 'en' : 'ar'; }
   function L(obj) {
@@ -152,7 +156,7 @@
   }
   function setTheme(t, persist) {
     d.dataset.theme = t === 'dark' ? 'dark' : 'light';
-    if (persist) store('saqr-theme', d.dataset.theme);
+    if (persist) store('manara-theme', d.dataset.theme);
     syncThemeUI();
     window.dispatchEvent(new CustomEvent('themechange', { detail: d.dataset.theme }));
   }
@@ -162,7 +166,7 @@
   function setLang(l, persist) {
     l = l === 'en' ? 'en' : 'ar';
     d.dataset.lang = l; d.lang = l; d.dir = l === 'ar' ? 'rtl' : 'ltr';
-    if (persist) store('saqr-lang', l);
+    if (persist) store('manara-lang', l);
     renderShell();
     applyI18n(document);
     window.dispatchEvent(new CustomEvent('langchange', { detail: l }));
@@ -176,8 +180,10 @@
     ['detect.html', 'nav.detect', 'eye'],
     ['alert.html', 'nav.alert', 'phone'],
     ['build.html', 'nav.build', 'wrench'],
-    ['pitch.html', 'nav.pitch', 'slides']
+    ['pitch.html', 'nav.pitch', 'slides'],
+    ['report.html', 'nav.report', 'chart']
   ];
+  var EXTRA = [['poster.html', 'nav.poster', 'layers']];
   function current() { return (document.body && document.body.getAttribute('data-page')) || 'index.html'; }
   function links(cls) {
     return PAGES.map(function (p) {
@@ -198,9 +204,9 @@
         '<div class="nav-tools">' +
         '<button class="icon-btn lang-btn" type="button" data-lang-toggle aria-label="' + s('ui.lang') + '" title="' + s('ui.lang') + '">' + (lang() === 'ar' ? 'EN' : 'ع') + '</button>' +
         '<button class="icon-btn theme-toggle" type="button" aria-label="' + s('ui.theme') + '" title="' + s('ui.theme') + '"></button>' +
-        '<button class="icon-btn menu-btn" type="button" aria-expanded="false" aria-controls="saqr-menu" aria-label="' + s('ui.menu') + '">' + icon('menu') + '</button>' +
+        '<button class="icon-btn menu-btn" type="button" aria-expanded="false" aria-controls="manara-menu" aria-label="' + s('ui.menu') + '">' + icon('menu') + '</button>' +
         '</div></div>' +
-        '<nav class="menu" id="saqr-menu" aria-label="' + s('ui.menu') + '">' + links() + '</nav>';
+        '<nav class="menu" id="manara-menu" aria-label="' + s('ui.menu') + '">' + links() + '</nav>';
       var menu = $('.menu', nav), mb = $('.menu-btn', nav);
       var setMenu = function (open) {
         menu.classList.toggle('open', open);
@@ -219,7 +225,7 @@
         '<div class="wrap"><div class="foot-grid">' +
         '<div>' + brand() + '<p>' + s('foot.about') + '</p></div>' +
         '<div><h4>' + s('foot.demo') + '</h4>' + PAGES.slice(1, 4).map(function (p) { return '<a href="' + p[0] + '">' + s(p[1]) + '</a>'; }).join('') + '</div>' +
-        '<div><h4>' + s('foot.project') + '</h4>' + [PAGES[0], PAGES[4], PAGES[5]].map(function (p) { return '<a href="' + p[0] + '">' + s(p[1]) + '</a>'; }).join('') + '</div>' +
+        '<div><h4>' + s('foot.project') + '</h4>' + [PAGES[0], PAGES[4], PAGES[5], PAGES[6], EXTRA[0]].map(function (p) { return '<a href="' + p[0] + '">' + s(p[1]) + '</a>'; }).join('') + '</div>' +
         '</div><div class="foot-bottom"><span>' + s('foot.made') + ' — ' + L(NAME) + '</span><span>' + s('foot.offline') + '</span></div></div>';
     }
     var skip = $('.skip');
@@ -258,14 +264,14 @@
     return t;
   }
 
-  /* ---------------- cross-tab bus: Saqr.link ----------------
-     Messages are plain objects with a `type` (see docs/SAQR.md for the schema).
-     Delivery: BroadcastChannel('saqr') + a localStorage 'storage' event fallback
+  /* ---------------- cross-tab bus: Manara.link ----------------
+     Messages are plain objects with a `type` (see docs/MANARA.md for the schema).
+     Delivery: BroadcastChannel('manara') + a localStorage 'storage' event fallback
      (covers browsers/origins where BroadcastChannel is unavailable, e.g. some file://).
      The last message of each type is kept in localStorage so a page opened later
      (e.g. the citizen phone) can show the alert that is already active. */
   var bc = null;
-  try { if ('BroadcastChannel' in window) bc = new BroadcastChannel('saqr'); } catch (e) { bc = null; }
+  try { if ('BroadcastChannel' in window) bc = new BroadcastChannel('manara'); } catch (e) { bc = null; }
   var subs = [], seen = {};
   var me = Math.random().toString(36).slice(2, 9);
   function deliver(msg) {
@@ -275,7 +281,7 @@
   }
   if (bc) bc.onmessage = function (e) { deliver(e.data); };
   window.addEventListener('storage', function (e) {
-    if (e.key !== 'saqr-bus' || !e.newValue) return;
+    if (e.key !== 'manara-bus' || !e.newValue) return;
     try { deliver(JSON.parse(e.newValue)); } catch (err) { /* ignore */ }
   });
   var link = {
@@ -284,17 +290,17 @@
       seen[msg._k] = 1;
       if (bc) { try { bc.postMessage(msg); } catch (e) { /* ignore */ } }
       var json = JSON.stringify(msg);
-      store('saqr-bus', json);
-      if (msg.type) store('saqr-last-' + msg.type, json);
+      store('manara-bus', json);
+      if (msg.type) store('manara-last-' + msg.type, json);
       return msg;
     },
     on: function (fn) { subs.push(fn); return function () { subs = subs.filter(function (f) { return f !== fn; }); }; },
-    last: function (type) { try { return JSON.parse(store('saqr-last-' + type) || 'null'); } catch (e) { return null; } },
-    clear: function (type) { try { localStorage.removeItem('saqr-last-' + type); } catch (e) { /* ignore */ } }
+    last: function (type) { try { return JSON.parse(store('manara-last-' + type) || 'null'); } catch (e) { return null; } },
+    clear: function (type) { try { localStorage.removeItem('manara-last-' + type); } catch (e) { /* ignore */ } }
   };
 
   /* ---------------- public API ---------------- */
-  window.Saqr = {
+  window.Manara = {
     NAME: NAME, TAGLINE: TAGLINE,
     $: $, $$: $$, store: store, reduce: reduce,
     icon: icon, logo: logo,
@@ -311,7 +317,7 @@
     applyI18n(document);
     reveal();
     $$('[data-icon]').forEach(function (el) { el.insertAdjacentHTML('afterbegin', icon(el.getAttribute('data-icon'))); el.removeAttribute('data-icon'); });
-    window.__saqrReady = true;
+    window.__manaraReady = true;
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();

@@ -1,29 +1,33 @@
-# SAQR («صقر») — architecture & contracts
+# MANARA («منارة») — architecture & contracts
 
-Bilingual (Arabic-first RTL + English LTR) competition project: **a drone that detects fire
-early, alerts the people nearby, and helps them reach safety**. It lives at **`/saqr/`**
-(`site/saqr/` is inside the Worker's assets directory) and is fully self-contained: the
+Bilingual (Arabic-first RTL + English LTR) competition project: **the last 100 metres of a
+fire — verify before alerting, wake every nearby person in their language and format, guide
+them to an exit that is really open, and count everyone out**. *What* the product is:
+`docs/MANARA-SPEC.md` (read it first). Real-world numbers: `docs/MANARA-SOURCES.md` only. It lives at **`/manara/`**
+(`site/manara/` is inside the Worker's assets directory) and is fully self-contained: the
 folder can be opened from `file://` or uploaded alone to any static host, and it works
 **offline** (a competition booth often has no internet).
 
 ```
-site/saqr/index.html      landing: problem → idea → how it works → signature features → demo → impact → hardware → team
-site/saqr/mission.html    Mission Control: the live simulation (fire spread with wind, drones, alerts, evacuation, rescue)
-site/saqr/detect.html     AI fire & smoke detector on the webcam / an image / a video (rule-based computer vision, in the browser)
-site/saqr/alert.html      Citizen phone: receives the alert, inclusive (siren, vibration, flash, voice, languages), two-way
-site/saqr/build.html      Build guide: hardware paths, parts list, wiring, code, safety, test protocol
-site/saqr/pitch.html      Pitch deck (presentation mode) + 3-minute script + judge Q&A
-site/saqr/css/base.css    design system: tokens (both themes), base, components, nav, footer, toasts  (shared — do not fork)
-site/saqr/css/<page>.css  page styles (owned by the page)
-site/saqr/js/core.js      shell: icons, theme, language, i18n, nav/footer, reveal, toasts, Saqr.link bus  (shared)
-site/saqr/js/sim.js       simulation engine (pure, no DOM, deterministic, Node-testable)      → window.SaqrSim
-site/saqr/js/fire.js      fire/smoke detection engine (pure, no DOM, Node-testable)            → window.SaqrFire
-site/saqr/js/<page>.js    page behaviour (mission.js, detect.js, alert.js, home.js, pitch.js, build.js)
-site/saqr/kit/            downloadable hardware code (Python for a Tello EDU drone, Arduino/ESP32 sensor payload)
-site/saqr/assets/         logo.svg, sample images (with CREDITS.txt), other static assets
-tools/saqr/lib.mjs        shared Playwright helpers (launch, openPage, overflow, check, done)
-tools/saqr/shot.mjs       screenshots + console/overflow check: node tools/saqr/shot.mjs mission.html --w 390,1440 --lang ar,en
-tools/saqr/test-*.mjs     browser + engine tests (one per module); test_kit.py for the Python kit
+site/manara/index.html      landing: problem → gap (last 100 m) → how it works → 3 pillars → demo → evidence → hardware → roadmap
+site/manara/mission.html    Mission Control: building twin at 04:00 / school — verify, approve, alert, exit truth, wake-up ladder, headcount, hand-off
+site/manara/detect.html     Evidence Lab: layered fire/smoke detection (C1…C6 + thermal veto), "Fool me if you can", Decoy Lab benchmark
+site/manara/alert.html      Resident Phones: phone wall of 4 personas (or one phone), inclusive alert, wake-up ladder, I'm safe / I need help
+site/manara/build.html      Build guide: sentinel + twin board + pan-tilt head + check-in point, parts, wiring, firmware, tests, safety
+site/manara/pitch.html      Pitch deck (presentation mode) + 3-minute script + judge Q&A + booth checklist
+site/manara/report.html     Scientific report + engineering logbook + ownership/AI-disclosure table (printable)
+site/manara/poster.html     Display board: print-ready tri-fold + A0 poster
+site/manara/css/base.css    design system: tokens (both themes), base, components, nav, footer, toasts  (shared — do not fork)
+site/manara/css/<page>.css  page styles (owned by the page)
+site/manara/js/core.js      shell: icons, theme, language, i18n, nav/footer, reveal, toasts, Manara.link bus  (shared)
+site/manara/js/sim.js       simulation engine (pure, no DOM, deterministic, Node-testable)      → window.ManaraSim
+site/manara/js/fire.js      fire/smoke detection engine (pure, no DOM, Node-testable)            → window.ManaraFire
+site/manara/js/<page>.js    page behaviour (mission.js, detect.js, alert.js, home.js, pitch.js, build.js, report.js, poster.js)
+site/manara/kit/            downloadable hardware code (ESP32 sentinel/twin-board firmware, MANARA-SAFE check-in AP, pan-tilt head, Python webcam/drone script)
+site/manara/assets/         logo.svg, sample images (with CREDITS.txt), other static assets
+tools/manara/lib.mjs        shared Playwright helpers (launch, openPage, overflow, check, done)
+tools/manara/shot.mjs       screenshots + console/overflow check: node tools/manara/shot.mjs mission.html --w 390,1440 --lang ar,en
+tools/manara/test-*.mjs     browser + engine tests (one per module); test_kit.py for the Python kit
 ```
 
 ## Laws
@@ -35,15 +39,15 @@ tools/saqr/test-*.mjs     browser + engine tests (one per module); test_kit.py f
 3. **RTL first, LTR ready.** Arabic is the default (`dir=rtl`); English flips the page to
    `dir=ltr`. Use logical properties only (`inset-inline-*`, `margin-inline-*`,
    `padding-inline-*`, `text-align:start`, `border-inline-*`). Never `letter-spacing` on
-   Arabic. Canvas drawings and code blocks are direction-neutral (maps are north-up).
+   Arabic. Canvas drawings and code blocks are direction-neutral (floor plans are north-up).
 4. **Bilingual, every string.** Arabic must be natural Modern Standard Arabic written for a
    Gulf audience (not a literal translation); English must be clear and simple.
    - Long text in HTML: author both, `<span data-l="ar">…</span><span data-l="en">…</span>`
      (or on blocks: `<p data-l="ar">`, `<p data-l="en">`). CSS shows only the active one.
-   - Short UI strings: `Saqr.strings({'mission.start': {ar:'ابدأ', en:'Start'}})` then
+   - Short UI strings: `Manara.strings({'mission.start': {ar:'ابدأ', en:'Start'}})` then
      `<button data-i18n="mission.start">`; attributes via
      `data-i18n-attr="aria-label:mission.start;title:mission.start"`.
-   - Strings built in JS: `Saqr.L({ar:'…', en:'…'})`. Re-render on `window` `langchange`.
+   - Strings built in JS: `Manara.L({ar:'…', en:'…'})`. Re-render on `window` `langchange`.
    - `<title data-en="English title">العنوان العربي</title>`.
 5. **Both themes** (`html[data-theme=dark|light]`, colours from tokens only — canvases read
    tokens with `getComputedStyle` and re-draw on `themechange`), **phones first** (360–390px)
@@ -51,7 +55,7 @@ tools/saqr/test-*.mjs     browser + engine tests (one per module); test_kit.py f
    flashing for reduced-motion users), keyboard + screen-reader accessible (real
    buttons/links, labels, focus states, `aria-live` for alerts/logs).
 6. **Honesty is a feature.** No invented real-world facts or statistics: every real-world
-   number shown on the site comes from the sourced list in `docs/SAQR-SOURCES.md` and shows
+   number shown on the site comes from the sourced list in `docs/MANARA-SOURCES.md` and shows
    its source. Simulation outputs are always labelled as simulation results. The detector is
    described accurately: *rule-based computer vision (colour models + flicker/motion analysis)*,
    not "deep learning". Limitations are stated openly (judges reward this).
@@ -69,11 +73,11 @@ tools/saqr/test-*.mjs     browser + engine tests (one per module); test_kit.py f
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title data-en="SAQR — Mission Control">صقر — غرفة العمليات</title>
+<title data-en="MANARA — Mission Control">منارة — غرفة العمليات</title>
 <meta name="description" content="…">
 <meta name="theme-color" content="#0a0e15">
 <meta name="color-scheme" content="light dark">
-<script>/* copy verbatim from site/saqr/index.html: applies theme + language before paint */</script>
+<script>/* copy verbatim from site/manara/index.html: applies theme + language before paint */</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -113,7 +117,7 @@ Components: `.wrap(.wide) .sec(.alt) .sec-head .eyebrow .sec-title .sec-lead .gr
 (.safe|.warn|.danger|.info|.cool) .dot(.live) .table-wrap .table pre.code .field .switch .page-hero
 .rv (reveal) .num/.mono (tabular figures) .sr-only`.
 
-## core.js API — `window.Saqr`
+## core.js API — `window.Manara`
 
 | Member | |
 |---|---|
@@ -128,13 +132,13 @@ Components: `.wrap(.wide) .sec(.alt) .sec-head .eyebrow .sec-title .sec-lead .gr
 | `link.send(msg)`, `link.on(fn) → unsubscribe`, `link.last(type)`, `link.clear(type)` | cross-tab bus |
 | `$`, `$$`, `store(k, v?)`, `reduce`, `page()` | small helpers |
 
-`window.__saqrReady === true` once the shell has rendered (tests wait for it).
+`window.__manaraReady === true` once the shell has rendered (tests wait for it).
 
-## Cross-tab bus — `Saqr.link` messages
+## Cross-tab bus — `Manara.link` messages
 
-Delivered to every other open SAQR tab (BroadcastChannel `saqr`, with a localStorage
+Delivered to every other open MANARA tab (BroadcastChannel `manara`, with a localStorage
 fallback). `send()` adds `ts` (epoch ms), `from` (page file) and a unique `_k`. The last message of
-each `type` is kept, so a page opened later can read it with `Saqr.link.last(type)`.
+each `type` is kept, so a page opened later can read it with `Manara.link.last(type)`.
 Coordinates are simulation grid cells (`x` east, `y` south, map is north-up, 1 cell = 10 m).
 
 ```js
@@ -158,7 +162,7 @@ Coordinates are simulation grid cells (`x` east, `y` south, map is north-up, 1 c
 
 ## Engines
 
-**`window.SaqrSim`** (`js/sim.js`, owned by the Mission Control builder) — a pure, seeded,
+**`window.ManaraSim`** (`js/sim.js`, owned by the Mission Control builder) — a pure, seeded,
 deterministic simulation (no DOM; attaches to `globalThis`, so Node tests can load it with
 `vm`). Fire spread uses a published cellular-automaton model (Alexandridis et al., 2008:
 `p_burn = p_h (1+p_veg)(1+p_den) p_w`, wind factor `p_w = exp(c1·V)·exp(c2·V·(cos θ − 1))`,
@@ -169,7 +173,7 @@ that avoids fire, forecast fire and smoke), drones run a state machine
 world without drones (detection only when a citizen notices and calls) runs in lockstep for
 the with/without comparison. Its exact API is documented at the top of `sim.js`.
 
-**`window.SaqrFire`** (`js/fire.js`, owned by the detector builder) — pure functions on
+**`window.ManaraFire`** (`js/fire.js`, owned by the detector builder) — pure functions on
 `{data, width, height}` RGBA frames: per-pixel fire rules (YCbCr, Çelik & Demirel 2009;
 RGB/HSI, Chen et al. 2004), smoke cues, connected regions, and a temporal detector
 (flicker + growth + hysteresis) that outputs `clear | suspect | fire | smoke` with a
@@ -178,9 +182,9 @@ confidence. Its exact API is documented at the top of `fire.js`.
 ## Commands
 
 ```bash
-node tools/saqr/shot.mjs mission.html --w 390,1440 --theme dark,light --lang ar,en   # look at it
-node tools/saqr/test-engine.mjs        # SaqrSim + SaqrFire unit tests (Node, no browser)
-node tools/saqr/test-ui.mjs            # every page: loads clean, both languages/themes, no overflow
-python3 tools/saqr/test_kit.py         # the Python kit's detection function
-cd site && python3 -m http.server 8765 # then open http://localhost:8765/saqr/
+node tools/manara/shot.mjs mission.html --w 390,1440 --theme dark,light --lang ar,en   # look at it
+node tools/manara/test-engine.mjs        # ManaraSim + ManaraFire unit tests (Node, no browser)
+node tools/manara/test-ui.mjs            # every page: loads clean, both languages/themes, no overflow
+python3 tools/manara/test_kit.py         # the Python kit's detection function
+cd site && python3 -m http.server 8765 # then open http://localhost:8765/manara/
 ```

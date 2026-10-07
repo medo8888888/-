@@ -1,4 +1,4 @@
-// Shared helpers for the SAQR («صقر») browser tests and screenshots (Playwright, Chromium, file:// URLs).
+// Shared helpers for the MANARA («منارة») browser tests and screenshots (Playwright, Chromium, file:// URLs).
 //
 //   import { launch, openPage, overflow, check, done, url, SITE, ROOT } from './lib.mjs';
 //
@@ -12,7 +12,7 @@ const globalRoot = process.env.NODE_PATH || execSync('npm root -g').toString().t
 export const { chromium } = createRequire(import.meta.url)(path.join(globalRoot, 'playwright'));
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-export const SITE = path.join(ROOT, 'site/saqr');
+export const SITE = path.join(ROOT, 'site/manara');
 export const url = (f, q = '') => pathToFileURL(path.join(SITE, f)).href + q;
 export const EXE = '/opt/pw-browsers/chromium';
 
@@ -42,7 +42,7 @@ export async function openPage(browser, file, { width = 1280, height = 860, them
     viewport: { width, height }, colorScheme: theme, reducedMotion,
     isMobile: width < 600, hasTouch: width < 600, deviceScaleFactor: 1,
   });
-  if (lang) await ctx.addInitScript(l => { try { localStorage.setItem('saqr-lang', l); } catch (e) { /* ignore */ } }, lang);
+  if (lang) await ctx.addInitScript(l => { try { localStorage.setItem('manara-lang', l); } catch (e) { /* ignore */ } }, lang);
   const page = await ctx.newPage();
   const errors = [];
   page.on('console', m => { if (m.type() === 'error' && !/fonts\.g|ERR_FAILED|ERR_ABORTED|ERR_INTERNET|ERR_NAME|net::/.test(m.text() + (m.location()?.url || ''))) errors.push('console: ' + m.text()); });
@@ -50,7 +50,7 @@ export async function openPage(browser, file, { width = 1280, height = 860, them
   page.on('requestfailed', r => { const u = r.url(); if (u.startsWith('file:')) errors.push('requestfailed: ' + u); });
   await page.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
   await page.goto(url(file, query), { waitUntil: 'load' });
-  await page.waitForFunction(() => window.__saqrReady === true, null, { timeout: 5000 }).catch(() => errors.push('core.js never set window.__saqrReady'));
+  await page.waitForFunction(() => window.__manaraReady === true, null, { timeout: 5000 }).catch(() => errors.push('core.js never set window.__manaraReady'));
   return { ctx, page, errors };
 }
 
