@@ -73,6 +73,42 @@ targets, its sensor keys and its message playbook; the pipeline, routing, alerts
 ladder, headcount and hand-off are shared. That is the core engineering idea to explain:
 **one platform, not six gadgets**.
 
+## Nearest-responder dispatch («أقرب جهة استجابة» — hospital, police, fire)
+
+Once an incident is CONFIRMED and the operator approves, MANARA prepares a **verified incident
+package** (what, where, hazard, exit/road states, who is unaccounted, who needs help and what
+help) and recommends **which nearest available unit of each required type should respond**:
+
+| Hazard | Units recommended |
+|---|---|
+| Fire & smoke | nearest **fire** engine(s) (+ rescue) · nearest **ambulance** (standby/at scene) · **police** (cordon, traffic) |
+| Gas leak | nearest **fire/HazMat** · **ambulance** · **police** (cordon, evacuation perimeter) |
+| Flash flood | **Civil Defence / rescue** · **police** (road closures, underpass barriers) · **ambulance** |
+| Dust storm | **police** (traffic, visibility) · **ambulance** on standby for respiratory cases |
+| Extreme heat | nearest **ambulance** + cooling support · nearest **hospital** (destination) |
+| Someone needs help (SOS) | nearest **ambulance** + nearest trained volunteer + drone AED (authority-operated) · destination **hospital** |
+
+How "nearest" is decided (the algorithm the student can defend): for each unit type, take every
+station/hospital on the map, compute **road travel time** with Dijkstra over the road graph
+(speed per road class × a traffic factor; **roads closed by flood/fire/cordon are removed**),
+skip units that are **busy** (assumption: availability per unit, adjustable), pick the minimum
+ETA, and show it **with the runner-up** ("why this unit"). If a road closes or the unit becomes
+busy, **re-dispatch automatically** and tell the operator. For patients, choose the **nearest
+hospital that can take them** (capability flag + a labelled capacity assumption), not merely the
+nearest building. Dispatch states: *recommended → approved → dispatched → en route → on scene →
+cleared*, each with a timestamp, ETA countdown and route drawn on the map. Residents see calm,
+useful lines on their phones ("Fire engine ETA 4 min", "Ambulance ETA 6 min — stay where you
+are"); the responders get the **hand-off card** (and the CAP export).
+
+Honesty: in the demo, stations/hospitals/police posts are **fictional** points on the simulated
+map and ETAs are **simulated (SIM)**. In real life **999 stays the dispatcher** — MANARA does not
+call or replace it; it sends a pre-filled, verified package to the control room / CAD, which
+decides (integration needs agreements with the authority; say so). On the resident-phone page an
+**optional, online-only "Nearby facilities (informational)"** lookup may use the phone's location
+(asked with consent, never stored or sent anywhere except the lookup) and OpenStreetMap data to
+list the real nearest hospital / police / fire station with distance and a tap-to-call 999
+reminder; offline it degrades to a clear message. It is informational only, not dispatch.
+
 ## Depth vs breadth (what to build for real)
 
 - **Deep (real sensors + live booth demo):** fire & smoke (hot mug on the twin board +
