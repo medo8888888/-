@@ -1,0 +1,118 @@
+MANARA («منارة») - data credits, licences and provenance   (site/manara/data)
+==============================================================================
+
+Contains data © OpenStreetMap contributors, ODbL 1.0 — https://www.openstreetmap.org/copyright
+
+This folder is a SNAPSHOT of public map data, bundled so the pages work offline.
+It is a map, not a live feed: unit positions and availability, traffic and hazard fields are SIMULATED (SIM) elsewhere in MANARA.
+999 stays the dispatcher in reality; MANARA is not an official service and does not call or replace 999.
+
+SOURCES AND LICENCES
+  OpenStreetMap (c) OpenStreetMap contributors - Open Database Licence (ODbL) 1.0, https://www.openstreetmap.org/copyright
+      municipality boundaries, outline, places, facilities, roads. Extracted through the overpass.openstreetmap.fr mirror.
+      The files in this folder are a Derived Database / Produced Work of OSM data: keep the attribution above, and share any
+      further derived database under ODbL. Facilities and roads keep their OSM ids so every record can be traced back.
+  Natural Earth 10m admin-0 countries - public domain, https://www.naturalearthdata.com  (cross-check of the outline only,
+      shipped as outlineNaturalEarth in qatar-geo.js).
+  Official lists used to CHECK completeness (names only, no coordinates taken from them): Hamad Medical Corporation
+      (hamad.qa), PHCC / Ministry of Interior press reports quoted in docs/MANARA-DATA.md with their URLs and dates.
+
+SNAPSHOT
+  OSM database timestamp: 2026-10-08T13:13:36Z    built on: 2026-10-08
+  Rebuild: python3 tools/manara/build-qatar-data.py --cache <dir outside the repo> [--refresh] [--write-doc]
+  The exact Overpass queries are in docs/MANARA-DATA.md and in QUERIES in tools/manara/build-qatar-data.py.
+
+COUNTS
+  qatar-geo.js         8 municipalities, 36 outline polygons (1951 vertices), 135 places, area 11610 km2 computed from the OSM polygons
+  qatar-facilities.js  138 facilities: ambulance 3, clinic-ed 1, fire 21, hospital 72, police 41
+  qatar-roads.js       23135 nodes, 32136 edges (33607 arcs), 6116 km of road; 1259 virtual connectors (129 km), 1133 local access edges
+
+FILE SIZES of the three scripts (budget for all four files, CREDITS.txt included: 4.5 MB)
+  qatar-geo.js 120,106 B, qatar-facilities.js 59,060 B, qatar-roads.js 513,208 B, total 692,374 B
+
+KNOWN GAPS AND FLAGS (details and the official-vs-OSM matrix: docs/MANARA-DATA.md)
+  - OSM coverage of Qatar is incomplete; the matrix lists what the official lists name and OSM does not have (MISSING).
+  - Many OSM clinics are tagged amenity=hospital: facilityType is a NAME heuristic; ed (emergency department) is yes only from an OSM
+    emergency=yes tag or the HMC emergency-care page, otherwise unknown. No bed or ED capacity is shipped.
+  - Road speeds are OSM maxspeed where tagged (36 % of edges) and otherwise class defaults that are ASSUMPTIONS.
+  - 1259 one-way dead ends were joined to nearby one-way starts by flagged VIRTUAL connectors (assumption); no turn restrictions.
+  - Facility positions are mapper positions; the road snap distance of every facility is in its .snap.d (metres).
+  - Hawar Islands (Bahrain) are not part of the outline.
+
+OVERPASS QUERIES (verbatim; POST to https://overpass.openstreetmap.fr/api/interpreter as the form field "data";
+  User-Agent "manara-student-project/1.0 (competition prototype)"; one request at a time, with pauses)
+  Besides these, one "around" query per facility that is far from the major roads fetches the local roads for its access path (access_query()).
+
+--- rel_qa_geom
+    [out:json][timeout:180];
+    rel(305095);
+    out geom;
+
+--- rel_qa_subs
+    [out:json][timeout:240];
+    rel(305095);
+    rel(r);
+    out geom;
+
+--- facilities
+    [out:json][timeout:240];
+    (
+      nwr["amenity"="hospital"](24.4,50.7,26.3,51.7);
+      nwr["healthcare"="hospital"](24.4,50.7,26.3,51.7);
+      nwr["amenity"~"^(clinic|doctors)$"]["emergency"="yes"](24.4,50.7,26.3,51.7);
+      nwr["healthcare"~"^(clinic|centre|doctor)$"]["emergency"="yes"](24.4,50.7,26.3,51.7);
+      nwr["amenity"="police"](24.4,50.7,26.3,51.7);
+      nwr["amenity"="fire_station"](24.4,50.7,26.3,51.7);
+      nwr["emergency"="ambulance_station"](24.4,50.7,26.3,51.7);
+      nwr["emergency"~"^(fire_station|rescue_station|ambulance_station|lifeguard)$"](24.4,50.7,26.3,51.7);
+      nwr["office"="government"]["name"~"Civil Defen|الدفاع المدني"](24.4,50.7,26.3,51.7);
+      nwr["name"~"Civil Defen|الدفاع المدني"](24.4,50.7,26.3,51.7);
+      nwr["name:en"~"Civil Defen"](24.4,50.7,26.3,51.7);
+    );
+    out center tags;
+
+--- places
+    [out:json][timeout:240];
+    (
+      node["place"~"^(city|town|village|suburb|hamlet|neighbourhood|quarter|locality|island|islet|isolated_dwelling|farm)$"](24.4,50.5,26.3,52.8);
+      nwr["aeroway"="aerodrome"](24.4,50.5,26.3,52.8);
+      nwr["landuse"="industrial"]["name"](24.4,50.5,26.3,52.8);
+      nwr["industrial"]["name"](24.4,50.5,26.3,52.8);
+      nwr["harbour"="yes"]["name"](24.4,50.5,26.3,52.8);
+      nwr["amenity"="university"]["name"~"Education City"](24.4,50.5,26.3,52.8);
+      nwr["name:en"~"Education City|Industrial Area|Ras Laffan|Mesaieed|Mesaieed|Lusail|Hamad International|Hamad Port|Dukhan"](24.4,50.5,26.3,52.8);
+    );
+    out center tags;
+
+--- roads_major
+    [out:json][timeout:300];
+    way["highway"~"^(motorway|trunk|primary|secondary)(_link)?$"](24.4,50.6,26.3,51.8);
+    out body;
+    >;
+    out skel qt;
+
+--- roads_tertiary
+    [out:json][timeout:300];
+    way["highway"~"^tertiary(_link)?$"](24.4,50.6,26.3,51.8);
+    out body;
+    >;
+    out skel qt;
+
+--- lookup_health
+    [out:json][timeout:240];
+    (
+      nwr["amenity"~"^(hospital|clinic|doctors|social_facility)$"](24.4,50.7,26.3,51.7);
+      nwr["healthcare"~"^(hospital|clinic|centre|doctor|rehabilitation)$"](24.4,50.7,26.3,51.7);
+      nwr["emergency"~"^(ambulance_station|fire_station|rescue_station|first_aid)$"](24.4,50.7,26.3,51.7);
+      nwr["building"~"^(hospital|clinic)$"](24.4,50.7,26.3,51.7);
+      nwr["office"="government"]["name"~"Communicable|Civil Defen|الدفاع المدني",i](24.4,50.7,26.3,51.7);
+    );
+    out center tags;
+
+--- lookup_police_fire
+    [out:json][timeout:240];
+    (
+      nwr["amenity"~"^(police|fire_station)$"](24.4,50.7,26.3,51.7);
+      nwr["office"~"^(government|police)$"]["name"~"police|شرطة|civil defen|دفاع|fire|traffic|مرور",i](24.4,50.7,26.3,51.7);
+    );
+    out center tags;

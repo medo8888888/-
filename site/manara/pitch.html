@@ -62,7 +62,7 @@
         <div class="deck-grid">
           <div class="deck-main">
             <div class="stage-wrap">
-              <div class="stage" id="stage" tabindex="0" role="group" aria-roledescription="carousel">
+              <div class="stage" id="stage" tabindex="0" role="group" aria-roledescription="carousel" data-i18n-attr="aria-label:pt.stage">
 
                 <!-- ---------- 1. Title ---------- -->
                 <section class="slide s-title" id="slide-1" data-slide="title" aria-roledescription="slide" aria-labelledby="st-1">
@@ -99,9 +99,10 @@
                         <span class="sr-only" id="mn-desc"><span data-l="ar">شريطان زمنيان: وقت النجاة نحو دقيقة إلى دقيقتين بعد انطلاق الإنذار (NFPA)، ووصول الدفاع المدني خلال 7 إلى 10 دقائق عام 2017. الفاصل بينهما هو المدة التي يجب أن يتحرك فيها الناس بأنفسهم.</span><span data-l="en">Two time bars: the escape window is about one to two minutes after the alarm sounds (NFPA), and Civil Defence reached incidents in 7 to 10 minutes in 2017. The space between them is when people must move on their own.</span></span>
                         <div class="mn-axis" aria-hidden="true"><i style="--k:0">0</i><i style="--k:2">2</i><i style="--k:4">4</i><i style="--k:6">6</i><i style="--k:8">8</i><i style="--k:10">10</i><em><span data-l="ar">دقيقة</span><span data-l="en">min</span></em></div>
                         <div class="mn-plot" aria-hidden="true">
-                          <div class="mn-gap"><b><span data-l="ar">مَن يحرّك الناس هنا؟</span><span data-l="en">Who moves people here?</span></b></div>
-                          <div class="mn-row"><i class="mn-bar escape" style="--from:0;--to:2"></i><span class="mn-cap escape-cap"><span data-l="ar">1–2 د: وقت النجاة</span><span data-l="en">1–2 min: escape window</span></span></div>
-                          <div class="mn-row"><i class="mn-bar crew" style="--from:7;--to:10"></i><span class="mn-cap crew-cap"><span data-l="ar">7–10 د: وصول الدفاع المدني</span><span data-l="en">7–10 min: Civil Defence arrives</span></span></div>
+                          <div class="mn-gap"></div>
+                          <div class="mn-row"><span class="mn-cap escape-cap"><span data-l="ar">1–2 د: وقت النجاة</span><span data-l="en">1–2 min: escape window</span></span><i class="mn-bar escape" style="--from:0;--to:2"></i></div>
+                          <div class="mn-mid"><b><span data-l="ar">مَن يحرّك الناس هنا؟</span><span data-l="en">Who moves people here?</span></b></div>
+                          <div class="mn-row"><span class="mn-cap crew-cap"><span data-l="ar">7–10 د: وصول الدفاع المدني</span><span data-l="en">7–10 min: Civil Defence arrives</span></span><i class="mn-bar crew" style="--from:7;--to:10"></i></div>
                         </div>
                       </div>
                       <ul class="viz-notes">
@@ -327,6 +328,7 @@
                       <h3><span class="tag safe"><span data-l="ar">مقيس</span><span data-l="en">Measured</span></span><span data-l="ar">اختبارات الشيفرة الحقيقية</span><span data-l="en">Real code, real tests</span></h3>
                       <div class="ev-big"><b class="num" dir="ltr">66.7%</b><span data-l="ar">دقة الكاشف على <b class="num" dir="ltr">12 / 18</b> صورة محجوزة</span><span data-l="en">detector accuracy on <b class="num" dir="ltr">12 / 18</b> held-out photos</span></div>
                       <ul class="ev-list">
+                        <li><span data-l="ar">وجد <b class="num" dir="ltr">6 / 6</b> من صور النار، وأخطأ في <b class="num" dir="ltr">3 / 12</b> من الصور بلا نار، ولم يجد دخان <b class="num" dir="ltr">3 / 3</b> من صور الدخان</span><span data-l="en">found <b class="num" dir="ltr">6 / 6</b> fire photos, was wrong on <b class="num" dir="ltr">3 / 12</b> fire-free photos, and missed the smoke in <b class="num" dir="ltr">3 / 3</b> smoke photos</span></li>
                         <li><span data-l="ar"><b class="num" dir="ltr">14 / 14</b> تجربة خداع لم تصل إلى «نار» (مشاهد مولَّدة بالشيفرة — فحص آلية)</span><span data-l="en"><b class="num" dir="ltr">14 / 14</b> decoy trials never reached FIRE (scenes generated in code — a mechanism check)</span></li>
                         <li><span data-l="ar">اختبارات آلية لمحرّك المحاكاة وللكاشف</span><span data-l="en">Automated tests for the simulation engine and the detector</span></li>
                       </ul>
