@@ -1540,6 +1540,40 @@
     return rows;
   }
 
+  /* ---------- 5.99 NATIONAL layer (the whole of Qatar): advisories and resident lines. Same ids and wording as ManaraNational.MSG (js/national.js);
+   *            params.muni is a municipality NAME object {ar, en}; every placeholder phrase has a generic twin (alt) for when a value is missing.
+   *            The ministerial-decision wording (outdoor-work ban dates) stays in national.js (S18) — it carries dates the number lint would reject here. ---------- */
+  ['muni', 'wbgt', 'limit', 'pm10', 'mm', 'min'].forEach(function (k) { KNOWN_TOKENS[k] = 1; });
+  p('nat.sim', 'محاكاة (SIM): مواقع الوحدات وتوفّرها والازدحام وحقول الحرارة والغبار والمطر كلها محاكاة؛ الخريطة لقطة من OpenStreetMap', 'SIM: unit positions, availability, traffic and the heat / dust / rain fields are all simulated; the map is a snapshot of OpenStreetMap');
+  p('nat.call999', 'في الطوارئ اتصل بـ 999 — منارة ليست خدمة رسمية وهذه المعلومات للاسترشاد فقط', 'In an emergency call 999 — MANARA is not an official service and this is informational only', null, { src: ['S40'] });
+  p('nat.adv.heat.warn', '{muni}: إجهاد حراري محتمل (WBGT تقديري {wbgt} °م). خذ فترات راحة واشرب الماء واستظل.', '{muni}: heat stress possible (WBGT estimate {wbgt} °C). Take breaks, drink water, use shade.', null, { alt: 'nat.adv.heat.warn.alt' });
+  p('nat.adv.heat.warn.alt', 'إجهاد حراري محتمل. خذ فترات راحة واشرب الماء واستظل.', 'Heat stress possible. Take breaks, drink water, use shade.');
+  p('nat.adv.heat.stop', '{muni}: أوقفوا العمل — WBGT التقديري {wbgt} °م فوق حدّ الإيقاف {limit} °م. الرقم القانوني يُقاس بمقياس WBGT.', '{muni}: stop work — WBGT estimate {wbgt} °C is above the {limit} °C stop-work limit. The legal figure is a measured WBGT.', null, { alt: 'nat.adv.heat.stop.alt', src: ['S19'] });
+  p('nat.adv.heat.stop.alt', 'أوقفوا العمل في الهواء الطلق — الإجهاد الحراري فوق حدّ الإيقاف. الرقم القانوني يُقاس بمقياس WBGT.', 'Stop outdoor work — heat stress is above the stop-work limit. The legal figure is a measured WBGT.', null, { src: ['S19'] });
+  p('nat.adv.dust.warn', '{muni}: غبار مرتفع (الجسيمات العالقة تقديريًا {pm10} ميكروغرام/م³) — ابقَ في الداخل وأغلق النوافذ.', '{muni}: high dust (airborne-particle estimate {pm10} µg/m³) — stay indoors and close windows.', null, { alt: 'nat.adv.dust.warn.alt' });
+  p('nat.adv.dust.warn.alt', 'غبار مرتفع — ابقَ في الداخل وأغلق النوافذ.', 'High dust — stay indoors and close windows.');
+  p('nat.adv.dust.danger', '{muni}: غبار خطر (الجسيمات العالقة تقديريًا {pm10} ميكروغرام/م³) — أوقف القيادة والعمل في الخارج.', '{muni}: dangerous dust (airborne-particle estimate {pm10} µg/m³) — stop driving and outdoor work.', null, { alt: 'nat.adv.dust.danger.alt' });
+  p('nat.adv.dust.danger.alt', 'غبار خطر — أوقف القيادة والعمل في الخارج.', 'Dangerous dust — stop driving and outdoor work.');
+  p('nat.adv.dust.critical', '{muni}: غبار حرج (الجسيمات العالقة تقديريًا {pm10} ميكروغرام/م³) — الجأ إلى مبنى مغلق فورًا.', '{muni}: critical dust (airborne-particle estimate {pm10} µg/m³) — get into a closed building now.', null, { alt: 'nat.adv.dust.critical.alt' });
+  p('nat.adv.dust.critical.alt', 'غبار حرج — الجأ إلى مبنى مغلق فورًا.', 'Critical dust — get into a closed building now.');
+  p('nat.adv.flood.watch', '{muni}: أمطار {mm} مم/س (محاكاة) — ابتعد عن الأنفاق والمعابر المنخفضة.', '{muni}: rain {mm} mm/h (simulated) — keep away from tunnels and low underpasses.', null, { alt: 'nat.adv.flood.watch.alt' });
+  p('nat.adv.flood.watch.alt', 'أمطار (محاكاة) — ابتعد عن الأنفاق والمعابر المنخفضة.', 'Rain (simulated) — keep away from tunnels and low underpasses.');
+  p('nat.adv.flood.underpass', 'أُغلق {n} نفق/معبر بسبب مياه الأمطار (محاكاة) — لا تعبر الماء.', '{n} underpass(es) closed by rain water (simulated) — never drive through water.', null, { alt: 'nat.adv.flood.underpass.alt' });
+  p('nat.adv.flood.underpass.alt', 'أُغلقت أنفاق ومعابر بسبب مياه الأمطار (محاكاة) — لا تعبر الماء.', 'Underpasses closed by rain water (simulated) — never drive through water.');
+  p('nat.adv.traffic.heavy', 'ازدحام شديد في أنحاء البلاد (محاكاة): أزمنة الوصول أطول من المعتاد.', 'Heavy traffic across the country (simulated): arrival times are longer than usual.');
+  p('nat.unit.state.recommended', 'مُوصى بها', 'Recommended');
+  p('nat.unit.state.approved', 'معتمدة', 'Approved');
+  p('nat.unit.state.dispatched', 'أُرسلت', 'Dispatched');
+  p('nat.unit.state.en-route', 'في الطريق', 'En route');
+  p('nat.unit.state.on-scene', 'في الموقع', 'On scene');
+  p('nat.unit.state.cleared', 'أُغلقت المهمة', 'Cleared');
+  p('nat.resident.eta', '{unit}: الوصول خلال {min} د', '{unit} ETA {min} min', null, { alt: 'nat.resident.eta.alt' });
+  p('nat.resident.eta.alt', 'وحدة الاستجابة في الطريق إليك', 'A response unit is on its way');
+  p('nat.resident.eta.ambulance', '{unit}: الوصول خلال {min} د — ابقَ مكانك', '{unit} ETA {min} min — stay where you are', null, { alt: 'nat.resident.eta.ambulance.alt' });
+  p('nat.resident.eta.ambulance.alt', 'الإسعاف في الطريق إليك — ابقَ مكانك', 'The ambulance is on its way — stay where you are');
+  p('nat.resident.onscene', '{unit} وصلت إلى الموقع', '{unit} is on scene', null, { alt: 'nat.resident.onscene.alt' });
+  p('nat.resident.onscene.alt', 'وصلت وحدة الاستجابة إلى الموقع', 'A response unit is on scene');
+
   var api = {
     VERSION: VERSION, DRAFT_STATUS: DRAFT,
     get: get, bundle: bundle, byAction: byAction, actions: function () { return clone(ACTION_MAP); }, ladder: ladder, text: text, fmtMinutes: fmtMinutes, fmtDuration: fmtDuration,

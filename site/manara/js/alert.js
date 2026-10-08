@@ -1960,6 +1960,25 @@
     return (RING_BB[i] = [x0, y0, x1, y1]);
   }
   var MARK = { you: { tone: 'you', ar: '●', en: '●' }, hospital: { tone: 'hospital', ar: 'م', en: 'H' }, police: { tone: 'police', ar: 'ش', en: 'P' }, fire: { tone: 'fire', ar: 'إ', en: 'F' } };
+  function clipBox(poly, W, H) {                                              // Sutherland–Hodgman against the rectangle [0,W] x [0,H]
+    var edges = [
+      function (p) { return p[0] >= 0; }, function (p) { return p[0] <= W; }, function (p) { return p[1] >= 0; }, function (p) { return p[1] <= H; }];
+    var cut = [
+      function (a, b) { var t = (0 - a[0]) / (b[0] - a[0]); return [0, a[1] + t * (b[1] - a[1])]; },
+      function (a, b) { var t = (W - a[0]) / (b[0] - a[0]); return [W, a[1] + t * (b[1] - a[1])]; },
+      function (a, b) { var t = (0 - a[1]) / (b[1] - a[1]); return [a[0] + t * (b[0] - a[0]), 0]; },
+      function (a, b) { var t = (H - a[1]) / (b[1] - a[1]); return [a[0] + t * (b[0] - a[0]), H]; }];
+    for (var e = 0; e < 4 && poly.length; e++) {
+      var out = [], prev = poly[poly.length - 1];
+      for (var i = 0; i < poly.length; i++) {
+        var cur = poly[i], ci = edges[e](cur), pi = edges[e](prev);
+        if (ci) { if (!pi) out.push(cut[e](prev, cur)); out.push(cur); } else if (pi) out.push(cut[e](prev, cur));
+        prev = cur;
+      }
+      poly = out;
+    }
+    return poly;
+  }
   function nearMap(loc, data, lang) {
     var g = GEO(); if (!g || !g.outline || !g.outline.rings || !loc) return null;
     var pl = chromeLang(lang), W = 300, H = 176, P = 30, M_LAT = 110574;
@@ -1977,8 +1996,11 @@
     g.outline.rings.forEach(function (ring, i) {
       var bb = ringBox(i, ring);
       if (bb[2] < cLon - vLon || bb[0] > cLon + vLon || bb[3] < cLat - vLat || bb[1] > cLat + vLat) return;
-      for (var k = 0; k < ring.length; k++) d += (k ? 'L' : 'M') + X(ring[k][0]) + ' ' + Y(ring[k][1]);
-      d += 'Z';
+      var poly = [];
+      for (var k = 0; k < ring.length; k++) poly.push([X(ring[k][0]), Y(ring[k][1])]);
+      poly = clipBox(poly, W, H);                                            // keep the geometry inside the picture (no stray off-screen path)
+      for (var j = 0; j < poly.length; j++) d += (j ? 'L' : 'M') + num1(poly[j][0]) + ' ' + num1(poly[j][1]);
+      if (poly.length > 2) d += 'Z'; else d = d.slice(0, d.lastIndexOf('M') < 0 ? 0 : d.lastIndexOf('M'));
     });
     if (d) svg.appendChild(sv('path', { class: 'nm-land', d: d }));
     var you = pts[0];
@@ -2189,7 +2211,7 @@
       var rec = normNatAlert(m); if (!rec) return;
       NAT.inc[rec.id] = Object.assign({}, NAT.inc[rec.id] || {}, rec, { cleared: false, fromDispatch: false });
     }
-    natRefresh(cleared); updateLive();
+    natRefresh(cleared); if (m.type === 'dispatch') rerenderPhones(); updateLive();      // new responder lines must show even when the alert itself did not change
   }
   function clearNational(id) {
     var hit = null;

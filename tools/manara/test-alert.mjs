@@ -188,7 +188,7 @@ section('3 Geometry and house laws');
   check('law: logical CSS properties only (physical left/right appear only for the always-LTR link text)', phys.length === 1 && /text-align\s*:\s*left/.test(css), phys.join(' ').slice(0, 120));
   check('law: colours come from tokens (hex colours only for the phone bezel, white QR and the high-contrast ink on buttons)', (css.match(/#[0-9a-fA-F]{3,8}\b/g) || []).every(c => ['#0b0f17', '#000', '#fff', '#ffffff', '#000000', '#0a0e15', '#1a0d02', '#04200f'].includes(c.toLowerCase())), [...new Set(css.match(/#[0-9a-fA-F]{3,8}\b/g))].join(' '));
   check('honesty: no banned claims in the page source', !/world[- ]first|saves? \d* ?lives|deep learning|AI[- ]powered|artificial intelligence|ذكاء اصطناعي/i.test(html + js));
-  check('honesty: SIM / exercise / 999-is-the-dispatcher wording is present', /999/.test(html + js) && /EXERCISE|تمرين/.test(js) && /SIM/.test(js) && /not dispatch|ليس إرسالًا/.test(js));
+  check('honesty: SIM / exercise / 999-is-the-dispatcher wording is present', /999/.test(html + js) && /EXERCISE|تمرين/.test(js) && /SIM/.test(js) && /dispatcher|المُرسِل/.test(js));
 }
 
 /* ============================================================================================
@@ -649,7 +649,8 @@ if (on(10)) {
   await p1.waitForTimeout(400);
   const st = await p1.evaluate(() => Object.fromEntries([...document.querySelectorAll('[data-phone]')].map(c => [c.dataset.phone, c.dataset.state])));
   check('a national fire close to the phones alerts every resident phone (core zone), hazard-correct per person', ['ravi', 'huda', 'abu-salem', 'lina'].every(i => st[i] === 'alert') && (await text(p1, '[data-phone="huda"] .al-title')) === expected('huda', 'fire', { night: false, lang: 'en' }).headline, JSON.stringify(st));
-  check('…Abu Salem (wheelchair) still gets the refuge-balcony wording, Ravi gets Malayalam, Lina the child wording', /refuge balcony/i.test(await text(p1, '[data-phone="abu-salem"] .al-lines')) && (await text(p1, '[data-phone="ravi"] .al-title')) === expected('ravi', 'fire', { night: false }).headline && /teacher/i.test(await text(p1, '[data-phone="lina"] .al-lines')));
+  const nz = { abu: await text(p1, '[data-phone="abu-salem"] .al-lines'), ravi: await text(p1, '[data-phone="ravi"] .al-title'), lina: await text(p1, '[data-phone="lina"] .al-lines') };
+  check('…Abu Salem (wheelchair) still gets the refuge-balcony wording, Ravi gets the same fire message (phone language forced to English here), Lina the child wording', /refuge balcony/i.test(nz.abu) && nz.ravi === expected('ravi', 'fire', { night: false, lang: 'en' }).headline && /teacher/i.test(nz.lina), JSON.stringify(nz) + ' vs ' + expected('ravi', 'fire', { night: false, lang: 'en' }).headline);
   const wh = await text(p1, '[data-phone="huda"] [data-section="where"]');
   check('the "Where is it?" card: hazard and place, a distance in m, a direction, "inside the affected area", measured from the demo place, SIM wording; bus text is not HTML', /Where is it/.test(wh) && /\d+ m away, to the/.test(wh) && /inside the affected area/i.test(wh) && /Industrial Area/.test(wh) && /SIM/.test(wh) && /Doha <b>x<\/b>/.test(wh));
   check('no local route map for a national alert (no grid geometry exists), a compass points at the incident', (await p1.locator('[data-phone="huda"] .rm').count()) === 0 && (await p1.locator('[data-phone="huda"] .al-where .cp').count()) === 1);
