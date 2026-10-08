@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="ar" dir="rtl" data-lang="ar">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title data-en="MANARA — Resident Phones">منارة — هواتف السكان</title>
+<meta name="description" content="هواتف السكان في منارة: كل شخص يصله التنبيه بلغته وبالطريقة التي تناسبه، ويضغط «أنا بأمان» أو «أحتاج مساعدة» ليُحصى.">
+<meta name="theme-color" content="#0a0e15">
+<meta name="color-scheme" content="light dark">
+<script>(function(){var d=document.documentElement,t,l;try{t=localStorage.getItem('manara-theme');l=localStorage.getItem('manara-lang')}catch(e){}var q=/[?&]lang=(ar|en)/.exec(location.search);if(q)l=q[1];if(t!=='light'&&t!=='dark')t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';if(l!=='en')l='ar';d.dataset.theme=t;d.dataset.lang=l;d.lang=l;d.dir=l==='ar'?'rtl':'ltr';d.classList.add('js');setTimeout(function(){if(!window.__manaraReady)d.classList.remove('js')},2500)})();</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+Malayalam:wght@400;600;700&family=Noto+Sans+Devanagari:wght@400;600;700&family=Noto+Sans+Bengali:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/alert.css">
+<script src="js/core.js" defer></script>
+<script src="js/messages.js" defer></script>
+<script src="js/sim.js" defer></script>
+<script src="js/alert.js" defer></script>
+</head>
+<body data-page="alert.html">
+<a class="skip" href="#main">تخطَّ إلى المحتوى</a>
+<header class="nav" data-nav></header>
+<main id="main">
+<div id="al-root">
+
+  <!-- 1. purpose + live-link status + mode -->
+  <section class="al-hero wrap wide" aria-labelledby="al-h1">
+    <div class="al-hero-t">
+      <span class="eyebrow" data-icon="phone"><span data-i18n="al.eyebrow"></span></span>
+      <h1 id="al-h1"><span data-l="ar">هواتف السكان</span><span data-l="en">Resident Phones</span></h1>
+      <p class="al-lead" data-i18n="al.lead"></p>
+    </div>
+    <div class="al-hero-s">
+      <div class="al-link" id="al-link" role="status" data-live="0"><span class="dot"></span><span class="al-link-t"></span></div>
+      <div class="al-modes" id="al-modes" role="group" data-i18n-attr="aria-label:al.mode.label">
+        <button class="chip" type="button" data-mode="wall" aria-pressed="true"><span data-i18n="al.mode.wall"></span></button>
+        <button class="chip" type="button" data-mode="phone" aria-pressed="false"><span data-i18n="al.mode.phone"></span></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. demo trigger (one compact bar) + settings (collapsed) -->
+  <section class="wrap wide al-ctl-sec" aria-label="Demo and settings">
+    <div class="ctl" id="ctl">
+      <div class="ctl-bar">
+        <label class="field"><span data-i18n="msg.ui.alert.pick_hazard"></span><select id="demo-hazard"></select></label>
+        <label class="field"><span data-i18n="msg.ui.alert.pick_level"></span><select id="demo-level"></select></label>
+        <label class="field"><span data-i18n="al.demo.time"></span><select id="demo-time"></select></label>
+        <div class="btns ctl-btns">
+          <button class="btn btn-primary" id="demo-send" type="button" data-icon="bell"><span data-i18n="al.demo.send"></span></button>
+          <button class="btn btn-cool" id="demo-ladder" type="button" data-icon="clock"><span data-i18n="al.demo.ladder"></span></button>
+          <button class="btn btn-ghost" id="set-enable" type="button" aria-pressed="false" data-icon="bell"><span></span></button>
+          <button class="btn btn-ghost btn-sm" id="demo-clear" type="button" data-icon="check"><span data-i18n="al.demo.clear"></span></button>
+          <button class="btn btn-ghost btn-sm" id="demo-reset" type="button" data-icon="reset"><span data-i18n="al.demo.reset"></span></button>
+        </div>
+      </div>
+      <p class="ctl-hint small muted"><span data-i18n="al.demo.hint"></span> <span data-i18n="al.demo.sim_note"></span></p>
+      <details class="ctl-d">
+        <summary><span data-icon="speaker"><span data-i18n="al.set.title"></span></span></summary>
+        <div class="ctl-g">
+          <div class="ctl-row">
+            <label class="field"><span data-i18n="al.demo.speed"></span><select id="demo-speed"></select></label>
+          </div>
+          <div class="ctl-row ctl-sound">
+            <div class="field"><small class="muted" id="set-enable-note"></small></div>
+            <label class="field" for="set-vol"><span><span data-i18n="al.set.volume"></span> <output id="set-vol-out" class="num" for="set-vol"></output></span><input type="range" id="set-vol" min="0" max="100" step="5" value="80"></label>
+            <label class="switch"><input type="checkbox" id="set-mute"><span data-i18n="al.set.mute"></span></label>
+            <button class="btn btn-ghost btn-sm" id="set-test" type="button" data-icon="speaker"><span data-i18n="al.set.test"></span></button>
+            <button class="btn btn-ghost btn-sm" id="set-vtest" type="button" data-icon="phone"><span data-i18n="al.set.vtest"></span></button>
+          </div>
+          <p class="muted small" id="set-vib-note"></p>
+          <div class="ctl-row">
+            <label class="switch"><input type="checkbox" id="set-big"><span data-i18n="al.set.big"></span></label>
+            <label class="switch"><input type="checkbox" id="set-hc"><span data-i18n="al.set.hc"></span></label>
+            <div class="field"><span data-i18n="al.set.langmode"></span><div class="chips" id="set-langmode" role="group"></div></div>
+            <div class="field"><span data-i18n="al.set.audible"></span><b id="set-audible"></b></div>
+          </div>
+          <div class="note warn al-strobe" id="set-strobe-box">
+            <b data-i18n="msg.ui.alert.strobe"></b>
+            <p data-i18n="msg.ui.alert.strobe_warn"></p>
+            <div class="btns">
+              <button class="btn btn-ghost btn-sm" id="set-strobe" type="button" aria-pressed="false" data-icon="sun"><span></span></button>
+              <span class="small" id="set-strobe-state" role="status"></span>
+            </div>
+          </div>
+          <p class="muted small"><span data-i18n="msg.ui.alert.tone_note"></span> <span data-i18n="msg.ui.alert.sound_note"></span></p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- 3a. WALL: four phones side by side -->
+  <section class="wrap wide al-stage" id="wall-sec" aria-label="Phone wall">
+    <div id="wall" class="wall"></div>
+  </section>
+
+  <!-- 3b. PHONE: one phone, full screen on a real phone -->
+  <section class="wrap wide al-stage" id="solo" aria-label="One phone" hidden>
+    <div class="solo-grid">
+      <div class="solo-main">
+        <div id="solo-pick" class="chips solo-pick scroll-x" role="group" data-i18n-attr="aria-label:al.persona"></div>
+        <div id="solo-phone" class="solo-phone"></div>
+      </div>
+      <aside id="solo-info" class="solo-info"></aside>
+    </div>
+  </section>
+
+  <!-- 4. two more people: the blind-resident voice flow and the guard's view -->
+  <section class="wrap wide al-sec" id="more" hidden aria-labelledby="more-h">
+    <div class="sec-head">
+      <h2 class="sec-title" id="more-h" data-i18n="al.more.title"></h2>
+      <p class="sec-lead" data-i18n="al.more.lead"></p>
+    </div>
+    <div id="more-pick" class="chips" role="group" data-i18n-attr="aria-label:al.persona"></div>
+    <div class="more-grid">
+      <div id="more-phone" class="more-phone"></div>
+      <aside id="more-info" class="solo-info"></aside>
+    </div>
+  </section>
+
+  <!-- 5. QR card -->
+  <section class="wrap wide al-sec" id="qr" aria-labelledby="qr-h">
+    <div class="sec-head">
+      <h2 class="sec-title" id="qr-h" data-i18n="al.qr.title"></h2>
+      <p class="sec-lead" data-i18n="al.qr.lead"></p>
+    </div>
+    <div class="qr-card card">
+      <div class="qr-form">
+        <label class="field"><span data-i18n="al.qr.person"></span><select id="qr-person"></select></label>
+        <label class="field"><span data-i18n="al.qr.lang"></span><select id="qr-lang"></select></label>
+        <label class="field qr-base"><span data-i18n="al.qr.base"></span><input class="input" id="qr-base" type="text" inputmode="url" autocomplete="off" spellcheck="false" dir="ltr"></label>
+        <label class="switch"><input type="checkbox" id="qr-start" checked><span data-i18n="al.qr.start"></span></label>
+        <div class="btns">
+          <button class="btn btn-ghost btn-sm" id="qr-copy" type="button" data-icon="external"><span data-i18n="al.qr.copy"></span></button>
+          <button class="btn btn-ghost btn-sm" id="qr-dl" type="button" data-icon="download"><span data-i18n="al.qr.download"></span></button>
+          <a class="btn btn-ghost btn-sm" id="qr-open" href="#" target="_blank" rel="noopener" data-icon="phone"><span data-l="ar">افتح الرابط</span><span data-l="en">Open the link</span></a>
+        </div>
+        <output class="qr-link mono" id="qr-link" dir="ltr"></output>
+        <div id="qr-msg" class="qr-msg" aria-live="polite"></div>
+      </div>
+      <div class="qr-box"><canvas id="qr-canvas" width="1" height="1"></canvas></div>
+    </div>
+  </section>
+
+  <!-- 6. the picture vocabulary -->
+  <section class="wrap wide al-sec" id="pics" aria-labelledby="pic-h">
+    <div class="sec-head">
+      <h2 class="sec-title" id="pic-h" data-i18n="al.pic.title"></h2>
+      <p class="sec-lead" id="pic-lead"></p>
+    </div>
+    <ul class="pic-grid" id="pic-grid" role="list"></ul>
+  </section>
+
+  <!-- 7. what this page can and cannot do -->
+  <section class="wrap wide al-sec" id="notes" aria-labelledby="notes-h">
+    <div class="sec-head"><h2 class="sec-title" id="notes-h" data-i18n="al.notes.title"></h2></div>
+    <div class="grid g2 al-notes">
+      <div class="card"><h3><span data-l="ar">تمرين لا إنذار رسمي</span><span data-l="en">An exercise, not an official alert</span></h3>
+        <p data-l="ar">كل شاشة تحمل شارة «تمرين». لا نقلّد نغمة الإنذار الوطني ولا نشغّلها؛ نستخدم صوت منارة الخاص. المصدر: S36 — وزارة الداخلية: تحذير من تشغيل أصوات الإنذار الوطني أو تداولها.</p>
+        <p data-l="en">Every screen carries an EXERCISE badge. We never copy or play the national alert tone; we use MANARA's own sound. Source: S36 — Ministry of Interior: warning against playing or circulating the national alert sounds.</p></div>
+      <div class="card"><h3><span data-l="ar">الرابط الحي حدوده واضحة</span><span data-l="en">The live link has clear limits</span></h3>
+        <p data-l="ar">تصل رسائل غرفة العمليات إلى هذه الصفحة إن كانتا مفتوحتين في المتصفح نفسه (قناة مشتركة). هاتفك الحقيقي المفتوح بالرمز يعمل عرضًا مستقلًا. الربط بين أجهزة مختلفة يحتاج خادمًا وإشعارات دفع واتفاقًا مع الجهات؛ وهذا غير مبني.</p>
+        <p data-l="en">Mission Control's messages reach this page when both are open in the same browser (a shared channel). A real phone opened with the QR code runs the demo on its own. Linking different devices needs a server, push notifications and agreements with the authorities; none of that is built.</p></div>
+      <div class="card"><h3><span data-l="ar">الصوت والاهتزاز والضوء</span><span data-l="en">Sound, vibration and light</span></h3>
+        <p data-l="ar">نغمة منخفضة 520 هرتز بثلاث نبضات (S56 — مؤسسة أبحاث الحماية من الحرائق، 2020)؛ سماعات الهواتف تعيدها بشكل ضعيف فنضيف اهتزازًا قويًا. الاهتزاز غير مدعوم في Safari على iPhone. الضوء الوامض اختياري ومعطّل افتراضيًا، بتحذير، وبحد أقصى 3 مرات في الثانية (S57 — WCAG 2.3.1)، ويتحوّل إلى ضوء ثابت إن كان «تقليل الحركة» مفعّلًا.</p>
+        <p data-l="en">A low 520 Hz tone in three pulses (S56 — NFPA Research Foundation, 2020); phone speakers reproduce it poorly, so strong vibration is added. Vibration is not supported in Safari on iPhone. The flashing light is optional, off by default, behind a warning, at most 3 flashes a second (S57 — WCAG 2.3.1), and becomes a steady light if “reduce motion” is on.</p></div>
+      <div class="card"><h3><span data-l="ar">اللغات: مسودات صريحة</span><span data-l="en">Languages: drafts, openly</span></h3>
+        <p data-l="ar">العربية والإنجليزية مكتملتان. المالايالامية والنيبالية والبنغالية والأردية والهندية والتاغالوغية قوالب قصيرة مكتوبة بعناية لكن لم يراجعها متحدث أصلي، وتحمل دائمًا الوسم «مسودة — تحتاج مراجعة متحدث أصلي» وتُعرض مع العربية والإنجليزية. لا نستخدم ترجمة آلية حيّة. الصور تحمل الرسالة نفسها للجميع.</p>
+        <p data-l="en">Arabic and English are complete. Malayalam, Nepali, Bengali, Urdu, Hindi and Tagalog are short templates written with care but not yet checked by a native speaker; they always carry “Draft — needs native-speaker review” and are shown together with Arabic and English. There is no live machine translation. The pictures carry the same message for everyone.</p></div>
+      <div class="card"><h3><span data-l="ar">المرافق القريبة: للاطلاع فقط</span><span data-l="en">Nearby facilities: information only</span></h3>
+        <p data-l="ar">بعد لمسة موافقة يُستخدم موقع الهاتف مرة واحدة لاستعلام واحد من OpenStreetMap عن أقرب مستشفى ومركز شرطة ومحطة إطفاء بالمسافة المستقيمة. لا نحفظ شيئًا ولا نرسله إلى غير خدمة البحث. الخريطة قد تكون ناقصة، وحالة المرور غير معروفة، وهذه القائمة ليست إرسالًا للمساعدة: 999 هو المُرسِل.</p>
+        <p data-l="en">After a consent tap the phone's position is used once for one OpenStreetMap query for the nearest hospital, police station and fire station by straight-line distance. Nothing is stored or sent anywhere except the lookup service. The map may be incomplete, traffic is unknown, and this list is not dispatch: 999 is the dispatcher.</p></div>
+      <div class="card"><h3><span data-l="ar">أزمنة الوصول والمسارات محاكاة</span><span data-l="en">Responder times and routes are simulated</span></h3>
+        <p data-l="ar">المسارات وأزمنة الوصول في العرض من المحاكاة (SIM) بوحدات ومستشفيات افتراضية. المنصة توصي بالوحدة الأسرع وصولًا مع المرور (محاكى) لا بالأقرب مسافة، و999 يبقى المُرسِل الحقيقي. صياغة الإسعاف الأولي تحتاج مراجعة الجهات الصحية قبل أي استخدام حقيقي.</p>
+        <p data-l="en">Routes and arrival times in the demo come from the simulation (SIM) with fictional units and hospitals. The platform recommends the unit that arrives fastest with (simulated) traffic, not the nearest by distance, and 999 stays the real dispatcher. First-aid wording must be reviewed with the health authorities before any real use.</p></div>
+    </div>
+  </section>
+
+</div>
+<div id="al-store" hidden></div>
+<div id="al-live" class="sr-only" role="alert" aria-live="assertive" aria-atomic="true"></div>
+<div id="al-status" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+</main>
+<footer class="foot" data-footer></footer>
+</body>
+</html>
