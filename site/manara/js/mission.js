@@ -13,6 +13,10 @@
  *   shared immutable world detached) and replays the recorded actions, so "same seed + same actions" always gives the same run.
  * BUS   out: 'alert' + 'alert-update' (every ~2 s) for the four demo residents (extra fields personKey + room), 'dispatch',
  *       'alert-clear'.   in: 'citizen' (ack / safe / help), 'detection' (Evidence Lab → vision key), twin-board check-ins.
+ * SCOPES  Mission Control has two zoom levels of ONE pipeline: the NATIONAL view (the default; js/mission-national.js + mission-national-map.js, the whole of Qatar on
+ *       real OpenStreetMap data) and this LOCAL view (the neighbourhood simulation, the "last 100 metres"). html[data-scope="national"|"local"] says which one is
+ *       showing; setScope() switches, zoomIn(ctx) opens the local view for a national incident (preset by hazard + the nearest real place's name) and the
+ *       "Back to Qatar" button returns. While the national view is showing, the local simulation is paused and publishes nothing on the bus.
  * LAWS  logical CSS only; every string bilingual (data-l spans or B(ar,en)); colours from tokens read with getComputedStyle,
  *       redrawn on 'themechange'; never innerHTML with bus/user text (textContent / DOM only); prefers-reduced-motion respected.
  * ========================================================================================== */
@@ -224,6 +228,7 @@
   var GRID = { w: WI.w, h: WI.h };
   var FRAME = { x: -7, y: -7, w: WI.w + 14, h: WI.h + 14 };   // the map plus a margin for the responders at the map edge
   var MC = {
+    scope: htmlEl.getAttribute('data-scope') === 'local' ? 'local' : 'national', zoomCtx: null, wasPlaying: false,
     preset: 'fire-night', seed: 7, params: {}, origin: null, autoApprove: false,
     sim: null, snap: null, hc: null, W: WI,
     playing: true, speed: 4, debt: 0, last: 0, seekTarget: null, seeking: false,
@@ -374,7 +379,7 @@
     MC.snap = Sim.snapshot(sim, { sensors: true, events: false });
     MC.fieldsDirty = true; MC.drawDirty = true; MC.panelsDirty = true;
     detectTransitions();
-    busSync(false);
+    if (MC.scope === 'local') busSync(false);
     if (sim.done && !MC.ended) { MC.ended = true; MC.playing = false; syncPlayUI(); announce(B('انتهى التشغيل', 'The run has ended')); }
   }
   function announce(text) { var a = $('#mc-announce'); if (a) { a.textContent = ''; setTimeout(function () { a.textContent = text; }, 30); } }
@@ -425,7 +430,7 @@
     hs.split('&').forEach(function (kv) {
       var p = kv.split('='); if (p.length < 2) return;
       var k = decodeURIComponent(p[0]), v = decodeURIComponent(p.slice(1).join('='));
-      if (k === 'scenario' || k === 's') o.preset = v; else if (k === 'seed') o.seed = +v; else if (k === 'room') o.room = v;
+      if (k === 'scope') o.scope = v; else if (k === 'scenario' || k === 's') o.preset = v; else if (k === 'seed') o.seed = +v; else if (k === 'room') o.room = v;
       else if (k === 'speed') o.speed = +v; else if (k === 'view') o.view = v; else if (k === 't') o.t = +v; else if (k === 'present') o.present = v === '1';
     });
     return o;
@@ -438,7 +443,7 @@
     return '#' + q.join('&');
   }
   function shareURL() { return location.href.split('#')[0] + hashString(); }
-  function updateHash() { try { history.replaceState(null, '', hashString()); } catch (e) { /* file:// sandbox */ } }
+  function updateHash() { if (MC.scope !== 'local') return; try { history.replaceState(null, '', hashString()); } catch (e) { /* file:// sandbox */ } }
 
   /* ====================================================================================
    * 5. RENDERER — one canvas: neighbourhood map ⇄ building cut-away. Colours come from the tokens (getComputedStyle),
@@ -1700,8 +1705,9 @@
   /* ---- keyboard (global) ---- */
   document.addEventListener('keydown', function (e) {
     var t = e.target, tag = t && t.tagName;
+    if (MC.scope !== 'local') return;
     if (e.ctrlKey || e.metaKey || e.altKey) return;
-    if (e.key === 'Escape') { if (UI.pop && !UI.pop.hidden) { closePop(); R.cvs.focus(); } else if (MC.tool !== 'inspect') setTool('inspect'); else if (MC.present) setPresent(false); return; }
+    if (e.key === 'Escape') { if (UI.pop && !UI.pop.hidden) { closePop(); R.cvs.focus(); } else if (MC.tool !== 'inspect') setTool('inspect'); else if (MC.present) setPresent(false); else if (MC.zoomCtx && window.MissionNational && tag !== 'INPUT' && tag !== 'SELECT' && tag !== 'TEXTAREA') setScope('national'); return; }
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (t && t.isContentEditable)) return;
     var onBtn = tag === 'BUTTON' || tag === 'A' || (t && t.getAttribute && t.getAttribute('role') === 'tab');
     var k = e.key;
@@ -1740,7 +1746,7 @@
   function loop(ts) {
     requestAnimationFrame(loop);
     var dt = MC.last ? Math.min(0.1, (ts - MC.last) / 1000) : 0; MC.last = ts;
-    var sim = MC.sim; if (!sim) return;
+    var sim = MC.sim; if (!sim || MC.scope !== 'local') return;
     var ticks = 0, t0 = now();
     if (MC.seekTarget != null) {
       while (sim.t < MC.seekTarget && !sim.done && now() - t0 < 12) { stepOnce(); ticks++; }
@@ -3056,7 +3062,9 @@
     ['abu-salem', 'lina', 'huda', 'ravi'].forEach(function (k) {                    // Ravi last: a single phone reads Manara.link.last('alert')
       if (!sim.byKey[k]) return;
       var m = null; try { m = Sim.busAlert(sim, k); } catch (e) { m = null; }
-      if (!m) return; m.type = type; m.person = k; m.personKey = k; m.room = DEMO_ROOM[k] || (sim.byKey[k].room || null); m.exercise = true; out.push(m);
+      if (!m) return; m.type = type; m.person = k; m.personKey = k; m.room = DEMO_ROOM[k] || (sim.byKey[k].room || null); m.exercise = true;
+      if (MC.zoomCtx && MC.zoomCtx.area) { m.area = MC.zoomCtx.area; m.nationalIncident = MC.zoomCtx.incidentId || null; }        // "near Al Wakrah — simulated scenario, not a real building"
+      out.push(m);
     });
     return out;
   }
@@ -3076,7 +3084,7 @@
     if (MC.alertSent && MC.alertId) { try { Manara.link.send({ type: 'alert-clear', id: MC.alertId }); } catch (e) { /* ignore */ } }
     MC.alertSent = false; MC.alertId = null; MC.dispatchSig = '';
   }
-  setInterval(function () { if (MC.alertSent && MC.sim) busSync(false); }, 500);
+  setInterval(function () { if (MC.scope === 'local' && MC.alertSent && MC.sim) busSync(false); }, 500);
 
   function findResident(m) {
     var ppl = MC.snap.people, room = m.room ? String(m.room) : null, pick = null;
@@ -3227,7 +3235,8 @@
   function onThemeChange() {
     readColors(); MC.fieldsDirty = true; MC.drawDirty = true; if (UI.dispatch) UI.dispatch.chartSig = null; renderLegendPanel(); MC.panelsDirty = true; refreshAll();
   }
-  function init() {
+  function initLocal() {
+    if (MC.inited) return; MC.inited = true; MC.pendingInit = false;
     readColors();
     buildGeometry();
     var hs = parseHash();
@@ -3257,12 +3266,86 @@
     document.addEventListener('visibilitychange', function () { if (document.hidden) { MC.wasPlaying = MC.playing; } });
     requestAnimationFrame(loop);
     main.setAttribute('data-ready', '1');
+    renderScopeStrip();
+  }
+  function ensureLocal() { if (!MC.inited) initLocal(); }
+  function init() {
+    buildScopeStrip();
+    var hs0 = parseHash();
+    if (hs0.scope === 'local' || hs0.preset) { MC.scope = 'local'; htmlEl.setAttribute('data-scope', 'local'); }
+    main.setAttribute('data-scope', MC.scope);
+    if (MC.scope === 'local') initLocal();
+    else { MC.pendingInit = true; setTimeout(function () { if (MC.pendingInit) initLocal(); }, 1600); }   // the national view paints first; the neighbourhood simulation is built when idle (or on demand)
+    renderScopeStrip();
   }
 
-  window.MissionControl = {
-    version: 1,
-    get sim() { return MC.sim; }, get snap() { return MC.snap; }, get state() { return MC; },
-    start: function (preset, seed) { return startRun({ preset: preset, seed: seed }); },
+  /* ====================================================================================
+   * 10b. SCOPES — national ⇄ local. zoomIn(ctx) is the "Zoom into the last 100 metres" button of the national view; the strip's button goes back.
+   *      ctx = { incidentId, hazard, lon, lat, hour, dow, severity, place:{id, name:{ar,en}, distKm}, muni:{id, name} }
+   * ==================================================================================== */
+  function presetForIncident(hz, hour, dow) {
+    var base = { fire: 'fire-night', gas: 'gas-night', flood: 'flood-day', dust: 'dust-day', heat: 'heat-day', sos: 'sos-day' }[hz] || 'fire-night';
+    if (hz === 'fire' && isNum(hour) && hour >= 5.5 && hour < 15 && isNum(dow) && dow >= 0 && dow <= 4) return 'school-fire-day';   // a school day: pupils are in class
+    return base;
+  }
+  function buildScopeStrip() {
+    var bk = $('#mc-back'); if (!bk || bk.getAttribute('data-built')) return;
+    bk.setAttribute('data-built', '1'); bk.appendChild(icon('map')); bk.appendChild(bi('العودة إلى قطر', 'Back to Qatar')); bk.addEventListener('click', function () { setScope('national'); });
+    lab(bk, 'title', 'العودة إلى الخريطة الوطنية (Esc)', 'Back to the national map (Esc)');
+  }
+  function renderScopeStrip() {
+    var z = $('#mc-zoomctx'), bk = $('#mc-back'), pur = $('#mc-purpose'); if (!z || !bk || !pur) return;
+    var local = MC.scope === 'local', zc = MC.zoomCtx;
+    bk.hidden = !local || !window.MissionNational;
+    z.hidden = !(local && zc); pur.classList.toggle('has-zoom', local && !!zc);
+    z.replaceChildren();
+    if (local && zc) {
+      var a = zc.area || { ar: '', en: '' };
+      z.appendChild(icon('pin'));
+      z.appendChild(h('span', { class: 'zc-t' }, h('b', null, bi('تكبير من الخريطة الوطنية', 'Zoomed in from the national map')), ' ', h('span', { class: 'zc-a' }, bi(a.ar, a.en))));
+      if (zc.incidentId) z.appendChild(h('span', { class: 'tag cool' }, zc.incidentId));
+    }
+  }
+  function setScope(s, opts) {
+    s = s === 'local' ? 'local' : 'national'; opts = opts || {};
+    if (s === 'local') ensureLocal();
+    if (s === MC.scope && !opts.force) return MC.scope;
+    var prev = MC.scope; MC.scope = s;
+    htmlEl.setAttribute('data-scope', s); main.setAttribute('data-scope', s);
+    if (s === 'national') {
+      MC.wasPlaying = MC.playing; if (MC.inited) { MC.playing = false; syncPlayUI(); closePop(); }
+      busClear();                                                  // the local alert (if any) leaves the phones; the national view publishes its own messages
+      MC.zoomCtx = opts.keepCtx ? MC.zoomCtx : MC.zoomCtx;          // kept so "zoom in again" can reuse it
+      try { history.replaceState(null, '', location.pathname + location.search + '#scope=national'); } catch (e) { /* file:// sandbox */ }
+    } else {
+      MC.last = 0; MC.dirtyResize = true; MC.drawDirty = true; MC.panelsDirty = true;
+      setTimeout(function () { resizeCanvas(); fitView(); updateScaleBar(); refreshAll(); MC.drawDirty = true; }, 40);
+      updateHash();
+    }
+    renderScopeStrip();
+    window.dispatchEvent(new CustomEvent('mcscope', { detail: { scope: s, prev: prev, ctx: MC.zoomCtx } }));
+    return s;
+  }
+  function zoomIn(ctx) {
+    ensureLocal(); ctx = ctx || {};
+    var preset = ctx.preset && Sim.PRESETS[presetBase(ctx.preset)] ? presetBase(ctx.preset) : presetForIncident(ctx.hazard, ctx.hour, ctx.dow);
+    var pn = (ctx.place && ctx.place.name) || (ctx.muni && ctx.muni.name) || null;
+    ctx.preset = preset;
+    ctx.area = pn ? { ar: 'قرب ' + (pn.ar || pn.en) + ' — سيناريو محاكى وليس مبنى حقيقيًا', en: 'near ' + (pn.en || pn.ar) + ' — simulated scenario, not a real building' }
+      : { ar: 'في قطر — سيناريو محاكى وليس مبنى حقيقيًا', en: 'in Qatar — simulated scenario, not a real building' };
+    MC.zoomCtx = ctx;
+    startRun({ preset: preset });
+    setScope('local', { force: true });
+    return { preset: preset, area: ctx.area };
+  }
+
+  var API = window.MissionControl = {
+    version: 2,
+    get sim() { ensureLocal(); return MC.sim; }, get snap() { ensureLocal(); return MC.snap; }, get state() { ensureLocal(); return MC; },
+    scope: function () { return MC.scope; }, setScope: setScope, zoomIn: zoomIn, back: function () { return setScope('national'); }, presetFor: presetForIncident, zoomCtx: function () { return MC.zoomCtx; },
+    ensureLocal: ensureLocal,
+    kit: { h: h, bi: bi, lab: lab, icon: icon, ic: ic, btn: btn, iconBtn: iconBtn, seg: seg, field: field, switchRow: switchRow, details: details, copyText: copyText, download: download, setText: setText, setCls: setCls, N: N, B: B, LL: LL, T: T, mmss: mmss, hhmm: hhmm, fmtDist: fmtDist, parseColor: parseColor, rgba: rgba, mixc: mixc, clamp: clamp, announce: announce, relabel: relabel, XICON: XICON, simTag: simTag },
+    start: function (preset, seed) { ensureLocal(); if (MC.scope !== 'local') setScope('local'); return startRun({ preset: preset, seed: seed }); },
     advance: function (s) { var r = advance(s); refreshAll(); return r; }, seek: function (t) { seekTo(t); var guard = 0; while (MC.seekTarget != null && guard++ < 4000) { var s = MC.sim; while (s.t < MC.seekTarget && !s.done) stepOnce(); MC.seekTarget = null; afterTicks(); } refreshAll(); return MC.sim.t; },
     play: function () { setPlaying(true); }, pause: function () { setPlaying(false); }, setSpeed: setSpeed, setView: setView, setPresent: setPresent,
     approve: function () { var r = doApprove(); refreshAll(); return r; }, hold: function () { var r = doHold(); refreshAll(); return r; }, act: function (op, a) { var r = act(op, a); refreshAll(); return r; }, refresh: refreshAll, draw: function () { draw(); },
@@ -3275,6 +3358,11 @@
     hits: function () { return R.hits.map(function (q) { return { type: q.type, id: q.id, x: q.x, y: q.y }; }); }, camK: function () { return MC.view === 'map' ? R.cam.map.k : R.cam.bld.k; }, fit: function () { return MC.view === 'map' ? R.cam.map.fit : R.cam.bld.fit; },
     tool: function () { return MC.tool; }, params: function () { return MC.params; }
   };
+  // the local simulation is built lazily when the national view is the one showing: any call that needs it builds it first
+  ['advance', 'seek', 'play', 'pause', 'setSpeed', 'setView', 'setPresent', 'approve', 'hold', 'act', 'refresh', 'draw', 'lockExit', 'heroMessages', 'handleCitizen', 'handleDetection', 'package', 'capXml', 'showTab', 'hits', 'camK', 'fit'].forEach(function (k) {
+    var f = API[k]; if (typeof f === 'function') API[k] = function () { ensureLocal(); return f.apply(this, arguments); };
+  });
 
+  // the shared lib-ish members above are hoisted function declarations; the canvas/UI refs below are only touched after initLocal()
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();

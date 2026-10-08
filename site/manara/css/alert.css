@@ -18,7 +18,7 @@
 /* ---------- 2. page chrome ---------- */
 #al-root{display:flex;flex-direction:column}
 #al-root>.wrap{inline-size:100%}
-.al-hero{order:1}.al-ctl-sec{order:2}#wall-sec{order:3}#solo{order:3}#more{order:4}#qr{order:5}#pics{order:6}#notes{order:7}
+.al-hero{order:1}.al-ctl-sec{order:2}#wall-sec{order:3}#solo{order:3}#more{order:4}#near{order:5}#qr{order:6}#pics{order:7}#notes{order:8}
 body.m-phone #solo{order:2}body.m-phone .al-ctl-sec{order:3}
 .al-hero{display:flex;flex-wrap:wrap;gap:14px 40px;align-items:flex-end;justify-content:space-between;padding-block:clamp(20px,3.2vw,34px) 14px}
 .al-hero-t{max-width:780px;min-width:0}
@@ -268,16 +268,106 @@ body.m-phone #solo{order:2}body.m-phone .al-ctl-sec{order:3}
 @keyframes dr-light{0%{opacity:0}50%{opacity:1}60%{opacity:0}65%{opacity:1}75%{opacity:0}100%{opacity:0}}
 .dr-more{display:grid;gap:6px;font-size:.88rem;color:var(--ink-2)}
 
-/* nearby facilities */
-.nb-list{display:grid;gap:6px;margin:0;padding:0;list-style:none}
-.nb-row{display:grid;gap:2px;padding:8px 10px;border-radius:12px;background:var(--surface-2)}
-.nb-k{font-size:.72rem;color:var(--muted);font-weight:600}
-.nb-v{display:grid;gap:1px;min-inline-size:0}
-.nb-v b{color:var(--head);font-size:.92rem;line-height:1.4;overflow-wrap:anywhere}
-.nb-v small{color:var(--ink-2);font-size:.78rem}
-.nb-label{padding:6px 10px;border-radius:10px;background:color-mix(in oklab,var(--warn) 12%,var(--surface));font-size:.8rem;color:var(--ink)}
+/* nearest emergency services (offline card, in a phone and on the page) */
+.nb-intro{color:var(--ink-2)}
+.nb-msg{padding:10px 12px;border-radius:12px;background:color-mix(in oklab,var(--info) 11%,var(--surface));border-inline-start:4px solid var(--info);font-size:.9rem;line-height:1.55;color:var(--ink)}
+.nb-where{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin:0}
+.nb-where b{color:var(--head);font-family:var(--font-h);font-size:.98rem;line-height:1.4}
+.nb-map{border-radius:12px;overflow:hidden;line-height:0}
+.nm{inline-size:100%;block-size:auto;display:block}
+.nm-sea{fill:color-mix(in oklab,var(--info) 9%,var(--surface-2))}
+.nm-land{fill:color-mix(in oklab,var(--ink) 11%,var(--surface-2));stroke:var(--line-2);stroke-width:1;stroke-linejoin:round}
+.nm-ln{stroke:var(--muted);stroke-width:1.5;stroke-dasharray:4 3;fill:none}
+.nm-pt{stroke:var(--surface);stroke-width:2}
+.nm-pt.t-hospital{fill:var(--danger)}.nm-pt.t-police{fill:var(--info)}.nm-pt.t-fire{fill:var(--brand)}
+.nm-mt{fill:var(--bg);font:800 11px var(--font)}
+.nm-you{fill:var(--accent-2);stroke:var(--surface);stroke-width:2}
+[data-theme=dark] .nm-you{fill:var(--accent)}
+.nm-you-r{fill:color-mix(in oklab,var(--accent) 24%,transparent)}
+.nm-yl{fill:var(--ink);font:700 11px var(--font);paint-order:stroke;stroke:var(--surface-2);stroke-width:3px;stroke-linejoin:round}
+.nm-scale{stroke:var(--ink-2);stroke-width:2}
+.nm-sl{fill:var(--ink-2);font:600 10px var(--font-m)}
+.nm-north{fill:none;stroke:var(--ink-2);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.nm-nl{fill:var(--ink-2);font:700 10px var(--font)}
+.nb-list{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.nb-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:start;padding:10px 10px;border-radius:14px;background:var(--surface-2);border:1px solid var(--line)}
+.nb-ico{display:grid;place-items:center;inline-size:38px;block-size:38px;border-radius:12px;color:var(--tone);background:color-mix(in oklab,var(--tone) 15%,transparent)}
+.nb-ico.t-hospital{--tone:var(--danger)}.nb-ico.t-police{--tone:var(--info)}.nb-ico.t-fire{--tone:var(--brand)}
+[data-theme=light] .nb-ico{color:color-mix(in oklab,var(--tone) 70%,black)}
+.nb-ico .i{inline-size:20px;block-size:20px}
+.nb-main{display:grid;gap:3px;min-inline-size:0}
+.nb-k{font-size:.72rem;color:var(--muted);font-weight:600;line-height:1.35}
+.nb-name{color:var(--head);font-size:.98rem;line-height:1.4;overflow-wrap:anywhere}
+.nb-tags{display:flex;flex-wrap:wrap;gap:4px}
+.nb-tags .tag{font-size:.7rem;padding-inline:8px;line-height:1.6;white-space:normal}
+.nb-dist{display:flex;gap:6px;align-items:center;font-size:.8rem;color:var(--ink-2);line-height:1.45}
+.nb-arrow{inline-size:16px;block-size:16px;flex:none;fill:var(--accent-2)}
+[data-theme=dark] .nb-arrow{fill:var(--accent)}
+.nb-sub{font-size:.74rem;color:var(--muted);line-height:1.4}
+.nb-eta{display:grid;justify-items:center;align-content:start;min-inline-size:46px;padding:4px 8px;border-radius:12px;background:var(--surface);border:1px solid var(--line);line-height:1.1}
+.nb-eta b{font:700 1.35rem var(--font-h);color:var(--head)}
+.nb-eta small{font-size:.68rem;color:var(--muted);font-weight:600}
+.nb-label{padding:6px 10px;border-radius:10px;background:color-mix(in oklab,var(--warn) 12%,var(--surface));font-size:.8rem;color:var(--ink);margin:0}
+.nb-acts{gap:8px}
+.nb-pick{gap:4px}
+.nb-pick select{inline-size:100%;max-inline-size:100%;min-block-size:44px}
+.nb-credit{margin:0}
+.nb-credit a{text-decoration:underline;text-underline-offset:2px}
+.nb-callrow .btn{inline-size:100%;justify-content:center}
 .nb-call{display:grid;gap:8px;padding:10px;border-radius:12px;border:1px solid color-mix(in oklab,var(--danger) 55%,var(--line));background:color-mix(in oklab,var(--danger) 8%,var(--surface));font-size:.84rem}
-.nb-call .btn{inline-size:100%}
+.nb-call .btn{inline-size:100%;justify-content:center}
+/* the page-level card: three columns when there is room */
+.near-box{padding:clamp(14px,2.4vw,24px);container-type:inline-size;max-inline-size:100%}
+.near-card{display:grid;gap:14px;min-inline-size:0}
+@container (min-width:640px){
+  .near-card{grid-template-columns:minmax(0,5fr) minmax(0,7fr);align-items:start;column-gap:28px}
+  .near-card>.nb-map,.near-card>.nb-list,.near-card>.nb-where{grid-column:1}
+  .near-card>.nb-intro,.near-card>.nb-msg,.near-card>.al-note,.near-card>.nb-callrow,.near-card>.nb-label,.near-card>.nb-acts,.near-card>.nb-pick,.near-card>.nb-credit{grid-column:2}
+  .near-card>.nb-map{grid-row:2/span 4}
+  .near-card>.nb-list{grid-column:2}
+}
+
+/* where is it (national) */
+.wh-line{display:flex;gap:8px;align-items:flex-start;color:var(--head);line-height:1.45}
+.wh-line .i{color:var(--danger);flex:none;margin-block-start:2px}
+.wh-zone{font-weight:700;font-size:.85rem}
+.wh-zone.is-core{color:var(--danger)}.wh-zone.is-near{color:var(--warn)}.wh-zone.is-watch{color:var(--info)}
+[data-theme=light] .wh-zone.is-core{color:color-mix(in oklab,var(--danger) 78%,black)}
+[data-theme=light] .wh-zone.is-near{color:color-mix(in oklab,var(--warn) 62%,black)}
+[data-theme=light] .wh-zone.is-watch{color:color-mix(in oklab,var(--info) 74%,black)}
+.nat-hosp{background:color-mix(in oklab,var(--danger) 7%,var(--surface-2))}
+.nat-hosp .resp-ico{background:color-mix(in oklab,var(--danger) 14%,transparent);color:var(--danger)}
+[data-theme=light] .nat-hosp .resp-ico{color:color-mix(in oklab,var(--danger) 75%,black)}
+.resp-t small{display:block}
+.fyi-row{grid-template-columns:auto minmax(0,1fr) auto}
+
+/* advisories: calm cards — a tint and a side line, never an alarm */
+.adv{--tone:var(--info);display:grid;gap:8px;padding:10px 12px;border-radius:14px;background:color-mix(in oklab,var(--tone) 8%,var(--surface-2));border:1px solid var(--line);border-inline-start:5px solid var(--tone);min-inline-size:0}
+.adv.tone-warn{--tone:var(--warn)}.adv.tone-danger{--tone:var(--danger)}
+.adv-top{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:center}
+.adv-ic{display:block;inline-size:44px;block-size:44px;flex:none}
+.adv-ic.sm{inline-size:34px;block-size:34px}
+.adv-t{display:grid;gap:4px;min-inline-size:0}
+.adv-t b{font-family:var(--font-h);color:var(--head);font-size:.95rem;line-height:1.35}
+.adv-tags{display:flex;flex-wrap:wrap;gap:4px}
+.adv-tags .tag{font-size:.7rem;padding-inline:8px;line-height:1.6}
+.adv-text{font-size:.9rem;line-height:1.6;color:var(--ink);margin:0}
+.adv-do{display:grid;gap:6px;padding:8px 10px;border-radius:12px;background:var(--surface);border:1px solid var(--line)}
+.adv-do-h{font-size:.78rem;color:var(--muted);font-family:var(--font-h)}
+.adv-pics{display:flex;flex-wrap:wrap;gap:6px;margin:0;padding:0;list-style:none}
+.adv-pics .pic{flex:0 1 84px;padding:6px 3px 4px;border-radius:12px}
+.adv-pics .pic-svg{inline-size:44px;block-size:44px}
+.adv-pics .pic-cap{font-size:.68rem}
+.adv-lines{display:grid;gap:4px;margin:0;padding:0;list-style:none}
+.adv-lines li{font-size:.9rem;font-weight:600;color:var(--head);line-height:1.5;padding-inline-start:12px;border-inline-start:3px solid var(--tone)}
+
+/* national demo row in the demo bar, the settings location row */
+.ctl-nat{display:grid;gap:8px;padding:10px 18px 14px;border-block-start:1px dashed var(--line)}
+.ctl-nat-t{display:inline-flex;align-items:center;gap:8px;font-family:var(--font-h);color:var(--head);font-size:.95rem}
+.ctl-nat-t .i{color:var(--accent-2)}
+[data-theme=dark] .ctl-nat-t .i{color:var(--accent)}
+.ctl-nat .chips{display:flex;flex-wrap:wrap;gap:6px}
+.ctl-nat p{margin:0}
 
 /* guard + voice flow */
 .gd-list{display:grid;gap:6px;margin:0;padding:0;list-style:none}
@@ -373,9 +463,11 @@ body.m-wall .solo-phone .pcell{display:none}
 @media print{.al-hero-s,.ctl,#more,.qr-card{display:none!important}.phone{block-size:auto}}
 
 /* every grid track may shrink below its content (a long Malayalam word or link must never widen a phone or the page) */
-.al-card,.al-body,.al-langbar,.al-also,.al-strobe,.ctl-g,.qr-form,.qr-msg,.solo-info,.al-lines,.al-more,.gd-list,.nb-list,.pcap,.al-srcs,.dr-more,.resp-why,.nb-call,.idle,.idle-try,.fmt{grid-template-columns:minmax(0,1fr)}
+.al-card,.al-body,.al-langbar,.al-also,.al-strobe,.ctl-g,.qr-form,.qr-msg,.solo-info,.al-lines,.al-more,.gd-list,.nb-list,.pcap,.al-srcs,.adv,.adv-do,.adv-t,.nb-main,.dr-more,.resp-why,.nb-call,.idle,.idle-try,.fmt{grid-template-columns:minmax(0,1fr)}
 .al-formats .al-fmt-l{grid-template-columns:repeat(2,minmax(0,1fr))}
 .resp-row{grid-template-columns:auto minmax(0,1fr) auto}
+.nb-row{grid-template-columns:auto minmax(0,1fr) auto}
+.adv-top{grid-template-columns:auto minmax(0,1fr)}
 .act-done{grid-template-columns:auto minmax(0,1fr) auto}
 .gd-row{grid-template-columns:auto minmax(0,1fr) auto}
 .dr-top{grid-template-columns:auto minmax(0,1fr)}

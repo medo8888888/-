@@ -7,29 +7,50 @@
  * Two modes: WALL (four phones side by side: Ravi, Huda, Abu Salem, Lina + a switcher for the blind-resident voice flow and the
  * building-guard view) and PHONE (one phone, full screen, opened from a QR link: ?persona=ravi&lang=ml).
  *
+ * THE NATIONAL LAYER (the whole of Qatar; user requirement "I wnat it on the whole of Qatar")
+ *   A phone also reacts to NATIONAL incidents (bus messages with scope:'national') and NATIONAL advisories (heat / dust / rain):
+ *     alert     { type:'alert'|'alert-update', scope:'national', id, hazard, level:'watch'|'shelter'|'warning'|'evacuate', area:{ar,en}, at:{lon,lat} (or scene / lon+lat),
+ *                 radiusM (default 400), incident:{id, hazard, muni, place:{ar,en}}, hour|clock, sim|demo }
+ *     dispatch  { type:'dispatch', scope:'national', id, state, incident:{id, hazard, muni, place}, scene:{lon, lat}, units:[{kind, name, etaMin, status, why}], hospital, sim:true }
+ *                 (js/national.js busDispatch; a dispatch whose state is approved or later is itself an alert for residents; 'recommended' never reaches a resident)
+ *     advisory  { type:'advisory', scope:'national', id, clock, items:[{key, params, level:'info'|'watch'|'warning'|'danger', hazard:'heat'|'dust'|'flood'|'traffic', muni, text:{ar,en}}], sim:true }
+ *     alert-clear { type:'alert-clear', id } (the id of the alert or of the incident)
+ *   WHO IS ALERTED: a resident is alerted by DISTANCE (haversine) from where the phone is — the position the viewer chose or allowed, else the demo place — to the incident:
+ *     inside radiusM  -> the level that was sent (night wake-up ladder included)      up to 3 x radiusM -> "stay in, be ready" (warning)
+ *     up to 8 x radiusM -> "be ready" (watch)                                          farther -> no alert, one calm line "nothing for you to do"
+ *     An SOS is private: it is never broadcast to residents. These bands are ASSUMPTIONS (SIM), not a standard.
+ *   ADVISORIES are calm cards (no sound, no flashing, no full screen) with the protective actions of docs/MANARA-HAZARDS.md (through messages.js).
+ *
+ * NEAREST EMERGENCY SERVICES (offline). After a consent tap the phone's position (navigator.geolocation) is used ONCE, in memory, to list the nearest hospital
+ *   (with its emergency-department flag, honestly yes / unknown / no), police station and fire station from the BUNDLED OpenStreetMap snapshot
+ *   (data/qatar-*.js through js/national.js nearestFacilities): straight-line km, bearing, and an ESTIMATED road time on the bundled road graph
+ *   (free flow + simulated time-of-day congestion). No network request exists in this file at all. Outside Qatar, on denial or on a timeout the viewer picks
+ *   a municipality or place from a list, so it also works on a booth laptop. Informational only: 999 is the dispatcher; the data is a snapshot and may be incomplete.
+ *
  * SOURCES OF TRUTH (this file adds no new facts of its own)
  *   words / pictogram ids / vibration / flash / voice / ladder   window.MANARA_MSG   (js/messages.js)
- *   bus messages (alert, alert-update, alert-clear, dispatch ↔ citizen)  Manara.link   (docs/MANARA.md)
+ *   bus messages (alert, alert-update, alert-clear, dispatch, advisory ↔ citizen)  Manara.link   (docs/MANARA.md)
  *   stand-alone demo geometry (routes, distances, responders)   window.ManaraSim, when it is loaded (js/sim.js). Every number from it is SIM.
+ *   real Qatar map data and national dispatch   window.MANARA_QATAR_GEO / _FACILITIES / _ROADS + window.ManaraNational (data/*.js, js/national.js)
  *
  * HONESTY (same house rules as the rest of the site)
- *   - every alert carries an EXERCISE badge; responder times are SIM (fictional units); 999 stays the dispatcher;
+ *   - every alert carries an EXERCISE badge; responder times are SIM (positions, availability and traffic are simulated); 999 stays the dispatcher;
  *   - the sound is MANARA's own low 520 Hz three-pulse tone (NFPA Research Foundation, S56), never the national alert tone (S36);
  *   - flashing light is opt-in, behind a photosensitivity warning, at most 3 flashes a second (WCAG 2.3.1, S57), and stays steady under
  *     prefers-reduced-motion;
  *   - six community languages are drafts (draft-needs-native-review) and are always shown WITH Arabic/English;
- *   - the optional "Nearby facilities" card is informational only (OpenStreetMap data, straight-line distance, one query after a consent tap,
- *     nothing stored, nothing sent anywhere except the lookup); it is NOT dispatch;
+ *   - the "Nearest emergency services" card is informational only (OpenStreetMap snapshot, estimated road time, nothing stored, nothing sent anywhere,
+ *     no network); it is NOT dispatch, and it shows the data credit "Contains data © OpenStreetMap contributors (ODbL)" with the snapshot date;
  *   - the live link reaches other tabs of the SAME browser (BroadcastChannel). A phone opened by QR runs the demo on its own; a real
  *     deployment would need a server and push notifications — not built.
  *
- * LAWS: classic script, no libraries, no fetch of local files (the one fetch is the optional OpenStreetMap lookup), no HTML-string injection at all
+ * LAWS: classic script, no libraries, NO NETWORK CALL OF ANY KIND (no fetch / XHR / beacon), no HTML-string injection at all
  * (DOM nodes and textContent only), logical CSS properties only (in alert.css), every string bilingual.
  *
- * PURE PART (runs in Node under `vm`, tested by tools/manara/test-alert.mjs): QR encoder, Overpass query + parser, route geometry,
- * compass words.  DOM PART: starts only when `document` exists.
+ * PURE PART (runs in Node under `vm`, tested by tools/manara/test-alert.mjs): QR encoder, nearby/national helpers (distance, minutes, place list, zones,
+ * Qatar test), route geometry, compass words.  DOM PART: starts only when `document` exists.
  *
- * Public: window.ManaraAlert = { qr, overpass, geom, pictos, app (DOM only) }.
+ * Public: window.ManaraAlert = { qr, nearby, nat, geom, pictos, app (DOM only) }.
  * ========================================================================================== */
 (function (root) {
   'use strict';
@@ -240,79 +261,96 @@
   })();
 
   /* ====================================================================================
-   * 2. NEARBY FACILITIES — OpenStreetMap Overpass: one query, pure builder + pure parser
-   *    Informational only (NOT dispatch): straight-line (haversine) distance, traffic unknown. No coordinates are shipped in this
-   *    file; the phone's position exists only in memory for the one lookup.
+   * 2. NEARBY SERVICES + NATIONAL HELPERS (pure; no network, no DOM). Coordinates are lon/lat in degrees (WGS84), the same order as js/national.js.
+   *    Informational only (NOT dispatch). No coordinates are shipped in this file: the places come from data/qatar-geo.js at run time, and the viewer's
+   *    own position exists only in memory.
    * ==================================================================================== */
-  var OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
   var FACILITY_KINDS = [
-    { id: 'hospital', tag: 'hospital', ui: 'ui.nearby.hospital' },
-    { id: 'police', tag: 'police', ui: 'ui.nearby.police' },
-    { id: 'fire', tag: 'fire_station', ui: 'ui.nearby.fire' }
+    { id: 'hospital', ui: 'ui.nearby.hospital', icon: 'heart' },
+    { id: 'police', ui: 'ui.nearby.police', icon: 'shield' },
+    { id: 'fire', ui: 'ui.nearby.fire', icon: 'fire' }
   ];
   function clampNum(n, lo, hi) { n = +n; return n < lo ? lo : n > hi ? hi : n; }
-  function haversineM(lat1, lon1, lat2, lon2) {
+  function haversineM(lon1, lat1, lon2, lat2) {
     var R = 6371008.8, rad = Math.PI / 180;
     var dLat = (lat2 - lat1) * rad, dLon = (lon2 - lon1) * rad;
     var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
     return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
   }
-  function bearingDeg(lat1, lon1, lat2, lon2) {
+  function bearingDeg(lon1, lat1, lon2, lat2) {
     var rad = Math.PI / 180, p1 = lat1 * rad, p2 = lat2 * rad, dl = (lon2 - lon1) * rad;
     var y = Math.sin(dl) * Math.cos(p2), x = Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dl);
     return (Math.atan2(y, x) / rad + 360) % 360;
   }
-  // The query string for Overpass QL: hospitals, police stations and fire stations around a point (nodes, ways and relations).
-  // `out center;` = default "body" verbosity (tags + node coordinates) plus a centre point for ways and relations. NOT `out center tags;`:
-  // the `tags` verbosity prints "only ids and tags … and not coordinates" (OSM wiki, Overpass QL), so every facility mapped as a node would
-  // arrive without a position and be dropped.
-  function buildOverpassQuery(lat, lon, radiusM) {
-    lat = clampNum(lat, -90, 90); lon = clampNum(lon, -180, 180); radiusM = Math.round(clampNum(radiusM || 15000, 500, 50000));
-    var around = '(around:' + radiusM + ',' + lat.toFixed(5) + ',' + lon.toFixed(5) + ')';
-    return '[out:json][timeout:15];(' +
-      FACILITY_KINDS.map(function (k) { return 'nwr["amenity"="' + k.tag + '"]' + around + ';'; }).join('') +
-      ');out center;';
-  }
-  function osmPoint(el) {
-    if (el && typeof el.lat === 'number' && typeof el.lon === 'number') return { lat: el.lat, lon: el.lon };
-    if (el && el.center && typeof el.center.lat === 'number' && typeof el.center.lon === 'number') return { lat: el.center.lat, lon: el.center.lon };
-    return null;
-  }
-  // Overpass JSON → { hospital, police, fire }: the nearest element of each kind by STRAIGHT-LINE distance, or null. Never throws on odd input.
-  function parseOverpass(json, lat, lon) {
-    var out = { hospital: null, police: null, fire: null, count: 0 };
-    var els = json && Array.isArray(json.elements) ? json.elements : [];
-    els.forEach(function (el) {
-      if (!el || !el.tags || typeof el.tags !== 'object') return;
-      var kind = null;
-      FACILITY_KINDS.forEach(function (k) { if (el.tags.amenity === k.tag) kind = k.id; });
-      if (!kind) return;
-      var pt = osmPoint(el); if (!pt) return;
-      var d = haversineM(lat, lon, pt.lat, pt.lon);
-      if (!isFinite(d)) return;
-      out.count++;
-      var cur = out[kind];
-      if (cur && cur.distM <= d) return;
-      var t = el.tags;
-      out[kind] = {
-        kind: kind, type: el.type || null, id: el.id != null ? el.id : null, distM: Math.round(d), bearingDeg: Math.round(bearingDeg(lat, lon, pt.lat, pt.lon)),
-        names: { ar: t['name:ar'] || null, en: t['name:en'] || null, name: t.name || null }, lat: pt.lat, lon: pt.lon,
-        emergency: t.emergency || null, operator: t.operator || null
-      };
-    });
-    return out;
-  }
-  function facilityName(f, lang) {
-    if (!f) return '';
-    var n = f.names || {};
-    return (lang === 'ar' ? (n.ar || n.name || n.en) : (n.en || n.name || n.ar)) || '';
-  }
+  // a distance in metres → "850 m" / "2.3 km" / "46 km" (Western digits in both languages, like the rest of the site)
   function formatDistance(distM, lang) {
-    var d = Math.max(0, +distM || 0);
-    var s = d < 1000 ? Math.round(d / 10) * 10 : (Math.round(d / 100) / 10);
-    var txt = d < 1000 ? String(s) : String(s);
-    return lang === 'ar' ? (d < 1000 ? txt + ' م' : txt + ' كم') : (d < 1000 ? txt + ' m' : txt + ' km');
+    var d = Math.max(0, +distM || 0), ar = lang === 'ar', txt, unit;
+    if (d < 950) { txt = String(Math.max(10, Math.round(d / 10) * 10)); unit = ar ? 'م' : 'm'; if (d < 5) { txt = '0'; } }
+    else { var km = d / 1000; txt = String(km < 100 ? Math.round(km * 10) / 10 : Math.round(km)); unit = ar ? 'كم' : 'km'; }
+    return txt + ' ' + unit;
   }
+  function formatKm(km, lang) { return formatDistance((+km || 0) * 1000, lang); }
+  // minutes → "9 min" / "9 د"; under one minute says so
+  function formatMin(min, lang) {
+    var m = Math.max(0, +min || 0), ar = lang === 'ar';
+    if (m < 1) return ar ? 'أقل من دقيقة' : 'under 1 min';
+    return String(Math.round(m)) + ' ' + (ar ? 'د' : 'min');
+  }
+  // Is a position inside Qatar (land of the bundled outline, with about 2.5 km of tolerance for the simplified coast)? `geo` = window.MANARA_QATAR_GEO.
+  function inQatar(geo, lon, lat) {
+    lon = +lon; lat = +lat;
+    if (!geo || typeof geo.inLand !== 'function' || !isFinite(lon) || !isFinite(lat)) return false;
+    if (geo.inLand(lon, lat)) return true;
+    for (var k = 0; k < 8; k++) { var a = k * Math.PI / 4; if (geo.inLand(lon + 0.025 * Math.cos(a), lat + 0.0225 * Math.sin(a))) return true; }
+    return false;
+  }
+  // The "choose where you are" list: one group per municipality, its centre first, then its named places (cities and towns first). Values: 'm:<id>' / 'p:<id>'.
+  var PLACE_RANK = { city: 0, town: 1, industrial: 2, airport: 3, port: 3, education: 3, village: 4, suburb: 5, neighbourhood: 5, quarter: 5, hamlet: 6, island: 7 };
+  function placeList(geo, lang) {
+    var L = lang === 'ar' ? 'ar' : 'en', O = L === 'ar' ? 'en' : 'ar', groups = [], byM = {};
+    if (!geo || !Array.isArray(geo.municipalities)) return groups;
+    var nm = function (o) { return o ? (o[L] || o[O] || '') : ''; };
+    var centreWord = L === 'ar' ? 'المركز' : 'centre';
+    geo.municipalities.forEach(function (m) {
+      var g = { id: m.id, name: nm(m.name), items: [] }; byM[m.id] = g; groups.push(g);
+      if (Array.isArray(m.centre)) g.items.push({ value: 'm:' + m.id, label: g.name + ' — ' + centreWord, kind: 'centre', lon: m.centre[0], lat: m.centre[1], muni: m.id, name: m.name });
+    });
+    var seen = {};
+    (geo.places || []).forEach(function (p) {
+      if (p.kind === 'municipality-centre' || p.kind === 'locality') return;
+      var label = nm(p.name), g = byM[p.muni];
+      if (!label || !g || !isFinite(p.lon) || !isFinite(p.lat)) return;
+      var key = p.muni + '|' + label; if (seen[key]) return; seen[key] = 1;
+      g.items.push({ value: 'p:' + p.id, label: label, kind: p.kind, lon: p.lon, lat: p.lat, muni: p.muni, name: p.name });
+    });
+    groups.forEach(function (g) {
+      var head = g.items.shift();
+      g.items.sort(function (a, b) { var ra = PLACE_RANK[a.kind] == null ? 8 : PLACE_RANK[a.kind], rb = PLACE_RANK[b.kind] == null ? 8 : PLACE_RANK[b.kind]; return ra - rb || String(a.label).localeCompare(String(b.label), L); });
+      if (head) g.items.unshift(head);
+    });
+    return groups.filter(function (g) { return g.items.length; });
+  }
+  // Who is alerted by a national incident: bands around the incident, in multiples of its radius (ASSUMPTIONS — SIM, not a standard).
+  var NAT_RADIUS_DEFAULT_M = 400, NAT_BAND_NEAR = 3, NAT_BAND_WATCH = 8;
+  var ZONE_RANK = { core: 0, near: 1, watch: 2, far: 3 };
+  function zoneOf(distM, radiusM) {
+    var r = clampNum(radiusM || NAT_RADIUS_DEFAULT_M, 50, 50000), d = +distM;
+    if (!isFinite(d)) return 'core';                                   // position unknown: do not hide a real alert
+    return d <= r ? 'core' : d <= r * NAT_BAND_NEAR ? 'near' : d <= r * NAT_BAND_WATCH ? 'watch' : 'far';
+  }
+  var NAT_LEVEL_DEFAULT = { fire: 'evacuate', smoke: 'warning', gas: 'evacuate', flood: 'warning', dust: 'warning', heat: 'warning', sos: null };
+  // The level a resident in `zone` is shown, given the level that was sent for the incident; null = no alert (far away, or an SOS, which is private).
+  function levelFor(hazard, zone, base) {
+    if (hazard === 'sos' || zone === 'far') return null;
+    var rank = { watch: 0, warning: 1, evacuate: 2 }, b = rank[base] == null ? (NAT_LEVEL_DEFAULT[hazard] || 'warning') : base;
+    if (zone === 'core') return b;
+    if (zone === 'near') return rank[b] >= 1 ? 'warning' : 'watch';
+    return 'watch';
+  }
+  // advisory level → the messages.js level whose protective actions the calm card shows (docs/MANARA-HAZARDS.md): heat can say stop work, dust says shelter, rain says keep away from low ground
+  var ADV_MSG_LEVEL = { heat: { info: 'watch', watch: 'watch', warning: 'warning', danger: 'evacuate' }, dust: { info: 'watch', watch: 'watch', warning: 'warning', danger: 'warning' },
+    flood: { info: 'watch', watch: 'watch', warning: 'watch', danger: 'watch' } };
+  var ADV_ORDER = { danger: 0, warning: 1, watch: 2, info: 3 };
 
   /* ====================================================================================
    * 3. ROUTE GEOMETRY + COMPASS WORDS (pure). Grid cells: x east, y south (north-up), 1 cell = 5 m (docs/MANARA.md).
@@ -466,7 +504,8 @@
   var api = {
     version: VERSION,
     qr: { encode: QR.encode, capacityBytes: QR.capacityBytes, maxVersion: QR.maxVersion, table: QR.table },
-    overpass: { url: OVERPASS_URL, query: buildOverpassQuery, parse: parseOverpass, haversineM: haversineM, bearingDeg: bearingDeg, name: facilityName, distance: formatDistance, kinds: FACILITY_KINDS.map(function (k) { return k.id; }) },
+    nearby: { haversineM: haversineM, bearingDeg: bearingDeg, distance: formatDistance, km: formatKm, minutes: formatMin, inQatar: inQatar, placeList: placeList, kinds: FACILITY_KINDS.map(function (k) { return k.id; }) },
+    nat: { zoneOf: zoneOf, levelFor: levelFor, ZONE_RANK: ZONE_RANK, bands: { radiusM: NAT_RADIUS_DEFAULT_M, near: NAT_BAND_NEAR, watch: NAT_BAND_WATCH }, advisoryLevel: ADV_MSG_LEVEL },
     geom: { routeLengthM: routeLengthM, firstTurn: firstTurn, routeHeading: routeHeading, compassWord: compassWord, CELL_M: CELL_M },
     pictos: { ids: function () { return Object.keys(PICT); }, has: function (id) { return !!PICT[id]; }, svg: pictoSVG, frameOf: function (id) { return PICT[id] ? PICT[id].f : null; } }
   };
@@ -608,6 +647,8 @@
     'al.route.wind_from': { ar: 'الريح من {dir}', en: 'wind from the {dir}' },
     'al.route.sim': { ar: 'مسار حيّ من المحاكاة (SIM)', en: 'Live route from the simulation (SIM)' },
     'al.compass.alt': { ar: 'بوصلة: الخطر باتجاه {dir}، والريح من {wind}', en: 'Compass: hazard towards the {dir}, wind from the {wind}' },
+    'al.compass.alt1': { ar: 'بوصلة: الحدث باتجاه {dir}', en: 'Compass: the incident is towards the {dir}' },
+    'al.near.dir': { ar: '{d} نحو {dir}', en: '{d} to the {dir}' },
     'al.map.alt': { ar: 'خريطة مبسطة للمسار: من موقعك إلى {place}', en: 'Simple route map: from your position to {place}' },
     'al.resp.none': { ar: 'لا توجد جهات استجابة معتمدة بعد.', en: 'No approved responders yet.' },
     'al.resp.why': { ar: 'لماذا هذه الوحدة؟', en: 'Why this unit?' },
@@ -619,16 +660,94 @@
     'al.drone.licensed': { ar: 'مسيّرة تشغّلها جهة مرخّصة مثل الدفاع المدني (مفهوم).', en: 'A drone run by a licensed agency such as Civil Defence (a concept).' },
     'al.drone.show': { ar: 'ما هذه المسيّرة؟', en: 'What is this drone?' },
     'al.drone.hide': { ar: 'إخفاء', en: 'Hide' },
-    'al.nb.straight': { ar: 'المسافة بخط مستقيم؛ حالة المرور غير معروفة بلا اتصال.', en: 'Straight-line distance. Traffic is not known here.' },
-    'al.nb.label': { ar: 'للاطلاع فقط — ليس إرسالًا للمساعدة. اتصل بـ 999.', en: 'Informational, not dispatch — call 999.' },
-    'al.nb.osm': { ar: '© مساهمو OpenStreetMap', en: '© OpenStreetMap contributors' },
-    'al.nb.clear': { ar: 'امسح النتائج', en: 'Clear results' },
-    'al.nb.unsupported': { ar: 'هذا المتصفح لا يدعم تحديد الموقع.', en: 'Location is not supported in this browser.' },
+    /* ---- nearest emergency services (offline, bundled OpenStreetMap snapshot) ---- */
     'al.nb.call': { ar: 'اتصل بـ 999', en: 'Call 999' },
     'al.nb.call_warn': { ar: 'سيفتح هذا تطبيق الاتصال في هاتفك. اتصل فقط في طوارئ حقيقية — هذه الصفحة تمرين.', en: 'This opens your phone’s dialer. Call only in a real emergency — this page is an exercise.' },
     'al.nb.call_open': { ar: 'افتح الاتصال بـ 999', en: 'Open the dialer for 999' },
     'al.nb.cancel': { ar: 'إلغاء', en: 'Cancel' },
-    'al.nb.here': { ar: 'بعيد {d} {dir}', en: '{d} away, {dir}' },
+    'al.nb.label': { ar: 'للاطلاع فقط — 999 هو المُرسِل.', en: 'Informational — 999 is the dispatcher.' },
+    'al.near.title': { ar: 'أقرب خدمات الطوارئ إليك', en: 'Nearest emergency services' },
+    'al.near.lead': { ar: 'أقرب مستشفى ومركز شرطة ومحطة إطفاء من خريطة قطر المخزَّنة داخل هذه الصفحة. تعمل بلا إنترنت، وهي للاطلاع فقط: المُرسِل الحقيقي هو 999.', en: 'The nearest hospital, police station and fire station from the Qatar map stored inside this page. It works offline and is for information only: the real dispatcher is 999.' },
+    'al.near.intro': { ar: 'من خريطة قطر المضمَّنة في هذه الصفحة — بلا إنترنت.', en: 'From the Qatar map built into this page — no internet.' },
+    'al.near.consent': { ar: 'عند الضغط يُستخدم موقع هاتفك مرة واحدة داخل هذه الصفحة فقط؛ لا نحفظه ولا نرسله إلى أي جهة.', en: 'When you tap, your phone’s position is used once, inside this page only. It is not saved and not sent anywhere.' },
+    'al.near.gps': { ar: 'استخدم موقعي', en: 'Use my location' },
+    'al.near.locating': { ar: 'جارٍ تحديد الموقع وحساب الأقرب…', en: 'Finding your position and working out the nearest…' },
+    'al.near.denied': { ar: 'لم يُسمح بالوصول إلى الموقع. لا بأس — اختر مكانك من القائمة.', en: 'Location was not allowed. No problem — choose your place from the list.' },
+    'al.near.timeout': { ar: 'لم نتمكن من تحديد موقعك في الوقت المناسب. اختر مكانك من القائمة أو حاول مرة أخرى.', en: 'Your position could not be found in time. Choose your place from the list, or try again.' },
+    'al.near.unavailable': { ar: 'الجهاز لا يستطيع تحديد موقعك الآن. اختر مكانك من القائمة.', en: 'This device cannot find your position now. Choose your place from the list.' },
+    'al.near.unsupported': { ar: 'هذا المتصفح لا يدعم تحديد الموقع. اختر مكانك من القائمة.', en: 'This browser does not support location. Choose your place from the list.' },
+    'al.near.outside': { ar: 'يبدو أنك خارج قطر، وخريطة هذه الصفحة تغطي قطر فقط. اختر مكانًا في قطر لترى كيف تعمل الخدمة.', en: 'You seem to be outside Qatar, and the map in this page covers Qatar only. Choose a place in Qatar to see how it works.' },
+    'al.near.nodata': { ar: 'تعذّر تحميل بيانات الخريطة في هذه الصفحة. في الطوارئ اتصل بـ 999.', en: 'The map data did not load in this page. In an emergency call 999.' },
+    'al.near.error': { ar: 'تعذّر إكمال الحساب. حاول مرة أخرى، وفي الطوارئ اتصل بـ 999.', en: 'The calculation failed. Try again; in an emergency call 999.' },
+    'al.near.pick': { ar: 'أو اختر مكانك', en: 'Or choose where you are' },
+    'al.near.pick_ph': { ar: 'اختر البلدية أو المكان…', en: 'Choose a municipality or place…' },
+    'al.near.for': { ar: 'أقرب خدمات إلى: {place}', en: 'Nearest services to: {place}' },
+    'al.near.src_demo': { ar: 'مكان تجريبي', en: 'demo place' },
+    'al.near.src_place': { ar: 'مكان اخترته', en: 'a place you chose' },
+    'al.near.src_gps': { ar: 'موقعك — لم يُحفظ', en: 'your position — not saved' },
+    'al.near.near_place': { ar: 'قرب {place}', en: 'near {place}' },
+    'al.near.preview': { ar: 'هذا مكان تجريبي وليس موقعك. اضغط «استخدم موقعي» أو اختر مكانك.', en: 'This is the demo place, not your position. Tap “Use my location” or choose your place.' },
+    'al.near.ed_row': { ar: 'أقرب مستشفى فيه طوارئ مؤكدة', en: 'Nearest hospital with a confirmed emergency department' },
+    'al.near.straight': { ar: 'بخط مستقيم', en: 'in a straight line' },
+    'al.near.road': { ar: 'نحو {min} بالسيارة', en: '≈ {min} by road' },
+    'al.near.free': { ar: 'بلا ازدحام: {min}', en: 'No traffic: {min}' },
+    'al.near.jam': { ar: 'الازدحام المحاكى الآن: +{pct}%', en: 'simulated traffic now: +{pct}%' },
+    'al.near.when': { ar: 'أزمنة الطريق تقدير لـ {day} الساعة {clock} (ازدحام محاكى).', en: 'Road times are an estimate for {day} {clock} (simulated traffic).' },
+    'al.near.not_nav': { ar: 'الزمن تقدير على شبكة الطرق المضمَّنة بازدحام محاكى (SIM)، وليس تعليمات ملاحة.', en: 'The time is an estimate on the road network built into this page, with simulated (SIM) traffic. It is not navigation.' },
+    'al.near.credit': { ar: 'يتضمن بيانات © مساهمي OpenStreetMap (رخصة ODbL)', en: 'Contains data © OpenStreetMap contributors (ODbL)' },
+    'al.near.credit_a': { ar: 'مساهمي OpenStreetMap', en: 'OpenStreetMap contributors' },
+    'al.near.credit_pre': { ar: 'يتضمن بيانات © ', en: 'Contains data © ' },
+    'al.near.credit_post': { ar: ' (رخصة ODbL)', en: ' (ODbL)' },
+    'al.near.snapshot': { ar: 'لقطة بتاريخ {date}. قد تكون ناقصة، ولا تُظهر إن كانت المنشأة تعمل الآن.', en: 'Snapshot of {date}. It may be incomplete and does not show whether a place is open now.' },
+    'al.near.clear': { ar: 'امسح موقعي والنتائج', en: 'Clear my position and results' },
+    'al.near.retry': { ar: 'حاول مرة أخرى', en: 'Try again' },
+    'al.near.map_alt': { ar: 'خريطة مبسطة: موقعك وأقرب مستشفى ومركز شرطة ومحطة إطفاء، بخطوط مستقيمة', en: 'Simple map: your place and the nearest hospital, police station and fire station, as straight lines' },
+    'al.near.map_you': { ar: 'أنت', en: 'You' },
+    'al.near.map_scale': { ar: 'خط مستقيم', en: 'straight lines' },
+    'al.near.type.health-centre': { ar: 'مركز صحي', en: 'Health centre' },
+    'al.near.type.unclear': { ar: 'النوع غير واضح في الخريطة', en: 'Type unclear on the map' },
+    'al.near.type.specialist-centre': { ar: 'مركز متخصص', en: 'Specialist centre' },
+    'al.near.centre': { ar: 'المركز', en: 'centre' },
+    'al.near.none': { ar: 'لا يوجد في بيانات الخريطة.', en: 'None in the map data.' },
+    /* ---- national incidents and advisories ---- */
+    'al.nat.where': { ar: 'أين الحدث؟', en: 'Where is it?' },
+    'al.nat.dist': { ar: 'يبعد {d} نحو {dir}', en: '{d} away, to the {dir}' },
+    'al.nat.here': { ar: 'في موقعك تقريبًا', en: 'Right where you are' },
+    'al.nat.zone.core': { ar: 'أنت داخل منطقة الحدث', en: 'You are inside the affected area' },
+    'al.nat.zone.near': { ar: 'أنت قريب من الحدث', en: 'You are close to it' },
+    'al.nat.zone.watch': { ar: 'في محيط الحدث: للعلم والاستعداد', en: 'In the wider area: be ready' },
+    'al.nat.from': { ar: 'المسافة من: {place}', en: 'Distance from: {place}' },
+    'al.nat.sim': { ar: 'حدث وطني محاكى (SIM): يصل التنبيه إلى المقيمين القريبين فقط، والمنصة تحدد المسافة من مكان الهاتف.', en: 'Simulated national incident (SIM): only residents close to it get an alert; the distance is measured from where the phone is.' },
+    'al.nat.units_note': { ar: 'أسماء الوحدات من لقطة OpenStreetMap؛ مواقعها وتوفّرها والازدحام محاكاة (SIM).', en: 'Unit names come from an OpenStreetMap snapshot; positions, availability and traffic are simulated (SIM).' },
+    'al.nat.hosp': { ar: 'أقرب مستشفى بطوارئ مؤكدة إليك', en: 'Nearest hospital with a confirmed emergency department to you' },
+    'al.nat.hosp_wait': { ar: 'جارٍ حساب أقرب مستشفى…', en: 'Working out the nearest hospital…' },
+    'al.nat.hosp_na': { ar: 'لا يوجد مستشفى بطوارئ مؤكدة في بيانات الخريطة.', en: 'No hospital with a confirmed emergency department in the map data.' },
+    'al.nat.fyi_title': { ar: 'أحداث وطنية (للعلم فقط)', en: 'National incidents (for your information)' },
+    'al.nat.fyi': { ar: '{hazard} في {place}، على بعد {d}. لا يلزمك أي إجراء.', en: '{hazard} in {place}, {d} away. Nothing for you to do.' },
+    'al.nat.fyi_none': { ar: 'لا أحداث وطنية نشطة.', en: 'No active national incidents.' },
+    'al.adv.title': { ar: 'إرشادات وطنية (للعلم)', en: 'National advisories (for your information)' },
+    'al.adv.todo': { ar: 'ماذا تفعل', en: 'What to do' },
+    'al.adv.lvl.info': { ar: 'معلومة', en: 'Info' },
+    'al.adv.lvl.watch': { ar: 'متابعة', en: 'Watch' },
+    'al.adv.lvl.warning': { ar: 'انتبه', en: 'Take care' },
+    'al.adv.lvl.danger': { ar: 'مهم جدًا', en: 'Very important' },
+    'al.adv.calm': { ar: 'إرشاد هادئ: بلا إنذار ولا صوت.', en: 'A calm advisory: no alarm, no sound.' },
+    'al.adv.more': { ar: '+ {n} لبلديات أخرى', en: '+ {n} for other municipalities' },
+    'al.adv.none': { ar: 'لا إرشادات وطنية الآن.', en: 'No national advisories right now.' },
+    'al.adv.est': { ar: 'تقدير', en: 'Estimate' },
+    'al.loc.label': { ar: 'أين الهواتف؟ (للتنبيهات الوطنية)', en: 'Where are the phones? (for national alerts)' },
+    'al.loc.demo': { ar: '{place} — مكان تجريبي', en: '{place} — demo place' },
+    'al.loc.gps': { ar: 'موقعي الحالي (لم يُحفظ)', en: 'My position (not saved)' },
+    'al.loc.note': { ar: 'مبنى تجريبي في «{place}»؛ لا ندّعي وجود مبنى حقيقي هناك.', en: 'A demo building in “{place}”; no claim about any real building there.' },
+    'al.nd.title': { ar: 'حدث وطني (عرض مستقل)', en: 'National incident (stand-alone demo)' },
+    'al.nd.hint': { ar: 'يوضع الحدث بالنسبة إلى مكان الهواتف على خريطة قطر الحقيقية. أسماء الوحدات من OpenStreetMap وأزمنة وصولها من محاكاة المرور (SIM).', en: 'The incident is placed relative to the phones on the real Qatar map. Unit names come from OpenStreetMap; their arrival times come from the traffic simulation (SIM).' },
+    'al.nd.fire_close': { ar: 'حريق قريب جدًا (نحو 250 م)', en: 'Fire very close (about 250 m)' },
+    'al.nd.fire_near': { ar: 'حريق في الحي (نحو 900 م)', en: 'Fire in the district (about 900 m)' },
+    'al.nd.gas_far': { ar: 'تسرّب غاز بعيد (الخور)', en: 'Gas leak far away (Al Khor)' },
+    'al.nd.heat': { ar: 'إرشاد حرارة', en: 'Heat advisory' },
+    'al.nd.dust': { ar: 'إرشاد غبار', en: 'Dust advisory' },
+    'al.nd.flood': { ar: 'إرشاد أمطار', en: 'Rain advisory' },
+    'al.nd.fail': { ar: 'تعذّر إنشاء الحدث الوطني (بيانات الخريطة غير محمَّلة).', en: 'The national incident could not be created (map data not loaded).' },
     'al.act.title': { ar: 'هل أنت بخير؟', en: 'Are you OK?' },
     'al.act.needs': { ar: 'احتياجاتي (اختياري)', en: 'My needs (optional)' },
     'al.act.safe_sub': { ar: 'تتحول غرفتك إلى الأخضر عند المشغّل', en: 'Your room turns green for the operator' },
@@ -1078,14 +1197,17 @@
       svg.appendChild(sv('path', { class: 'cp-wind', d: 'M' + wi[0] + ' ' + wi[1] + 'L' + h1[0] + ' ' + h1[1] + 'M' + wi[0] + ' ' + wi[1] + 'L' + h2[0] + ' ' + h2[1] }));
     }
     var dirTxt = A.bearingDeg != null ? compassWord(A.bearingDeg, pl) : '', windTxt = A.wind ? compassWord(A.wind.deg, pl) : '';
-    svg.setAttribute('aria-label', A.bearingDeg != null ? fill(PT('al.compass.alt', lang), { dir: dirTxt, wind: windTxt || '—' }) : (windTxt ? fill(PT('al.route.wind_from', lang), { dir: windTxt }) : ''));
+    svg.setAttribute('aria-label', A.bearingDeg != null ? fill(PT(windTxt ? 'al.compass.alt' : 'al.compass.alt1', lang), { dir: dirTxt, wind: windTxt }) : (windTxt ? fill(PT('al.route.wind_from', lang), { dir: windTxt }) : ''));
     return svg;
   }
 
   /* ====================================================================================
    * 9. THE PHONE — state, DOM shell, and one builder per card
    * ==================================================================================== */
-  var App = { mode: 'wall', phones: {}, solo: 'ravi', audible: 'ravi', live: { last: 0, count: 0, via: '' }, demo: null, nb: { state: 'idle', data: null, err: null, at: 0 }, seq: 0 };
+  var App = { mode: 'wall', phones: {}, solo: 'ravi', audible: 'ravi', live: { last: 0, count: 0, via: '' }, demo: null, nb: { state: 'idle', data: null, err: null, at: 0 }, seq: 0,
+    loc: null,                                                  // where the phones are (memory only): null = the demo place; else { lon, lat, muni, name:{ar,en}, src:'gps'|'place', value }
+    pageUi: { call: false }, natDemo: null, preview: null };
+  var NAT = { inc: {}, disp: {}, adv: null };                   // national incidents by id, national dispatches by incident id, the current national advisory set
   var KIND_ICON = { fire: 'fire', ambulance: 'heart', police: 'shield', rescue: 'users', hazmat: 'alert' };
 
   function Phone(p) {
@@ -1162,7 +1284,7 @@
           h('span', { class: 'tag ' + (V.tone === 'safe' ? 'safe' : V.tone === 'info' ? 'info' : V.tone === 'warn' ? 'warn' : 'danger'), text: lvName }),
           h('span', { class: 'tag cool', text: (hz ? hz.name[pl] : '') }),
           h('span', { class: 'tag info al-extag', title: MT('ui.alert.exercise', pl), text: PT('al.p.exercise', pl) }),
-          A.demo ? h('span', { class: 'tag', title: MT('ui.alert.sim', pl), text: PT('al.p.sim', pl) }) : null
+          A.demo || A.sim ? h('span', { class: 'tag', title: MT('ui.alert.sim', pl), text: PT('al.p.sim', pl) }) : null
         ])
       ]),
       h('h2', Object.assign({ class: 'al-title', id: 'ttl-' + phone.id }, langTag(V)), [V.headline]),
@@ -1257,7 +1379,7 @@
     return card('al-formats', PT('al.p.fmt', V.lang), kids);
   }
   function buildResponders(phone, V) {
-    var pl = chromeLang(V.lang), d = phone.disp;
+    var pl = chromeLang(V.lang), natl = V.A.national, d = natl ? (NAT.disp[natl.incidentId] || null) : phone.disp;
     var rows = [];
     if (d) {
       d.units.forEach(function (u) {
@@ -1272,7 +1394,7 @@
     var kids = [];
     if (!rows.length) kids.push(h('p', { class: 'al-note', text: PT('al.resp.none', V.lang) }));
     rows.forEach(function (r, i) {
-      kids.push(h('div', { class: 'resp-row', data: { kind: r.u.kind } }, [
+      kids.push(h('div', { class: 'resp-row', data: { kind: r.u.kind }, title: r.u.why ? PT('al.resp.fastest', V.lang) : null }, [
         h('span', { class: 'resp-ico' }, [icon(KIND_ICON[r.u.kind] || 'alert')]),
         h('div', { class: 'resp-t' }, [
           h('b', Object.assign({}, langTag(V), { text: r.line })),
@@ -1296,6 +1418,7 @@
       }
     }
     if (V.hazard === 'sos' && V.role === 'victim') kids.push(h('p', { class: 'al-note', text: MT('r.stay', V.lang) }));
+    if (natl) { var hl = hospitalLine(V.lang); if (hl) kids.push(hl); if (rows.length) kids.push(h('p', { class: 'al-note small', text: PT('al.nat.units_note', V.lang) })); }
     kids.push(h('p', { class: 'al-note small', text: MT('ui.alert.responders_sim', pl) + ' ' + MT('r.999', pl) }));
     return card('al-resp', MT('ui.alert.responders', pl), kids, { 'aria-live': 'polite', data: { section: 'responders' } });
   }
@@ -1398,44 +1521,6 @@
     if (anyStep2) kids.push(h('p', { class: 'al-note', role: 'status', text: MT('x.ladder.2.g', pl) }));
     return card('al-guard', PT('al.guard.title', V.lang), kids, { 'aria-live': 'polite' });
   }
-  function buildNearby(phone, V) {
-    var pl = chromeLang(V.lang), nb = App.nb, kids = [];
-    kids.push(h('p', { text: MT('ui.nearby.intro', pl) }));
-    kids.push(h('p', { class: 'al-note small', text: MT('ui.nearby.consent', pl) }));
-    if (nb.state === 'idle' || nb.state === 'error' || nb.state === 'denied' || nb.state === 'offline' || nb.state === 'unsupported') {
-      kids.push(h('button', { class: 'btn btn-ghost btn-sm', type: 'button', data: { fid: 'nb-go', act: 'nearby' } }, [icon('pin'), h('span', { text: MT('ui.nearby.button', pl) })]));
-    }
-    if (nb.state === 'loading') kids.push(h('p', { class: 'al-note', role: 'status', 'aria-busy': 'true', text: MT('ui.nearby.loading', pl) }));
-    if (nb.state === 'offline') kids.push(h('p', { class: 'al-note warn', role: 'status', text: MT('ui.nearby.offline', pl) }));
-    if (nb.state === 'denied') kids.push(h('p', { class: 'al-note warn', role: 'status', text: MT('ui.nearby.denied', pl) }));
-    if (nb.state === 'unsupported') kids.push(h('p', { class: 'al-note warn', role: 'status', text: PT('al.nb.unsupported', V.lang) }));
-    if (nb.state === 'error') kids.push(h('p', { class: 'al-note warn', role: 'status', text: MT('ui.nearby.failed', pl) }));
-    if (nb.state === 'done' && nb.data) {
-      var list = h('ul', { class: 'nb-list' }, FACILITY_KINDS.map(function (k) {
-        var f = nb.data[k.id];
-        return h('li', { class: 'nb-row', data: { kind: k.id } }, [
-          h('span', { class: 'nb-k', text: MT(k.ui, pl) }),
-          f ? h('span', { class: 'nb-v' }, [h('b', { text: facilityName(f, pl) || '—' }), h('small', { text: fill(PT('al.nb.here', V.lang), { d: formatDistance(f.distM, pl), dir: compassWord(f.bearingDeg, pl) }) })])
-            : h('span', { class: 'nb-v muted', text: MT('ui.nearby.none', pl, { km: 15 }) })
-        ]);
-      }));
-      kids.push(list);
-      kids.push(h('p', { class: 'al-note small', text: PT('al.nb.straight', V.lang) + ' ' + MT('ui.nearby.incomplete', pl) }));
-      kids.push(h('button', { class: 'btn btn-ghost btn-sm', type: 'button', data: { fid: 'nb-clear', act: 'nearby-clear' }, text: PT('al.nb.clear', V.lang) }));
-    }
-    // tap-to-call 999 is a two-step action: this is an exercise page and a stray tap must not dial the emergency number
-    if (nb.state === 'done' || phone.ui.call) {
-      if (!phone.ui.call) kids.push(h('button', { class: 'btn btn-danger btn-sm', type: 'button', data: { fid: 'call', act: 'call' } }, [icon('phone'), h('span', { text: PT('al.nb.call', V.lang) })]));
-      else kids.push(h('div', { class: 'nb-call', role: 'group' }, [
-        h('p', { text: PT('al.nb.call_warn', V.lang) }),
-        h('a', { class: 'btn btn-danger btn-sm', href: 'tel:999', data: { fid: 'call-open' }, text: PT('al.nb.call_open', V.lang) }),
-        h('button', { class: 'btn btn-ghost btn-sm', type: 'button', data: { fid: 'call-cancel', act: 'call-cancel' }, text: PT('al.nb.cancel', V.lang) })
-      ]));
-    }
-    kids.push(h('p', { class: 'nb-label' }, [h('b', { text: PT('al.nb.label', V.lang) })]));
-    kids.push(h('p', { class: 'al-note small' }, [h('a', { href: 'https://www.openstreetmap.org/copyright', target: '_blank', rel: 'noopener noreferrer', text: PT('al.nb.osm', V.lang) }), ' · ' + MT('ui.nearby.not_dispatch', pl)]));
-    return card('al-nb', MT('ui.nearby.title', pl), kids, { data: { section: 'nearby', state: nb.state } });
-  }
   function buildSources(V) {
     var pl = chromeLang(V.lang), kids = [];
     if (V.sources && V.sources.length) kids.push(h('p', { class: 'al-src' }, [h('b', { text: PT('al.sources', V.lang) + ': ' }), V.sources.map(function (s) { return s.id + ' ' + s.label; }).join(' · ')]));
@@ -1508,6 +1593,10 @@
       row.appendChild(h('button', { class: 'chip', type: 'button', data: { fid: 'try-' + hz, act: 'try', v: hz } }, [icon(info.icon), h('span', { text: info.name[pl] })]));
     });
     tries.appendChild(row); kids.push(tries);
+    var fyi = buildNatNotices(phone, lang), adv = buildAdvisories(phone, lang);
+    if (fyi) kids.push(fyi);
+    if (adv) kids.push(adv);
+    kids.push(buildNearby(phone, lang));
     return kids;
   }
 
@@ -1555,16 +1644,19 @@
       if (V.voice && phone.p.persona === 'blind') sec.push(buildVoiceCard(phone, V));
       sec.push(buildLangBar(phone, V));
       if (V.ladder) { e.ladderBox = buildLadder(phone, V); sec.push(e.ladderBox); } else if (V.softWake) sec.push(h('p', { class: 'al-note', text: PT('al.ladder.mode_soft', V.lang) }));
-      if (V.level !== 'all-clear') { sec.push(buildRoute(phone, V)); sec.push(buildResponders(phone, V)); }
+      if (V.level !== 'all-clear') { sec.push(V.A.national ? buildWhere(phone, V) : buildRoute(phone, V)); sec.push(buildResponders(phone, V)); }
       sec.push(buildFormats(phone, V));
-      if (V.level !== 'all-clear') { sec.push(buildDrone(phone, V)); sec.push(buildNearby(phone, V)); }
+      if (V.level !== 'all-clear') {
+        sec.push(buildDrone(phone, V)); sec.push(buildNearby(phone, V.lang));
+        var adv = buildAdvisories(phone, V.lang); if (adv) sec.push(adv);
+      }
     }
     sec.push(buildSources(V));
     sec.forEach(function (n) { sc.appendChild(n); });
     buildActions(phone, V);
     renderIndicators(phone, V);
     sc.scrollTop = keep;
-    if (fid) { var back = $('[data-fid="' + fid + '"]', e.root); if (back) { try { back.focus({ preventScroll: true }); } catch (x) { back.focus(); } } }
+    if (fid) { var back = $('[data-fid="' + fid + '"]', e.root) || (fid === 'call-cancel' ? $('[data-fid="call"]', e.root) : null); if (back) { try { back.focus({ preventScroll: true }); } catch (x) { back.focus(); } } }
     phone.light.plan = lightPlan(V.msg); applyLight(phone, V);
   }
   function needsGate(phone, V) {
@@ -1723,29 +1815,554 @@
   }
 
   /* ====================================================================================
-   * 11. NEARBY FACILITIES — consent tap → one geolocation fix → one Overpass query → parse → show. Nothing is stored.
+   * 11. NEAREST EMERGENCY SERVICES (offline) — consent tap → one geolocation fix → the bundled OpenStreetMap snapshot → show.
+   *     Nothing is stored, nothing is sent; this file contains no network call. 999 is the dispatcher.
    * ==================================================================================== */
-  function nearbyGo() {
-    var nb = App.nb;
-    if (nb.state === 'loading') return;
-    if (typeof navigator !== 'undefined' && navigator.onLine === false) { nb.state = 'offline'; rerenderAlerts(); return; }
-    if (!navigator.geolocation) { nb.state = 'unsupported'; rerenderAlerts(); return; }
-    nb.state = 'loading'; nb.data = null; rerenderAlerts();
-    navigator.geolocation.getCurrentPosition(function (pos) {
-      var lat = pos.coords.latitude, lon = pos.coords.longitude;
-      var ctl = typeof AbortController === 'function' ? new AbortController() : null;
-      var timer = setTimeout(function () { if (ctl) ctl.abort(); }, 14000);
-      var body = 'data=' + encodeURIComponent(buildOverpassQuery(lat, lon, 15000));
-      fetch(OVERPASS_URL, { method: 'POST', body: body, headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, signal: ctl ? ctl.signal : undefined,
-        credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer', mode: 'cors' })
-        .then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
-        .then(function (json) { clearTimeout(timer); nb.data = parseOverpass(json, lat, lon); nb.state = 'done'; nb.at = now(); rerenderAlerts(); say(MT('ui.nearby.title', Mn.lang()), false); },
-          function () { clearTimeout(timer); nb.state = navigator.onLine === false ? 'offline' : 'error'; rerenderAlerts(); });
-      // the position is not kept anywhere: `lat` and `lon` live only in this closure until the lookup ends
-    }, function (err) { nb.state = err && err.code === 1 ? 'denied' : 'error'; rerenderAlerts(); }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 0 });
+  function GEO() { return root.MANARA_QATAR_GEO || null; }
+  function NATL() { return root.ManaraNational || null; }
+  function dataReady() { return !!(GEO() && root.MANARA_QATAR_FACILITIES && root.MANARA_QATAR_ROADS && NATL()); }
+  function isoDate(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+  var ENG = null;
+  function engine() {                                                         // the national engine built from the bundled data; created once (about a quarter of a second)
+    if (ENG) return ENG;
+    if (!dataReady()) return null;
+    var d = new Date();
+    ENG = NATL().create({ seed: 1, date: isoDate(d), hour: d.getHours() + d.getMinutes() / 60 });
+    return ENG;
   }
-  function nearbyClear() { App.nb.state = 'idle'; App.nb.data = null; rerenderAlerts(); }
+  function geoMuni(id) { var g = GEO(); return g && g.municipalities ? g.municipalities.filter(function (m) { return m.id === id; })[0] || null : null; }
+  function muniName(id, lang) { var m = geoMuni(id); return m ? (m.name[chromeLang(lang)] || m.name.en) : ''; }
+  function bothNames(n) { n = n || {}; return { ar: n.ar || n.en || '', en: n.en || n.ar || '' }; }
+  function demoLoc() {                                                        // the demo building: "Industrial Area" in the Doha municipality (a place name only — no claim about a real building)
+    var g = GEO(); if (!g || !g.places) return null;
+    var id = g.anchors && g.anchors['industrial-area'], p = g.places.filter(function (x) { return x.id === id; })[0] || g.places[0];
+    return p ? { lon: p.lon, lat: p.lat, muni: p.muni, name: bothNames(p.name), src: 'demo' } : null;
+  }
+  function phoneLoc() { return App.loc || demoLoc(); }
+  function locName(loc, lang) {
+    if (!loc || !loc.name) return '';
+    var n = loc.name[chromeLang(lang)] || loc.name.en || loc.name.ar || '';
+    return loc.src === 'gps' ? fill(PT('al.near.near_place', lang), { place: n }) : n;
+  }
+  function locSrc(loc, lang) { return PT(loc.src === 'gps' ? 'al.near.src_gps' : loc.src === 'place' ? 'al.near.src_place' : 'al.near.src_demo', lang); }
+
+  // nearest hospital (+ the nearest with a confirmed emergency department), police and fire station for one position, from the bundled data
+  var LOOK = {};
+  function lookupFor(loc) {
+    var N = NATL(), nat = engine(); if (!N || !nat || !loc) return null;
+    var d = new Date(), t = N.timeAt(nat, isoDate(d), d.getHours() + d.getMinutes() / 60);
+    var key = loc.lon.toFixed(3) + ',' + loc.lat.toFixed(3) + '@' + Math.floor(t / 600);
+    if (LOOK[key]) return LOOK[key];
+    var one = function (kind) { var r = N.nearestFacilities({ nat: nat, lon: loc.lon, lat: loc.lat, kind: kind, k: 1, t: t }); return r && r[0] ? r[0] : null; };
+    var hospital = one('hospital'), ed = one('ed'), meta = root.MANARA_QATAR_FACILITIES && root.MANARA_QATAR_FACILITIES.meta;
+    var res = { hospital: hospital, ed: ed, edRow: ed && hospital && ed.id === hospital.id ? null : ed, police: one('police'), fire: one('fire'), t: t, when: N.time(nat, t),
+      snapshot: (meta && meta.snapshotDate) || (GEO().meta && GEO().meta.snapshotDate) || '' };
+    var keys = Object.keys(LOOK); if (keys.length > 24) delete LOOK[keys[0]];
+    LOOK[key] = res;
+    return res;
+  }
+
+  // ---- state: App.nb = { state: idle | locating | done | denied | timeout | unavailable | unsupported | outside | nodata | error, data, loc } ----
+  function rerenderPhones() { Object.keys(App.phones).forEach(function (id) { renderPhone(App.phones[id]); }); }
+  function renderNearAll() { rerenderPhones(); renderNearSection(); }
+  function setNb(state) { App.nb = { state: state, data: null, loc: null, err: null, at: now() }; renderNearAll(); }
+  function applyLoc(loc) {
+    App.loc = loc;
+    try {
+      var data = lookupFor(loc);
+      if (!data) { setNb('nodata'); return; }
+      App.nb = { state: 'done', data: data, loc: loc, err: null, at: now() };
+    } catch (e) { App.nb = { state: 'error', data: null, loc: null, err: String(e && e.message || e), at: now() }; }
+    renderNearAll(); natRefresh(); syncControls();
+    if (App.nb.state === 'done') say(MT('ui.nearby.title', Mn.lang()) + ': ' + fill(PT('al.near.for', Mn.lang()), { place: locName(loc, Mn.lang()) }), false);
+  }
+  function useFix(lon, lat) {                                                 // the fix lives in this closure and in App.loc (memory only); it is dropped when it is outside Qatar
+    var g = GEO();
+    if (!g || !dataReady()) { setNb('nodata'); return; }
+    if (!inQatar(g, lon, lat)) { App.loc = App.loc && App.loc.src === 'gps' ? null : App.loc; setNb('outside'); natRefresh(); syncControls(); return; }
+    setTimeout(function () {
+      try {
+        var np = NATL().nearestPlace(engine(), lon, lat);
+        applyLoc({ lon: lon, lat: lat, muni: g.municipalityAt(lon, lat), name: np ? bothNames(np.name) : { ar: 'قطر', en: 'Qatar' }, src: 'gps' });
+      } catch (e) { setNb('error'); }
+    }, 0);
+  }
+  function nearbyGps() {
+    if (App.nb.state === 'locating') return;
+    if (!dataReady()) { setNb('nodata'); return; }
+    if (typeof navigator === 'undefined' || !navigator.geolocation) { setNb('unsupported'); return; }
+    setNb('locating');
+    var finished = false;
+    var guard = setTimeout(function () { if (!finished) { finished = true; setNb('timeout'); } }, 13000);       // some browsers never call back
+    try {
+      navigator.geolocation.getCurrentPosition(function (pos) {
+        if (finished) return; finished = true; clearTimeout(guard);
+        useFix(pos.coords.longitude, pos.coords.latitude);
+      }, function (err) {
+        if (finished) return; finished = true; clearTimeout(guard);
+        setNb(err && err.code === 1 ? 'denied' : err && err.code === 3 ? 'timeout' : 'unavailable');
+      }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 0 });
+    } catch (e) { finished = true; clearTimeout(guard); setNb('unsupported'); }
+  }
+  function placeLoc(value) {
+    var g = GEO(); if (!g || typeof value !== 'string' || value.charAt(1) !== ':') return null;
+    var id = value.slice(2), p;
+    if (value.charAt(0) === 'm') { var m = geoMuni(id); return m && m.centre ? { lon: m.centre[0], lat: m.centre[1], muni: m.id, name: bothNames(m.name), src: 'place', value: value } : null; }
+    p = (g.places || []).filter(function (x) { return x.id === id; })[0];
+    return p ? { lon: p.lon, lat: p.lat, muni: p.muni, name: bothNames(p.name), src: 'place', value: value } : null;
+  }
+  function choosePlace(value) {
+    var loc = placeLoc(value); if (!loc) return;
+    if (!dataReady()) { setNb('nodata'); return; }
+    setNb('locating');
+    setTimeout(function () { applyLoc(loc); }, 20);                          // paint "working…" first: the first lookup builds the road graph
+  }
+  function resetLoc() { App.loc = null; App.nb = { state: 'idle', data: null, loc: null, err: null, at: 0 }; App.pageUi.call = false; renderNearAll(); natRefresh(); syncControls(); }
+  function ensurePreview() {                                                  // the page card shows the demo place at once (no consent needed: it is not the viewer's position)
+    if (App.preview || !dataReady()) return;
+    App.preview = { state: 'wait' };
+    var run = function () {
+      try { var loc = demoLoc(); App.preview = { state: 'ok', loc: loc, data: lookupFor(loc) }; } catch (e) { App.preview = { state: 'err' }; }
+      renderNearSection();
+    };
+    if (root.requestIdleCallback) root.requestIdleCallback(run, { timeout: 1200 }); else setTimeout(run, 400);
+  }
+
+  // ---- the "choose where you are" list ----
+  var PLACE_CACHE = {};
+  function fillPlaceSelect(sel, mode, lang) {
+    var g = GEO(); empty(sel);
+    var pl = chromeLang(lang), cur = App.loc && App.loc.src === 'place' ? App.loc.value : (App.loc && App.loc.src === 'gps' ? 'g' : '');
+    if (mode === 'settings') {
+      var dl = demoLoc();
+      sel.appendChild(h('option', { value: '', text: dl ? fill(PT('al.loc.demo', lang), { place: locName(dl, lang) }) : PT('al.near.pick_ph', lang) }));
+      if (App.loc && App.loc.src === 'gps') sel.appendChild(h('option', { value: 'g', text: PT('al.loc.gps', lang) }));
+    } else sel.appendChild(h('option', { value: '', text: PT('al.near.pick_ph', lang) }));
+    if (!g) return;
+    var groups = PLACE_CACHE[pl] || (PLACE_CACHE[pl] = placeList(g, pl));
+    groups.forEach(function (gr) {
+      sel.appendChild(h('optgroup', { label: gr.name }, gr.items.map(function (it) { return h('option', { value: it.value, text: it.label }); })));
+    });
+    sel.value = cur; if (sel.value !== cur) sel.value = '';
+  }
+  function placeSelect(lang, mode) {
+    var id = 'pl-' + (++App.seq), sel = h('select', { id: id, class: 'nb-sel', data: { place: mode, fid: 'nb-place-' + mode } });
+    fillPlaceSelect(sel, mode, lang);
+    return h('label', { class: 'field nb-pick', for: id }, [h('span', { text: PT(mode === 'settings' ? 'al.loc.label' : 'al.near.pick', lang) }), sel]);
+  }
+
+  // ---- the little map: the viewer's place, the coast of Qatar, and a straight line to each service (drawn in code from the bundled outline) ----
+  var RING_BB = [];
+  function ringBox(i, ring) {
+    if (RING_BB[i]) return RING_BB[i];
+    var x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+    for (var k = 0; k < ring.length; k++) { var p = ring[k]; if (p[0] < x0) x0 = p[0]; if (p[0] > x1) x1 = p[0]; if (p[1] < y0) y0 = p[1]; if (p[1] > y1) y1 = p[1]; }
+    return (RING_BB[i] = [x0, y0, x1, y1]);
+  }
+  var MARK = { you: { tone: 'you', ar: '●', en: '●' }, hospital: { tone: 'hospital', ar: 'م', en: 'H' }, police: { tone: 'police', ar: 'ش', en: 'P' }, fire: { tone: 'fire', ar: 'إ', en: 'F' } };
+  function nearMap(loc, data, lang) {
+    var g = GEO(); if (!g || !g.outline || !g.outline.rings || !loc) return null;
+    var pl = chromeLang(lang), W = 300, H = 176, P = 30, M_LAT = 110574;
+    var pts = [{ k: 'you', lon: loc.lon, lat: loc.lat }];
+    FACILITY_KINDS.forEach(function (k) { var f = data[k.id]; if (f) pts.push({ k: k.id, lon: f.lon, lat: f.lat }); });
+    var x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+    pts.forEach(function (q) { x0 = Math.min(x0, q.lon); x1 = Math.max(x1, q.lon); y0 = Math.min(y0, q.lat); y1 = Math.max(y1, q.lat); });
+    var cLon = (x0 + x1) / 2, cLat = (y0 + y1) / 2, cl = Math.cos(cLat * Math.PI / 180), M_LON = 111320 * cl;
+    var spanX = Math.max((x1 - x0) * M_LON, 1200), spanY = Math.max((y1 - y0) * M_LAT, 800), sc = Math.min((W - 2 * P) / spanX, (H - 2 * P) / spanY);
+    var X = function (lon) { return num1(W / 2 + (lon - cLon) * M_LON * sc); }, Y = function (lat) { return num1(H / 2 - (lat - cLat) * M_LAT * sc); };
+    var vLon = (W / 2) / sc / M_LON, vLat = (H / 2) / sc / M_LAT;
+    var svg = sv('svg', { viewBox: '0 0 ' + W + ' ' + H, class: 'nm', role: 'img', focusable: 'false', 'aria-label': PT('al.near.map_alt', lang) });
+    svg.appendChild(sv('rect', { class: 'nm-sea', x: 0, y: 0, width: W, height: H, rx: 12 }));
+    var d = '';
+    g.outline.rings.forEach(function (ring, i) {
+      var bb = ringBox(i, ring);
+      if (bb[2] < cLon - vLon || bb[0] > cLon + vLon || bb[3] < cLat - vLat || bb[1] > cLat + vLat) return;
+      for (var k = 0; k < ring.length; k++) d += (k ? 'L' : 'M') + X(ring[k][0]) + ' ' + Y(ring[k][1]);
+      d += 'Z';
+    });
+    if (d) svg.appendChild(sv('path', { class: 'nm-land', d: d }));
+    var you = pts[0];
+    pts.slice(1).forEach(function (q) { svg.appendChild(sv('line', { class: 'nm-ln', x1: X(you.lon), y1: Y(you.lat), x2: X(q.lon), y2: Y(q.lat) })); });
+    pts.slice(1).forEach(function (q) {
+      var t = sv('text', { class: 'nm-mt', x: X(q.lon), y: num1(Y(q.lat) + 4), 'text-anchor': 'middle' }); t.textContent = MARK[q.k][pl];
+      svg.appendChild(sv('circle', { class: 'nm-pt t-' + q.k, cx: X(q.lon), cy: Y(q.lat), r: 10 })); svg.appendChild(t);
+    });
+    svg.appendChild(sv('circle', { class: 'nm-you-r', cx: X(you.lon), cy: Y(you.lat), r: 12 }));
+    svg.appendChild(sv('circle', { class: 'nm-you', cx: X(you.lon), cy: Y(you.lat), r: 5.5 }));
+    var yl = sv('text', { class: 'nm-yl', x: Math.max(22, Math.min(W - 22, X(you.lon))), y: num1(Math.min(H - 8, Y(you.lat) + 26)), 'text-anchor': 'middle' }); yl.textContent = PT('al.near.map_you', lang); svg.appendChild(yl);
+    // scale bar (a round number of metres) and north
+    var nice = [100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000], bar = nice[0];
+    nice.forEach(function (m) { if (m * sc <= W * 0.34) bar = m; });
+    svg.appendChild(sv('line', { class: 'nm-scale', x1: 12, y1: H - 12, x2: num1(12 + bar * sc), y2: H - 12 }));
+    var sl = sv('text', { class: 'nm-sl', x: num1(12 + bar * sc / 2), y: H - 17, 'text-anchor': 'middle' }); sl.textContent = bar >= 1000 ? (bar / 1000) + ' km' : bar + ' m'; sl.setAttribute('direction', 'ltr'); sl.setAttribute('style', 'unicode-bidi:isolate'); svg.appendChild(sl);
+    svg.appendChild(sv('path', { class: 'nm-north', d: 'M' + (W - 16) + ' 30V12M' + (W - 21) + ' 17L' + (W - 16) + ' 11L' + (W - 11) + ' 17' }));
+    var nl = sv('text', { class: 'nm-nl', x: W - 16, y: 42, 'text-anchor': 'middle' }); nl.textContent = pl === 'ar' ? 'ش' : 'N'; svg.appendChild(nl);
+    return svg;
+  }
+  function arrowSVG(deg) {
+    return sv('svg', { viewBox: '0 0 24 24', class: 'nb-arrow', 'aria-hidden': 'true', focusable: 'false' }, [
+      sv('g', { transform: 'rotate(' + Math.round(deg) + ' 12 12)' }, [sv('path', { d: 'M12 2.5 18.5 20 12 16.2 5.5 20z' })])]);
+  }
+
+  // ---- one result row ----
+  function nbRow(rowKey, f, lang, labelText, tone) {
+    var pl = chromeLang(lang), name = (f.name && (f.name[pl] || f.name.en || f.name.ar)) || '—', kids = [];
+    var kindIcon = rowKey === 'police' ? 'shield' : rowKey === 'fire' ? 'fire' : 'heart';
+    var mins = Math.max(1, Math.round(f.roadMinNow)), full = fill(PT('al.near.road', lang), { min: formatMin(f.roadMinNow, pl) });
+    var tags = [];
+    if (rowKey === 'hospital' || rowKey === 'ed') {
+      tags.push(h('span', { class: 'tag ' + (f.ed === 'yes' ? 'safe' : 'warn'), text: f.edNote ? f.edNote[pl] : '' }));
+      if (f.facilityType && f.facilityType !== 'hospital') tags.push(h('span', { class: 'tag', text: PT('al.near.type.' + f.facilityType, lang) }));
+    }
+    var sub = fill(PT('al.near.free', lang), { min: formatMin(f.roadMinFree, pl) }) + (f.delayPct >= 5 ? ' · ' + fill(PT('al.near.jam', lang), { pct: f.delayPct }) : '');
+    kids.push(h('span', { class: 'nb-ico t-' + tone, 'aria-hidden': 'true' }, [icon(kindIcon)]));
+    kids.push(h('div', { class: 'nb-main' }, [
+      h('span', { class: 'nb-k', text: labelText }),
+      h('b', { class: 'nb-name', lang: pl, text: name }),
+      tags.length ? h('span', { class: 'nb-tags' }, tags) : null,
+      h('span', { class: 'nb-dist' }, [arrowSVG(f.bearingDeg), h('span', { text: formatKm(f.straightKm, pl) + ' · ' + compassWord(f.bearingDeg, pl) + ' · ' + PT('al.near.straight', lang) })]),
+      h('small', { class: 'nb-sub', text: sub })
+    ]));
+    kids.push(h('span', { class: 'nb-eta', title: PT('al.near.not_nav', lang) }, [h('b', { class: 'num', 'aria-hidden': 'true', text: String(mins) }), h('small', { 'aria-hidden': 'true', text: pl === 'ar' ? 'د' : 'min' }), h('span', { class: 'sr-only', text: full })]));
+    return h('li', { class: 'nb-row', data: { kind: rowKey, id: f.id } }, kids);
+  }
+  function callBlock(ui, lang) {
+    // tap-to-call 999 is a two-step action: this is an exercise page and a stray tap must not dial the emergency number
+    if (!ui.call) return h('a', { class: 'btn btn-danger btn-sm nb-call-btn', href: 'tel:999', data: { fid: 'call', act: 'call' } }, [icon('phone'), h('span', { text: PT('al.nb.call', lang) })]);
+    return h('div', { class: 'nb-call', role: 'group' }, [
+      h('p', { text: PT('al.nb.call_warn', lang) }),
+      h('a', { class: 'btn btn-danger btn-sm', href: 'tel:999', data: { fid: 'call' }, text: PT('al.nb.call_open', lang) }),
+      h('button', { class: 'btn btn-ghost btn-sm', type: 'button', data: { fid: 'call-cancel', act: 'call-cancel' }, text: PT('al.nb.cancel', lang) })
+    ]);
+  }
+  function creditLine(lang, data) {
+    var snap = (data && data.snapshot) || (GEO() && GEO().meta && GEO().meta.snapshotDate) || '';
+    return h('p', { class: 'al-note small nb-credit' }, [
+      PT('al.near.credit_pre', lang), h('a', { href: 'https://www.openstreetmap.org/copyright', target: '_blank', rel: 'noopener noreferrer', text: PT('al.near.credit_a', lang) }), PT('al.near.credit_post', lang),
+      snap ? ' · ' + fill(PT('al.near.snapshot', lang), { date: snap }) : ''
+    ]);
+  }
+
+  // the whole body of the card (a phone's card and the page card share it)
+  function nearbyKids(lang, host) {
+    var pl = chromeLang(lang), nb = App.nb, kids = [], view = null, preview = false, busy = nb.state === 'locating';
+    if (nb.state === 'done' && nb.data) view = { data: nb.data, loc: nb.loc };
+    else if (host.page && nb.state === 'idle' && App.preview && App.preview.state === 'ok' && App.preview.data) { view = { data: App.preview.data, loc: App.preview.loc }; preview = true; }
+    var failKey = { denied: 'al.near.denied', timeout: 'al.near.timeout', unavailable: 'al.near.unavailable', unsupported: 'al.near.unsupported', outside: 'al.near.outside', nodata: 'al.near.nodata', error: 'al.near.error' }[nb.state];
+    if (!view) kids.push(h('p', { class: 'nb-intro', text: PT('al.near.intro', lang) }));
+    if (failKey) kids.push(h('p', { class: 'nb-msg', role: 'status', text: PT(failKey, lang) }));
+    if (busy) kids.push(h('p', { class: 'nb-msg', role: 'status', 'aria-busy': 'true', text: PT('al.near.locating', lang) }));
+    if (view) {
+      var d = view.data, loc = view.loc;
+      kids.push(h('p', { class: 'nb-where' }, [h('b', { text: fill(PT('al.near.for', lang), { place: locName(loc, lang) }) }), ' ', h('span', { class: 'tag ' + (preview ? 'warn' : 'info'), text: locSrc(loc, lang) })]));
+      if (preview) kids.push(h('p', { class: 'al-note small', text: PT('al.near.preview', lang) }));
+      var map = nearMap(loc, d, lang); if (map) kids.push(h('div', { class: 'nb-map' }, [map]));
+      var rows = [];
+      if (d.hospital) rows.push(nbRow('hospital', d.hospital, lang, MT('ui.nearby.hospital', pl), 'hospital'));
+      if (d.edRow) rows.push(nbRow('ed', d.edRow, lang, PT('al.near.ed_row', lang), 'hospital'));
+      if (d.police) rows.push(nbRow('police', d.police, lang, MT('ui.nearby.police', pl), 'police'));
+      if (d.fire) rows.push(nbRow('fire', d.fire, lang, MT('ui.nearby.fire', pl), 'fire'));
+      kids.push(h('ul', { class: 'nb-list' }, rows));
+      var w = d.when;
+      kids.push(h('p', { class: 'al-note small', text: fill(PT('al.near.when', lang), { day: w && w.dowName ? w.dowName[pl] : '', clock: w ? w.clock.slice(0, 5) : '' }) + ' ' + PT('al.near.not_nav', lang) }));
+    }
+    if (view || host.page) kids.push(h('div', { class: 'nb-callrow' }, [callBlock(host.ui, lang)]));
+    kids.push(h('p', { class: 'nb-label' }, [h('b', { text: PT('al.nb.label', lang) }), ' ', MT('ui.nearby.incomplete', pl)]));
+    // actions: the consent tap, then the manual choice
+    if (!busy) {
+      kids.push(h('p', { class: 'al-note small', text: PT('al.near.consent', lang) }));
+      var acts = [h('button', { class: 'btn ' + (view && !preview ? 'btn-ghost' : 'btn-cool') + ' btn-sm', type: 'button', data: { fid: 'nb-go', act: 'nearby' } }, [icon('pin'), h('span', { text: failKey && nb.state !== 'outside' && nb.state !== 'nodata' && nb.state !== 'unsupported' ? PT('al.near.retry', lang) : PT('al.near.gps', lang) })])];
+      if (nb.state === 'done' || App.loc) acts.push(h('button', { class: 'btn btn-ghost btn-sm', type: 'button', data: { fid: 'nb-clear', act: 'nearby-clear' }, text: PT('al.near.clear', lang) }));
+      kids.push(h('div', { class: 'btns nb-acts' }, acts));
+    }
+    if (GEO()) kids.push(placeSelect(lang, 'card'));
+    kids.push(creditLine(lang, view ? view.data : null));
+    return kids;
+  }
+  function buildNearby(phone, lang) {
+    return card('al-nb', MT('ui.nearby.title', chromeLang(lang)), nearbyKids(lang, { page: false, ui: phone.ui }), { data: { section: 'nearby', state: App.nb.state } });
+  }
+  function renderNearSection() {
+    var box = $('#near-card'); if (!box || !M) return;
+    var ae = D.activeElement, fid = ae && box.contains(ae) ? ae.getAttribute('data-fid') : null;
+    empty(box);
+    nearbyKids(Mn.lang(), { page: true, ui: App.pageUi }).forEach(function (k) { box.appendChild(k); });
+    box.setAttribute('data-state', App.nb.state);
+    if (fid) { var back = $('[data-fid="' + fid + '"]', box) || (fid === 'call-cancel' ? $('[data-fid="call"]', box) : null); if (back) { try { back.focus({ preventScroll: true }); } catch (x) { back.focus(); } } }
+  }
+  function nearbyClear() { resetLoc(); }
   function rerenderAlerts() { Object.keys(App.phones).forEach(function (id) { if (App.phones[id].st) renderPhone(App.phones[id]); }); }
+
+  /* ====================================================================================
+   * 11b. NATIONAL INCIDENTS AND ADVISORIES — what a resident's phone shows when the incident is anywhere in Qatar
+   * ==================================================================================== */
+  function pickLL(o) {
+    if (!o || typeof o !== 'object') return null;
+    var lon = toNum(o.lon != null ? o.lon : o.lng, NaN), lat = toNum(o.lat, NaN);
+    return isFinite(lon) && isFinite(lat) && Math.abs(lon) <= 180 && Math.abs(lat) <= 90 ? { lon: lon, lat: lat } : null;
+  }
+  function hourOfClock(c) { var m = /^(\d{1,2}):(\d{2})/.exec(String(c == null ? '' : c)); return m ? Math.min(23, +m[1]) + Math.min(59, +m[2]) / 60 : null; }
+  // a bus alert (scope national) → an incident record (or null). Nothing from the bus is trusted: numbers are clamped, strings are plain text.
+  function normNatAlert(m) {
+    if (!m || typeof m !== 'object') return null;
+    var inc = m.incident && typeof m.incident === 'object' ? m.incident : {};
+    var act = typeof m.action === 'string' ? M.byAction(m.action) : null;
+    var hz = M.normalize.hazard(m.hazard) || M.normalize.hazard(inc.hazard) || (act && act.hazard);
+    var pos = pickLL(m.at) || pickLL(m.scene) || pickLL(inc) || pickLL(m);
+    if (!hz || !pos) return null;
+    var id = String(inc.id != null ? inc.id : m.incidentId != null ? m.incidentId : m.id != null ? m.id : 'N?').slice(0, 40);
+    var lv = M.normalize.level(m.level) || (act && act.level) || null;
+    return {
+      id: id, hazard: hz, level: lv === 'all-clear' ? null : lv, lon: pos.lon, lat: pos.lat, radiusM: clampNum(toNum(m.radiusM, NAT_RADIUS_DEFAULT_M), 50, 50000),
+      area: cleanText(m.area), place: cleanText(inc.place) || cleanText(m.place), muni: typeof (inc.muni || m.muni) === 'string' ? String(inc.muni || m.muni).slice(0, 30) : null,
+      hour: isFinite(+m.hour) ? +m.hour : hourOfClock(m.clock), ts: isFinite(+m.ts) ? +m.ts : now(), demo: !!m.demo, cleared: false
+    };
+  }
+  function normDispatchNat(m) {
+    var base = normDispatch(m); if (!base) return null;
+    var inc = m.incident && typeof m.incident === 'object' ? m.incident : {};
+    base.scope = 'national';
+    base.incident = { id: String(inc.id != null ? inc.id : m.id).slice(0, 40), hazard: M.normalize.hazard(inc.hazard) || null, muni: typeof inc.muni === 'string' ? inc.muni.slice(0, 30) : null, place: cleanText(inc.place) };
+    base.scene = pickLL(m.scene);
+    base.approved = ['approved', 'dispatched', 'en-route', 'on-scene'].indexOf(base.state) >= 0;     // a resident never acts on an unapproved recommendation (the human key)
+    base.cleared = base.state === 'cleared';
+    return base;
+  }
+  function natActive() { return Object.keys(NAT.inc).map(function (k) { return NAT.inc[k]; }).filter(function (i) { return !i.cleared; }); }
+  // the incident that matters most to one phone (closest band first, then nearest), or null
+  function natForPhone() {
+    var loc = phoneLoc(), best = null;
+    natActive().forEach(function (inc) {
+      var d = loc ? haversineM(loc.lon, loc.lat, inc.lon, inc.lat) : null, zone = zoneOf(d, inc.radiusM), lvl = levelFor(inc.hazard, zone, inc.level);
+      if (!lvl) return;
+      var c = { inc: inc, zone: zone, d: d, level: lvl, loc: loc };
+      if (!best || ZONE_RANK[zone] < ZONE_RANK[best.zone] || (zone === best.zone && (d || 0) < (best.d || 0))) best = c;
+    });
+    return best;
+  }
+  function natAlert(best) {
+    var inc = best.inc, loc = best.loc, d = best.d;
+    return {
+      id: 'nat-' + inc.id, hazard: inc.hazard, level: best.level, action: null, area: inc.area || inc.place || (inc.muni && geoMuni(inc.muni) ? bothNames(geoMuni(inc.muni).name) : null),
+      at: null, wind: null, you: null, safe: null, route: [], distanceM: d == null ? null : Math.round(d),
+      bearingDeg: d == null || d < 30 ? null : Math.round(bearingDeg(loc.lon, loc.lat, inc.lon, inc.lat)), etaMin: null, lang: null, persona: null, person: null, victim: null,
+      hour: inc.hour, ts: inc.ts, demo: !!inc.demo, sim: true,
+      national: { incidentId: inc.id, zone: best.zone, distM: d == null ? null : Math.round(d), radiusM: inc.radiusM, place: inc.place || inc.area || null, muni: inc.muni, from: loc ? { name: loc.name, src: loc.src } : null }
+    };
+  }
+  function dropAlert(ph) {
+    ph.st = null; ph.V = null; ph.checkin = null; ph.awakeAck = false; ph.pressing = false; ph.dirty = false; ph.voiceNote = ''; ph.voiceState = 'idle';
+    ph.lad = { on: false, t0: 0, step: 0, stopped: null, shown: -1, elapsed: 0, stopStep: 0 };
+    renderPhone(ph);
+  }
+  // re-decide, for every phone, which national alert (if any) it shows; a phone that shows a local alert or a demo keeps it
+  function natRefresh(clearedId) {
+    if (clearedId) Object.keys(App.phones).forEach(function (id) {
+      var ph = App.phones[id];
+      if (ph.st && ph.st.A.national && ph.st.A.national.incidentId === clearedId && !ph.st.allClear) clearAlertOn(ph, null);
+    });
+    Object.keys(App.phones).forEach(function (id) {
+      var ph = App.phones[id], cur = ph.st && ph.st.A;
+      if (cur && !cur.national && !ph.st.allClear) return;                      // a local alert owns this phone
+      if (cur && cur.national && ph.st.allClear) { renderPhone(ph); return; }   // the all-clear stays until the person taps "Got it"
+      var best = natForPhone();
+      if (best) deliver(ph, natAlert(best));
+      else if (cur && cur.national) dropAlert(ph);
+      else renderPhone(ph);
+    });
+    syncAudio(); refreshGuard(); renderNearSection();
+  }
+  function onNational(m) {
+    if (!m || typeof m !== 'object') return;
+    App.live.last = now(); App.live.count++; App.live.via = m.from || '';
+    var cleared = null;
+    if (m.type === 'dispatch') {
+      var d = normDispatchNat(m); if (!d) return;
+      var iid = d.incident.id, cur = NAT.inc[iid];
+      NAT.disp[iid] = d;
+      if (d.cleared) { if (cur) { cur.cleared = true; cleared = iid; } }
+      else if (!cur && d.approved && d.scene && d.incident.hazard) {
+        NAT.inc[iid] = { id: iid, hazard: d.incident.hazard, level: null, lon: d.scene.lon, lat: d.scene.lat, radiusM: NAT_RADIUS_DEFAULT_M, area: null, place: d.incident.place, muni: d.incident.muni,
+          hour: null, ts: d.ts, demo: !!m.demo, cleared: false, fromDispatch: true };
+      }
+    } else {
+      var rec = normNatAlert(m); if (!rec) return;
+      NAT.inc[rec.id] = Object.assign({}, NAT.inc[rec.id] || {}, rec, { cleared: false, fromDispatch: false });
+    }
+    natRefresh(cleared); updateLive();
+  }
+  function clearNational(id) {
+    var hit = null;
+    Object.keys(NAT.inc).forEach(function (k) { if (k === id || ('nat-' + k) === id) { NAT.inc[k].cleared = true; hit = k; } });
+    if (hit) natRefresh(hit);
+    return !!hit;
+  }
+  function onAdvisory(m) {
+    var N = NATL(), items = [];
+    (Array.isArray(m.items) ? m.items.slice(0, 24) : []).forEach(function (it) {
+      if (!it || typeof it !== 'object' || ['heat', 'dust', 'flood', 'traffic'].indexOf(it.hazard) < 0) return;
+      var text = cleanText(it.text);
+      if (!text && N && typeof it.key === 'string') { try { text = cleanText(N.renderMsg(it.key, it.params)); } catch (e) { text = null; } }
+      if (!text) return;
+      items.push({ key: typeof it.key === 'string' ? it.key.slice(0, 40) : '', hazard: it.hazard, level: ADV_ORDER[it.level] != null ? it.level : 'info', muni: typeof it.muni === 'string' ? it.muni.slice(0, 30) : null, text: text });
+    });
+    var sig = JSON.stringify(items);
+    App.live.last = now(); App.live.count++; App.live.via = m.from || '';
+    if (NAT.advSig === sig) { updateLive(); return; }
+    NAT.advSig = sig; NAT.adv = items.length ? { id: String(m.id == null ? 'ADV' : m.id).slice(0, 40), clock: typeof m.clock === 'string' ? m.clock.slice(0, 12) : '', items: items } : null;
+    rerenderPhones(); updateLive();
+  }
+
+  // ---- the cards ----
+  function hazardOf(id) { return M.hazards().filter(function (x) { return x.id === id; })[0] || null; }
+  function placeText(nat, pl) { return nat.place ? pickL(nat.place, pl) : nat.muni ? muniName(nat.muni, pl) : ''; }
+  function buildWhere(phone, V) {
+    var A = V.A, nat = A.national, lang = V.lang, pl = chromeLang(lang), kids = [], hz = hazardOf(V.hazard);
+    var place = placeText(nat, pl), muni = nat.muni ? muniName(nat.muni, pl) : '';
+    kids.push(h('p', { class: 'wh-line' }, [icon('pin'), h('b', { text: (hz ? hz.name[pl] : '') + (place ? ' — ' + place : '') + (muni && muni !== place ? ' (' + muni + ')' : '') })]));
+    if (nat.distM != null) {
+      var meta = h('div', { class: 'rt-meta' });
+      meta.appendChild(h('p', {}, [h('b', { text: nat.distM < 30 ? PT('al.nat.here', lang) : fill(PT('al.nat.dist', lang), { d: formatDistance(nat.distM, pl), dir: compassWord(A.bearingDeg || 0, pl) }) })]));
+      meta.appendChild(h('p', { class: 'wh-zone is-' + nat.zone, text: PT('al.nat.zone.' + nat.zone, lang) }));
+      if (nat.from) meta.appendChild(h('p', { class: 'muted', text: fill(PT('al.nat.from', lang), { place: locName(nat.from, lang) + ' (' + locSrc(nat.from, lang) + ')' }) }));
+      kids.push(h('div', { class: 'rt-cp' }, [A.bearingDeg != null ? h('div', { class: 'cp-wrap' }, [compassSVG({ bearingDeg: A.bearingDeg, wind: null, route: [] }, lang)]) : null, meta]));
+    }
+    kids.push(h('p', { class: 'al-note small', text: PT('al.nat.sim', lang) }));
+    return card('al-route al-where', PT('al.nat.where', lang), kids, { data: { section: 'where', zone: nat.zone } });
+  }
+  // "the nearest hospital for you": from where this phone is, no consent needed for the demo place; the engine is built on first use
+  var HOSP_PENDING = {};
+  function hospitalLine(lang) {
+    var pl = chromeLang(lang), loc = phoneLoc();
+    if (!loc || !dataReady()) return null;
+    var key = loc.lon.toFixed(3) + ',' + loc.lat.toFixed(3);
+    var r = ENG ? lookupFor(loc) : null;
+    if (!r) {
+      if (!HOSP_PENDING[key]) { HOSP_PENDING[key] = 1; setTimeout(function () { try { lookupFor(loc); } catch (e) { /* ignore */ } delete HOSP_PENDING[key]; rerenderNational(); }, 30); }
+      return h('div', { class: 'resp-row nat-hosp', role: 'status', data: { kind: 'hospital-you' } }, [h('span', { class: 'resp-ico' }, [icon('pin')]), h('div', { class: 'resp-t' }, [h('b', { text: PT('al.nat.hosp_wait', lang) })]), h('span', { class: 'tag cool', text: PT('al.p.sim', lang) })]);
+    }
+    var f = r.ed;
+    if (!f) return h('div', { class: 'resp-row nat-hosp', data: { kind: 'hospital-you' } }, [h('span', { class: 'resp-ico' }, [icon('pin')]), h('div', { class: 'resp-t' }, [h('b', { text: PT('al.nat.hosp_na', lang) })]), h('span', { class: 'tag cool', text: PT('al.p.sim', lang) })]);
+    return h('div', { class: 'resp-row nat-hosp', data: { kind: 'hospital-you' } }, [
+      h('span', { class: 'resp-ico' }, [icon('heart')]),
+      h('div', { class: 'resp-t' }, [
+        h('small', { text: PT('al.nat.hosp', lang) }),
+        h('b', { lang: pl, text: f.name[pl] || f.name.en || f.name.ar }),
+        h('small', { text: formatKm(f.straightKm, pl) + ' · ' + compassWord(f.bearingDeg, pl) + ' · ' + fill(PT('al.near.road', lang), { min: formatMin(f.roadMinNow, pl) }) + ' (' + PT('al.adv.est', lang) + ')' })
+      ]),
+      h('span', { class: 'tag cool', text: PT('al.p.sim', lang) })
+    ]);
+  }
+  function rerenderNational() { Object.keys(App.phones).forEach(function (id) { var ph = App.phones[id]; if (ph.st && ph.st.A.national) renderPhone(ph); }); }
+
+  function advItemsFor(phone) {
+    var loc = phoneLoc(), items = NAT.adv ? NAT.adv.items : [], mine = [], other = 0;
+    items.forEach(function (it) { if (it.muni == null || !loc || it.muni === loc.muni) mine.push(it); else other++; });
+    mine.sort(function (a, b) { return ADV_ORDER[a.level] - ADV_ORDER[b.level]; });
+    return { mine: mine, other: other };
+  }
+  function advMessage(phone, item) {
+    var lv = (ADV_MSG_LEVEL[item.hazard] || {})[item.level]; if (!lv) return null;
+    var p = phone.p, persona = p.persona === 'guard' ? 'adult' : p.persona;
+    return M.get({ hazard: item.hazard, level: lv, persona: persona, needs: persona === p.persona && p.also.length ? p.also : undefined, asleep: false, lang: shownLang(phone), also: false });
+  }
+  function advCard(phone, item, lang) {
+    var pl = chromeLang(lang), msg = advMessage(phone, item), hz = hazardOf(item.hazard);
+    var tone = item.level === 'danger' ? 'danger' : item.level === 'warning' ? 'warn' : 'info';
+    var tags = [h('span', { class: 'tag ' + tone, text: PT('al.adv.lvl.' + item.level, lang) }), h('span', { class: 'tag cool', title: PT('al.adv.calm', lang), text: PT('al.p.sim', lang) })];
+    if (/^nat\.adv\.(heat\.(warn|stop)|dust\.)/.test(item.key)) tags.push(h('span', { class: 'tag', text: PT('al.adv.est', lang) }));
+    if (item.muni) tags.push(h('span', { class: 'tag', text: muniName(item.muni, pl) }));
+    var kids = [
+      h('div', { class: 'adv-top' }, [h('span', { class: 'adv-ic' }, [picto(hz ? hz.pic : 'st-info')]), h('div', { class: 'adv-t' }, [h('b', { text: hz ? hz.name[pl] : (pl === 'ar' ? 'حركة المرور' : 'Traffic') }), h('span', { class: 'adv-tags' }, tags)])]),
+      h('p', { class: 'adv-text', text: pickL(item.text, pl) })
+    ];
+    if (msg && msg.lines && msg.lines.length) {
+      var pics = (msg.pictograms || []).filter(function (x) { return !/^(hz-|st-)/.test(x.id); }).slice(0, 3);
+      kids.push(h('div', { class: 'adv-do', lang: msg.lang, dir: msg.dir }, [
+        h('b', { class: 'adv-do-h', lang: pl, dir: pl === 'ar' ? 'rtl' : 'ltr', text: PT('al.adv.todo', lang) }),
+        pics.length ? h('ul', { class: 'adv-pics', role: 'list' }, pics.map(function (x) { return h('li', { class: 'pic' }, [h('span', { class: 'pic-svg' }, [picto(x.id)]), h('span', { class: 'pic-cap', text: x.label })]); })) : null,
+        h('ul', { class: 'adv-lines' }, msg.lines.slice(0, 3).map(function (t) { return h('li', { text: t }); })),
+        msg.draft ? h('span', { class: 'tag warn', lang: 'en', dir: 'ltr', text: MT('ui.alert.draft', 'en') }) : null
+      ]));
+      if (msg.sources && msg.sources.length) kids.push(h('p', { class: 'al-src', text: PT('al.sources', lang) + ': ' + msg.sources.map(function (s) { return s.id; }).join(' · ') }));
+    }
+    return h('article', { class: 'adv tone-' + tone, data: { hazard: item.hazard, level: item.level } }, kids);
+  }
+  function buildAdvisories(phone, lang) {
+    var a = advItemsFor(phone);
+    if (!a.mine.length && !a.other) return null;
+    var pl = chromeLang(lang), kids = [h('p', { class: 'al-note small', text: PT('al.adv.calm', lang) })];
+    a.mine.slice(0, 4).forEach(function (it) { kids.push(advCard(phone, it, lang)); });
+    if (a.mine.length > 4) kids.push(h('p', { class: 'al-note small', text: fill(PT('al.adv.more', lang), { n: a.mine.length - 4 }) }));
+    if (a.other) kids.push(h('p', { class: 'al-note small', text: fill(PT('al.adv.more', lang), { n: a.other }) }));
+    return card('al-adv', PT('al.adv.title', lang), kids, { role: 'region', 'aria-label': PT('al.adv.title', lang), data: { section: 'advisories' } });
+  }
+  // incidents far from this phone: one calm line each — the phone is told that the system knows, and that nothing is asked of it
+  function buildNatNotices(phone, lang) {
+    var loc = phoneLoc(), pl = chromeLang(lang), rows = [];
+    natActive().forEach(function (inc) {
+      if (inc.hazard === 'sos') return;
+      var d = loc ? haversineM(loc.lon, loc.lat, inc.lon, inc.lat) : null;
+      if (d == null || levelFor(inc.hazard, zoneOf(d, inc.radiusM), inc.level)) return;
+      rows.push({ inc: inc, d: d });
+    });
+    if (!rows.length) return null;
+    rows.sort(function (a, b) { return a.d - b.d; });
+    return card('al-fyi', PT('al.nat.fyi_title', lang), rows.slice(0, 3).map(function (r) {
+      var hz = hazardOf(r.inc.hazard), place = r.inc.place ? pickL(r.inc.place, pl) : r.inc.muni ? muniName(r.inc.muni, pl) : '';
+      return h('div', { class: 'resp-row fyi-row', data: { hazard: r.inc.hazard } }, [h('span', { class: 'adv-ic sm' }, [picto(hz ? hz.pic : 'st-info')]),
+        h('div', { class: 'resp-t' }, [h('b', { text: fill(PT('al.nat.fyi', lang), { hazard: hz ? hz.name[pl] : '', place: place || (pl === 'ar' ? 'قطر' : 'Qatar'), d: formatDistance(r.d, pl) }) })]), h('span', { class: 'tag cool', text: PT('al.p.sim', lang) })]);
+    }), { role: 'region', 'aria-label': PT('al.nat.fyi_title', lang), data: { section: 'notices' } });
+  }
+
+  // ---- stand-alone national demo: the real engine places an incident relative to the phones, picks the fastest units given simulated traffic, and runs on ----
+  var NAT_DEMOS = {
+    'fire-close': { hazard: 'fire', dx: 180, dy: 170, level: 'evacuate' },
+    'fire-near': { hazard: 'fire', dx: 640, dy: 630, level: 'evacuate' },
+    'gas-far': { hazard: 'gas', place: 'al-khor', level: 'evacuate' }
+  };
+  function stopNatDemo() { if (App.natDemo && App.natDemo.timer) clearInterval(App.natDemo.timer); App.natDemo = null; }
+  function natDemoTick() {
+    var d = App.natDemo, N = NATL(); if (!d || !N) return;
+    try {
+      N.step(d.nat, 8);
+      var disp = N.busDispatch(d.nat, d.id); if (!disp) return;
+      var sig = sigOf(disp);
+      if (sig !== d.last) { d.last = sig; onNational(Object.assign({}, disp, { demo: true })); }
+      if (disp.state === 'cleared') stopNatDemo();
+    } catch (e) { stopNatDemo(); }
+  }
+  function advDemo(kind) {
+    var N = NATL(), loc = phoneLoc(); if (!N || !loc) return false;
+    var mn = geoMuni(loc.muni) ? bothNames(geoMuni(loc.muni).name) : { ar: 'قطر', en: 'Qatar' };
+    var mk = function (key, params, level, hazard, muni) { return { key: key, params: params, level: level, hazard: hazard, muni: muni, text: N.renderMsg(key, params) }; };
+    // demo inputs, labelled SIM on the card: the 32.1 °C stop-work line is the published figure (S19); the measured value and the dust and rain numbers are made up for the demonstration
+    var items = kind === 'heat' ? [mk('nat.adv.heat.stop', { muni: mn, wbgt: 33.4, limit: 32.1 }, 'danger', 'heat', loc.muni)]
+      : kind === 'dust' ? [mk('nat.adv.dust.danger', { muni: mn, pm10: 310 }, 'danger', 'dust', loc.muni)]
+      : [mk('nat.adv.flood.watch', { muni: mn, mm: 22 }, 'watch', 'flood', loc.muni), mk('nat.adv.flood.underpass', { n: 2 }, 'warning', 'flood', null)];
+    onAdvisory({ type: 'advisory', scope: 'national', id: 'ADV-demo-' + kind, clock: '', items: items, sim: true });
+    return true;
+  }
+  function natDemo(kind) {
+    if (kind === 'heat' || kind === 'dust' || kind === 'flood') return advDemo(kind);
+    var spec = NAT_DEMOS[kind], N = NATL(), g = GEO();
+    if (!spec || !N || !g || !dataReady()) { Mn.toast({ ar: T('al.nd.fail'), en: PT('al.nd.fail', 'en') }, 'warn'); return false; }
+    stopNatDemo();
+    var loc = phoneLoc(), nat = engine(), at;
+    if (spec.place) { var pid = g.anchors && g.anchors[spec.place], p = (g.places || []).filter(function (x) { return x.id === pid; })[0]; at = p ? [p.lon, p.lat] : null; }
+    else at = N.offsetLL(loc.lon, loc.lat, spec.dx, spec.dy);
+    if (!at || !nat) { Mn.toast({ ar: T('al.nd.fail'), en: PT('al.nd.fail', 'en') }, 'warn'); return false; }
+    var inc = N.createIncident(nat, { hazard: spec.hazard, lon: at[0], lat: at[1], severity: 2 });
+    if (!inc) { Mn.toast({ ar: T('al.nd.fail'), en: PT('al.nd.fail', 'en') }, 'warn'); return false; }
+    N.approve(nat, inc.id); N.step(nat, 100);
+    var place = inc.place ? inc.place.name : null;
+    onNational({ type: 'alert', scope: 'national', id: inc.id, hazard: spec.hazard, level: spec.level, area: place, at: { lon: inc.lon, lat: inc.lat }, radiusM: NAT_RADIUS_DEFAULT_M,
+      incident: { id: inc.id, hazard: spec.hazard, muni: inc.muni, place: place }, hour: SET.night ? 4 : 10.5, demo: true, sim: true });
+    var disp = N.busDispatch(nat, inc.id);
+    if (disp) onNational(Object.assign({}, disp, { demo: true }));
+    App.natDemo = { id: inc.id, nat: nat, timer: setInterval(natDemoTick, 2000), last: disp ? sigOf(disp) : '' };
+    return true;
+  }
 
   /* ====================================================================================
    * 12. DELIVERING ALERTS TO PHONES (bus + stand-alone demo)
@@ -1779,6 +2396,8 @@
     renderPhone(phone);
   }
   function resetPhones() {
+    App.nb = { state: 'idle', data: null, loc: null, err: null, at: 0 }; App.loc = null; App.pageUi.call = false;
+    NAT.inc = {}; NAT.disp = {}; NAT.adv = null; NAT.advSig = ''; stopNatDemo();
     Object.keys(App.phones).forEach(function (id) {
       var ph = App.phones[id];
       ph.st = null; ph.V = null; ph.checkin = null; ph.awakeAck = false; ph.disp = null; ph.dispSig = null; ph.pressing = false; ph.dirty = false; ph.resp = {}; ph.voiceNote = ''; ph.voiceState = 'idle';
@@ -1787,7 +2406,7 @@
       renderPhone(ph);
     });
     Voice.stop(); Aud.stop(); lastAudioKey = ''; lastVoiceKey = '';
-    App.nb = { state: 'idle', data: null, err: null, at: 0 };
+    renderNearSection(); syncControls();
     stopDemoSim();
     syncAudio(true);
   }
@@ -1823,6 +2442,8 @@
   }
   function onBus(m) {
     if (!m || typeof m !== 'object') return;
+    if (m.type === 'advisory') { onAdvisory(m); return; }
+    if ((m.type === 'alert' || m.type === 'alert-update' || m.type === 'dispatch') && m.scope === 'national') { onNational(m); return; }
     if (m.type === 'alert' || m.type === 'alert-update') {
       var A = normAlert(m); if (!A) return;
       App.live.last = now(); App.live.count++; App.live.via = m.from || '';
@@ -1831,6 +2452,7 @@
     } else if (m.type === 'alert-clear') {
       App.live.last = now(); App.live.count++;
       Object.keys(App.phones).forEach(function (id) { clearAlertOn(App.phones[id], m.id != null ? String(m.id) : null); });
+      if (m.id != null) clearNational(String(m.id));
       syncAudio(); updateLive();
     } else if (m.type === 'dispatch') {
       var d = normDispatch(m); if (!d) return;
@@ -2032,6 +2654,13 @@
     var speed = $('#demo-speed'); if (speed && speed.value !== String(SET.speed)) speed.value = String(SET.speed);
     var tm = $('#demo-time'); if (tm) tm.value = SET.night ? 'night' : 'day';
     D.documentElement.setAttribute('data-strobe', SET.strobe ? 'on' : 'off');
+    var sl = $('#set-loc');
+    if (sl) {
+      var sig = Mn.lang() + '|' + (App.loc ? App.loc.src + (App.loc.value || '') : '-');
+      if (sl.getAttribute('data-sig') !== sig) { fillPlaceSelect(sl, 'settings', Mn.lang()); sl.setAttribute('data-sig', sig); }
+      var ln = $('#set-loc-note'), cl = phoneLoc();
+      if (ln) ln.textContent = cl && cl.src !== 'gps' ? fill(T('al.loc.note'), { place: locName(cl, Mn.lang()) }) : '';
+    }
   }
   function enableAlerts() {
     return Aud.enable().then(function (ok) {
@@ -2101,8 +2730,16 @@
   /* ---- events ---- */
   function onAct(ev) {
     var btn = ev.target.closest ? ev.target.closest('[data-act]') : null; if (!btn) return;
-    var cell = btn.closest('[data-phone]'), phone = cell ? App.phones[cell.getAttribute('data-phone')] : null; if (!phone) return;
+    var cell = btn.closest('[data-phone]'), phone = cell ? App.phones[cell.getAttribute('data-phone')] : null;
     var act = btn.getAttribute('data-act'), v = btn.getAttribute('data-v');
+    if (!phone) {                                                              // the page-level "Nearest emergency services" card
+      if (!btn.closest('#near')) return;
+      if (act === 'nearby') nearbyGps();
+      else if (act === 'nearby-clear') nearbyClear();
+      else if (act === 'call') { ev.preventDefault(); App.pageUi.call = true; renderNearSection(); }
+      else if (act === 'call-cancel') { App.pageUi.call = false; renderNearSection(); }
+      return;
+    }
     phone.pressing = false; phone.dirty = false;                              // the click is the end of the press: this handler renders what it needs
     switch (act) {
       case 'enable': enableAlerts(); break;
@@ -2120,9 +2757,9 @@
       case 'read': speakPhone(phone, false); break;
       case 'try': demoStart(v, 'evacuate', { night: v === 'fire' || v === 'gas' }); syncControls(); break;
       case 'hear': App.audible = phone.id; lastAudioKey = ''; Object.keys(App.phones).forEach(function (id) { renderPhone(App.phones[id]); }); syncControls(); if (Aud.state().enabled) syncAudio(true); else enableAlerts(); break;
-      case 'nearby': nearbyGo(); break;
+      case 'nearby': nearbyGps(); break;
       case 'nearby-clear': nearbyClear(); break;
-      case 'call': phone.ui.call = true; renderPhone(phone); break;
+      case 'call': ev.preventDefault(); phone.ui.call = true; renderPhone(phone); break;      // the first tap only opens the warning; the dialer link is in the second step
       case 'call-cancel': phone.ui.call = false; renderPhone(phone); break;
     }
   }
@@ -2166,6 +2803,13 @@
     });
     $('#more-pick').addEventListener('click', function (ev) { var b = ev.target.closest('[data-more]'); if (!b) return; App.more = b.getAttribute('data-more'); setMode('wall'); syncControls(); });
     ['qr-person', 'qr-lang', 'qr-base', 'qr-start'].forEach(function (id) { $('#' + id).addEventListener('input', drawQR); $('#' + id).addEventListener('change', drawQR); });
+    wrap.addEventListener('change', function (ev) {                          // "choose where you are" lists (a phone card, the page card, the settings)
+      var t = ev.target; if (!t || !t.matches || !t.matches('select[data-place]')) return;
+      var mode = t.getAttribute('data-place'), v = t.value;
+      if (v === '') { if (mode === 'settings') resetLoc(); return; }
+      if (v !== 'g') choosePlace(v);
+    });
+    $$('#ctl-nat [data-nat]').forEach(function (b) { b.addEventListener('click', function () { natDemo(b.getAttribute('data-nat')); syncControls(); }); });
     $('#qr-copy').addEventListener('click', copyLink);
     $('#qr-dl').addEventListener('click', downloadQR);
   }
@@ -2194,7 +2838,7 @@
     drawQR();
     setMode(mode); syncControls(); updateLive(); updateClocks();
     reduceMQ.addEventListener && reduceMQ.addEventListener('change', function () { SET.reduced = !!reduceMQ.matches; if (SET.reduced) SET.strobe = false; syncControls(); refreshLights(); rerenderAlerts(); });
-    root.addEventListener('langchange', function () { fillControls(); syncControls(); renderPicGrid(); renderPickers(); renderSoloInfo(); renderMoreInfo(); drawQR(); rerenderAll(); updateLive(); });
+    root.addEventListener('langchange', function () { fillControls(); syncControls(); renderPicGrid(); renderPickers(); renderSoloInfo(); renderMoreInfo(); drawQR(); rerenderAll(); renderNearSection(); updateLive(); });
     // the bus: live alerts from Mission Control (another tab of this browser)
     Mn.link.on(onBus);
     var last = Mn.link.last('alert'), lastClear = Mn.link.last('alert-clear'), lastD = Mn.link.last('dispatch');
@@ -2203,12 +2847,18 @@
       if (lastD && now() - (lastD.ts || 0) < 3600000) onBus(lastD);
       App.live.last = last.ts || now(); updateLive();
     }
+    var lastAdv = Mn.link.last('advisory');
+    if (lastAdv && now() - (lastAdv.ts || 0) < 3600000) { onBus(lastAdv); App.live.last = lastAdv.ts || now(); updateLive(); }
+    if (!last && lastD && lastD.scope === 'national' && now() - (lastD.ts || 0) < 3600000 && !(lastClear && (lastClear.ts || 0) >= (lastD.ts || 0))) { onBus(lastD); App.live.last = lastD.ts || now(); updateLive(); }
+    renderNearSection(); ensurePreview();
     ['pointerup', 'pointercancel', 'keyup', 'blur'].forEach(function (t) { root.addEventListener(t, function () { releasePress(); }, true); });
     setInterval(ladderTick, 250);
     setInterval(updateClocks, 15000);
     setInterval(updateLive, 1000);
     var hz = q.get('hazard');
     if (hz && M.normalize.hazard(hz)) { demoStart(M.normalize.hazard(hz), q.get('level') || 'evacuate', { night: q.get('asleep') !== '0' }); syncControls(); }
+    var nd = q.get('national');
+    if (nd && (NAT_DEMOS[nd] || nd === 'heat' || nd === 'dust' || nd === 'flood')) { setTimeout(function () { natDemo(nd); syncControls(); }, 0); }
     D.documentElement.setAttribute('data-alert-ready', '1');
     root.__alertReady = true;
   }

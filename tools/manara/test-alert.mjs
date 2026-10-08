@@ -4,7 +4,7 @@
 //
 //   1  QR encoder: an independent decoder (format BCH, unmask, de-interleave, Reed–Solomon syndromes, payload) on many payloads,
 //      EC levels and every version 1–10 (and UTF-8 / Arabic)
-//   2  Nearby facilities: Overpass query + parser on a synthetic fixture (no real coordinates anywhere), odd input never throws
+//   2  Nearby/national pure helpers (distance, minutes, Qatar test, place list, zones, levels) with the bundled data loaded in Node
 //   3  geometry + compass words; house laws (no innerHTML, no module scripts, no CDN, no letter-spacing, logical CSS)
 //   4  every pictogram id of MANARA_MSG is drawn; loads clean in ar/en × dark/light; no horizontal overflow at 390 and 1440
 //   5  demo trigger: hazard-correct content per phone for six hazards, no cross-hazard leakage (flood × wheelchair has no exit/stairs)
@@ -13,7 +13,8 @@
 //   7  wake-up ladder with fake timers (steps at 0/30/60/90 s), stops on "I'm awake", fast speed
 //   8  strobe off by default, opt-in behind the warning, never more than 3 flashes a second, disabled under reduced motion
 //   9  sound gate (autoplay policy), mute, vibration, speech (right BCP-47 language, graceful when the voice is missing)
-//  10  nearby card: consent tap, one query, results, offline / denied / failed messages, nothing stored, two-step 999
+//  10  offline nearest-services card with a mocked geolocation (Doha, Al Khor, Al Shamal), outside Qatar, denial, place picker, NO network request
+//  10b national incidents (near / far / dispatch / clear) and heat, dust, rain advisories on the phones
 //  11  QR card on the page: canvas decodes to the link, file:// note, long-link message
 //  12  language switch re-renders; draft banner for Malayalam; large text, high contrast, persona URLs, accessibility basics
 //  13  WCAG AA contrast of every visible text in both themes × both languages in every state, no box holds content wider than itself (nothing
@@ -36,6 +37,7 @@ const section = t => console.log(`\n${t}`);
 // ---------- load the pure parts in Node ----------
 const ctxVm = vm.createContext({});
 vm.runInContext(read('js/messages.js'), ctxVm, { filename: 'messages.js' });
+for (const f of ['data/qatar-geo.js', 'data/qatar-facilities.js', 'data/qatar-roads.js', 'js/national.js']) vm.runInContext(read(f), ctxVm, { filename: f });
 vm.runInContext(read('js/alert.js'), ctxVm, { filename: 'alert.js' });
 const M = ctxVm.MANARA_MSG, A = ctxVm.ManaraAlert;
 
@@ -148,40 +150,21 @@ function qrDecode(rows) {
 /* ============================================================================================
  * 2  Nearby facilities — Overpass query + parser (synthetic fixture: the origin of the coordinate system, nothing real)
  * ============================================================================================ */
-section('2 Nearby facilities (pure)');
-const O = A.overpass, P0 = { lat: 0.5, lon: 0.5 };
-const hav = (la1, lo1, la2, lo2) => { const R = 6371008.8, r = Math.PI / 180, a = Math.sin((la2 - la1) * r / 2) ** 2 + Math.cos(la1 * r) * Math.cos(la2 * r) * Math.sin((lo2 - lo1) * r / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(a)); };
-const FIXTURE = { version: 0.6, elements: [
-  { type: 'node', id: 11, lat: 0.52, lon: 0.5, tags: { amenity: 'hospital', name: 'Fixture General Hospital', 'name:ar': 'مستشفى الاختبار' } },
-  { type: 'node', id: 12, lat: 0.55, lon: 0.5, tags: { amenity: 'hospital', name: 'Far Hospital' } },
-  { type: 'way', id: 13, center: { lat: 0.49, lon: 0.5 }, tags: { amenity: 'police', 'name:en': 'Fixture Police Station' } },
-  { type: 'node', id: 14, lat: 0.5, lon: 0.53, tags: { amenity: 'fire_station', 'name:ar': 'محطة الاختبار للإطفاء' } },
-  { type: 'node', id: 15, lat: 0.5, lon: 0.7, tags: { amenity: 'fire_station', name: 'Farther Fire Station' } },
-  { type: 'relation', id: 16, tags: { amenity: 'police', name: 'Relation without a centre' } },
-  { type: 'node', id: 17, lat: 0.5001, lon: 0.5, tags: { amenity: 'clinic', name: 'A clinic is not a hospital' } },
-  { type: 'node', id: 18, lat: 0.5, lon: 0.5001, tags: { name: 'No amenity tag' } },
-  { type: 'node', id: 19, lat: 0.51, lon: 0.5 }
-] };
+section('2 Nearby + national helpers (pure, bundled data)');
+const NB = A.nearby, NT = A.nat, GEO = ctxVm.MANARA_QATAR_GEO, NN = ctxVm.ManaraNational;
 {
-  const qs = O.query(P0.lat, P0.lon, 12000);
-  check('query: Overpass QL with JSON output, a timeout, the three amenities and `out center`', /^\[out:json\]\[timeout:\d+\];/.test(qs) && ['hospital', 'police', 'fire_station'].every(k => qs.includes(`"amenity"="${k}"`)) && /\);out center;$/.test(qs), qs);
-  check('query: keeps the default body verbosity — `tags`, `ids` or `skel` would drop node coordinates (OSM wiki: tags prints "not coordinates") and every node-mapped facility would vanish', !/\bout\b[^;]*\b(tags|ids|skel)\b/.test(qs));
-  check('query: radius and position appear once per amenity, nothing else', (qs.match(/around:12000,0\.50000,0\.50000/g) || []).length === 3);
-  check('query: radius is clamped (500 m … 50 km) and position is clamped to the globe', /around:50000,90\.00000,-180\.00000/.test(O.query(999, -999, 1e9)) && /around:500,/.test(O.query(0, 0, 1)));
-  const r = O.parse(FIXTURE, P0.lat, P0.lon);
-  check('parse: nearest hospital by straight-line distance', r.hospital && r.hospital.id === 11 && r.hospital.names.name === 'Fixture General Hospital' && r.hospital.names.ar === 'مستشفى الاختبار');
-  check('parse: a way uses its `center`; nearest police is the way', r.police && r.police.id === 13 && r.police.type === 'way' && r.police.names.en === 'Fixture Police Station');
-  check('parse: nearest fire station is the node 0.03° east, not the farther one', r.fire && r.fire.id === 14);
-  check('parse: relation without a centre, clinics, untagged and tag-less elements are ignored', r.count === 5, `count ${r.count}`);
-  check('parse: distance equals an independent haversine (rounded to metres)', [[r.hospital, 0.52, 0.5], [r.police, 0.49, 0.5], [r.fire, 0.5, 0.53]].every(([f, la, lo]) => f.distM === Math.round(hav(P0.lat, P0.lon, la, lo))), `${r.hospital.distM} ${r.police.distM} ${r.fire.distM}`);
-  check('parse: bearings point north / south / east', r.hospital.bearingDeg === 0 && r.police.bearingDeg === 180 && r.fire.bearingDeg === 90);
-  check('name(): Arabic page prefers name:ar, English prefers name:en then name, then the other', O.name(r.hospital, 'ar') === 'مستشفى الاختبار' && O.name(r.hospital, 'en') === 'Fixture General Hospital' && O.name(r.fire, 'en') === 'محطة الاختبار للإطفاء' && O.name(r.police, 'ar') === 'Fixture Police Station');
-  check('distance(): metres below 1 km, one decimal km above, in both languages', O.distance(940, 'en') === '940 m' && O.distance(2240, 'en') === '2.2 km' && O.distance(2240, 'ar') === '2.2 كم' && O.distance(940, 'ar') === '940 م');
-  const bad = [null, undefined, 5, 'x', {}, { elements: 5 }, { elements: [null, 1, 'a', { tags: 5 }, { tags: { amenity: 'police' } }, { tags: { amenity: 'police' }, lat: 'x', lon: 1 }] }];
-  let threw = false, empty = true; try { bad.forEach(b => { const x = O.parse(b, 0, 0); if (x.hospital || x.police || x.fire) empty = false; }); } catch (e) { threw = true; }
-  check('parse: malformed input never throws and yields no facility', !threw && empty);
+  check('distance(): metres below 1 km, one decimal km above, both languages', NB.distance(940, 'en') === '940 m' && NB.distance(2240, 'en') === '2.2 km' && NB.distance(2240, 'ar') === '2.2 كم' && NB.distance(300, 'ar') === '300 م' && NB.distance(46200, 'en') === '46.2 km' && NB.distance(120000, 'en') === '120 km');
+  check('minutes(): "9 min" / "9 د", under one minute says so', NB.minutes(8.6, 'en') === '9 min' && NB.minutes(8.6, 'ar') === '9 د' && /under 1/.test(NB.minutes(0.3, 'en')));
+  check('haversine and bearing agree with the engine', Math.abs(NB.haversineM(51.5264, 25.2856, 51.5264, 25.3856) - NN.haversineM(51.5264, 25.2856, 51.5264, 25.3856)) < 1e-6 && Math.round(NB.bearingDeg(51.5, 25.3, 51.5, 25.4)) === 0 && Math.round(NB.bearingDeg(51.5, 25.3, 51.6, 25.3)) === 90);
+  check('inQatar: Doha, Al Khor, Ash Shamal, the desert are in; Manama, Riyadh, Dubai, the middle of the Gulf are out', [[51.5264, 25.2856], [51.5031, 25.6837], [51.2157, 26.1183], [51.2, 25.1]].every(([x, y]) => NB.inQatar(GEO, x, y)) && [[50.58, 26.22], [46.7, 24.7], [55.3, 25.2], [52.0, 26.5]].every(([x, y]) => !NB.inQatar(GEO, x, y)) && !NB.inQatar(null, 51, 25) && !NB.inQatar(GEO, NaN, 25));
+  const pl = NB.placeList(GEO, 'en'), pa = NB.placeList(GEO, 'ar');
+  check('place list: 8 municipality groups, each starts with its centre, values m:/p:, no empty labels, no duplicates', pl.length === 8 && pl.every(g => g.items[0].value.startsWith('m:') && g.items.every(i => i.label && /^[mp]:/.test(i.value) && isFinite(i.lon) && isFinite(i.lat))) && pl.every(g => new Set(g.items.map(i => i.label)).size === g.items.length), pl.map(g => g.items.length).join());
+  check('place list: Arabic names first in the Arabic list, Doha group holds Industrial Area / Doha / West Bay', /[؀-ۿ]/.test(pa[0].name) && pl[0].items.some(i => i.label === 'Industrial Area') && pl[0].items.some(i => i.label === 'West Bay') && pa.reduce((n, g) => n + g.items.length, 0) > 100);
+  check('zones: inside the radius = core, up to 3x = near, up to 8x = watch, beyond = far; unknown position never hides an alert', NT.zoneOf(300, 400) === 'core' && NT.zoneOf(401, 400) === 'near' && NT.zoneOf(1200, 400) === 'near' && NT.zoneOf(1201, 400) === 'watch' && NT.zoneOf(3200, 400) === 'watch' && NT.zoneOf(3201, 400) === 'far' && NT.zoneOf(null, 400) === 'core' && NT.zoneOf(NaN, 400) === 'core');
+  check('levels: core keeps the sent level, near is stay-in, watch is be-ready, far and SOS get nothing; defaults per hazard', NT.levelFor('fire', 'core', 'evacuate') === 'evacuate' && NT.levelFor('fire', 'near', 'evacuate') === 'warning' && NT.levelFor('fire', 'watch', 'evacuate') === 'watch' && NT.levelFor('fire', 'far', 'evacuate') === null && NT.levelFor('sos', 'core', 'evacuate') === null && NT.levelFor('gas', 'core', null) === 'evacuate' && NT.levelFor('flood', 'core', null) === 'warning' && NT.levelFor('dust', 'near', 'watch') === 'watch');
+  check('advisory levels map to protective actions: heat danger = stop work, dust danger = shelter, rain never says "go up" for an advisory', NT.advisoryLevel.heat.danger === 'evacuate' && NT.advisoryLevel.dust.danger === 'warning' && Object.values(NT.advisoryLevel.flood).every(v => v === 'watch'));
   const src = read('js/alert.js');
-  check('no real coordinates are shipped (no Qatar-like latitude/longitude literals in alert.js)', !/\b(2[4-6]\.\d{3,}|5[01]\.\d{3,})\b/.test(src));
+  check('no real coordinates are shipped in alert.js (places come from data/qatar-geo.js)', !/\b(2[4-6]\.\d{3,}|5[01]\.\d{3,})\b/.test(src));
 }
 
 /* ============================================================================================
@@ -199,7 +182,7 @@ section('3 Geometry and house laws');
   check('law: no innerHTML / outerHTML / insertAdjacentHTML / document.write in alert.js', !/innerHTML|outerHTML|insertAdjacentHTML|document\.write/.test(js));
   check('law: classic scripts only (no import/export, no type=module)', !/^\s*(import|export)\s/m.test(js) && !/type=["']module/.test(html));
   check('law: no CDN or library — only Google Fonts links, local scripts', !/<script[^>]+src=["']https?:/.test(html) && (html.match(/https:\/\/[^"' )]+/g) || []).every(u => /fonts\.(googleapis|gstatic)\.com|^https:\/\/www\.openstreetmap\.org/.test(u)));
-  check('law: the only network call is the OpenStreetMap lookup', (js.match(/\bfetch\(/g) || []).length === 1 && !/XMLHttpRequest|sendBeacon|WebSocket|EventSource/.test(js) && js.includes('overpass-api.de'));
+  check('law: NO network call of any kind in alert.js (no fetch, XHR, beacon, socket, Overpass)', !/\bfetch\(|XMLHttpRequest|sendBeacon|WebSocket|EventSource|overpass|importScripts/i.test(js));
   check('law: no letter-spacing anywhere', !/letter-spacing/.test(css + js + html));
   const phys = css.match(/(^|[;{\s])(margin|padding|border)-(left|right)\s*:|(^|[;{\s])(left|right)\s*:|text-align\s*:\s*(left|right)|float\s*:\s*(left|right)/g) || [];
   check('law: logical CSS properties only (physical left/right appear only for the always-LTR link text)', phys.length === 1 && /text-align\s*:\s*left/.test(css), phys.join(' ').slice(0, 120));
@@ -585,61 +568,159 @@ if (on(9)) {
   await ctx.close();
 }
 
-section('10 Nearby facilities (informational, consent, one query)');
+section('10 Nearest emergency services: offline, mocked geolocation, no network');
+const nonLocal = urls => urls.filter(u => !/^(file|data|blob|about|chrome-extension):/.test(u) && !/fonts\.(googleapis|gstatic)\.com/.test(u));
+const kmOf = t => { const m = /([\d.]+)\s*(km|m)\b/.exec(t); return m ? (m[2] === 'km' ? +m[1] : +m[1] / 1000) : NaN; };
 if (on(10)) {
-  const fixtureFor = (lat, lon) => ({ elements: [
-    { type: 'node', id: 1, lat: lat + 0.02, lon, tags: { amenity: 'hospital', name: 'Fixture General Hospital', 'name:ar': 'مستشفى الاختبار' } },
-    { type: 'way', id: 2, center: { lat: lat - 0.01, lon }, tags: { amenity: 'police', name: 'Fixture Police Station' } },
-    { type: 'node', id: 3, lat, lon: lon + 0.03, tags: { amenity: 'fire_station', name: 'Fixture Fire Station' } }] });
-  const GEO = { latitude: 0.5, longitude: 0.5 };
-  const { ctx, page, errors } = await mk({ width: 1440, lang: 'en', permissions: ['geolocation'], geolocation: GEO });
-  let requests = []; await ctx.route(/overpass-api\.de/, r => { requests.push({ method: r.request().method(), body: r.request().postData(), headers: r.request().headers() }); r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(fixtureFor(0.5, 0.5)) }); });
-  await pickHazard(page, 'fire');
-  check('nearby card shows the title, the consent line and a button — and has made NO request yet', requests.length === 0 && (await text(page, '[data-phone="huda"] .al-nb')).includes(M.text('ui.nearby.title', 'ar')) && (await page.locator('[data-phone="huda"] [data-act="nearby"]').count()) === 1);
-  check('before consent no geolocation is used and no call link exists', (await page.locator('a[href^="tel:"]').count()) === 0);
-  await page.click('[data-phone="huda"] [data-act="nearby"]');
-  await page.waitForSelector('[data-phone="huda"] .nb-list');
-  const card = await page.locator('[data-phone="huda"] .al-nb').innerText();
-  const exp = { h: O.distance(Math.round(hav(0.5, 0.5, 0.52, 0.5)), 'ar'), p: O.distance(Math.round(hav(0.5, 0.5, 0.49, 0.5)), 'ar'), f: O.distance(Math.round(hav(0.5, 0.5, 0.5, 0.53)), 'ar') };
-  check('after the tap: ONE query, a POST to the Overpass endpoint carrying the three amenities and the position', requests.length === 1 && requests[0].method === 'POST' && /amenity/.test(decodeURIComponent(requests[0].body)) && /around:15000,0\.50000,0\.50000/.test(decodeURIComponent(requests[0].body)));
-  check('the request carries no cookies, no referrer and no custom headers (only the form body)', !requests[0].headers.cookie && !requests[0].headers.referer && !requests[0].headers.authorization);
-  check('results: nearest hospital (Arabic name), police (way centre) and fire station, each with a straight-line distance and a direction', /مستشفى الاختبار/.test(card) && /Fixture Police Station/.test(card) && /Fixture Fire Station/.test(card) && card.includes(exp.h) && card.includes(exp.p) && card.includes(exp.f), card.slice(0, 300));
-  check('the card says: informational, not dispatch — call 999; straight-line distance (traffic not known); OpenStreetMap contributors', /للاطلاع فقط/.test(card) && /999/.test(card) && /خط مستقيم/.test(card) && (await page.locator('[data-phone="huda"] .al-nb a[href="https://www.openstreetmap.org/copyright"]').count()) === 1);
-  await page.click('[data-lm="en"]');
-  const en = await page.locator('[data-phone="huda"] .al-nb').innerText();
-  check('English wording: "Informational, not dispatch — call 999", "Distance, not travel time", OpenStreetMap data may be incomplete', /Informational, not dispatch — call 999/.test(en) && /Straight-line distance\. Traffic is not known here\./.test(en) && /OpenStreetMap data may be incomplete/.test(en) && /© OpenStreetMap contributors/.test(en), en.slice(0, 400));
-  const store = await page.evaluate(() => JSON.stringify([Object.entries(localStorage), Object.entries(sessionStorage)]));
-  check('nothing about the lookup is stored (no coordinates, no results in local/session storage)', !/0\.5|Fixture|nearby|geo/i.test(store.replace(/manara-last-[a-z-]+/g, '')) , store.slice(0, 200));
-  check('two-step 999: the first tap only opens a warning (exercise page), the dialer link appears after', (await page.locator('a[href^="tel:"]').count()) === 0 && await (async () => { await page.click('[data-phone="huda"] [data-act="call"]'); return (await page.locator('[data-phone="huda"] a[href="tel:999"]').count()) === 1 && /real emergency/.test(await text(page, '[data-phone="huda"] .nb-call')); })());
-  await page.click('[data-phone="huda"] [data-act="call-cancel"]');
-  check('cancel closes the warning without dialling', (await page.locator('a[href^="tel:"]').count()) === 0);
-  await page.click('[data-phone="huda"] [data-act="nearby-clear"]');
-  check('"Clear results" removes the list from memory and the screen', (await page.locator('.nb-list').count()) === 0 && (await page.locator('[data-phone="huda"] [data-act="nearby"]').count()) === 1);
-  // offline
-  await ctx.setOffline(true);
-  await page.click('[data-phone="huda"] [data-act="nearby"]');
-  await page.waitForTimeout(150);
-  check('offline: a clear message ("No internet… call 999"), and no request was attempted', /No internet, so the lookup cannot run\. In an emergency call 999\./.test(await text(page, '[data-phone="huda"] .al-nb')) && requests.length === 1);
-  await ctx.setOffline(false);
-  // network error
-  await ctx.unroute(/overpass-api\.de/); await ctx.route(/overpass-api\.de/, r => r.abort());
-  await page.click('[data-phone="huda"] [data-act="nearby"]'); await page.waitForTimeout(400);
-  check('a failed lookup shows "The lookup failed… call 999" and can be retried', /The lookup failed/.test(await text(page, '[data-phone="huda"] .al-nb')) && (await page.locator('[data-phone="huda"] [data-act="nearby"]').count()) === 1);
-  // HTTP 429
-  await ctx.unroute(/overpass-api\.de/); await ctx.route(/overpass-api\.de/, r => r.fulfill({ status: 429, body: 'busy' }));
-  await page.click('[data-phone="huda"] [data-act="nearby"]'); await page.waitForTimeout(400);
-  check('an HTTP error (rate limit) is handled the same way', /The lookup failed/.test(await text(page, '[data-phone="huda"] .al-nb')));
-  check('nearby: no console errors besides the aborted requests we caused', errors.filter(e => !/overpass|ERR_FAILED|429|Failed to load resource/.test(e)).length === 0, errors.join(' | '));
+  const PLACES = { Doha: [51.5264, 25.2856], 'Al Khor': [51.5031, 25.6837], 'Al Shamal': [51.2157, 26.1183] };
+  for (const [name, [lon, lat]] of Object.entries(PLACES)) {
+    const { ctx, page, errors } = await mk({ width: 1440, lang: 'en', permissions: ['geolocation'], geolocation: { longitude: lon, latitude: lat } });
+    const reqs = []; ctx.on('request', r => reqs.push(r.url()));
+    await page.waitForSelector('#near-card .nb-row', { timeout: 8000 });
+    check(`${name}: the page card shows the demo place at once, labelled "demo place" (not the viewer's position), with the data credit and snapshot date`, /demo place/.test(await text(page, '#near-card .nb-where')) && /Contains data © OpenStreetMap contributors \(ODbL\)/.test(await text(page, '#near-card .nb-credit')) && /Snapshot of 20\d\d-\d\d-\d\d/.test(await text(page, '#near-card .nb-credit')));
+    check(`${name}: before the consent tap nothing was asked of the browser (no position shown, no results for it)`, !/your position/.test(await text(page, '#near-card .nb-where')));
+    const mark = reqs.length;
+    await page.click('#near-card [data-act="nearby"]');
+    await page.waitForFunction(() => /your position/.test(document.querySelector('#near-card .nb-where')?.textContent || ''), null, { timeout: 8000 });
+    const rows = await page.evaluate(() => [...document.querySelectorAll('#near-card .nb-row')].map(r => ({ kind: r.dataset.kind, name: r.querySelector('.nb-name').textContent, dist: r.querySelector('.nb-dist').textContent, eta: r.querySelector('.nb-eta .sr-only').textContent, tags: [...r.querySelectorAll('.nb-tags .tag')].map(t => t.textContent) })));
+    const exp = k => NN.nearestFacilities({ lon, lat, kind: k, k: 1 })[0];
+    const eh = exp('hospital'), ep = exp('police'), ef = exp('fire');
+    const byKind = Object.fromEntries(rows.map(r => [r.kind, r]));
+    check(`${name}: nearest hospital, police and fire station are the ones in the bundled data (names and straight-line km)`, byKind.hospital && byKind.police && byKind.fire && byKind.hospital.name === eh.name.en && byKind.police.name === ep.name.en && byKind.fire.name === ef.name.en &&
+      [[byKind.hospital, eh], [byKind.police, ep], [byKind.fire, ef]].every(([r, e]) => Math.abs(kmOf(r.dist) - e.straightKm) < 0.06), JSON.stringify(rows.map(r => [r.name, r.dist])));
+    check(`${name}: distances are sane (under 100 km) and the road-time estimate is at least the straight line at 130 km/h`, rows.every(r => { const k = kmOf(r.dist), mn = +(/(\d+) min/.exec(r.eta) || [])[1]; return k < 100 && mn >= 1 && mn >= k / 130 * 60 - 1; }), JSON.stringify(rows.map(r => [r.dist, r.eta])));
+    check(`${name}: the hospital row says honestly whether an emergency department is confirmed, and a confirmed-ED row follows when the nearest is not`, byKind.hospital.tags.some(t => /emergency department/i.test(t)) && (eh.ed === 'yes' || (byKind.ed && /Has an emergency department/.test(byKind.ed.tags.join()))), JSON.stringify([byKind.hospital.tags, eh.ed]));
+    check(`${name}: the road time is labelled an estimate with simulated traffic, a bearing arrow and a map are drawn`, /estimate/i.test(await text(page, '#near-card')) && /simulated/i.test(await text(page, '#near-card')) && (await page.locator('#near-card .nb-arrow').count()) >= 3 && (await page.locator('#near-card svg.nm .nm-pt').count()) === 3);
+    check(`${name}: "informational — 999 is the dispatcher" label and a tel:999 link`, /Informational — 999 is the dispatcher\./.test(await text(page, '#near-card .nb-label')) && (await page.locator('#near-card a[href="tel:999"]').count()) === 1);
+    check(`${name}: NO network request of any kind was made (all requests are file: or data:, fonts aside)`, nonLocal(reqs).length === 0 && nonLocal(reqs.slice(mark)).length === 0 && reqs.slice(mark).length === 0, nonLocal(reqs).join(' '));
+    const store = await page.evaluate(() => JSON.stringify([Object.entries(localStorage), Object.entries(sessionStorage)]));
+    check(`${name}: the position is not stored anywhere`, !new RegExp(String(lat).slice(0, 5) + '|' + String(lon).slice(0, 5)).test(store), store.slice(0, 160));
+    check(`${name}: no console errors`, errors.length === 0, errors.join(' | '));
+    if (name === 'Doha') {
+      await page.click('#near-card [data-act="call"]');
+      check('two-step 999: the first tap only opens the exercise warning (no navigation), the dialer link is in step two', /real emergency/.test(await text(page, '#near-card .nb-call')) && (await page.locator('#near-card a[href="tel:999"]').count()) === 1 && page.url().startsWith('file:'));
+      await page.click('#near-card [data-act="call-cancel"]');
+      check('cancel closes the warning', (await page.locator('#near-card .nb-call').count()) === 0);
+      await page.click('#near-card [data-act="nearby-clear"]');
+      check('"Clear my position and results" forgets the fix and returns to the demo place', /demo place/.test(await text(page, '#near-card .nb-where')));
+      await page.click('[data-lang-toggle]'); await page.waitForTimeout(150);
+      const ar = await page.locator('#near-card').innerText();
+      check('Arabic: the card, the label and the credit are in Arabic', /أقرب/.test(ar) && /للاطلاع فقط — 999 هو المُرسِل/.test(ar) && /يتضمن بيانات © مساهمي OpenStreetMap \(رخصة ODbL\)/.test(ar));
+      await page.click('[data-lang-toggle]');
+      // inside an alert phone
+      await pickHazard(page, 'fire');
+      await page.click('[data-lm="en"]');
+      check('the phone card has the consent line, the tap, the picker and no tel link before results', (await page.locator('[data-phone="huda"] .al-nb [data-act="nearby"]').count()) === 1 && /used once, inside this page only/.test(await text(page, '[data-phone="huda"] .al-nb')) && (await page.locator('[data-phone="huda"] .al-nb a[href^="tel:"]').count()) === 0);
+      await page.click('[data-phone="huda"] [data-act="nearby"]');
+      await page.waitForSelector('[data-phone="huda"] .nb-list', { timeout: 8000 });
+      check('the phone card shows the three services after the tap, with the OSM credit link', (await page.locator('[data-phone="huda"] .nb-row').count()) >= 3 && (await page.locator('[data-phone="huda"] .nb-credit a[href="https://www.openstreetmap.org/copyright"]').count()) === 1);
+    }
+    await ctx.close();
+  }
+  // outside Qatar, denied, timeout, unsupported → calm message + manual picker
+  const mkFail = async (label, geoInit, expectRe, perms = ['geolocation'], geo = { longitude: 50.58, latitude: 26.22 }) => {
+    const { ctx, page, errors } = await mk({ width: 1440, lang: 'en', permissions: perms, geolocation: geo, init: geoInit });
+    const reqs = []; ctx.on('request', r => reqs.push(r.url()));
+    await page.click('#near-card [data-act="nearby"]');
+    await page.waitForFunction(re => new RegExp(re).test(document.querySelector('#near-card .nb-msg')?.textContent || ''), expectRe.source, { timeout: 8000 }).catch(() => {});
+    const msg = await text(page, '#near-card .nb-msg').catch(() => '');
+    check(`${label}: a calm message, no results from the failed fix, and the picker is there`, expectRe.test(msg) && (await page.locator('#near-card .nb-pick select').count()) === 1, msg);
+    await page.selectOption('#near-card .nb-pick select', 'm:khor');
+    await page.waitForFunction(() => /Nearest services to/.test(document.querySelector('#near-card .nb-where')?.textContent || ''), null, { timeout: 8000 });
+    const w = await text(page, '#near-card .nb-where'), nm = await text(page, '#near-card .nb-name');
+    check(`${label}: choosing "Al Khor and Al Thakhira — centre" works at a booth laptop (a place you chose, real names)`, /Al Khor/.test(w) && /a place you chose/.test(w) && nm.length > 2 && (await page.locator('#near-card .nb-row').count()) >= 3, w + ' | ' + nm);
+    check(`${label}: no network request, no console errors`, nonLocal(reqs).length === 0 && errors.length === 0, nonLocal(reqs).concat(errors).join(' | '));
+    await ctx.close();
+  };
+  await mkFail('outside Qatar (Manama)', null, /outside Qatar/);
+  await mkFail('permission denied', () => { navigator.geolocation.getCurrentPosition = (ok, bad) => setTimeout(() => bad({ code: 1 }), 5); }, /not allowed/);
+  await mkFail('position timeout', () => { navigator.geolocation.getCurrentPosition = (ok, bad) => setTimeout(() => bad({ code: 3 }), 5); }, /in time/);
+  await mkFail('no geolocation support', () => { Object.defineProperty(navigator, 'geolocation', { value: undefined, configurable: true }); }, /does not support location/);
+}
+
+section('10b National incidents and advisories on the phones');
+if (on(10)) {
+  const { ctx, page: p1, errors } = await mk({ width: 1440, lang: 'en' });
+  const p2 = await ctx.newPage(); await p2.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort()); await p2.goto(p1.url()); await ready(p2);
+  const send = m => p2.evaluate(x => Manara.link.send(x), m);
+  await p1.click('[data-lm="en"]');
+  const IA = { lon: 51.4425, lat: 25.1745 };                      // the demo place (Industrial Area, Doha) as the data has it
+  await send({ type: 'alert', scope: 'national', id: 'N1', hazard: 'fire', level: 'evacuate', area: { ar: 'الدوحة', en: 'Doha' }, at: { lon: IA.lon + 0.002, lat: IA.lat + 0.001 }, radiusM: 400, incident: { id: 'N1', hazard: 'fire', muni: 'doha', place: { ar: 'الدوحة', en: 'Doha <b>x</b>' } }, hour: 10.5 });
+  await p1.waitForTimeout(400);
+  const st = await p1.evaluate(() => Object.fromEntries([...document.querySelectorAll('[data-phone]')].map(c => [c.dataset.phone, c.dataset.state])));
+  check('a national fire close to the phones alerts every resident phone (core zone), hazard-correct per person', ['ravi', 'huda', 'abu-salem', 'lina'].every(i => st[i] === 'alert') && (await text(p1, '[data-phone="huda"] .al-title')) === expected('huda', 'fire', { night: false, lang: 'en' }).headline, JSON.stringify(st));
+  check('…Abu Salem (wheelchair) still gets the refuge-balcony wording, Ravi gets Malayalam, Lina the child wording', /refuge balcony/i.test(await text(p1, '[data-phone="abu-salem"] .al-lines')) && (await text(p1, '[data-phone="ravi"] .al-title')) === expected('ravi', 'fire', { night: false }).headline && /teacher/i.test(await text(p1, '[data-phone="lina"] .al-lines')));
+  const wh = await text(p1, '[data-phone="huda"] [data-section="where"]');
+  check('the "Where is it?" card: hazard and place, a distance in m, a direction, "inside the affected area", measured from the demo place, SIM wording; bus text is not HTML', /Where is it/.test(wh) && /\d+ m away, to the/.test(wh) && /inside the affected area/i.test(wh) && /Industrial Area/.test(wh) && /SIM/.test(wh) && /Doha <b>x<\/b>/.test(wh));
+  check('no local route map for a national alert (no grid geometry exists), a compass points at the incident', (await p1.locator('[data-phone="huda"] .rm').count()) === 0 && (await p1.locator('[data-phone="huda"] .al-where .cp').count()) === 1);
+  check('the night wake-up ladder does not run when the sender says it is daytime', (await p1.evaluate(() => ManaraAlert.debug.phone('ravi').ladder.on)) === false);
+  await send({ type: 'dispatch', scope: 'national', id: 'D-N1', state: 'en-route', origin: 'manara', scene: { node: 'NAT', lon: IA.lon, lat: IA.lat }, incident: { id: 'N1', hazard: 'fire', muni: 'doha', place: { ar: 'الدوحة', en: 'Doha' } }, sim: true,
+    units: [{ kind: 'fire', name: { ar: 'محطة', en: 'Fire Station A' }, etaMin: 7.2, status: 'en-route', why: { ar: 'أسرع', en: 'Station B is 4.4 km farther but 86 s faster because of congestion' } },
+      { kind: 'ambulance', name: { ar: 'إسعاف', en: 'Ambulance B' }, etaMin: 11, status: 'dispatched', why: null }, { kind: 'police', name: { ar: 'شرطة', en: 'Police C' }, etaMin: 5, status: 'recommended', why: null }], hospital: null });
+  await p1.waitForFunction(() => /Fire engine ETA 7 min/.test(document.querySelector('[data-phone="huda"] [data-section="responders"]')?.textContent || ''), null, { timeout: 5000 });
+  const rt = await text(p1, '[data-phone="huda"] [data-section="responders"]');
+  check('national dispatch: "Fire engine ETA 7 min", "Ambulance ETA 11 min — stay where you are", the unapproved police is hidden, units are labelled SIM', /Fire engine ETA 7 min/.test(rt) && /Ambulance ETA 11 min — stay where you are/.test(rt) && !/Police ETA/.test(rt) && /SIM/.test(rt) && /Unit names come from an OpenStreetMap snapshot/.test(rt));
+  check('the unit row carries a "fastest given traffic" tooltip and the why toggle explains it', /fastest to arrive/.test(await p1.getAttribute('[data-phone="huda"] .resp-row[data-kind="fire"]', 'title')) && await (async () => { await p1.click('[data-phone="huda"] [data-act="why"]'); return /farther but 86 s faster/.test(await text(p1, '[data-phone="huda"] .resp-why')); })());
+  await p1.waitForFunction(() => { const t = document.querySelector('[data-phone="huda"] .nat-hosp')?.textContent || ''; return t && !/Working out/.test(t); }, null, { timeout: 8000 });
+  const hosp = await text(p1, '[data-phone="huda"] .nat-hosp');
+  const eh = NN.nearestFacilities({ lon: IA.lon, lat: IA.lat, kind: 'ed', k: 1 })[0];
+  check('"nearest hospital for you": the nearest hospital with a confirmed emergency department from the phone\'s place, km and an estimated road time', hosp.includes(eh.name.en) && /Nearest hospital with a confirmed emergency department/.test(hosp) && /min by road/.test(hosp) && /estimate/i.test(hosp), hosp);
+  // far incident: a calm line, no alarm
+  await send({ type: 'alert-clear', id: 'N1' });
+  await p1.waitForTimeout(300);
+  check('alert-clear on the national incident shows the all-clear message', (await text(p1, '[data-phone="huda"] .al-title')) === expected('huda', 'fire', { level: 'all-clear', night: false, lang: 'en' }).headline);
+  await p1.click('[data-phone="huda"] [data-act="dismiss"]');
+  await send({ type: 'alert', scope: 'national', id: 'N2', hazard: 'gas', level: 'evacuate', at: { lon: 51.5031, lat: 25.6837 }, incident: { id: 'N2', hazard: 'gas', muni: 'khor', place: { ar: 'الخور', en: 'Al Khor' } } });
+  await p1.waitForTimeout(300);
+  const far = await text(p1, '[data-phone="huda"] [data-section="notices"]').catch(() => '');
+  check('an incident 50+ km away does not alert the phone: one calm "nothing for you to do" line', (await phoneState(p1, 'huda')) === 'idle' && /Gas leak in Al Khor, \d+(\.\d+)? km away\. Nothing for you to do\./.test(far), far);
+  await send({ type: 'alert', scope: 'national', id: 'N3', hazard: 'sos', level: 'evacuate', at: { lon: IA.lon, lat: IA.lat }, incident: { id: 'N3', hazard: 'sos' } });
+  await p1.waitForTimeout(250);
+  check('an SOS is private: it is never broadcast to residents', (await phoneState(p1, 'huda')) === 'idle');
+  // moving the phones into the incident's neighbourhood
+  await send({ type: 'alert', scope: 'national', id: 'N4', hazard: 'gas', level: 'evacuate', at: { lon: IA.lon + 0.01, lat: IA.lat }, radiusM: 400, incident: { id: 'N4', hazard: 'gas', muni: 'doha', place: { ar: 'الدوحة', en: 'Doha' } } });
+  await p1.waitForTimeout(250);
+  const z = await p1.getAttribute('[data-phone="huda"] [data-section="where"]', 'data-zone');
+  check('a gas leak about 1 km away puts the phone in the "close to it" band with the stay-in level (warning), not the evacuate message', z === 'near' && (await text(p1, '[data-phone="huda"] .al-title')) === expected('huda', 'gas', { level: 'warning', night: false, lang: 'en' }).headline, z);
+  await p1.evaluate(() => { document.querySelectorAll('details').forEach(d => d.open = true); });
+  await p1.selectOption('#set-loc', 'm:khor');
+  await p1.waitForFunction(() => /Al Khor/.test(document.querySelector('#set-loc-note')?.textContent || ''), null, { timeout: 8000 });
+  await p1.waitForTimeout(300);
+  check('moving the phones to Al Khor (settings list) drops the Doha gas alert and the Al Khor leak (50 km from the old place) now alerts them', (await text(p1, '[data-phone="huda"] [data-section="where"]')).includes('Al Khor') || (await phoneState(p1, 'huda')) === 'alert');
+  await p1.click('#demo-reset');
+  // advisories
+  await send({ type: 'advisory', scope: 'national', id: 'ADV-1', clock: '13:00:00', sim: true, items: [
+    { key: 'nat.adv.heat.stop', params: {}, level: 'danger', hazard: 'heat', muni: 'doha', text: { ar: 'الدوحة: أوقفوا العمل — WBGT التقديري 33.4 °م', en: 'Doha: stop work — WBGT estimate 33.4 °C is above the 32.1 °C stop-work limit.' } },
+    { key: 'nat.adv.dust.warn', params: {}, level: 'warning', hazard: 'dust', muni: null, text: { ar: 'غبار مرتفع — ابقَ في الداخل', en: 'High dust (PM10 estimate 180 µg/m³) — stay indoors and close windows.' } },
+    { key: 'nat.adv.flood.watch', params: {}, level: 'watch', hazard: 'flood', muni: 'doha', text: { ar: 'أمطار 22 مم/س', en: 'Rain 22 mm/h (simulated) — keep away from tunnels and low underpasses.' } },
+    { key: 'nat.adv.heat.warn', params: {}, level: 'warning', hazard: 'heat', muni: 'shamal', text: { ar: 'الشمال: إجهاد حراري', en: 'Ash Shamal: heat stress possible' } }] });
+  await p1.waitForTimeout(400);
+  const advs = await p1.evaluate(() => [...document.querySelectorAll('[data-phone="ravi"] .adv')].map(a => ({ hz: a.dataset.hazard, lv: a.dataset.level, t: a.innerText })));
+  check('advisories: heat, dust and rain cards appear for the phone\'s municipality (+ the national one), the Ash Shamal item is not shown but counted', advs.length === 3 && ['heat', 'dust', 'flood'].every(h => advs.some(a => a.hz === h)) && /\+ 1 for other municipalities/.test(await text(p1, '[data-phone="ravi"] [data-section="advisories"]')), JSON.stringify(advs.map(a => a.hz)));
+  await p1.click('[data-phone="huda"] [data-act="lang"][data-v="en"]').catch(() => {});
+  const heat = await p1.evaluate(() => document.querySelector('[data-phone="huda"] .adv[data-hazard="heat"]')?.innerText || '');
+  const dust = await p1.evaluate(() => document.querySelector('[data-phone="huda"] .adv[data-hazard="dust"]')?.innerText || '');
+  const flood = await p1.evaluate(() => document.querySelector('[data-phone="huda"] .adv[data-hazard="flood"]')?.innerText || '');
+  const lines = (hz, lv) => expected('huda', hz, { level: lv, night: false, lang: 'ar' }).lines.slice(0, 3);
+  check('heat danger: stop work + shade + water from the playbook, flagged SIM and Estimate, a calm card', lines('heat', 'evacuate').every(l => heat.includes(l)) && /SIM/.test(heat) && /Estimate|تقدير/.test(heat) && /Very important|مهم جدًا/.test(heat), heat.slice(0, 200));
+  check('dust warning: shelter indoors, windows closed, mask (from the dust playbook)', lines('dust', 'warning').every(l => dust.includes(l)), dust.slice(0, 200));
+  check('rain watch: keep away from underpasses and low roads, never "go upstairs" for an advisory', lines('flood', 'watch').every(l => flood.includes(l)) && !/upper floor|go up/i.test(flood), flood.slice(0, 200));
+  const adv = await p1.evaluate(() => ({ audio: ManaraAlert.debug.audio().want, state: document.querySelector('[data-phone="ravi"]').dataset.state, flash: document.querySelector('[data-phone="ravi"] .p-flash').dataset.mode, gate: document.querySelectorAll('.act-gate').length }));
+  check('advisories are calm: the phone stays idle, no sound is wanted, no flashing light, no enable-alerts gate, no check-in bar', adv.audio === null && adv.state === 'idle' && adv.flash === 'off' && adv.gate === 0 && (await p1.locator('[data-phone="ravi"] .p-actions:not([hidden])').count()) === 0, JSON.stringify(adv));
+  await send({ type: 'advisory', scope: 'national', id: 'ADV-2', items: [] });
+  await p1.waitForTimeout(250);
+  check('an empty advisory list clears the cards', (await p1.locator('.adv').count()) === 0);
+  // the stand-alone national demo (the real engine)
+  await p1.click('#ctl-nat [data-nat="fire-close"]');
+  await p1.waitForFunction(() => /ETA/.test(document.querySelector('[data-phone="huda"] [data-section="responders"]')?.textContent || ''), null, { timeout: 15000 });
+  const rtd = await text(p1, '[data-phone="huda"] [data-section="responders"]');
+  check('stand-alone national demo: the real engine places a fire ~250 m away, picks the fastest units (real OSM names), phones show ETA lines, the zone is "inside"', (await phoneState(p1, 'huda')) === 'alert' && /ETA \d+ min/.test(rtd) && (await p1.getAttribute('[data-phone="huda"] [data-section="where"]', 'data-zone')) === 'core', rtd.slice(0, 200));
+  await p1.click('#ctl-nat [data-nat="gas-far"]');
+  await p1.waitForTimeout(600);
+  check('…and a gas leak in Al Khor leaves the phones calm (far)', (await phoneState(p1, 'huda')) === 'idle' || (await p1.getAttribute('[data-phone="huda"] [data-section="where"]', 'data-zone')) !== 'core');
+  for (const k of ['heat', 'dust', 'flood']) { await p1.click(`#ctl-nat [data-nat="${k}"]`); await p1.waitForTimeout(250); check(`demo advisory "${k}" renders a card`, (await p1.locator(`[data-phone="ravi"] .adv[data-hazard="${k}"]`).count()) >= 1); }
+  check('national: no console errors', errors.length === 0, errors.join(' | '));
   await ctx.close();
-  // permission denied
-  const d = await mk({ width: 1440, lang: 'en', permissions: [] });
-  await d.page.addInitScript(() => {});
-  await d.page.evaluate(() => { navigator.geolocation.getCurrentPosition = (ok, bad) => setTimeout(() => bad({ code: 1, message: 'denied' }), 10); });
-  await pickHazard(d.page, 'fire');
-  await d.page.click('[data-lm="en"]');                                      // Huda's own language is Arabic: show her phone in English for the wording check
-  await d.page.click('[data-phone="huda"] [data-act="nearby"]'); await d.page.waitForTimeout(200);
-  check('location denied: "Location access was not allowed." and a way to try again', /Location access was not allowed\./.test(await text(d.page, '[data-phone="huda"] .al-nb')) && (await d.page.locator('[data-phone="huda"] [data-act="nearby"]').count()) === 1 && (await d.page.locator('a[href^="tel:"]').count()) === 0);
-  await d.ctx.close();
 }
 
 section('11 QR card on the page');

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title data-en="MANARA — Mission Control">منارة — غرفة العمليات</title>
-<meta name="description" content="غرفة العمليات في منارة: تحقّق من الخطر بمفتاحين وموافقة إنسان، أيقظ كل شخص بلغته، أرشده إلى مخرج مفتوح فعلاً، عُدّ الجميع، وأرسل أسرع وحدة استجابة بحسب الازدحام. كل ما هنا محاكاة.">
+<meta name="description" content="غرفة العمليات في منارة: خريطة قطر كلها على بيانات OpenStreetMap الحقيقية، تحقّق من الخطر بمفتاحين وموافقة إنسان، وأرسل أسرع وحدة استجابة بحسب الازدحام (لا الأقرب بالمسافة)، ثم اقترب إلى آخر مئة متر لتوقظ كل شخص وتعدّ الجميع. الازدحام والوحدات والمخاطر محاكاة.">
 <meta name="theme-color" content="#0a0e15">
 <meta name="color-scheme" content="light dark">
 <script>(function(){var d=document.documentElement,t,l;try{t=localStorage.getItem('manara-theme');l=localStorage.getItem('manara-lang')}catch(e){}var q=/[?&]lang=(ar|en)/.exec(location.search);if(q)l=q[1];if(t!=='light'&&t!=='dark')t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';if(l!=='en')l='ar';d.dataset.theme=t;d.dataset.lang=l;d.lang=l;d.dir=l==='ar'?'rtl':'ltr';d.classList.add('js');setTimeout(function(){if(!window.__manaraReady)d.classList.remove('js')},2500)})();</script>
@@ -14,10 +14,18 @@
 <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/mission.css">
+<link rel="stylesheet" href="css/mission-national.css">
+<script>(function(){try{document.documentElement.setAttribute('data-scope',/[#&](scope=local|scenario=|s=)/.test(location.hash)?'local':'national')}catch(e){}})();</script>
 <script src="js/core.js" defer></script>
 <script src="js/sim.js" defer></script>
 <script src="js/messages.js" defer></script>
+<script src="data/qatar-geo.js" defer onerror="(window.__natDataError=window.__natDataError||[]).push('qatar-geo.js')"></script>
+<script src="data/qatar-facilities.js" defer onerror="(window.__natDataError=window.__natDataError||[]).push('qatar-facilities.js')"></script>
+<script src="data/qatar-roads.js" defer onerror="(window.__natDataError=window.__natDataError||[]).push('qatar-roads.js')"></script>
+<script src="js/national.js" defer onerror="(window.__natDataError=window.__natDataError||[]).push('national.js')"></script>
 <script src="js/mission.js" defer></script>
+<script src="js/mission-national-map.js" defer onerror="(window.__natDataError=window.__natDataError||[]).push('mission-national-map.js')"></script>
+<script src="js/mission-national.js" defer onerror="(window.__natDataError=window.__natDataError||[]).push('mission-national.js')"></script>
 </head>
 <body data-page="mission.html" class="mission">
 <a class="skip" href="#main">تخطَّ إلى المحتوى</a>
@@ -26,7 +34,10 @@
   <h1 class="sr-only"><span data-l="ar">غرفة العمليات — منارة</span><span data-l="en">Mission Control — MANARA</span></h1>
   <div class="mc-purpose" id="mc-purpose">
     <span class="tag warn">SIM</span>
-    <p><span data-l="ar">لوحة المشغّل: أثبِت أن الخطر حقيقي، أيقظ كل شخص بلغته، أرشده إلى مخرج مفتوح، عُدّ الجميع، وأرسل أسرع وحدة استجابة بحسب الازدحام — كل ما هنا محاكاة.</span><span data-l="en">The operator console: prove the danger is real, wake every person in their own language, guide them to an open exit, count everyone, and send the fastest responder given traffic — everything here is a simulation.</span></p>
+    <p class="pp-nat"><span data-l="ar">قطر كلها على خريطة واحدة: ضع حادثًا، وافق عليه بنفسك، وشاهد أسرع وحدة من كل نوع تتجه إليه بحسب الازدحام — الازدحام والوحدات والمخاطر محاكاة فوق خريطة حقيقية.</span><span data-l="en">All of Qatar on one map: place an incident, approve it yourself, and watch the fastest unit of each type head for it given traffic — traffic, units and hazards are simulated on top of a real map.</span></p>
+    <p class="pp-loc"><span data-l="ar">لوحة المشغّل لآخر مئة متر: أثبِت أن الخطر حقيقي، أيقظ كل شخص بلغته، أرشده إلى مخرج مفتوح، عُدّ الجميع، وأرسل أسرع وحدة استجابة — كل ما هنا محاكاة.</span><span data-l="en">The operator console for the last 100 metres: prove the danger is real, wake every person in their own language, guide them to an open exit, count everyone, and send the fastest responder — everything here is a simulation.</span></p>
+    <div class="pp-zoom" id="mc-zoomctx" hidden></div>
+    <button type="button" class="btn btn-ghost btn-sm pp-back" id="mc-back" hidden></button>
   </div>
   <noscript><p class="note warn" style="margin:16px"><span data-l="ar">تحتاج غرفة العمليات إلى JavaScript. افتح الصفحة في متصفح حديث (تعمل دون إنترنت).</span><span data-l="en">Mission Control needs JavaScript. Open the page in a modern browser (it works offline).</span></p></noscript>
   <aside id="mc-left" class="mc-left" aria-label="Scenario and judge controls"></aside>
@@ -42,6 +53,14 @@
   </section>
   <aside id="mc-right" class="mc-right" aria-label="Proof, alert, count and dispatch"></aside>
   <section id="mc-sheet" class="mc-sheet" aria-label="Panels"></section>
+  <section id="nat" class="nat" aria-label="National view: the whole of Qatar">
+    <div class="nat-boot" id="nat-boot" role="status">
+      <div class="nat-boot-card">
+        <i class="nat-spin" aria-hidden="true"></i>
+        <p><span data-l="ar">جارٍ تحميل خريطة قطر (بيانات OpenStreetMap المحفوظة محليًا)…</span><span data-l="en">Loading the map of Qatar (OpenStreetMap data bundled with the page)…</span></p>
+      </div>
+    </div>
+  </section>
 </main>
 <div id="mc-announce" class="sr-only" role="status" aria-live="polite"></div>
 </body>

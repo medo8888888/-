@@ -17,6 +17,10 @@
 <script src="js/core.js" defer></script>
 <script src="js/messages.js" defer></script>
 <script src="js/sim.js" defer></script>
+<script src="data/qatar-geo.js" defer></script>
+<script src="data/qatar-facilities.js" defer></script>
+<script src="data/qatar-roads.js" defer></script>
+<script src="js/national.js" defer></script>
 <script src="js/alert.js" defer></script>
 </head>
 <body data-page="alert.html">
@@ -57,11 +61,25 @@
         </div>
       </div>
       <p class="ctl-hint small muted"><span data-i18n="al.demo.hint"></span> <span data-i18n="al.demo.sim_note"></span></p>
+      <div class="ctl-nat" id="ctl-nat" role="group" data-i18n-attr="aria-label:al.nd.title">
+        <b class="ctl-nat-t" data-icon="globe"><span data-i18n="al.nd.title"></span></b>
+        <div class="chips">
+          <button class="chip" type="button" data-nat="fire-close"><span data-i18n="al.nd.fire_close"></span></button>
+          <button class="chip" type="button" data-nat="fire-near"><span data-i18n="al.nd.fire_near"></span></button>
+          <button class="chip" type="button" data-nat="gas-far"><span data-i18n="al.nd.gas_far"></span></button>
+          <button class="chip" type="button" data-nat="heat"><span data-i18n="al.nd.heat"></span></button>
+          <button class="chip" type="button" data-nat="dust"><span data-i18n="al.nd.dust"></span></button>
+          <button class="chip" type="button" data-nat="flood"><span data-i18n="al.nd.flood"></span></button>
+        </div>
+        <p class="small muted" data-i18n="al.nd.hint"></p>
+      </div>
       <details class="ctl-d">
         <summary><span data-icon="speaker"><span data-i18n="al.set.title"></span></span></summary>
         <div class="ctl-g">
           <div class="ctl-row">
             <label class="field"><span data-i18n="al.demo.speed"></span><select id="demo-speed"></select></label>
+            <label class="field"><span data-i18n="al.loc.label"></span><select id="set-loc" data-place="settings"></select></label>
+            <div class="field"><small class="muted" id="set-loc-note"></small></div>
           </div>
           <div class="ctl-row ctl-sound">
             <div class="field"><small class="muted" id="set-enable-note"></small></div>
@@ -120,6 +138,15 @@
     </div>
   </section>
 
+  <!-- 4b. nearest emergency services: real Qatar map data, offline -->
+  <section class="wrap wide al-sec" id="near" aria-labelledby="near-h">
+    <div class="sec-head">
+      <h2 class="sec-title" id="near-h" data-i18n="al.near.title"></h2>
+      <p class="sec-lead" data-i18n="al.near.lead"></p>
+    </div>
+    <div class="near-box card"><div id="near-card" class="near-card"></div></div>
+  </section>
+
   <!-- 5. QR card -->
   <section class="wrap wide al-sec" id="qr" aria-labelledby="qr-h">
     <div class="sec-head">
@@ -169,12 +196,18 @@
       <div class="card"><h3><span data-l="ar">اللغات: مسودات صريحة</span><span data-l="en">Languages: drafts, openly</span></h3>
         <p data-l="ar">العربية والإنجليزية مكتملتان. المالايالامية والنيبالية والبنغالية والأردية والهندية والتاغالوغية قوالب قصيرة مكتوبة بعناية لكن لم يراجعها متحدث أصلي، وتحمل دائمًا الوسم «مسودة — تحتاج مراجعة متحدث أصلي» وتُعرض مع العربية والإنجليزية. لا نستخدم ترجمة آلية حيّة. الصور تحمل الرسالة نفسها للجميع.</p>
         <p data-l="en">Arabic and English are complete. Malayalam, Nepali, Bengali, Urdu, Hindi and Tagalog are short templates written with care but not yet checked by a native speaker; they always carry “Draft — needs native-speaker review” and are shown together with Arabic and English. There is no live machine translation. The pictures carry the same message for everyone.</p></div>
-      <div class="card"><h3><span data-l="ar">المرافق القريبة: للاطلاع فقط</span><span data-l="en">Nearby facilities: information only</span></h3>
-        <p data-l="ar">بعد لمسة موافقة يُستخدم موقع الهاتف مرة واحدة لاستعلام واحد من OpenStreetMap عن أقرب مستشفى ومركز شرطة ومحطة إطفاء بالمسافة المستقيمة. لا نحفظ شيئًا ولا نرسله إلى غير خدمة البحث. الخريطة قد تكون ناقصة، وحالة المرور غير معروفة، وهذه القائمة ليست إرسالًا للمساعدة: 999 هو المُرسِل.</p>
-        <p data-l="en">After a consent tap the phone's position is used once for one OpenStreetMap query for the nearest hospital, police station and fire station by straight-line distance. Nothing is stored or sent anywhere except the lookup service. The map may be incomplete, traffic is unknown, and this list is not dispatch: 999 is the dispatcher.</p></div>
+      <div class="card"><h3><span data-l="ar">أقرب الخدمات: بلا إنترنت وللاطلاع فقط</span><span data-l="en">Nearest services: offline, information only</span></h3>
+        <p data-l="ar">بعد لمسة موافقة يُستخدم موقع الهاتف مرة واحدة داخل الصفحة لحساب أقرب مستشفى (مع بيان إن كان فيه قسم طوارئ مؤكد أم لا) ومركز شرطة ومحطة إطفاء من خريطة قطر المضمَّنة، مع المسافة المستقيمة والاتجاه وتقدير لزمن الطريق بازدحام محاكى. لا نحفظ الموقع ولا نرسله ولا نتصل بالإنترنت. خارج قطر أو عند الرفض تختار مكانك من قائمة. الخريطة لقطة قد تكون ناقصة، وهذه القائمة ليست إرسالًا للمساعدة: 999 هو المُرسِل.</p>
+        <p data-l="en">After a consent tap the phone's position is used once, inside the page, to work out the nearest hospital (saying whether it has a confirmed emergency department), police station and fire station from the Qatar map built into the page, with straight-line distance, direction and an estimate of the road time under simulated traffic. The position is not stored or sent and there is no internet call. Outside Qatar, or if you say no, you pick your place from a list. The map is a snapshot that may be incomplete, and this list is not dispatch: 999 is the dispatcher.</p></div>
+      <div class="card"><h3><span data-l="ar">الأحداث والإرشادات الوطنية</span><span data-l="en">National incidents and advisories</span></h3>
+        <p data-l="ar">حين يقع حدث في أي مكان في قطر يصل التنبيه إلى المقيمين القريبين منه فقط: داخل نطاق الحدث بالمستوى الذي أرسله المشغّل، ثم «ابقَ في الداخل واستعد»، ثم «للعلم»؛ أما الأبعد فيرون سطرًا هادئًا. النطاقات افتراضات محاكاة. نداء النجدة خاص ولا يُبثّ للسكان. إرشادات الحرارة والغبار والأمطار بطاقات هادئة بلا صوت ولا وميض، بإجراءات الحماية من دليل الأخطار، وأرقامها تقديرات محاكاة (SIM).</p>
+        <p data-l="en">When an incident happens anywhere in Qatar, only residents close to it get an alert: inside its zone at the level the operator sent, then “stay in and be ready”, then “for your information”; those farther away see one calm line. The bands are simulation assumptions. An SOS is private and is never broadcast to residents. Heat, dust and rain advisories are calm cards with no sound and no flashing, carrying the protective actions of the hazard playbook; their numbers are simulated (SIM) estimates.</p></div>
       <div class="card"><h3><span data-l="ar">أزمنة الوصول والمسارات محاكاة</span><span data-l="en">Responder times and routes are simulated</span></h3>
         <p data-l="ar">المسارات وأزمنة الوصول في العرض من المحاكاة (SIM) بوحدات ومستشفيات افتراضية. المنصة توصي بالوحدة الأسرع وصولًا مع المرور (محاكى) لا بالأقرب مسافة، و999 يبقى المُرسِل الحقيقي. صياغة الإسعاف الأولي تحتاج مراجعة الجهات الصحية قبل أي استخدام حقيقي.</p>
         <p data-l="en">Routes and arrival times in the demo come from the simulation (SIM) with fictional units and hospitals. The platform recommends the unit that arrives fastest with (simulated) traffic, not the nearest by distance, and 999 stays the real dispatcher. First-aid wording must be reviewed with the health authorities before any real use.</p></div>
+      <div class="card"><h3><span data-l="ar">بيانات الخريطة ومصدرها</span><span data-l="en">The map data and where it comes from</span></h3>
+        <p data-l="ar">المنشآت والطرق والبلديات والأماكن لقطة مؤرَّخة من OpenStreetMap (يتضمن بيانات © مساهمي OpenStreetMap، رخصة ODbL)، وتاريخها مكتوب على البطاقة. الخريطة قد تكون ناقصة ونوع بعض المنشآت غير واضح فيها؛ وقسم الطوارئ «مؤكد» لعدد قليل من المستشفيات فقط. مواقع المركبات وتوفّرها والازدحام وحقول الحرارة والغبار والأمطار كلها محاكاة (SIM). منارة ليست خدمة رسمية.</p>
+        <p data-l="en">The facilities, roads, municipalities and places are a dated snapshot of OpenStreetMap (contains data © OpenStreetMap contributors, ODbL); the date is printed on the card. The map may be incomplete, some facility types are unclear in it, and an emergency department is “confirmed” for only a few hospitals. Vehicle positions, availability, traffic and the heat, dust and rain fields are all simulated (SIM). MANARA is not an official service.</p></div>
     </div>
   </section>
 
