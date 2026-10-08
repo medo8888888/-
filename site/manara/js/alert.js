@@ -37,8 +37,9 @@
 
   /* ====================================================================================
    * 1. QR CODE ENCODER (ISO/IEC 18004, byte mode, versions 1–10, EC levels L/M/Q/H)
-   *    Own small implementation so the page works offline with no library. Verified in tools/manara/test-alert.mjs against an
-   *    independent decoder (and by hand with zxing-cpp). Max payload: 271 bytes (V10-L), 213 (V10-M).
+   *    Own small implementation so the page works offline with no library. Verified in tools/manara/test-alert.mjs by an
+   *    independent JS decoder (format BCH, Reed–Solomon syndromes) and, when installed, by the zxing-cpp scanner library on rendered
+   *    pictures. Max payload: 271 bytes (V10-L), 213 (V10-M).
    * ==================================================================================== */
   var QR = (function () {
     var EC = { L: { bits: 1, ord: 0 }, M: { bits: 0, ord: 1 }, Q: { bits: 3, ord: 2 }, H: { bits: 2, ord: 3 } };
@@ -261,13 +262,16 @@
     var y = Math.sin(dl) * Math.cos(p2), x = Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dl);
     return (Math.atan2(y, x) / rad + 360) % 360;
   }
-  // The query string for Overpass QL: hospitals, police stations and fire stations around a point (nodes, ways and relations; `out center`)
+  // The query string for Overpass QL: hospitals, police stations and fire stations around a point (nodes, ways and relations).
+  // `out center;` = default "body" verbosity (tags + node coordinates) plus a centre point for ways and relations. NOT `out center tags;`:
+  // the `tags` verbosity prints "only ids and tags … and not coordinates" (OSM wiki, Overpass QL), so every facility mapped as a node would
+  // arrive without a position and be dropped.
   function buildOverpassQuery(lat, lon, radiusM) {
     lat = clampNum(lat, -90, 90); lon = clampNum(lon, -180, 180); radiusM = Math.round(clampNum(radiusM || 15000, 500, 50000));
     var around = '(around:' + radiusM + ',' + lat.toFixed(5) + ',' + lon.toFixed(5) + ')';
     return '[out:json][timeout:15];(' +
       FACILITY_KINDS.map(function (k) { return 'nwr["amenity"="' + k.tag + '"]' + around + ';'; }).join('') +
-      ');out center tags;';
+      ');out center;';
   }
   function osmPoint(el) {
     if (el && typeof el.lat === 'number' && typeof el.lon === 'number') return { lat: el.lat, lon: el.lon };
@@ -517,6 +521,7 @@
   function now() { return Date.now(); }
   function chromeLang(l) { return l === 'ar' ? 'ar' : 'en'; }              // phone chrome speaks Arabic or English; the message itself is in the person's language
   function pickL(o, l) { if (o == null) return ''; if (typeof o === 'string') return o; return o[l] != null ? o[l] : (o.en != null ? o.en : o.ar); }
+  function endSentence(t) { t = String(t == null ? '' : t).trim(); return !t || /[.!?؟…]$/.test(t) ? t : t + '.'; }       // join phrases into one paragraph without run-on sentences
   function fill(s, vars) { return String(s).replace(/\{(\w+)\}/g, function (m, k) { return vars && vars[k] != null ? vars[k] : m; }); }
 
   /* ---- strings (Arabic: Modern Standard Arabic for a Gulf audience; English: plain) ---- */
@@ -660,6 +665,8 @@
     'al.tag.asleep': { ar: 'ينام ليلًا', en: 'Asleep at night' },
     'al.tag.draft': { ar: 'لغة بمسودة', en: 'Draft language' },
     'al.cap.lang': { ar: 'لغته', en: 'Language' },
+    'al.solo.try': { ar: 'جرّب خطرًا على هذا الهاتف', en: 'Try a hazard on this phone' },
+    'al.solo.qr': { ar: 'رمز QR لهذا الهاتف', en: 'QR code for this phone' },
     'al.qr.title': { ar: 'افتح شخصًا على هاتفك', en: 'Open a person on your own phone' },
     'al.qr.lead': { ar: 'امسح الرمز بهاتفك لتفتح هاتف الشخص المختار بشاشة كاملة. يمكنك أن تبدأ بتنبيه تجريبي جاهز.', en: 'Scan the code with your phone to open the chosen person’s phone full screen. You can start with a demo alert already running.' },
     'al.qr.person': { ar: 'الشخص', en: 'Person' },
@@ -1089,6 +1096,8 @@
     this.light = { timer: null, lit: false, plan: null };
     this.resp = {}; this.el = {}; this.bootAt = now();
     this.voiceState = 'idle';
+    this.pressing = false; this.pressAt = 0; this.dirty = false;            // a finger / key is down on this phone: do not rebuild its screen under it
+    this.dispSig = null;
   }
   function isBigText(phone) { var f = PERSONA_FLAGS[phone.p.persona] || {}; return SET.big || !!f.largeText || phone.p.also.some(function (x) { return (PERSONA_FLAGS[x] || {}).largeText; }); }
 
@@ -1108,19 +1117,28 @@
     e.cap = h('header', { class: 'pcap' });
     e.story = h('p', { class: 'pstory' });
     e.root = h('article', { class: 'pcell', data: { phone: p.id, state: 'idle' } }, [e.cap, e.phone, e.story]);
+    // A tap is down → the screen must not be rebuilt until it is up, or the button under the finger vanishes and the tap is lost
+    // (Mission Control repeats its alert about every 2 s). Released in releasePress(); a watchdog in ladderTick() covers lost events.
+    var hold = function () { phone.pressing = true; phone.pressAt = now(); };
+    e.root.addEventListener('pointerdown', hold, true);
+    e.root.addEventListener('keydown', function (ev) { if (ev.key === 'Enter' || ev.key === ' ') hold(); }, true);
     renderCaption(phone);
   }
-  function renderCaption(phone) {
-    var p = phone.p, e = phone.el, ml = Mn.lang(), L = M.languages().filter(function (x) { return x.id === p.lang; })[0];
-    empty(e.cap);
-    e.cap.appendChild(h('div', { class: 'pcap-t' }, [h('h3', { text: pickL(p.name, ml) }), h('span', { class: 'pcap-r', text: pickL(p.role, ml) + (p.room ? ' · ' + T('al.act.room', { r: p.room }) : '') })]));
+  function personTags(p, ml) {                                         // language (+ draft flag) and needs of one person, as tag nodes
+    var L = M.languages().filter(function (x) { return x.id === p.lang; })[0];
     var tags = [h('span', { class: 'tag cool', text: (L ? L.name.native : p.lang) + (L && L.name.en !== L.name.native ? ' · ' + L.name.en : '') })];
     if (L && L.draft) tags.push(h('span', { class: 'tag warn', text: T('al.tag.draft') }));
     (p.tags || []).forEach(function (t) {
       if (t === 'asleep-at-night') tags.push(h('span', { class: 'tag', text: T('al.tag.asleep') }));
       else if (M.has('hc.need.' + t)) tags.push(h('span', { class: 'tag', text: MT('hc.need.' + t, ml) }));
     });
-    e.cap.appendChild(h('div', { class: 'chips pcap-tags' }, tags));
+    return tags;
+  }
+  function renderCaption(phone) {
+    var p = phone.p, e = phone.el, ml = Mn.lang();
+    empty(e.cap);
+    e.cap.appendChild(h('div', { class: 'pcap-t' }, [h('h3', { text: pickL(p.name, ml) }), h('span', { class: 'pcap-r', text: pickL(p.role, ml) + (p.room ? ' · ' + T('al.act.room', { r: p.room }) : '') })]));
+    e.cap.appendChild(h('div', { class: 'chips pcap-tags' }, personTags(p, ml)));
     e.story.textContent = pickL(p.story, ml);
     e.phone.setAttribute('aria-label', fill(ml === 'ar' ? 'هاتف {n}' : "{n}'s phone", { n: pickL(p.name, ml) }));
   }
@@ -1297,7 +1315,7 @@
     if (A.bearingDeg != null || A.wind) {
       var meta = h('div', { class: 'rt-meta' });
       if (A.distanceM != null && A.bearingDeg != null) meta.appendChild(h('p', {}, [h('b', { text: MT('ui.alert.distance', pl, { m: A.distanceM }) }), ' ', fill(PT('al.route.towards', lang), { dir: compassWord(A.bearingDeg, pl) })]));
-      if (A.wind) meta.appendChild(h('p', { class: 'muted' }, [MT('ui.alert.wind', pl) + ': ' + fill(PT('al.route.wind_from', lang), { dir: compassWord(A.wind.deg, pl) }) + (A.wind.speed != null ? ' · ' + A.wind.speed + ' m/s' : '')]));
+      if (A.wind) meta.appendChild(h('p', { class: 'muted' }, [MT('ui.alert.wind', pl) + ': ' + fill(PT('al.route.wind_from', lang), { dir: compassWord(A.wind.deg, pl) }) + (A.wind.speed != null ? ' · ' + A.wind.speed + (pl === 'ar' ? ' م/ث' : ' m/s') : '')]));
       if (A.etaMin != null && V.hazard === 'dust') meta.appendChild(h('p', { class: 'rt-eta' }, [icon('clock'), h('b', { text: MT('ui.alert.eta_front', pl, { mins: A.etaMin }) })]));
       kids.push(h('div', { class: 'rt-cp' }, [h('div', { class: 'cp-wrap' }, [compassSVG(A, lang)]), meta]));
     }
@@ -1421,7 +1439,7 @@
   function buildSources(V) {
     var pl = chromeLang(V.lang), kids = [];
     if (V.sources && V.sources.length) kids.push(h('p', { class: 'al-src' }, [h('b', { text: PT('al.sources', V.lang) + ': ' }), V.sources.map(function (s) { return s.id + ' ' + s.label; }).join(' · ')]));
-    kids.push(h('p', { class: 'al-src', text: MT('ui.alert.exercise', pl) + ' ' + MT('ui.alert.tone_note', pl) + ' ' + MT('ui.alert.reviewed', pl) }));
+    kids.push(h('p', { class: 'al-src', text: endSentence(MT('ui.alert.exercise', pl)) + ' ' + endSentence(MT('ui.alert.tone_note', pl)) + ' ' + endSentence(MT('ui.alert.reviewed', pl)) }));
     return h('div', { class: 'al-srcs' }, kids);
   }
 
@@ -1495,6 +1513,7 @@
 
   /* ---------- render one phone ---------- */
   function renderPhone(phone) {
+    if (phone.pressing) { phone.dirty = true; return; }                       // flushed by releasePress()
     var e = phone.el, sc = e.scroll, keep = sc.scrollTop, ae = D.activeElement, fid = null;
     if (ae && e.root.contains(ae)) fid = ae.getAttribute('data-fid');
     var V = phone.st ? compose(phone) : null;
@@ -1601,10 +1620,20 @@
   }
   function refreshLights() { Object.keys(App.phones).forEach(function (id) { var ph = App.phones[id]; ph.light.plan = ph.V ? lightPlan(ph.V.msg) : null; applyLight(ph); if (ph.V) renderIndicators(ph, ph.V); }); }
 
+  function releasePress(delay) {                                              // the finger / key is up (the click, if any, has already run): flush a held-back screen
+    setTimeout(function () {
+      Object.keys(App.phones).forEach(function (id) {
+        var ph = App.phones[id]; if (!ph.pressing) return;
+        ph.pressing = false;
+        if (ph.dirty) { ph.dirty = false; renderPhone(ph); }
+      });
+    }, delay == null ? 80 : delay);
+  }
   function startLadder(phone) { var L = phone.lad; L.on = true; L.t0 = now(); L.step = 0; L.stopped = null; L.stopStep = 0; L.elapsed = 0; }
   function stopLadder(phone, why) { var L = phone.lad; if (!L.on || L.stopped) return; L.stopped = why; L.stopStep = L.step; }
   function ladderTick() {
     var changed = false;
+    Object.keys(App.phones).forEach(function (id) { var ph = App.phones[id]; if (ph.pressing && now() - ph.pressAt > 2500) { ph.pressing = false; if (ph.dirty) { ph.dirty = false; renderPhone(ph); } } });   // watchdog: an event was lost
     Object.keys(App.phones).forEach(function (id) {
       var phone = App.phones[id], L = phone.lad;
       if (!L.on || L.stopped || !phone.V || !phone.V.ladder) return;
@@ -1722,17 +1751,19 @@
    * 12. DELIVERING ALERTS TO PHONES (bus + stand-alone demo)
    * ==================================================================================== */
   function isNight(A) { if (A.hour != null) return A.hour < 6 || A.hour >= 22; return SET.night; }
+  function sigOf(o) { return JSON.stringify(o, function (k, v) { return k === 'ts' ? undefined : v; }); }       // content signature without the time of sending
   function deliver(phone, A) {
-    var isNew = !phone.st || phone.st.A.id !== A.id, prev = phone.st && phone.st.A;
+    var isNew = !phone.st || phone.st.A.id !== A.id, prev = phone.st && phone.st.A, sig = sigOf(A);
+    if (!isNew && phone.st.sig === sig && !phone.st.allClear) return phone;      // an unchanged repeat from Mission Control: nothing to rebuild
     if (isNew) {
       phone.checkin = null; phone.awakeAck = false; phone.resp = {}; phone.voiceNote = ''; phone.voiceState = 'idle';
       phone.lad = { on: false, t0: 0, step: 0, stopped: null, shown: -1, elapsed: 0, stopStep: 0 };
       phone.ui.more = false; phone.ui.why = false; phone.ui.drone = false; phone.ui.call = false; phone.ui.also = null;
       phone.needsSel = phone.p.needs.slice();
-      phone.st = { A: A, startedAt: now(), asleep: !!(phone.p.resident && isNight(A)), demo: A.demo, allClear: false, ts: A.ts };
+      phone.st = { A: A, startedAt: now(), asleep: !!(phone.p.resident && isNight(A)), demo: A.demo, allClear: false, ts: A.ts, sig: sig };
     } else {
       var escalated = prev && A.level !== prev.level;
-      phone.st.A = A; phone.st.allClear = false;
+      phone.st.A = A; phone.st.allClear = false; phone.st.sig = sig;
       if (escalated) { phone.checkin = null; phone.awakeAck = false; phone.lad = { on: false, t0: 0, step: 0, stopped: null, shown: -1, elapsed: 0, stopStep: 0 }; }
     }
     renderPhone(phone);
@@ -1750,7 +1781,7 @@
   function resetPhones() {
     Object.keys(App.phones).forEach(function (id) {
       var ph = App.phones[id];
-      ph.st = null; ph.V = null; ph.checkin = null; ph.awakeAck = false; ph.disp = null; ph.resp = {}; ph.voiceNote = ''; ph.voiceState = 'idle';
+      ph.st = null; ph.V = null; ph.checkin = null; ph.awakeAck = false; ph.disp = null; ph.dispSig = null; ph.pressing = false; ph.dirty = false; ph.resp = {}; ph.voiceNote = ''; ph.voiceState = 'idle';
       ph.lad = { on: false, t0: 0, step: 0, stopped: null, shown: -1, elapsed: 0, stopStep: 0 };
       ph.ui = { more: false, also: null, why: false, drone: false, needs: false, call: false };
       renderPhone(ph);
@@ -1761,7 +1792,8 @@
     syncAudio(true);
   }
   function setDispatch(d) {
-    Object.keys(App.phones).forEach(function (id) { var ph = App.phones[id]; ph.disp = d; if (ph.st) renderPhone(ph); });
+    var sig = sigOf(d);
+    Object.keys(App.phones).forEach(function (id) { var ph = App.phones[id]; if (ph.dispSig === sig) return; ph.dispSig = sig; ph.disp = d; if (ph.st) renderPhone(ph); });
   }
 
   // ---- bus routing: a message with a person key goes to that phone; otherwise every phone gets the hazard + level, and the personal
@@ -1914,10 +1946,21 @@
   function renderSoloInfo() {
     var box = $('#solo-info'); if (!box) return; empty(box);
     var p = PEOPLE[App.solo], ml = Mn.lang(); if (!p) return;
-    box.appendChild(h('h3', { text: pickL(p.name, ml) + ' — ' + pickL(p.role, ml) }));
+    box.appendChild(h('h3', { text: pickL(p.name, ml) + ' — ' + pickL(p.role, ml) + (p.room ? ' · ' + T('al.act.room', { r: p.room }) : '') }));
+    box.appendChild(h('div', { class: 'chips' }, personTags(p, ml)));
     box.appendChild(h('p', { text: pickL(p.story, ml) }));
     if (p.id === 'yousef') box.appendChild(h('p', { class: 'note', text: T('al.blind.desc') }));
     if (p.id === 'guard') box.appendChild(h('p', { class: 'note', text: T('al.guard.sub') }));
+    // try every hazard on this one phone (stand-alone demo, same as the demo bar), and jump to the QR code for it
+    var tries = h('div', { class: 'solo-try' }, [h('b', { text: T('al.solo.try') })]);
+    var row = h('div', { class: 'chips' });
+    ['fire', 'gas', 'flood', 'dust', 'heat', 'sos'].forEach(function (hz) {
+      var info = M.hazards().filter(function (x) { return x.id === hz; })[0];
+      row.appendChild(h('button', { class: 'chip', type: 'button', data: { try: hz } }, [icon(info.icon), h('span', { text: info.name[ml] })]));
+    });
+    tries.appendChild(row);
+    tries.appendChild(h('button', { class: 'btn btn-ghost btn-sm', type: 'button', data: { soloqr: '1' } }, [icon('external'), h('span', { text: T('al.solo.qr') })]));
+    box.appendChild(tries);
     box.appendChild(h('p', { class: 'muted small', text: T('al.qr.live') }));
   }
   function renderMoreInfo() {
@@ -2060,6 +2103,7 @@
     var btn = ev.target.closest ? ev.target.closest('[data-act]') : null; if (!btn) return;
     var cell = btn.closest('[data-phone]'), phone = cell ? App.phones[cell.getAttribute('data-phone')] : null; if (!phone) return;
     var act = btn.getAttribute('data-act'), v = btn.getAttribute('data-v');
+    phone.pressing = false; phone.dirty = false;                              // the click is the end of the press: this handler renders what it needs
     switch (act) {
       case 'enable': enableAlerts(); break;
       case 'safe': checkin(phone, 'safe'); break;
@@ -2115,6 +2159,11 @@
     });
     $('#al-modes').addEventListener('click', function (ev) { var b = ev.target.closest('[data-mode]'); if (b) { setMode(b.getAttribute('data-mode')); syncControls(); } });
     $('#solo-pick').addEventListener('click', function (ev) { var b = ev.target.closest('[data-solo]'); if (!b) return; App.solo = b.getAttribute('data-solo'); Mn.store('manara-alert-persona', App.solo); setMode('phone'); try { history.replaceState(null, '', '?persona=' + encodeURIComponent(App.solo) + '&mode=phone'); } catch (e) { /* file:// quirks */ } syncControls(); });
+    $('#solo-info').addEventListener('click', function (ev) {
+      var t = ev.target.closest ? ev.target.closest('[data-try],[data-soloqr]') : null; if (!t) return;
+      if (t.hasAttribute('data-try')) { var hz = t.getAttribute('data-try'); demoStart(hz, 'evacuate', { night: hz === 'fire' || hz === 'gas' }); syncControls(); }
+      else { $('#qr-person').value = App.solo; drawQR(); $('#qr').scrollIntoView({ block: 'start', behavior: SET.reduced ? 'auto' : 'smooth' }); }
+    });
     $('#more-pick').addEventListener('click', function (ev) { var b = ev.target.closest('[data-more]'); if (!b) return; App.more = b.getAttribute('data-more'); setMode('wall'); syncControls(); });
     ['qr-person', 'qr-lang', 'qr-base', 'qr-start'].forEach(function (id) { $('#' + id).addEventListener('input', drawQR); $('#' + id).addEventListener('change', drawQR); });
     $('#qr-copy').addEventListener('click', copyLink);
@@ -2154,6 +2203,7 @@
       if (lastD && now() - (lastD.ts || 0) < 3600000) onBus(lastD);
       App.live.last = last.ts || now(); updateLive();
     }
+    ['pointerup', 'pointercancel', 'keyup', 'blur'].forEach(function (t) { root.addEventListener(t, function () { releasePress(); }, true); });
     setInterval(ladderTick, 250);
     setInterval(updateClocks, 15000);
     setInterval(updateLive, 1000);

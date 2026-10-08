@@ -120,6 +120,54 @@ decides (integration needs agreements with the authority; say so). On the reside
 list the real nearest hospital / police / fire station with distance and a tap-to-call 999
 reminder; offline it degrades to a clear message. It is informational only, not dispatch.
 
+## Scope: the whole of Qatar (national layer) — user requirement
+
+User requirement (verbatim): "I wnat it on the whole of Qatar". MANARA is a **Qatar-wide
+platform**, not a single-block demo. Two zoom levels, one pipeline:
+
+1. **National view (new, the default in Mission Control):** a map of the whole State of Qatar —
+   real coastline/outline, municipalities, cities and towns (Doha, Al Rayyan, Al Wakrah, Al Khor,
+   Umm Salal, Al Daayen, Al Shamal, Al Shahaniya, Dukhan, Mesaieed, Lusail…), **real hospitals /
+   emergency departments, police stations and Civil Defence fire stations**, and the **real
+   major-road network** (motorway / trunk / primary / secondary). Incidents can happen anywhere
+   (click the map); the platform picks the **fastest available unit of each type over the real
+   road graph with simulated time-varying traffic** (see dispatch above), shows routes and ETAs
+   across the country, and a national command dashboard (incident list, units en route, per-
+   municipality status, hazard advisories).
+2. **Last-100-metres view (zoom in):** from any incident the operator zooms into the building /
+   site scale (the detailed neighbourhood simulation: wake-up ladder, exit truth, phones,
+   headcount). Presets are placed at real Qatar locations (e.g. a residential building in an
+   industrial-area-style worker district, a school in Doha, a road underpass, a worksite in the
+   open desert) — location names only, no claims about real buildings.
+
+**National hazard layers (all SIMULATED fields, driven by real geography; label them SIM):**
+- 🌡️ **Heat:** a countrywide heat/WBGT-estimate layer by hour and season with Qatar's real
+  midday outdoor-work ban windows (from MANARA-QATAR.md) and the places where outdoor workers
+  concentrate (industrial/construction areas as described in the sources, not invented counts).
+- 🌪️ **Dust:** shamal-wind-driven dust fronts crossing the country (wind regime facts only as
+  verified in the sources), visibility/PM10 by municipality.
+- 🌊 **Flood:** low-lying spots and **road underpasses/tunnels computed from the real road data**
+  (tunnel/underpass segments); rainfall slider; closed roads feed dispatch and phones.
+- 🔥 **Fire / ⛽ gas / 🆘 SOS:** click anywhere; industrial-area presets (gas) and highway
+  presets (collision-type SOS) are allowed as *generic* scenarios.
+
+**Data (bundled, offline, attributed):** Qatar outline and places from Natural Earth (public
+domain) and/or OpenStreetMap; facilities and roads from **OpenStreetMap (© OpenStreetMap
+contributors, ODbL)** extracted by a build script into `site/manara/data/qatar-*.js` with a
+`CREDITS`/attribution block, a snapshot date and per-layer counts. Facility completeness is
+checked against official lists where available (e.g. HMC hospitals, MoPH, MoI/Civil Defence
+sites); anything missing or unverifiable is **flagged**, never invented. **Real-time unit
+positions/availability, traffic, and hazard fields are SIMULATED** — the data is a *map*, not a
+live feed; 999 stays the dispatcher; MANARA is not an official service.
+
+**Resident phones (offline, real data):** the "Nearby facilities" card uses the bundled real
+facility list and the phone's location (with consent) — nearest by straight line **and** by
+estimated road time on the bundled network — with a clear "informational — call 999" label.
+No runtime network dependency.
+
+**Nationwide claims to avoid:** no invented national statistics, no claim of integration with
+any real agency system, no claim that real units are tracked, no real incident data.
+
 ## Depth vs breadth (what to build for real)
 
 - **Deep (real sensors + live booth demo):** fire & smoke (hot mug on the twin board +

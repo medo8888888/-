@@ -17,6 +17,7 @@
 
 /* ---------- 2. page chrome ---------- */
 #al-root{display:flex;flex-direction:column}
+#al-root>.wrap{inline-size:100%}
 .al-hero{order:1}.al-ctl-sec{order:2}#wall-sec{order:3}#solo{order:3}#more{order:4}#qr{order:5}#pics{order:6}#notes{order:7}
 body.m-phone #solo{order:2}body.m-phone .al-ctl-sec{order:3}
 .al-hero{display:flex;flex-wrap:wrap;gap:14px 40px;align-items:flex-end;justify-content:space-between;padding-block:clamp(20px,3.2vw,34px) 14px}
@@ -68,6 +69,12 @@ body.m-phone #solo{order:2}body.m-phone .al-ctl-sec{order:3}
 .pcap-t{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px}
 .pcap-r{color:var(--muted);font-size:.9rem}
 .pstory{inline-size:100%;max-inline-size:340px;font-size:.85rem;line-height:1.6;color:var(--ink-2);margin:0}
+/* in the wall, caption / phone / story share three grid rows across the four cells, so the phones start at the same height */
+@supports (grid-template-rows:subgrid){
+  .wall{row-gap:0}
+  .wall>.pcell{display:grid;grid-template-rows:subgrid;grid-row:span 3;row-gap:14px;justify-items:center;align-items:start;margin-block-end:clamp(20px,3vw,36px)}
+  .wall>.pcell>.pcap{align-self:end}
+}
 .pcap-tags .tag{font-size:.78rem}
 .phone{position:relative;inline-size:100%;max-inline-size:330px;block-size:760px;border-radius:46px;padding:9px;background:#0b0f17;box-shadow:var(--shadow-lg),inset 0 0 0 1px rgba(255,255,255,.1);isolation:isolate}
 .p-notch{position:absolute;inset-block-start:16px;inset-inline:0;margin-inline:auto;inline-size:86px;block-size:22px;border-radius:99px;background:#000;z-index:6}
@@ -109,7 +116,7 @@ body.m-phone #solo{order:2}body.m-phone .al-ctl-sec{order:3}
 .act-awake{background:var(--grad);color:#1a0d02;min-block-size:58px;box-shadow:0 10px 24px -12px rgba(245,138,46,.8)}
 .act-ok{background:var(--info);color:#fff}
 [data-theme=dark] .act-safe,[data-theme=dark] .act-help,[data-theme=dark] .act-ok{color:#0a0e15}
-.act-big.btn-cool{color:#fff;border-radius:18px}
+.act-big.btn-cool{border-radius:18px}
 .act-needs-t{font-size:.82rem;color:var(--ink-2);text-align:start;padding:4px 6px;border-radius:8px;display:flex;align-items:center;gap:6px;min-block-size:32px}
 .act-needs-t::after{content:"";inline-size:7px;block-size:7px;border-inline-end:2px solid currentColor;border-block-end:2px solid currentColor;transform:rotate(45deg);margin-inline-start:auto}
 .act-needs-t[aria-expanded=true]::after{transform:rotate(-135deg)}
@@ -148,12 +155,17 @@ body.m-phone #solo{order:2}body.m-phone .al-ctl-sec{order:3}
 .pics{display:grid;grid-template-columns:repeat(auto-fit,minmax(86px,1fr));gap:8px;margin:0;padding:0;list-style:none}
 .pic{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px 6px;border-radius:16px;background:var(--surface);border:1px solid var(--line);text-align:center}
 .pic-svg{display:block;inline-size:64px;block-size:64px}
-.pic-cap{font-size:.78rem;line-height:1.3;color:var(--ink-2);font-weight:600;overflow-wrap:anywhere}
+.pic-cap{font-size:.78rem;line-height:1.3;color:var(--ink-2);font-weight:600;overflow-wrap:break-word}
 @container (min-width:330px){
   .pics{display:flex;flex-wrap:nowrap;justify-content:center;gap:6px}
   .pic{flex:1 1 0;min-inline-size:0;max-inline-size:84px;padding-inline:3px}
   .pic-svg{inline-size:min(60px,100%);block-size:auto;aspect-ratio:1}
   .pic-cap{font-size:.7rem}
+  /* large-text mode keeps the big pictures: back to a wrapping grid so five 84 px cards never squeeze into one row */
+  .p-screen.big .pics{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:8px;justify-content:stretch}
+  .p-screen.big .pic{max-inline-size:none;padding-inline:4px}
+  .p-screen.big .pic-svg{inline-size:84px;block-size:84px;aspect-ratio:auto}
+  .p-screen.big .pic-cap{font-size:.8rem}
 }
 .al-body{display:grid;gap:10px}
 .al-lines{display:grid;gap:8px;margin:0;padding:0;list-style:none;counter-reset:ln}
@@ -238,7 +250,7 @@ body.m-phone #solo{order:2}body.m-phone .al-ctl-sec{order:3}
 .lad-s.is-done{background:color-mix(in oklab,var(--safe) 15%,var(--surface));color:var(--ink)}
 .lad-s.is-now{background:color-mix(in oklab,var(--tone) 18%,var(--surface));border-color:var(--tone);color:var(--head)}
 .lad-s.is-stop{background:color-mix(in oklab,var(--safe) 18%,var(--surface));border-color:var(--safe);color:var(--head)}
-.lad-s.is-off{opacity:.45}
+.lad-s.is-off{background:transparent;border:2px dashed var(--line-2);color:var(--muted)}
 .lad-now b{display:block;font-family:var(--font-h);color:var(--head);font-size:1rem;line-height:1.35}
 .lad-now p{font-size:.92rem;color:var(--ink-2)}
 .lad-meta{font-size:.78rem;color:var(--ink-2)}
@@ -293,6 +305,9 @@ body.m-phone #solo{order:2}body.m-phone .al-ctl-sec{order:3}
 .more-phone .phone{max-inline-size:360px}
 .solo-info{display:grid;gap:12px;align-content:start;min-inline-size:0}
 .solo-info h3{font-size:1.25rem}
+.solo-try{display:grid;gap:10px;padding:14px;border-radius:var(--r-sm);background:var(--surface);border:1px solid var(--line);justify-items:start}
+.solo-try>b{font-family:var(--font-h);color:var(--head)}
+.solo-try .chip .i{inline-size:16px;block-size:16px}
 .more-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:24px;align-items:start;margin-block-start:18px}
 @media(min-width:900px){
   .solo-grid{grid-template-columns:minmax(0,420px) minmax(0,1fr);gap:40px}
@@ -329,6 +344,7 @@ body.m-wall .solo-phone .pcell{display:none}
 .qr-form select,.qr-form .input{inline-size:100%;min-inline-size:0}
 .qr-link{display:block;padding:10px 12px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;font-size:.8rem;line-height:1.6;overflow-wrap:anywhere;direction:ltr;text-align:left;color:var(--ink-2)}
 .qr-msg{display:grid;gap:8px}
+.qr-msg p{overflow-wrap:anywhere}
 .qr-box{background:#fff;border-radius:18px;padding:14px;border:1px solid var(--line-2);justify-self:center;box-shadow:var(--shadow-sm);line-height:0}
 .qr-box canvas{image-rendering:pixelated;max-inline-size:100%;block-size:auto}
 .pic-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:10px;margin:0;padding:0;list-style:none}
@@ -365,3 +381,11 @@ body.m-wall .solo-phone .pcell{display:none}
 .dr-top{grid-template-columns:auto minmax(0,1fr)}
 
 canvas[hidden],.p-flash[hidden]{display:none}
+
+/* ---------- 9. text contrast on tinted pills (base.css tokens are tuned for fills; small text on a 14 % tint needs a deeper ink) ---------- */
+.btn-cool{color:#0a0e15}
+[data-theme=light] .tag{color:color-mix(in oklab,var(--sc,var(--brand)) 60%,black)}
+[data-theme=light] .chip[aria-pressed=true],[data-theme=light] .chip.on,[data-theme=light] .eyebrow{color:color-mix(in oklab,var(--brand) 62%,black)}
+[data-theme=light] .al-draft b{color:color-mix(in oklab,var(--warn) 68%,black)}
+[data-theme=light] .p-ex{color:color-mix(in oklab,var(--info) 70%,black)}
+[data-theme=dark] .tag.danger{color:color-mix(in oklab,var(--danger) 78%,white)}

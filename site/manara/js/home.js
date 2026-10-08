@@ -32,6 +32,14 @@
   function setStaticHTML(node, html) { node.innerHTML = html; }          // author-written strings ONLY (never user text)
   function iconInner(name) { var s = M.icon(name); return s.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, ''); }
   function mmss(sec) { sec = Math.max(0, Math.round(sec)); var m = Math.floor(sec / 60), s = sec % 60; return m + ':' + (s < 10 ? '0' : '') + s; }
+  // "2 min 33 s" / «دقيقتين و33 ثانية» (genitive/accusative forms: it is used after «بـ»)
+  function dur(sec) {
+    sec = Math.max(0, Math.round(sec)); var m = Math.floor(sec / 60), r = sec % 60;
+    if (M.lang() === 'en') return (m ? m + ' min ' : '') + (r || !m ? r + ' s' : '').trim();
+    function part(n, one, two, few, many) { return n === 1 ? one : n === 2 ? two : n >= 3 && n <= 10 ? n + ' ' + few : n + ' ' + many; }
+    var a = m ? part(m, 'دقيقة', 'دقيقتين', 'دقائق', 'دقيقة') : '', b = r || !m ? part(r, 'ثانية', 'ثانيتين', 'ثوانٍ', 'ثانية') : '';
+    return a && b ? a + ' و' + b : a || b;
+  }
   function onLang(fn) { window.addEventListener('langchange', fn); }
   function onTheme(fn) { window.addEventListener('themechange', fn); }
 
@@ -81,6 +89,7 @@
       unit: T('إسعاف', 'Ambulance'), kind: 'ambulance', unitTone: '--accent', aria: T('شخص يحتاج مساعدة في غرفة', 'A person needing help in a room') }
   ];
   var HZ_BY = {}; HZ.forEach(function (h) { HZ_BY[h.id] = h; });
+  var PRESET_OF = { fire: 'fire-night', gas: 'gas-night', flood: 'flood-day', dust: 'dust-day', heat: 'heat-day', sos: 'sos-day' };   // = ManaraSim.PRESET_ORDER ids, for mission.html#scenario=
   var STAGE_ICONS = ['radar', 'shield', 'bell', 'route', 'users', 'external'];
   var STAGE_NAMES = [T('يرصد', 'Sense'), T('يتحقق', 'Prove'), T('يُبلغ', 'Reach'), T('يُرشد', 'Guide'), T('يُحصي', 'Count'), T('يُسلّم', 'Hand off')];
 
@@ -104,7 +113,7 @@
     if (!canvas || !canvas.getContext) return null;
     var ctx = canvas.getContext('2d');
     var W = 640, H = 480;
-    var LOOP = 19.5, STILL_T = 12.6, STEP = 0.25;
+    var LOOP = 19.5, STILL_T = 16.4, STEP = 0.25;      // STILL_T: the frame reduced-motion users get, when everyone is safe and the card is delivered
     var TL = { hazard: 1.0, k1: 2.8, k2: 4.4, human: 5.9, reach: 7.0, guide: 8.8, walk: 8.5, handoff: 14.4 };
     var STAGE_AT = [0, 2.6, 7.0, 8.8, 10.2, 14.4];
     var G = {
@@ -229,7 +238,6 @@
       ROOMS.forEach(function (r, i) {
         var p = S.people[i], lit = false;
         if (p && h.night) lit = p.asleep ? t >= p.wakeAt : true;
-        if (h.id === 'fire' && r.x > 360 && r.y < 200) { var fg = smooth(ramp(t, TL.hazard, TL.hazard + 3)); }
         rr(r.x, r.y, 18, 26, 3);
         ctx.fillStyle = lit ? C('--fire-1', 0.9) : C('--surface-3'); ctx.fill();
         ctx.strokeStyle = C('--line-2'); ctx.lineWidth = 1; ctx.stroke();
@@ -342,7 +350,6 @@
       S.safe.forEach(function (sf) { ctx.strokeStyle = C('--safe', a); ctx.lineWidth = 2; ctx.setLineDash([4, 4]); circle(sf.x, sf.y, 14); ctx.stroke(); ctx.setLineDash([]); });
     }
 
-    function unitColor(kind) { var h = st.hz; return C(h.unitTone); }
     function drawUnit(x, y, ang, tone, alpha, flash, label) {
       var k = st.k; ctx.save(); ctx.translate(x, y); ctx.rotate(ang); ctx.globalAlpha = alpha;
       rr(-12 * k, -6.5 * k, 24 * k, 13 * k, 3.5 * k); ctx.fillStyle = tone; ctx.fill(); ctx.strokeStyle = C('--surface'); ctx.lineWidth = 1.6; ctx.stroke();
@@ -452,27 +459,27 @@
       ctx.strokeStyle = C('--accent'); ctx.lineWidth = 1.4; for (var i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(x - 7 * k * 0.9, y - 3 * k * 0.9 + i * 3.6 * k * 0.9); ctx.lineTo(x + (i === 2 ? 1 : 7) * k * 0.9, y - 3 * k * 0.9 + i * 3.6 * k * 0.9); ctx.stroke(); }
     }
 
-    function drawNight(h, t) {
+    function tintNight(h) {                                      // dusk over the ground only: the people, the hazard and the lamp stay crisp on top of it
+      if (!h.night) return;
+      if (document.documentElement.dataset.theme === 'dark') { ctx.fillStyle = C('--bg', 0.34); ctx.fillRect(0, 0, W, H); }
+      else { ctx.fillStyle = C('--info', 0.22); ctx.fillRect(0, 0, W, H); ctx.fillStyle = C('--ink', 0.14); ctx.fillRect(0, 0, W, H); }
+    }
+    function drawSky(h) {                                        // the sun by day, a crescent moon at night
       if (!h.night) {
-        // sun
         ctx.strokeStyle = C('--fire-2', 0.9); ctx.fillStyle = C('--fire-1'); ctx.lineWidth = 2.2; circle(36, 440, 9); ctx.fill();
         for (var i = 0; i < 8; i++) { var a = i * Math.PI / 4; ctx.beginPath(); ctx.moveTo(36 + Math.cos(a) * 13, 440 + Math.sin(a) * 13); ctx.lineTo(36 + Math.cos(a) * 18, 440 + Math.sin(a) * 18); ctx.stroke(); }
         return;
       }
-      var dark = document.documentElement.dataset.theme === 'dark';
-      ctx.fillStyle = dark ? C('--bg', 0.34) : C('--ink', 0.30); ctx.fillRect(0, 0, W, H);
-      // moon (drawn after the tint so it stays bright)
-      ctx.fillStyle = C('--fire-1'); circle(36, 440, 11); ctx.fill(); ctx.fillStyle = C('--bg-2'); circle(41, 436, 10); ctx.fill();
+      ctx.save(); circle(36, 440, 11); ctx.clip(); ctx.beginPath(); ctx.arc(36, 440, 11, 0, Math.PI * 2); ctx.arc(42, 436, 10, 0, Math.PI * 2); ctx.fillStyle = C('--fire-1'); ctx.fill('evenodd'); ctx.restore();
     }
-
-    function drawKeyBadgeOnConsole() { /* the console is drawn in drawKeys */ }
 
     function frame(t) {
       var h = st.hz, S = st.S;
       ctx.setTransform(st.px, 0, 0, st.px, 0, 0);
       ctx.clearRect(0, 0, W, H);
       var fadeIn = ramp(t, 0, 0.5), fadeOut = 1 - ramp(t, LOOP - 0.7, LOOP);
-            drawGround(h, t);
+      drawGround(h, t);
+      tintNight(h);
       drawStations(h, t);
       drawBuilding(h, t, S);
       drawHazard(h, t, S);
@@ -483,7 +490,7 @@
       drawKeys(h, t, S);
       drawHandoff(h, t);
       drawLamp(h, t, S);
-      drawNight(h, t);
+      drawSky(h);
       var fade = Math.min(fadeIn, fadeOut);
       if (fade < 1) { ctx.fillStyle = C('--bg-2', 1 - fade); ctx.fillRect(0, 0, W, H); }
       return safeN;
@@ -538,7 +545,7 @@
     }
     function whyText() {
       var dkm = DIST_B_KM - DIST_A_KM, gain = ETA_A - ETA_B;
-      return L(T('المحطة B أبعد بـ ' + M.num(dkm, 1) + ' كم لكنها أسرع بـ ' + mmss(gain) + ': الطريق أمام المحطة A مزدحم (SIM).', 'Station B is ' + M.num(dkm, 1) + ' km farther but ' + mmss(gain) + ' faster: the road ahead of Station A is jammed (SIM).'));
+      return L(T('المحطة B أبعد بـ ' + M.num(dkm, 1) + ' كم لكنها أسرع بـ ' + dur(gain) + ': الطريق أمام المحطة A مزدحم (SIM).', 'Station B is ' + M.num(dkm, 1) + ' km farther but ' + dur(gain) + ' faster: the road ahead of Station A is jammed (SIM).'));
     }
     function verdictText(v) { return v === 'suspect' ? L(T('اشتباه · مفتاح واحد', 'SUSPECT · 1 key')) : v === 'confirmed' ? L(T('مؤكَّد · مفتاحان', 'CONFIRMED · 2 keys')) : v === 'public' ? L(T('إنذار عام · + موافقة الإنسان', 'PUBLIC ALERT · + human')) : ''; }
 
@@ -548,7 +555,7 @@
       var v = verdictOf(t);
       if (verdictEl && (force || st.cache.v !== v)) { verdictEl.textContent = verdictText(v); verdictEl.setAttribute('data-s', v); st.cache.v = v; }
       var sTxt;
-      if (h.id === 'sos') { var rem = t >= TL.reach ? Math.max(0, ETA_B * (1 - ramp(t, TL.reach, TL.handoff))) : -1; sTxt = rem >= 0 ? L(T('وصول الإسعاف ' + mmss(rem) + ' (SIM)', 'Ambulance ETA ' + mmss(rem) + ' (SIM)')) : ''; }
+      if (h.id === 'sos') { var rem = t >= TL.reach ? Math.max(0, ETA_B * (1 - ramp(t, TL.reach, TL.handoff))) : -1; sTxt = rem > 0.5 ? L(T('وصول الإسعاف ' + mmss(rem) + ' (SIM)', 'Ambulance ETA ' + mmss(rem) + ' (SIM)')) : rem >= 0 ? L(T('وصل الإسعاف إلى الموقع (SIM)', 'Ambulance on scene (SIM)')) : ''; }
       else sTxt = t >= TL.guide ? L(T('آمنون ', 'Safe ')) + safeN + ' / ' + st.S.people.length : '';
       if (safeEl && (force || st.cache.s !== sTxt)) { safeEl.textContent = sTxt; st.cache.s = sTxt; }
       var key = stage + '|' + (stage === 4 ? safeN : '') + '|' + h.id + '|' + M.lang();
@@ -560,7 +567,7 @@
       }
       var why = t >= TL.reach ? whyText() : '';
       if (whyEl && (force || st.cache.why !== why)) { st.cache.why = why; whyEl.textContent = why; }
-      if (scrub && document.activeElement !== scrub) scrub.value = String(Math.round(t / STEP));
+      if (scrub) { if (document.activeElement !== scrub) scrub.value = String(Math.round(t / STEP)); scrub.style.setProperty('--p', (100 * scrub.value / scrub.max).toFixed(1) + '%'); }
     }
 
     function render(force) {
@@ -592,6 +599,7 @@
       st.hz = h; st.S = buildScene(h); st.cache = {};
       hzBtns.forEach(function (b) { var on = b.dataset.hz === id; b.setAttribute('aria-checked', on ? 'true' : 'false'); b.tabIndex = on ? 0 : -1; });
       st.t = reduced() ? STILL_T : 0;
+      var open = $('#hero-open'); if (open) open.setAttribute('href', 'mission.html#scenario=' + PRESET_OF[id]);
       labels(); render(true);
     }
     function seek(t, pause) {
@@ -639,7 +647,7 @@
       if (st.playing) loopStart();
     }
     return {
-      init: init, selectHz: selectHz, seek: seek,
+      init: init, selectHz: selectHz, seek: seek, repaint: function () { readTokens(); render(true); },
       state: function () { return { hz: st.hz.id, t: st.t, stage: stageOf(st.t), playing: st.playing, stillT: STILL_T, loop: LOOP, safe: st.cache.safeN, people: st.S.people.length }; },
       model: { etaA: ETA_A, etaB: ETA_B, distA: DIST_A_KM, distB: DIST_B_KM }
     };
@@ -760,12 +768,12 @@
     var SCENE = 'g';
     // units: kind, attached node, marker offset, bilingual name
     var UNITS = [
-      { id: 'FA', kind: 'fire', node: 'f', off: [-36, -28], spur: 0.33, name: T('محطة الدفاع المدني A (تجريبية)', 'Civil Defence Station A (demo)'), tag: T('إطفاء A', 'Fire A'), short: T('المحطة A', 'Station A') },
-      { id: 'FB', kind: 'fire', node: 'l', off: [34, 30], spur: 0.33, name: T('محطة الإنقاذ والمواد الخطرة B (تجريبية)', 'Rescue & HazMat Station B (demo)'), tag: T('إطفاء B', 'Fire B'), short: T('المحطة B', 'Station B') },
+      { id: 'FA', kind: 'fire', node: 'f', off: [-42, -34], spur: 0.33, name: T('محطة الدفاع المدني A (تجريبية)', 'Civil Defence Station A (demo)'), tag: T('إطفاء A', 'Fire A'), short: T('المحطة A', 'Station A') },
+      { id: 'FB', kind: 'fire', node: 'l', off: [42, 30], spur: 0.33, name: T('محطة الإنقاذ والمواد الخطرة B (تجريبية)', 'Rescue & HazMat Station B (demo)'), tag: T('إطفاء B', 'Fire B'), short: T('المحطة B', 'Station B') },
       { id: 'P1', kind: 'police', node: 'c', off: [-32, -26], spur: 0.24, name: T('مركز الشرطة 1 (تجريبي)', 'Police post 1 (demo)'), tag: T('شرطة 1', 'Police 1'), short: T('مركز الشرطة 1', 'Police post 1') },
       { id: 'P2', kind: 'police', node: 'd', off: [-32, -26], spur: 0.24, name: T('مركز الشرطة 2 (تجريبي)', 'Police post 2 (demo)'), tag: T('شرطة 2', 'Police 2'), short: T('مركز الشرطة 2', 'Police post 2') },
-      { id: 'H1', kind: 'hospital', node: 'f', off: [-36, 30], spur: 0.30, trauma: false, name: T('مستشفى النخيل (تجريبي)', 'Nakheel Hospital (demo)'), tag: T('مستشفى 1', 'Hospital 1'), short: T('مستشفى النخيل', 'Nakheel Hospital') },
-      { id: 'H2', kind: 'hospital', node: 'l', off: [-38, 32], spur: 0.30, trauma: true, name: T('مركز الإصابات الطارئة (تجريبي)', 'Emergency Trauma Centre (demo)'), tag: T('مستشفى 2', 'Hospital 2'), short: T('مركز الإصابات الطارئة', 'the Emergency Trauma Centre') }
+      { id: 'H1', kind: 'hospital', node: 'f', off: [-42, 38], spur: 0.30, trauma: false, name: T('مستشفى النخيل (تجريبي)', 'Nakheel Hospital (demo)'), tag: T('مستشفى 1', 'Hospital 1'), short: T('مستشفى النخيل', 'Nakheel Hospital') },
+      { id: 'H2', kind: 'hospital', node: 'l', off: [-50, 34], spur: 0.30, trauma: true, name: T('مركز الإصابات الطارئة (تجريبي)', 'Emergency Trauma Centre (demo)'), tag: T('مستشفى 2', 'Hospital 2'), short: T('مركز الإصابات الطارئة', 'the Emergency Trauma Centre') }
     ];
     var KINDS = [
       { k: 'fire', tone: '--danger', icon: 'fire', name: T('إطفاء وإنقاذ', 'Fire & rescue') },
@@ -802,7 +810,10 @@
         var delay = 0, worst = null;
         path.forEach(function (p) { var d = edgeTime(p.e, load) - edgeFree(p.e); if (d > delay) { delay = d; worst = p.e; } });
         var spurMin = u.spur / CLASS.Lc.kmh * 60 / (Math.max(0.15, 1 - load * CLASS.Lc.sens));
-        out[u.id] = { u: u, eta: tm.dist[u.node] + spurMin, km: ds.dist[u.node] + u.spur, path: path, worst: worst, delay: delay };
+        // the SHORTEST route (what "nearest" would drive) and the road on it that costs the most time right now: the honest reason it may lose
+        var kp = [], kc = u.node, kDelay = 0, kWorst = null; while (kc !== SCENE) { var q = ds.prev[kc]; kp.push(q); kc = q.n; }
+        kp.forEach(function (q) { var d = edgeTime(q.e, load) - edgeFree(q.e); if (d > kDelay + 1e-9) { kDelay = d; kWorst = q.e; } });
+        out[u.id] = { u: u, eta: tm.dist[u.node] + spurMin, km: ds.dist[u.node] + u.spur, path: path, worst: worst, delay: delay, kmWorst: kWorst, kmDelay: kDelay };
       });
       return out;
     }
@@ -817,13 +828,17 @@
       if (!p) return '';
       var c = p.chosen, n = p.nearest;
       if (c === n) return { same: true, text: L(T('الأقرب مسافةً هو الأسرع الآن.', 'The nearest by distance is also the fastest right now.')) };
-      var extra = c.km - n.km, gain = (n.eta - c.eta) * 60, road = n.worst, st = road && S.jam[road.id] === 1 ? T('مزدحم (من اختيارك)', 'jammed (your choice)') : T('بطيء بسبب الازدحام', 'slow in heavy traffic');
+      var extra = c.km - n.km, gain = (n.eta - c.eta) * 60, road = n.kmWorst || n.worst, st = road && S.jam[road.id] === 1 ? T('مزدحم (من اختيارك)', 'jammed (your choice)') : T('بطيء بسبب الازدحام', 'slow in heavy traffic');
       if (n.eta === Infinity) return { same: false, text: '' };
       var name = c.u.short;
-      return { same: false, text: L(T(L(name) + ' أبعد بـ ' + M.num(extra, 1) + ' كم لكنها أسرع بـ ' + mmss(gain) + (road ? ' لأن «' + roadName(road) + '» ' + L(st) : ''),
-        L(name) + ' is ' + M.num(extra, 1) + ' km farther but ' + mmss(gain) + ' faster' + (road ? ' because ' + roadName(road) + ' is ' + L(st) : ''))) };
+      return { same: false, text: L(T(L(name) + ' أبعد بـ ' + M.num(extra, 1) + ' كم لكنها أسرع بـ ' + dur(gain) + (road ? ': الأقرب مسافةً يمرّ بـ«' + roadName(road) + '» وهو ' + L(st) : ''),
+        L(name) + ' is ' + M.num(extra, 1) + ' km farther but ' + dur(gain) + ' faster' + (road ? ': the nearest one’s shortest route uses ' + roadName(road) + ', which is ' + L(st) : ''))) };
     }
 
+    function scaleMarks() {                                      // markers and the incident label grow on narrow screens so their text stays legible
+      $$('.mk', svg).forEach(function (g) { g.setAttribute('transform', 'translate(' + g.getAttribute('data-x') + ' ' + g.getAttribute('data-y') + ') scale(' + MK + ')'); });
+      var sc = $('.scene', svg); if (sc) { var gp = N[SCENE]; sc.setAttribute('transform', 'translate(' + gp[0] + ' ' + gp[1] + ') scale(' + MK + ') translate(' + (-gp[0]) + ' ' + (-gp[1]) + ')'); }
+    }
     function build() {
       clear(svg);
       svg.setAttribute('aria-label', L(T('خريطة طرق افتراضية: انقر طريقًا ليزدحم أو يُغلق', 'A fictional road map: click a road to jam or close it')));
@@ -853,10 +868,10 @@
         if (kd.icon === 'plus') sv('path', { 'class': 'ic', d: 'M12 5v14M5 12h14' }, ic); else { setStaticHTML(ic, iconInner(kd.icon)); $$('path,circle,rect', ic).forEach(function (n) { n.setAttribute('class', 'ic'); }); }
         var tx = sv('text', { 'class': 'mk-t', x: 0, y: u.off[1] < 0 ? -24 : 31, 'text-anchor': 'middle' }, g); unitEls[u.id] = { g: g, t: tx };
       });
+      scaleMarks();
     }
     function cycle(id) { S.jam[id] = ((S.jam[id] || 0) + 1) % 3; update(true); }
 
-    function routeD(r) { var pts = [r.u.pos]; r.path.forEach(function (p) { pts.push(N[p.n === SCENE && false ? p.n : null] || null); }); return ''; }
     function polyFor(r) {
       var pts = [r.u.pos, N[r.u.node]], cur = r.u.node;
       r.path.forEach(function (p) { pts.push(N[p.n]); });
@@ -866,6 +881,7 @@
       clear(routeG);
       var p = picks[S.focus]; if (!p) return;
       if (p.runner) sv('path', { 'class': 'route alt', d: polyFor(p.runner) }, routeG);
+      sv('path', { 'class': 'route halo', d: polyFor(p.chosen) }, routeG);
       sv('path', { 'class': 'route', d: polyFor(p.chosen) }, routeG);
     }
     function chartDraw(sol) {
@@ -878,12 +894,12 @@
       for (var gy = 0; gy <= 2; gy++) { var yy = Y0 + (Y1 - Y0) * gy / 2; sv('line', { 'class': 'ch-axis', x1: X0, x2: X1, y1: yy, y2: yy, opacity: gy === 2 ? 1 : 0.5 }, chart); var tt = sv('text', { 'class': 'ch-t', x: X0 - 5, y: yy + 3, 'text-anchor': 'end' }, chart); tt.textContent = String(Math.round(maxEta * (1 - gy / 2))); }
       [0, 0.5, 1].forEach(function (l) { var tt2 = sv('text', { 'class': 'ch-t', x: x(l), y: Y1 + 14, 'text-anchor': l === 0 ? 'start' : l === 1 ? 'end' : 'middle' }, chart); tt2.textContent = Math.round(l * 100) + '%'; });
       var yl = sv('text', { 'class': 'ch-t', x: X0, y: 9, 'text-anchor': 'start' }, chart); yl.textContent = L(T('دقائق (SIM)', 'minutes (SIM)'));
-      var cols = ['var(--brand)', 'var(--accent)', 'var(--info)'];
+      var cols = ['var(--brand)', 'var(--accent)', 'var(--info)'], colsT = ['var(--brand-t)', 'var(--accent-t)', 'var(--info-t)'];   // lines use the plain colour, the small labels the AA-safe text variant
       series.forEach(function (s, i) {
         var d = ''; s.pts.forEach(function (p, j) { if (p[1] == null) return; d += (d ? 'L' : 'M') + x(p[0]).toFixed(1) + ' ' + y(p[1]).toFixed(1); });
         sv('path', { 'class': 'ch-line', d: d, stroke: cols[i % 3] }, chart);
         var nowEta = sol[s.u.id] ? sol[s.u.id].eta : null; if (nowEta != null) sv('circle', { 'class': 'ch-dot', cx: x(S.load), cy: y(nowEta), r: 5, fill: cols[i % 3] }, chart);
-        var lt = sv('text', { 'class': 'ch-t', x: X1 - 2, y: y(s.pts[s.pts.length - 1][1] || 0) + (i ? 12 : -5), 'text-anchor': 'end', fill: cols[i % 3] }, chart); lt.setAttribute('style', 'fill:' + cols[i % 3] + ';font-weight:700'); lt.textContent = L(s.u.tag);
+        var lt = sv('text', { 'class': 'ch-t', x: X1 - 2, y: y(s.pts[s.pts.length - 1][1] || 0) + (i ? 12 : -5), 'text-anchor': 'end', fill: cols[i % 3] }, chart); lt.setAttribute('style', 'fill:' + colsT[i % 3] + ';font-weight:700'); lt.textContent = L(s.u.tag);
       });
       sv('line', { 'class': 'ch-now', x1: x(S.load), x2: x(S.load), y1: Y0, y2: Y1 }, chart);
     }
@@ -918,7 +934,7 @@
         var b = el('button', 'fr-card'); b.type = 'button'; b.setAttribute('aria-pressed', S.focus === kd.k ? 'true' : 'false'); b.style.setProperty('--sc', 'var(' + kd.tone + ')'); b.dataset.pick = kd.k; b.dataset.unit = c.u.id;
         var ic = el('span', 'fr-ic'); setStaticHTML(ic, kd.icon === 'plus' ? '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>' : M.icon(kd.icon)); b.appendChild(ic);
         var mid = el('span'); mid.appendChild(el('span', 'fr-k', L(kd.name) + (kd.k === 'hospital' && S.trauma ? ' · ' + L(T('يحتاج مركز إصابات', 'needs trauma centre')) : ''))); mid.appendChild(el('div', 'fr-name', L(c.u.name))); b.appendChild(mid);
-        var eta = el('span', 'fr-eta num', mmss(c.eta * 60)); eta.appendChild(el('small', null, 'SIM · ' + M.num(c.km, 1) + ' km')); b.appendChild(eta);
+        var eta = el('span', 'fr-eta num'); eta.appendChild(el('span', null, mmss(c.eta * 60))).setAttribute('aria-hidden', 'true'); eta.appendChild(el('span', 'sr-only', dur(c.eta * 60) + ' (SIM)')); eta.appendChild(el('small', null, 'SIM · ' + M.num(c.km, 1) + ' km')); b.appendChild(eta);
         var wy = el('p', 'fr-why');
         if (!why.same && why.text) { wy.appendChild(el('span', 'tag safe', L(T('أبعد لكنه أسرع', 'farther but faster')))); }
         else if (kd.k === 'hospital' && S.trauma && p.nearest !== p.chosen) { wy.appendChild(el('span', 'tag info', L(T('القدرة أولًا', 'capability first')))); }
@@ -937,17 +953,20 @@
     function init() {
       build();
       var slider = $('#fast-load'), tr = $('#fast-trauma');
-      slider.addEventListener('input', function () { S.load = +slider.value / 100; update(false); });
-      $$('[data-load]').forEach(function (b) { b.addEventListener('click', function () { slider.value = b.getAttribute('data-load'); S.load = +slider.value / 100; update(false); }); });
+      function fill() { slider.style.setProperty('--p', slider.value + '%'); }
+      slider.addEventListener('input', function () { S.load = +slider.value / 100; fill(); update(false); });
+      $$('[data-load]').forEach(function (b) { b.addEventListener('click', function () { slider.value = b.getAttribute('data-load'); S.load = +slider.value / 100; fill(); update(false); }); });
+      fill();
       tr.addEventListener('change', function () { S.trauma = tr.checked; update(false); });
       $('#fast-reset').addEventListener('click', function () { S.jam = {}; update(false); });
       svg.setAttribute('role', 'group');
-      function fit() { var w = svg.getBoundingClientRect().width; if (w < 40) return; var k = clamp(560 / w, 1, 1.5); if (Math.abs(k - MK) < 0.02) return; MK = k; $$('.mk', svg).forEach(function (g) { g.setAttribute('transform', 'translate(' + g.getAttribute('data-x') + ' ' + g.getAttribute('data-y') + ') scale(' + MK + ')'); }); }
+      function fit() { var w = svg.getBoundingClientRect().width; if (w < 40) return; var k = clamp(560 / w, 1, 1.6); if (Math.abs(k - MK) < 0.02) return; MK = k; scaleMarks(); }
+
       if ('ResizeObserver' in window) new ResizeObserver(fit).observe(svg); else window.addEventListener('resize', fit);
       onLang(function () { build(); update('silent'); fit(); });
       update('silent');
     }
-    return { init: init, state: function () { return { load: S.load, trauma: S.trauma, jam: S.jam, picks: Object.keys(S.last).reduce(function (o, k) { var p = S.last[k]; o[k] = p ? { chosen: p.chosen.u.id, nearest: p.nearest.u.id, eta: p.chosen.eta, runner: p.runner && p.runner.u.id } : null; return o; }, {}) }; }, jam: function (id, v) { S.jam[id] = v; update(false); }, setLoad: function (v) { S.load = v; var s = $('#fast-load'); if (s) s.value = String(Math.round(v * 100)); update(false); } };
+    return { init: init, state: function () { return { load: S.load, trauma: S.trauma, jam: S.jam, picks: Object.keys(S.last).reduce(function (o, k) { var p = S.last[k]; o[k] = p ? { chosen: p.chosen.u.id, nearest: p.nearest.u.id, eta: p.chosen.eta, runner: p.runner && p.runner.u.id } : null; return o; }, {}) }; }, jam: function (id, v) { S.jam[id] = v; update(false); }, setLoad: function (v) { S.load = v; var s = $('#fast-load'); if (s) { s.value = String(Math.round(v * 100)); s.style.setProperty('--p', s.value + '%'); } update(false); } };
   })();
 
   /* ======================================================================= 6. HAZARD CARDS + GAUGES */
@@ -1122,9 +1141,28 @@
     spy();
   }
   function initMisc() {
-    $$('[data-logo]').forEach(function (n) { setStaticHTML(n, M.logo(64)); });
+    $$('[data-logo]').forEach(function (n) { setStaticHTML(n, M.logo(64).replace(/mn-b2/g, 'hero-b2').replace(/mn-b/g, 'hero-b')); });   // own gradient ids: core.js uses the same ids for the nav and footer logos
     var pb = $('#print-btn'); if (pb) pb.addEventListener('click', function () { window.print(); });
     $$('#hero-steps').forEach(function (n) { n.setAttribute('aria-label', M.s('home.stages')); });
+    // printing: always on paper-light colours, whatever theme is on screen (the canvas is re-drawn with the light tokens)
+    var printedFrom = null;
+    window.addEventListener('beforeprint', function () {
+      var d = document.documentElement; if (d.dataset.theme === 'dark') { printedFrom = 'dark'; d.dataset.theme = 'light'; }
+      if (hero) hero.repaint();
+    });
+    window.addEventListener('afterprint', function () {
+      if (printedFrom) { document.documentElement.dataset.theme = printedFrom; printedFrom = null; }
+      if (hero) hero.repaint();
+    });
+  }
+  function initPlaceholders() {                                  // «{{…}}» fields the student must fill in: say how many are left
+    var out = $('#ph-status'); if (!out) return;
+    function render() {
+      var all = $$('.ph'), left = all.filter(function (n) { return /\{\{[A-Z_]+\}\}/.test(n.textContent); });
+      out.classList.toggle('done', left.length === 0);
+      out.textContent = left.length ? L(T('حقول بلا تعبئة: ' + left.length + ' من ' + all.length, 'Fields still to fill in: ' + left.length + ' of ' + all.length)) : L(T('اكتملت كل الحقول.', 'All fields are filled in.'));
+    }
+    render(); onLang(render);
   }
 
   /* ======================================================================= boot */
@@ -1145,7 +1183,7 @@
   function boot() {
     try { brandOverride(); } catch (e) { /* the shell keeps its own text */ }
     initMisc();
-    [hero && hero.init, initCounters, initPipeline, initProof, fast && fast.init, initHazards, persona && persona.init, initLangs, initTruth, initSweep, initSubnav].forEach(function (fn) {
+    [hero && hero.init, initCounters, initPipeline, initProof, fast && fast.init, initHazards, persona && persona.init, initLangs, initTruth, initSweep, initSubnav, initPlaceholders].forEach(function (fn) {
       if (typeof fn !== 'function') return;
       try { fn(); } catch (e) { if (window.console) console.error(e); }
     });

@@ -24,6 +24,7 @@
 <a class="skip" href="#main">تخطَّ إلى المحتوى</a>
 <header class="nav" data-nav></header>
 <main id="main">
+<noscript><div class="wrap"><p class="note warn ns-note"><span data-l="ar">الصفحة تحتاج جافاسكربت لتعرض المحاكاة التفاعلية؛ النصوص والأرقام والمصادر كلها ظاهرة بدونها.</span><span data-l="en">The interactive simulations need JavaScript; all the text, numbers and sources are visible without it.</span></p></div></noscript>
 
 <!-- ============================================================ HERO -->
 <section class="hero" id="top" aria-labelledby="hero-title">
@@ -67,13 +68,14 @@
         <button class="icon-btn" type="button" id="hero-play" aria-pressed="true"></button>
         <label class="scrub"><span class="sr-only"><span data-l="ar">الخط الزمني للمشهد</span><span data-l="en">Scene timeline</span></span><input type="range" id="hero-scrub" min="0" max="78" step="1" value="0"></label>
       </div>
+      <p class="stage-open"><a id="hero-open" href="mission.html#scenario=fire-night" data-icon="radar"><span data-l="ar">افتح هذا السيناريو بتفاصيله في غرفة العمليات</span><span data-l="en">Open this scenario in full in Mission Control</span></a></p>
       <p class="stage-note"><span data-l="ar">محاكاة: الحيّ والأشخاص والمرور والمحطات افتراضية. 999 يبقى هو المرسِل في الواقع.</span><span data-l="en">Simulation: the district, people, traffic and stations are fictional. In real life 999 stays the dispatcher.</span></p>
     </div>
   </div>
 </section>
 
 <nav class="subnav" aria-label="" id="subnav">
-  <div class="wrap wide"><div class="subnav-row">
+  <div class="wrap wide"><div class="subnav-row scroll-x">
     <a href="#problem"><span data-l="ar">المشكلة</span><span data-l="en">Problem</span></a>
     <a href="#gap"><span data-l="ar">الفجوة</span><span data-l="en">The gap</span></a>
     <a href="#how"><span data-l="ar">كيف تعمل</span><span data-l="en">How it works</span></a>
@@ -85,6 +87,7 @@
     <a href="#evidence"><span data-l="ar">الأدلة</span><span data-l="en">Evidence</span></a>
     <a href="#hardware"><span data-l="ar">العتاد والتكلفة</span><span data-l="en">Hardware</span></a>
     <a href="#plugs"><span data-l="ar">الربط بقطر</span><span data-l="en">Qatar systems</span></a>
+    <a href="#roadmap"><span data-l="ar">خارطة الطريق</span><span data-l="en">Roadmap</span></a>
     <a href="#limits"><span data-l="ar">الحدود</span><span data-l="en">Limits</span></a>
     <a href="#team"><span data-l="ar">الفريق</span><span data-l="en">Team</span></a>
   </div></div>
@@ -104,7 +107,7 @@
         <span class="tag info stat-tag"><span data-l="ar">قطر</span><span data-l="en">Qatar</span></span>
         <div class="stat-n num" dir="ltr"><span data-count="46.6" data-decimals="1">46.6</span><span class="unit">%</span></div>
         <h3><span data-l="ar">من سكان قطر سُجّلوا في «سكن العمال»</span><span data-l="en">of Qatar's residents were counted in shared worker accommodation</span></h3>
-        <p><span data-l="ar">أي 1,326,300 من أصل 2,846,118 (تسمّيها الإحصاءات «labour camps»). و92.7% من السكان من غير القطريين، فالعربية والإنجليزية وحدهما لا تصلان إلى الجميع.</span><span data-l="en">That is 1,326,300 of 2,846,118 (the census word is “labour camps”). And 92.7% of residents are non-Qatari, so Arabic and English alone do not reach everyone.</span></p>
+        <p><span data-l="ar">أي 1,326,300 من أصل 2,846,118 (تسمّيها الإحصاءات «labour camps»، وليست كلها مجمعات كبيرة). و92.7% من السكان من غير القطريين، فالعربية والإنجليزية وحدهما لا تصلان إلى الجميع.</span><span data-l="en">That is 1,326,300 of 2,846,118 (the census category is “labour camps”; not all are large camps). And 92.7% of residents are non-Qatari, so Arabic and English alone do not reach everyone.</span></p>
         <p class="src"><span data-l="ar">المصدر: تعداد 2020، جهاز التخطيط والإحصاء (عبر جداول GLMM) · النسبتان محسوبتان منّا</span><span data-l="en">Source: Census 2020, Planning and Statistics Authority (via GLMM tables) · both percentages computed by us</span></p>
       </article>
       <article class="card stat rv">
@@ -166,14 +169,14 @@
       <article class="card rv">
         <h3 data-icon="shield"><span data-l="ar">موجود اليوم (نقدّره)</span><span data-l="en">Exists today (we respect it)</span></h3>
         <ul class="plain-list">
-          <li><span data-l="ar"><b>999 والدفاع المدني:</b> رقم طوارئ وطني، ويستقبل الدفاع المدني البلاغات أيضًا عبر تطبيق «مطراش».</span><span data-l="en"><b>999 and Civil Defence:</b> one national emergency number; Civil Defence also takes reports through the Metrash app.</span> <em class="src">Qatar News Agency 2026</em></li>
-          <li><span data-l="ar"><b>نظام التحذير العام (وزارة الداخلية):</b> تنبيهات بالعربية والإنجليزية مع اهتزاز ونغمة، للجميع أو لمناطق محددة؛ تجربة في 6 نوفمبر 2023.</span><span data-l="en"><b>Public Warning System (Ministry of Interior):</b> Arabic and English alerts with vibration and a ringtone, to everyone or to chosen areas; trial run 6 Nov 2023.</span> <em class="src">The Peninsula, S35</em></li>
-          <li><span data-l="ar"><b>إنذارات المباني:</b> نظام المراقبة المركزي يستقبل إنذارات لوحات المباني الحكومية والتجارية والسكنية ويرفعها إلى غرفة العمليات.</span><span data-l="en"><b>Building alarms:</b> the Central Alarm Monitoring System receives alarms from boards in government, commercial and residential buildings and raises them to the operations room.</span> <em class="src">Gulf Times · The Peninsula, S38</em></li>
-          <li><span data-l="ar"><b>القانون:</b> سكن العمال ملزَم بمكشفات دخان ونظام إنذار وخطة إخلاء (القرار 18 لسنة 2014)، وهناك حظر العمل وقت الظهيرة وحدّ WBGT.</span><span data-l="en"><b>The law:</b> workers' accommodation must have smoke detectors, an alarm and an evacuation plan (Decision 18 of 2014); there is a midday work ban and a WBGT limit.</span> <em class="src">GLMM · ILO, S33 S18 S19</em></li>
-          <li><span data-l="ar"><b>طائرات الإطفاء:</b> الدفاع المدني القطري (معرض ميليبول 2024)، «صقر» للدفاع المدني السعودي في حج 2025، «شاهين» في دبي، «سُهيل» في أبوظبي.</span><span data-l="en"><b>Firefighting drones:</b> Qatar Civil Defence (Milipol 2024), Saudi Civil Defense “Saqr/Falcon” at Hajj 2025, Dubai “Shaheen”, Abu Dhabi “Suhail”.</span> <em class="src">QNA · Arab News, S39 S13</em></li>
-          <li><span data-l="ar"><b>«حصّانتك» في الإمارات:</b> تربط أكثر من 150,000 مبنى بمركز إنذار مركزي يستدعي الدفاع المدني.</span><span data-l="en"><b>UAE Hassantuk:</b> links more than 150,000 buildings to a central alarm centre that dispatches civil defence.</span> <em class="src">Gulf News</em></li>
-          <li><span data-l="ar"><b>992 للصمّ:</b> تواصل مع غرفة العمليات عبر الفيديو والرسائل والبريد.</span><span data-l="en"><b>992 for Deaf callers:</b> video, text and email contact with the control room.</span> <em class="src">Gulf Times, S37</em></li>
-          <li><span data-l="ar"><b>عمل الطلبة:</b> مشروع طلاب قطر في آيسف 2025 لكشف تسرّب H₂S بطائرة مع سياج جغرافي (المركز الرابع عالميًا). المعلن عنوانه وجائزته فقط، فلا نصف تصميمه.</span><span data-l="en"><b>Student work:</b> the Qatari students' ISEF 2025 drone project for H₂S leak detection with geofencing (fourth place globally). Only its title and award are public, so we do not describe its design.</span> <em class="src">Qatar Tribune, S43</em></li>
+          <li><span data-l="ar"><b>999 والدفاع المدني:</b> رقم طوارئ وطني، ويستقبل الدفاع المدني البلاغات أيضًا عبر تطبيق «مطراش».</span><span data-l="en"><b>999 and Civil Defence:</b> one national emergency number; Civil Defence also takes reports through the Metrash app.</span> <em class="src"><span data-l="ar">وكالة الأنباء القطرية (قنا) 2026</span><span data-l="en">Qatar News Agency 2026</span></em></li>
+          <li><span data-l="ar"><b>نظام التحذير العام (وزارة الداخلية):</b> تنبيهات بالعربية والإنجليزية مع اهتزاز ونغمة، للجميع أو لمناطق محددة؛ تجربة في 6 نوفمبر 2023.</span><span data-l="en"><b>Public Warning System (Ministry of Interior):</b> Arabic and English alerts with vibration and a ringtone, to everyone or to chosen areas; trial run 6 Nov 2023.</span> <em class="src"><span data-l="ar">ذا بينينسولا · المصدر S35</span><span data-l="en">The Peninsula · S35</span></em></li>
+          <li><span data-l="ar"><b>إنذارات المباني:</b> نظام المراقبة المركزي يستقبل إنذارات لوحات المباني الحكومية والتجارية والسكنية ويرفعها إلى غرفة العمليات.</span><span data-l="en"><b>Building alarms:</b> the Central Alarm Monitoring System receives alarms from boards in government, commercial and residential buildings and raises them to the operations room.</span> <em class="src"><span data-l="ar">غلف تايمز · ذا بينينسولا · المصدر S38</span><span data-l="en">Gulf Times · The Peninsula · S38</span></em></li>
+          <li><span data-l="ar"><b>القانون:</b> سكن العمال ملزَم بمكشفات دخان ونظام إنذار وخطة إخلاء (القرار 18 لسنة 2014)، وهناك حظر العمل وقت الظهيرة وحدّ WBGT.</span><span data-l="en"><b>The law:</b> workers' accommodation must have smoke detectors, an alarm and an evacuation plan (Decision 18 of 2014); there is a midday work ban and a WBGT limit.</span> <em class="src"><span data-l="ar">برنامج الهجرة في الخليج (GLMM) · منظمة العمل الدولية · المصادر S33 S18 S19</span><span data-l="en">GLMM · ILO · S33 S18 S19</span></em></li>
+          <li><span data-l="ar"><b>طائرات الإطفاء:</b> الدفاع المدني القطري (معرض ميليبول 2024)، «صقر» للدفاع المدني السعودي في حج 2025، «شاهين» في دبي، «سُهيل» في أبوظبي.</span><span data-l="en"><b>Firefighting drones:</b> Qatar Civil Defence (Milipol 2024), Saudi Civil Defense “Saqr/Falcon” at Hajj 2025, Dubai “Shaheen”, Abu Dhabi “Suhail”.</span> <em class="src"><span data-l="ar">قنا · عرب نيوز · المصدران S39 S13</span><span data-l="en">QNA · Arab News · S39 S13</span></em></li>
+          <li><span data-l="ar"><b>«حصّانتك» في الإمارات:</b> تربط أكثر من 150,000 مبنى بمركز إنذار مركزي يستدعي الدفاع المدني.</span><span data-l="en"><b>UAE Hassantuk:</b> links more than 150,000 buildings to a central alarm centre that dispatches civil defence.</span> <em class="src"><span data-l="ar">غلف نيوز</span><span data-l="en">Gulf News</span></em></li>
+          <li><span data-l="ar"><b>992 للصمّ:</b> تواصل مع غرفة العمليات عبر الفيديو والرسائل والبريد.</span><span data-l="en"><b>992 for Deaf callers:</b> video, text and email contact with the control room.</span> <em class="src"><span data-l="ar">غلف تايمز · المصدر S37</span><span data-l="en">Gulf Times · S37</span></em></li>
+          <li><span data-l="ar"><b>عمل الطلبة:</b> مشروع طلاب قطر في آيسف 2025 لكشف تسرّب H₂S بطائرة مع سياج جغرافي (المركز الرابع عالميًا). المعلن عنوانه وجائزته فقط، فلا نصف تصميمه.</span><span data-l="en"><b>Student work:</b> the Qatari students' ISEF 2025 drone project for H₂S leak detection with geofencing (fourth place globally). Only its title and award are public, so we do not describe its design.</span> <em class="src"><span data-l="ar">قطر تريبيون · المصدر S43</span><span data-l="en">Qatar Tribune · S43</span></em></li>
         </ul>
       </article>
       <article class="card rv gap-missing">
@@ -183,7 +186,7 @@
           <li><span data-l="ar"><b>حقيقة المخرج الآن:</b> أي باب مفتوح وأيّه مقفل. (في حريق سكني بالخليج عام 2024 حال باب سطح مقفل دون الهروب، بحسب تقارير صحفية.)</span><span data-l="en"><b>Which exit is really open now.</b> (In a 2024 Gulf residential fire a locked rooftop door blocked escape, according to press reports.)</span></li>
           <li><span data-l="ar"><b>الإجراء الصحيح لهذا الخطر:</b> مخرج في الحريق، وبعرض الريح في الغاز، وإلى الأعلى في السيول، والبقاء في الداخل في الغبار.</span><span data-l="en"><b>The right action for this hazard:</b> an exit in a fire, across the wind in a gas leak, up in a flood, stay in during dust.</span></li>
           <li><span data-l="ar"><b>مَن خرج ومَن بقي ومَن يحتاج مساعدة:</b> عدّاد حيّ مقابل سجلّ السكان.</span><span data-l="en"><b>Who is out, who is still inside, who needs help:</b> a live headcount against the register.</span></li>
-          <li><span data-l="ar"><b>حزمة موثّقة لغرفة العمليات:</b> قال مسؤول في الداخلية عام 2014 إن نحو واحد من كل عشرة اتصالات بـ 999 فقط كان طارئًا حقيقيًا. لم نقِس أثر منارة على هذا الرقم ولا ندّعيه.</span><span data-l="en"><b>A verified package for the control room:</b> in 2014 a Ministry of Interior official said only about one in ten 999 calls was a genuine emergency. We have not measured MANARA's effect on that and do not claim one.</span> <em class="src">Doha News, S27</em></li>
+          <li><span data-l="ar"><b>حزمة موثّقة لغرفة العمليات:</b> قال مسؤول في الداخلية عام 2014 إن نحو واحد من كل عشرة اتصالات بـ 999 فقط كان طارئًا حقيقيًا. لم نقِس أثر منارة على هذا الرقم ولا ندّعيه.</span><span data-l="en"><b>A verified package for the control room:</b> in 2014 a Ministry of Interior official said only about one in ten 999 calls was a genuine emergency. We have not measured MANARA's effect on that and do not claim one.</span> <em class="src"><span data-l="ar">دوحة نيوز · المصدر S27</span><span data-l="en">Doha News · S27</span></em></li>
         </ul>
       </article>
     </div>
@@ -330,7 +333,7 @@
         </div>
       </div>
 
-      <div class="note proof-note"><span data-l="ar"><b>لماذا؟</b> كاشف الصور الثابتة أصاب 66.7% فقط على 18 صورة لم تُستعمل في الضبط. لذلك لا تكفي الرؤية وحدها أبدًا، ولهذا توجد الطبقات الحرارية والفيديو والإنسان. <a href="#evidence">الأرقام كاملة</a> · <a href="detect.html">حاوِل خداع الكاشف</a></span><span data-l="en"><b>Why?</b> the still-photo detector scored only 66.7% on 18 photos never used for tuning. So vision alone is never enough, which is why the thermal, video and human layers exist. <a href="#evidence">All the numbers</a> · <a href="detect.html">Try to fool the detector</a></span></div>
+      <div class="note proof-note"><span data-l="ar"><b>لماذا؟</b> كاشف الصور الثابتة أصاب 66.7% فقط على 18 صورة لم تُستعمل في الضبط. لذلك لا تكفي الرؤية وحدها أبدًا، ولهذا توجد الطبقات الحرارية والفيديو والإنسان. <a href="#evidence">الأرقام كاملة</a> · <a href="detect.html#fool">حاوِل خداع الكاشف</a></span><span data-l="en"><b>Why?</b> the still-photo detector scored only 66.7% on 18 photos never used for tuning. So vision alone is never enough, which is why the thermal, video and human layers exist. <a href="#evidence">All the numbers</a> · <a href="detect.html#fool">Try to fool the detector</a></span></div>
     </div>
   </div>
 </section>
@@ -345,6 +348,7 @@
     </div>
 
     <div class="fast rv" id="fast">
+     <div class="fast-left">
       <div class="fast-map card">
         <div class="fast-ctl">
           <label class="field fast-slider"><span><span data-l="ar">الازدحام (SIM)</span><span data-l="en">Traffic load (SIM)</span> · <b class="num" id="fast-load-v">80%</b></span>
@@ -367,16 +371,26 @@
           <span><i class="lg route"></i><span data-l="ar">الأسرع</span><span data-l="en">fastest</span></span>
           <span><i class="lg alt"></i><span data-l="ar">الوحدة التالية</span><span data-l="en">runner-up</span></span>
         </div>
+        <div class="fast-try">
+          <h3 class="sub-h"><span data-l="ar">جرّب بنفسك</span><span data-l="en">Try it</span></h3>
+          <ul class="plain-list">
+            <li><span data-l="ar">اضغط «ساعة الذروة»: تتغلّب المحطة B الأبعد على A الأقرب لأن شريان A مزدحم.</span><span data-l="en">Press “Rush hour”: the farther Station B beats the nearer Station A, because A’s arterial is jammed.</span></li>
+            <li><span data-l="ar">اضغط «ليلًا»: الشوارع فارغة، فيفوز الأقرب مسافةً.</span><span data-l="en">Press “Night”: the roads are empty, so the nearest by distance wins.</span></li>
+            <li><span data-l="ar">انقر شارعًا على الخريطة: يزدحم، ثم يُغلق، ثم يعود.</span><span data-l="en">Click a road on the map: it jams, then closes, then reopens.</span></li>
+            <li><span data-l="ar">فعّل «المصاب يحتاج مركز إصابات»: يُختار المستشفى القادر لا الأقرب.</span><span data-l="en">Switch on “needs a trauma centre”: the capable hospital is chosen, not the nearest.</span></li>
+          </ul>
+        </div>
       </div>
+     </div>
 
       <div class="fast-side">
         <div class="fast-results" id="fast-results" role="group" aria-label=""></div>
         <p class="sr-only" id="fast-live" role="status" aria-live="polite"></p>
-        <div class="card fast-chart-card">
-          <h3 class="chart-h" id="fast-chart-h"></h3>
-          <svg class="fast-chart" id="fast-chart" viewBox="0 0 320 150" role="img" aria-labelledby="fast-chart-h"></svg>
-          <p class="small muted"><span data-l="ar">كل خط وحدة. حيث يتقاطعان يبدأ «الأبعد لكنه الأسرع».</span><span data-l="en">Each line is a unit. Where they cross, “farther but faster” begins.</span></p>
-        </div>
+      <div class="card fast-chart-card">
+        <h3 class="chart-h" id="fast-chart-h"></h3>
+        <svg class="fast-chart" id="fast-chart" viewBox="0 0 320 150" role="img" aria-labelledby="fast-chart-h"></svg>
+        <p class="small muted"><span data-l="ar">كل خط وحدة. حيث يتقاطعان يبدأ «الأبعد لكنه الأسرع». الخط المنقّط الرأسي هو الازدحام الحالي.</span><span data-l="en">Each line is a unit. Where they cross, “farther but faster” begins. The dotted vertical line is the current traffic load.</span></p>
+      </div>
         <p class="small muted fast-foot"><span data-l="ar">الصيغة هي صيغة محرك المحاكاة: زمن المقطع = الطول ÷ (السرعة الحرّة × الازدحام). الازدحام افتراض موسوم SIM. في الواقع يلزم مزوّد مرور حيّ وبيانات مواقع المركبات من الجهة نفسها، وهذا يحتاج اتفاقًا. نرتّب بالدقائق لأن أهداف قطر نفسها بالدقائق: هدف الإسعاف الوصول إلى 75% من البلاغات خلال 10 دقائق في المدن (مؤسسة حمد الطبية، 2023).</span><span data-l="en">The formula is the simulation engine's: segment time = length ÷ (free-flow speed × congestion). Congestion is an assumption labelled SIM. A real system needs a live traffic provider and the authority's own vehicle-location data, which takes an agreement. We rank by minutes because Qatar's own targets are in minutes: the ambulance target is to reach 75% of calls within 10 minutes in urban areas (Hamad Medical Corporation, 2023).</span></p>
       </div>
     </div>
@@ -405,6 +419,7 @@
             <dt><span data-l="ar">حدّ صريح</span><span data-l="en">Honest limit</span></dt><dd><span data-l="ar">الزجاج يحجب الأشعة تحت الحمراء الطويلة؛ وكوب ساخن يتجاوز 57 °م فيعطي «اشتباهًا» فقط.</span><span data-l="en">Glass blocks long-wave infrared; a hot mug crosses 57 °C and gives SUSPECT only.</span></dd>
           </dl>
           <div class="gauge" data-gauge="fire"></div>
+          <p class="hz-links"><a class="btn btn-ghost btn-sm" href="mission.html#scenario=fire-night" data-icon="radar"><span data-l="ar">شغّل هذا السيناريو في غرفة العمليات</span><span data-l="en">Run this scenario in Mission Control</span></a> <a class="btn btn-ghost btn-sm" href="detect.html" data-icon="eye"><span data-l="ar">مختبر الأدلة</span><span data-l="en">Evidence Lab</span></a></p>
           <p class="src small"><span data-l="ar">المصادر: S58 (تصنيف كاشف حرارة)، S40 (إرشاد الدفاع المدني)، S3 (NFPA)، S26</span><span data-l="en">Sources: S58 (listed heat-detector rating), S40 (Civil Defence advice), S3 (NFPA), S26</span></p>
         </div>
       </article>
@@ -420,6 +435,7 @@
             <dt><span data-l="ar">حدّ صريح</span><span data-l="en">Honest limit</span></dt><dd><span data-l="ar">حسّاسات MQ تستجيب لأكثر من غاز وتحتاج 48 ساعة تسخين؛ بخار المعقّم في العرض بديل وليس غازًا مسالًا. ليست كاشفًا معتمدًا.</span><span data-l="en">MQ sensors respond to more than one gas and need 48 hours of burn-in; sanitiser vapour in the demo is a stand-in, not LPG. Not a certified detector.</span></dd>
           </dl>
           <div class="gauge" data-gauge="gas"></div>
+          <p class="hz-links"><a class="btn btn-ghost btn-sm" href="mission.html#scenario=gas-night" data-icon="radar"><span data-l="ar">شغّل هذا السيناريو في غرفة العمليات</span><span data-l="en">Run this scenario in Mission Control</span></a> <a class="btn btn-ghost btn-sm" href="detect.html#sensor" data-icon="chart"><span data-l="ar">مختبر الحسّاسات</span><span data-l="en">Sensor Lab</span></a></p>
           <p class="src small"><span data-l="ar">المصادر: S46 S47 S48 (NIOSH/OSHA، دولي)، S40 (الدفاع المدني القطري)، S60–S63</span><span data-l="en">Sources: S46 S47 S48 (NIOSH/OSHA, international), S40 (Qatar Civil Defence), S60–S63</span></p>
         </div>
       </article>
@@ -432,9 +448,10 @@
             <dt><span data-l="ar">المفتاحان</span><span data-l="en">Two keys</span></dt><dd><span data-l="ar">عمق ≥ 15 سم <b>و</b> حسّاس ثانٍ في مكان آخر أو تحذير من الأرصاد الجوية. ثم المشغّل.</span><span data-l="en">Depth ≥ 15 cm <b>and</b> a second sensor elsewhere or a Meteorology Department warning. Then the operator.</span></dd>
             <dt><span data-l="ar">الإجراء الواقي</span><span data-l="en">Protective action</span></dt><dd><span data-l="ar">إلى مكان مرتفع أو طابق أعلى؛ لا مشي ولا قيادة عبر مياه جارية. يخرج النفق من خريطة الطرق.</span><span data-l="en">Move to higher ground or an upper floor; never walk or drive through moving water. The underpass leaves the route graph.</span></dd>
             <dt><span data-l="ar">الوحدات الموصى بها</span><span data-l="en">Recommended units</span></dt><dd><span data-l="ar">إنقاذ (الدفاع المدني) · شرطة (إغلاق الطرق) · إسعاف</span><span data-l="en">rescue (Civil Defence) · police (road closures) · ambulance</span></dd>
-            <dt><span data-l="ar">حدّ صريح</span><span data-l="en">Honest limit</span></dt><dd><span data-l="ar">الحسّاس يقيس العمق الساكن ولا يقيس سرعة الجريان. وسرعة الصوت تتغيّر مع الحرارة (خطأ نحو 5.5% عند 45 °م) فنصحّحها بحسّاس حرارة.</span><span data-l="en">The sensor measures still depth, not flow speed. The speed of sound changes with heat (about 5.5% error at 45 °C), so we correct it with a temperature sensor.</span></dd>
+            <dt><span data-l="ar">حدّ صريح</span><span data-l="en">Honest limit</span></dt><dd><span data-l="ar">الحسّاس يقيس العمق الساكن ولا يقيس سرعة الجريان. وسرعة الصوت تتغيّر مع الحرارة: عند 45 °م يبلغ الخطأ نحو 5.5% إن افترض الحسّاس 340 م/ث، فنصحّحها بحسّاس حرارة.</span><span data-l="en">The sensor measures still depth, not flow speed. The speed of sound changes with heat: at 45 °C the error is about 5.5% if the sensor assumes 340 m/s, so we correct it with a temperature sensor.</span></dd>
           </dl>
           <div class="gauge" data-gauge="flood"></div>
+          <p class="hz-links"><a class="btn btn-ghost btn-sm" href="mission.html#scenario=flood-day" data-icon="radar"><span data-l="ar">شغّل هذا السيناريو في غرفة العمليات</span><span data-l="en">Run this scenario in Mission Control</span></a> <a class="btn btn-ghost btn-sm" href="detect.html#sensor" data-icon="chart"><span data-l="ar">مختبر الحسّاسات</span><span data-l="en">Sensor Lab</span></a></p>
           <p class="src small"><span data-l="ar">المصادر: S55 (هيئة الأرصاد الأمريكية، بحث دولي؛ البوصات محوّلة)، S28 (أكتوبر 2018 في الدوحة)، S71 (أرقام المطر: 184 · 188 · 991)</span><span data-l="en">Sources: S55 (US National Weather Service, international; inches converted), S28 (Doha, Oct 2018), S71 (rain helplines 184 · 188 · 991)</span></p>
         </div>
       </article>
@@ -450,6 +467,7 @@
             <dt><span data-l="ar">حدّ صريح</span><span data-l="en">Honest limit</span></dt><dd><span data-l="ar">عاصفة أبريل 2015 تجاوزت 7,000 µg/m³ في الدوحة، والحسّاس دقته محددة لـ PM2.5 حتى 500؛ فالقراءة المشبعة تعني «خطر على الأقل». في العرض الغبار محاكى (SIM).</span><span data-l="en">The April 2015 storm exceeded 7,000 µg/m³ in Doha, and the sensor is specified for PM2.5 up to 500, so a saturated reading means “at least danger”. At the booth dust is simulated (SIM).</span></dd>
           </dl>
           <div class="gauge" data-gauge="dust"></div>
+          <p class="hz-links"><a class="btn btn-ghost btn-sm" href="mission.html#scenario=dust-day" data-icon="radar"><span data-l="ar">شغّل هذا السيناريو في غرفة العمليات</span><span data-l="en">Run this scenario in Mission Control</span></a> <a class="btn btn-ghost btn-sm" href="detect.html#sensor" data-icon="chart"><span data-l="ar">مختبر الحسّاسات</span><span data-l="en">Sensor Lab</span></a></p>
           <p class="src small"><span data-l="ar">المصادر: S31 (معيار قطر 150) · S49 (EPA، دولي) · S50 (منظمة الصحة العالمية 45) · S30 · S65</span><span data-l="en">Sources: S31 (Qatar standard 150) · S49 (US EPA, international) · S50 (WHO 45) · S30 · S65</span></p>
         </div>
       </article>
@@ -465,6 +483,7 @@
             <dt><span data-l="ar">حدّ صريح</span><span data-l="en">Honest limit</span></dt><dd><span data-l="ar">WBGT من حسّاس حرارة ورطوبة <b>تقدير</b>؛ حدّ قطر 32.1 °م قيمة <b>مقاسة</b>. ننبّه ونحصي ولا نفرض القانون ولا نشهد بالامتثال.</span><span data-l="en">A WBGT from a temperature and humidity sensor is an <b>estimate</b>; Qatar's 32.1 °C is a <b>measured</b> value. We nudge and count; we do not enforce the law or certify compliance.</span></dd>
           </dl>
           <div class="gauge" data-gauge="heat"></div>
+          <p class="hz-links"><a class="btn btn-ghost btn-sm" href="mission.html#scenario=heat-day" data-icon="radar"><span data-l="ar">شغّل هذا السيناريو في غرفة العمليات</span><span data-l="en">Run this scenario in Mission Control</span></a> <a class="btn btn-ghost btn-sm" href="detect.html#sensor" data-icon="chart"><span data-l="ar">مختبر الحسّاسات</span><span data-l="en">Sensor Lab</span></a></p>
           <p class="src small"><span data-l="ar">المصادر: S18 S19 (وزارة العمل/منظمة العمل الدولية، قطر) · S52 (OSHA/NIOSH، دولي) · S20 · S53</span><span data-l="en">Sources: S18 S19 (Ministry of Labour / ILO, Qatar) · S52 (OSHA/NIOSH, international) · S20 · S53</span></p>
         </div>
       </article>
@@ -480,6 +499,7 @@
             <dt><span data-l="ar">حدّ صريح</span><span data-l="en">Honest limit</span></dt><dd><span data-l="ar">كاشفات السقوط تخطئ؛ والعتبات «اختارها الطالب» وتحتاج معايرة. منارة ليست جهازًا طبيًا. في سجلّ قطر الوطني 64.0% من حالات توقف القلب خارج المستشفى كانت في المنزل.</span><span data-l="en">Fall detectors miss and misfire; the thresholds are “student-set” and need calibration. MANARA is not a medical device. In Qatar's national registry 64.0% of out-of-hospital cardiac arrests were at home.</span></dd>
           </dl>
           <div class="gauge" data-gauge="sos"></div>
+          <p class="hz-links"><a class="btn btn-ghost btn-sm" href="mission.html#scenario=sos-day" data-icon="radar"><span data-l="ar">شغّل هذا السيناريو في غرفة العمليات</span><span data-l="en">Run this scenario in Mission Control</span></a> <a class="btn btn-ghost btn-sm" href="alert.html" data-icon="phone"><span data-l="ar">هواتف السكان</span><span data-l="en">Resident Phones</span></a></p>
           <p class="src small"><span data-l="ar">المصادر: S25 (سجل قطر الوطني) · S24 (مؤسسة حمد) · S54 (CDC، دولي) · S15 S16 (دراسات دولية للمسيّرات)</span><span data-l="en">Sources: S25 (Qatar national registry) · S24 (Hamad Medical Corporation) · S54 (US CDC, international) · S15 S16 (international drone studies)</span></p>
         </div>
       </article>
@@ -507,23 +527,27 @@
           <button type="button" class="chip" data-lang="ar" aria-pressed="false">العربية</button>
           <button type="button" class="chip" data-lang="en" aria-pressed="false">English</button>
         </div>
-        <div class="phone"><div class="phone-fmt"></div><b class="phone-h"></b><ul class="phone-l"></ul><p class="phone-draft" hidden><span data-l="ar">مسودة — تحتاج مراجعة متحدث أصلي</span><span data-l="en">Draft — needs native-speaker review</span></p></div>
+        <div class="phone"><div class="phone-fmt"></div><b class="phone-h"></b><ul class="phone-l"></ul><p class="phone-draft" hidden><span data-l="ar">مسودة — تحتاج مراجعة متحدث أصلي</span><span data-l="en">Draft — needs native-speaker review</span></p><div class="phone-act" aria-hidden="true"><span class="pa-ok" data-icon="check"></span><span class="pa-help" data-icon="heart"></span></div></div>
         <p class="persona-note"><span data-l="ar">يصله سلّم الإيقاظ الليلي بلغته ومعه بطاقة مصوّرة؛ نهارًا، رسالة «أوقف العمل» عند الحرارة.</span><span data-l="en">He gets the night wake-up ladder in his language with a picture card; by day, a “stop work” message in the heat.</span></p>
+        <p class="pp-link persona-link"><a href="alert.html?persona=ravi" data-icon="phone"><span data-l="ar">افتح هاتف رافي كاملًا</span><span data-l="en">Open Ravi’s phone in full</span></a></p>
       </article>
       <article class="persona card rv" data-p="huda">
         <header><span class="avatar" aria-hidden="true">H</span><div><h3><span data-l="ar">هدى</span><span data-l="en">Huda</span></h3><p><span data-l="ar">مقيمة صمّاء · الغرفة 105</span><span data-l="en">Deaf resident · room 105</span></p></div></header>
-        <div class="phone"><div class="phone-fmt"></div><b class="phone-h"></b><ul class="phone-l"></ul></div>
+        <div class="phone"><div class="phone-fmt"></div><b class="phone-h"></b><ul class="phone-l"></ul><div class="phone-act" aria-hidden="true"><span class="pa-ok" data-icon="check"></span><span class="pa-help" data-icon="heart"></span></div></div>
         <p class="persona-note"><span data-l="ar">وميض (بموافقتها، بحدّ أقصى 3 وميضات في الثانية) واهتزاز قوي ونص كبير ورموز مصوّرة.</span><span data-l="en">Strobe (opt-in, at most 3 flashes a second), strong vibration, large text and pictograms.</span></p>
+        <p class="pp-link persona-link"><a href="alert.html?persona=huda" data-icon="phone"><span data-l="ar">افتح هاتف هدى كاملًا</span><span data-l="en">Open Huda’s phone in full</span></a></p>
       </article>
       <article class="persona card rv" data-p="abu">
         <header><span class="avatar" aria-hidden="true">A</span><div><h3><span data-l="ar">أبو سالم</span><span data-l="en">Abu Salem</span></h3><p><span data-l="ar">مسنّ على كرسي متحرك · الغرفة 302</span><span data-l="en">Older wheelchair user · room 302</span></p></div></header>
-        <div class="phone"><div class="phone-fmt"></div><b class="phone-h"></b><ul class="phone-l"></ul></div>
+        <div class="phone"><div class="phone-fmt"></div><b class="phone-h"></b><ul class="phone-l"></ul><div class="phone-act" aria-hidden="true"><span class="pa-ok" data-icon="check"></span><span class="pa-help" data-icon="heart"></span></div></div>
         <p class="persona-note"><span data-l="ar">لا يُرسَل أبدًا إلى الدرج: الشرفة الآمنة أو البقاء في الأعلى، ويُعلَّم على بطاقة التسليم.</span><span data-l="en">Never sent to the stairs: the refuge balcony or stay upstairs, and flagged on the hand-off card.</span></p>
+        <p class="pp-link persona-link"><a href="alert.html?persona=abu-salem" data-icon="phone"><span data-l="ar">افتح هاتف أبي سالم كاملًا</span><span data-l="en">Open Abu Salem’s phone in full</span></a></p>
       </article>
       <article class="persona card rv" data-p="lina">
         <header><span class="avatar" aria-hidden="true">L</span><div><h3><span data-l="ar">لينا</span><span data-l="en">Lina</span></h3><p><span data-l="ar">تلميذة، 9 سنوات · الصف 5ب</span><span data-l="en">Pupil, age 9 · class 5B</span></p></div></header>
-        <div class="phone"><div class="phone-fmt"></div><b class="phone-h"></b><ul class="phone-l"></ul></div>
+        <div class="phone"><div class="phone-fmt"></div><b class="phone-h"></b><ul class="phone-l"></ul><div class="phone-act" aria-hidden="true"><span class="pa-ok" data-icon="check"></span><span class="pa-help" data-icon="heart"></span></div></div>
         <p class="persona-note"><span data-l="ar">بطاقة مصوّرة بسيطة و«اتبعي معلّمتك»، وتُحصى على لوحي المعلّمة.</span><span data-l="en">A simple picture card and “follow your teacher”, counted on the teacher's tablet.</span></p>
+        <p class="pp-link persona-link"><a href="alert.html?persona=lina" data-icon="phone"><span data-l="ar">افتح هاتف لينا كاملًا</span><span data-l="en">Open Lina’s phone in full</span></a></p>
       </article>
     </div>
     <p class="small muted rv"><span data-l="ar">الأسماء افتراضية، والنصوص من محرك الرسائل في المشروع (مراجعة عملية: الجمل نفسها تُختبر آليًا). صياغة الإسعاف الأولي تُراجَع مع مؤسسة حمد والدفاع المدني قبل الطباعة.</span><span data-l="en">The people are fictional and the wording comes from the project's message engine (checked automatically against it). First-aid wording is reviewed with Hamad Medical Corporation and Civil Defence before printing.</span></p>
@@ -612,9 +636,9 @@
         <ul class="plain-list small">
           <li><span data-l="ar">وجد <b class="num" dir="ltr">6 / 6</b> من صور النار، لكنه أخطأ في <b class="num" dir="ltr">3 / 12</b> من الصور بلا نار (قال «نار»)، ولم يجد دخانًا في أي من صور الدخان الثلاث (<b class="num" dir="ltr">0 / 3</b>).</span><span data-l="en">It found <b class="num" dir="ltr">6 / 6</b> fire photos but wrongly said “fire” on <b class="num" dir="ltr">3 / 12</b> non-fire photos, and found smoke in none of the three smoke photos (<b class="num" dir="ltr">0 / 3</b>).</span></li>
           <li><span data-l="ar"><b>لهذا توجد طبقات الفيديو والحرارة والإنسان.</b> في «مختبر الخدع» (12 مدخلًا محجوزًا، بذرة ثابتة، عينة صغيرة وقصاصات كتبها مؤلف الكاشف نفسه): اللون وحده أعطى إنذارًا كاذبًا في <b class="num" dir="ltr">6 / 7</b>، والمنظومة الكاملة في <b class="num" dir="ltr">1 / 7</b>، مع كشف <b class="num" dir="ltr">4 / 4</b>. اقرأها فحصًا للآلية لا دقة ميدانية.</span><span data-l="en"><b>That is why the video, thermal and human layers exist.</b> In the Decoy Lab (12 held-out inputs, fixed seed, a small sample and clips written by the detector's own author): colour alone gave false alarms on <b class="num" dir="ltr">6 / 7</b>, the full stack on <b class="num" dir="ltr">1 / 7</b>, with <b class="num" dir="ltr">4 / 4</b> detected. Read it as a mechanism check, not field accuracy.</span></li>
-          <li><span data-l="ar">في الاختبار الحي، <b class="num" dir="ltr">14 / 14</b> تجربة خداع (سبعة مشاهد × بذرتان: قميص أحمر، سيارة، وشاح، LED، كشّاف، جدار، مصباح وامض) لم تصل إلى «نار». وفيديو حريق على هاتف تراه الرؤية ناريًا فتُبقيه الحرارة عند «اشتباه».</span><span data-l="en">In the live pipeline, <b class="num" dir="ltr">14 / 14</b> decoy trials (seven scenes × two seeds: red shirt, car, scarf, LED, flashlight, wall, flickering lamp) never reached FIRE. A fire video on a phone looks like fire to vision, so thermal holds it at SUSPECT.</span></li>
+          <li><span data-l="ar">في اختبار خط المعالجة الحي، <b class="num" dir="ltr">14 / 14</b> تجربة خداع (سبعة مشاهد × بذرتان: قميص أحمر، سيارة، وشاح، LED، كشّاف، جدار، مصباح وامض) لم تصل إلى «نار». المشاهد مولَّدة بالشيفرة لا لقطات كاميرا حقيقية، فهذا فحص للآلية. وفيديو حريق على هاتف تراه الرؤية ناريًا فتُبقيه الحرارة عند «اشتباه».</span><span data-l="en">In the live-pipeline test, <b class="num" dir="ltr">14 / 14</b> decoy trials (seven scenes × two seeds: red shirt, car, scarf, LED, flashlight, wall, flickering lamp) never reached FIRE. The scenes are generated in code, not real camera footage, so this is a mechanism check. A fire video on a phone looks like fire to vision, so thermal holds it at SUSPECT.</span></li>
         </ul>
-        <p class="btns"><a class="btn btn-ghost btn-sm" href="detect.html" data-icon="target"><span data-l="ar">جرّب خداعه في مختبر الخدع</span><span data-l="en">Try to fool it in the Decoy Lab</span></a></p>
+        <p class="btns"><a class="btn btn-ghost btn-sm" href="detect.html#decoy" data-icon="target"><span data-l="ar">افتح مختبر الخدع</span><span data-l="en">Open the Decoy Lab</span></a> <a class="btn btn-ghost btn-sm" href="detect.html#fool" data-icon="eye"><span data-l="ar">حاوِل خداعه بنفسك</span><span data-l="en">Try to fool it yourself</span></a></p>
       </article>
 
       <article class="card ev-card rv" id="ev-sim">
@@ -629,12 +653,23 @@
             <div class="ab-bars"><div class="ab-b ord"><i style="--v:64"></i><b class="num" dir="ltr" data-ev="ab.dead.ord">64</b><em><span data-l="ar">إنذار عادي</span><span data-l="en">ordinary</span></em></div><div class="ab-b man"><i style="--v:3"></i><b class="num" dir="ltr" data-ev="ab.dead.man">3</b><em><span data-l="ar">منارة</span><span data-l="en">MANARA</span></em></div></div></div>
         </div>
         <div class="note"><span data-l="ar"><b>مقايضة صريحة:</b> صفّارة المبنى تُسمع بعد <b class="num" dir="ltr" data-ev="ab.siren">14</b> ثانية في العالمين، أما أول رسالة شخصية من منارة فتصل بعد <b class="num" dir="ltr" data-ev="ab.personal">39</b> ثانية لأن التحقق والموافقة يستغرقان ثواني. وبعد دقيقتين كان <b class="num" dir="ltr" data-ev="ab.inf120">83</b>% ممن لديهم الصفحة قد تلقّوا مسارًا شخصيًا مقابل 0% في العالم العادي.</span><span data-l="en"><b>An honest trade-off:</b> the building siren sounds at <b class="num" dir="ltr" data-ev="ab.siren">14</b> s in both worlds, but MANARA's first personal message arrives at <b class="num" dir="ltr" data-ev="ab.personal">39</b> s because proof and approval take seconds. After two minutes <b class="num" dir="ltr" data-ev="ab.inf120">83</b>% of people had received a personal route, against 0% in the ordinary world.</span></div>
-        <h4 class="sub-h"><span data-l="ar">النتيجة تعتمد على الافتراضات</span><span data-l="en">The result depends on the assumptions</span></h4>
-        <figure class="sweep" id="ev-sweep">
+      </article>
+    </div>
+
+    <article class="card ev-card ev-assume rv" id="ev-assume">
+      <h3 data-icon="chart"><span data-l="ar">النتيجة تعتمد على الافتراضات</span><span data-l="en">The result depends on the assumptions</span> <span class="tag warn">SIM</span></h3>
+      <p class="small muted"><span data-l="ar">كل افتراض في المحاكاة شريط تمرير في غرفة العمليات. نغيّر افتراضًا واحدًا ونرى كيف يتحرك الفارق، ولا نخفي الحالات التي تضعف فيها الميزة.</span><span data-l="en">Every assumption in the simulation is a slider in Mission Control. We change one assumption at a time and show how the gap moves, including the cases where the advantage shrinks.</span></p>
+      <div class="assume-grid">
+        <div class="assume-col">
+          <h4 class="sub-h"><span data-l="ar">الحريق: نسبة السكان الذين لديهم الصفحة</span><span data-l="en">Fire: the share of residents who have the page</span></h4>
+          <figure class="sweep" id="ev-sweep">
           <svg viewBox="0 0 320 170" role="img" aria-labelledby="sweep-cap" id="sweep-svg"></svg>
           <figcaption class="small muted" id="sweep-cap"><span data-l="ar">زمن وصول 90% إلى الأمان في عالم منارة بحسب نسبة السكان الذين لديهم الصفحة (الافتراض الافتراضي 85%). نافذة 600 ثانية، بذرة 1. العالم العادي ≥ 570 ث (قُطع عند النافذة؛ 626 ث في التشغيل الكامل).</span><span data-l="en">MANARA-world time for 90% to reach safety, by the share of residents who have the page (default assumption 85%). 600 s window, seed 1. The ordinary world is ≥ 570 s (cut off at the window; 626 s in the full run).</span></figcaption>
         </figure>
-        <div class="table-wrap"><table class="table small" id="gas-sweep">
+        </div>
+        <div class="assume-col">
+          <h4 class="sub-h"><span data-l="ar">الغاز: كم يتسرّب إلى المبنى</span><span data-l="en">Gas: how much seeps into the building</span></h4>
+          <div class="table-wrap"><table class="table small" id="gas-sweep">
           <caption class="sr-only"><span data-l="ar">الغاز: التعرّض بحسب نسبة تسرّب الغاز إلى المبنى</span><span data-l="en">Gas: exposure by how much gas seeps indoors</span></caption>
           <thead><tr><th><span data-l="ar">الغاز: تسرّب إلى المبنى</span><span data-l="en">Gas: seepage indoors</span></th><th><span data-l="ar">إنذار عادي (شخص·ث)</span><span data-l="en">ordinary (person-s)</span></th><th><span data-l="ar">منارة (شخص·ث)</span><span data-l="en">MANARA (person-s)</span></th></tr></thead>
           <tbody>
@@ -644,9 +679,10 @@
             <tr><td class="num" dir="ltr">90%</td><td class="num" data-ev="gas.90.ord">42,836</td><td class="num" data-ev="gas.90.man">7,178</td></tr>
           </tbody>
         </table></div>
-        <p class="small muted"><span data-l="ar">عند تسرّب منخفض (0–30%) يكون تعرّض منارة أعلى لا أقل: الميزة تظهر فقط حين يدخل الغاز المبنى. لذلك لا نعمّم.</span><span data-l="en">With low seepage (0–30%) MANARA's exposure is higher, not lower: the advantage appears only when gas gets into the building. So we do not generalise.</span></p>
-      </article>
-    </div>
+          <p class="small muted"><span data-l="ar">عند تسرّب منخفض (0–30%) يكون تعرّض منارة أعلى لا أقل: الميزة تظهر فقط حين يدخل الغاز المبنى. لذلك لا نعمّم.</span><span data-l="en">With low seepage (0–30%) MANARA's exposure is higher, not lower: the advantage appears only when gas gets into the building. So we do not generalise.</span></p>
+        </div>
+      </div>
+    </article>
 
     <div class="note rv ev-notrun"><span data-l="ar"><b>ما لم نقِسه بعد:</b> الدقة الميدانية للكاشف خارج هذه الصور، وفهم الناس للرسائل (اختبار الفهم يحتاج موافقة الأخلاقيات ولم يُجرَ)، وأي أثر حقيقي على الأرواح أو أزمنة الاستجابة. لا نقول «ننقذ أرواحًا»؛ نقول إن الآلية تعمل في نموذج، ونعرض افتراضاتها.</span><span data-l="en"><b>What we have not measured yet:</b> the detector's field accuracy beyond these photos, how well people understand the messages (the comprehension test needs ethics approval and has not been run), and any real effect on lives or response times. We do not say “we save lives”; we say the mechanism works in a model, and we show its assumptions.</span></div>
   </div>
@@ -662,14 +698,14 @@
     </div>
     <div class="grid g3 tiers">
       <article class="card tier rv" style="--sc:var(--accent)">
-        <span class="tier-n num">1</span>
+        <span class="tier-n num" aria-hidden="true">1</span>
         <h3><span data-l="ar">حاسوب فقط</span><span data-l="en">Laptop only</span></h3>
         <p class="cost num" dir="ltr">US$ 2–10</p>
         <p><span data-l="ar">تشغّل غرفة العمليات ومختبر الأدلة وهواتف السكان من الملفات مباشرة، وبايثون يشغّل الكاشف على كاميرا الحاسوب. بعد ظهر واحد (تقدير).</span><span data-l="en">You run Mission Control, the Evidence Lab and the phone wall straight from the files, and Python runs the detector on the laptop camera. One afternoon (estimate).</span></p>
         <div class="cost-bar" aria-hidden="true"><i class="lo" style="--v:2"></i><i class="hi" style="--v:10"></i></div>
       </article>
       <article class="card tier rv" style="--sc:var(--brand)">
-        <span class="tier-n num">2</span>
+        <span class="tier-n num" aria-hidden="true">2</span>
         <h3><span data-l="ar">لوحة الحارس</span><span data-l="en">Sentinel board</span></h3>
         <p class="cost num" dir="ltr">+ US$ 78–217</p>
         <p><span data-l="ar">ESP32 مع كاميرا حرارية وحرارة/رطوبة وغاز وماء وزر استغاثة ومفاتيح مخارج ولافتات خروج، وإنذار محلي لا ينتظر أحدًا. من 2 إلى 3 عطلات أسبوع (تقدير).</span><span data-l="en">An ESP32 with a thermal camera, temperature/humidity, gas, water, an SOS button, exit switches and exit signs, with a local alarm that never waits. 2 to 3 weekends (estimate).</span></p>
@@ -677,7 +713,7 @@
         <p class="small muted"><span data-l="ar">الإجمالي حتى هنا: US$ 80–227. أغلى قطعة: MLX90640 (US$ 74.95 عند Adafruit).</span><span data-l="en">Running total: US$ 80–227. Costliest part: the MLX90640 (US$ 74.95 at Adafruit).</span></p>
       </article>
       <article class="card tier rv" style="--sc:var(--safe)">
-        <span class="tier-n num">3</span>
+        <span class="tier-n num" aria-hidden="true">3</span>
         <h3><span data-l="ar">كشك كامل</span><span data-l="en">Full booth</span></h3>
         <p class="cost num" dir="ltr">+ US$ 15–43</p>
         <p><span data-l="ar">رأس يمسح ويلاحق أسخن نقطة، ولوحة «آمن» بشبكة Wi-Fi دون إنترنت، ومقطع طائرة من مشغّل مرخّص (اختياري؛ لا تحلّق بنفسك). عطلتان إضافيتان (تقدير).</span><span data-l="en">A head that patrols and tracks the hottest point, a MANARA-SAFE board with its own offline Wi-Fi, and an optional drone clip from a licensed operator (never fly one yourself). Two more weekends (estimate).</span></p>
@@ -701,7 +737,7 @@
       <p class="sec-lead"><span data-l="ar"><b>لا يوجد اليوم أي ربط حيّ بأي نظام حقيقي.</b> هذا تصميم لكيف يمكن أن تتصل منارة، وكل اتصال يحتاج اتفاقًا وموافقة من الجهة نفسها.</span><span data-l="en"><b>Today there is no live connection to any real system.</b> This is a design for how MANARA could connect, and every connection needs an agreement and approval from the body itself.</span></p>
     </div>
     <div class="grid g3 plug-grid" data-stagger>
-      <article class="card plug rv"><h3>999 · <span data-l="ar">وزارة الداخلية</span><span data-l="en">Ministry of Interior</span></h3><p><span data-l="ar"><b>تُرسل:</b> حزمة موثّقة جاهزة (ماذا، أين، حال المخارج، مَن لم يُحصَ، مَن يحتاج مساعدة).</span><span data-l="en"><b>Sends:</b> a ready verified package (what, where, exit states, who is unaccounted, who needs help).</span></p><p class="no"><span data-l="ar"><b>لا تفعل:</b> لا تتصل بـ 999 نيابةً عن أحد ولا تحلّ محلّه؛ 999 يبقى هو المرسِل.</span><span data-l="en"><b>Never:</b> calls 999 for anyone or replaces it; 999 stays the dispatcher.</span></p></article>
+      <article class="card plug rv"><h3>999 · <span data-l="ar">مطراش2 · وزارة الداخلية</span><span data-l="en">Metrash2 · Ministry of Interior</span></h3><p><span data-l="ar"><b>تُرسل:</b> حزمة موثّقة جاهزة (ماذا، أين، حال المخارج، مَن لم يُحصَ، مَن يحتاج مساعدة).</span><span data-l="en"><b>Sends:</b> a ready verified package (what, where, exit states, who is unaccounted, who needs help).</span></p><p class="no"><span data-l="ar"><b>لا تفعل:</b> لا تتصل بـ 999 ولا ترفع بلاغًا في «مطراش2» نيابةً عن أحد، ولا تحلّ محلّهما؛ 999 يبقى هو المرسِل. «مطراش2» قناة بلاغات، ولا نزعم أي ربط بها، وصفحة الهاتف لا تفتحها.</span><span data-l="en"><b>Never:</b> calls 999 or files a Metrash2 report for anyone, or replaces either; 999 stays the dispatcher. Metrash2 is a reporting channel and we claim no link to it; the phone page does not open it.</span></p></article>
       <article class="card plug rv"><h3>992 · <span data-l="ar">خدمة الصمّ</span><span data-l="en">Service for Deaf callers</span></h3><p><span data-l="ar"><b>تُظهر:</b> بطاقة هدى وميضًا واهتزازًا ونصًا، ويُعرض 992 بجانب 999 بعد التحقق من قواعد الوزارة.</span><span data-l="en"><b>Shows:</b> Huda's card has strobe, vibration and text, and 992 is offered next to 999 after checking the Ministry's rules.</span></p><p class="no"><span data-l="ar"><b>لا تفعل:</b> لا تدّعي ربطًا بالخدمة.</span><span data-l="en"><b>Never:</b> claims a link to the service.</span></p></article>
       <article class="card plug rv"><h3><span data-l="ar">نظام التحذير العام</span><span data-l="en">Public Warning System</span></h3><p><span data-l="ar"><b>تُصدّر:</b> رسالة OASIS CAP 1.2 بحالة «تمرين» يمكن للجهة أن تحملها.</span><span data-l="en"><b>Exports:</b> an OASIS CAP 1.2 message with status “Exercise” the authority could carry.</span></p><p class="no"><span data-l="ar"><b>لا تفعل:</b> لا تنسخ نغمته ولا شاشته؛ وزارة الداخلية حذّرت من إساءة استخدام أصواته. نغمتنا خاصة وعليها «تمرين».</span><span data-l="en"><b>Never:</b> copies its tone or screen; the Ministry warned about misusing its sounds. Our tone is our own and says EXERCISE.</span></p></article>
       <article class="card plug rv"><h3><span data-l="ar">مراقبة الإنذارات المركزية (CAMS)</span><span data-l="en">Central Alarm Monitoring (CAMS)</span></h3><p><span data-l="ar"><b>تكمّل:</b> الإنذار يُخبر غرفة العمليات؛ منارة تُخبر كل شخص بما يفعل وتُحصي مَن خرج.</span><span data-l="en"><b>Complements:</b> the alarm tells the control room; MANARA tells each person what to do and counts who got out.</span></p><p class="no"><span data-l="ar"><b>لا تفعل:</b> لا تحلّ محل لوحات الإنذار المعتمدة.</span><span data-l="en"><b>Never:</b> replaces certified alarm panels.</span></p></article>
@@ -712,11 +748,56 @@
   </div>
 </section>
 
-<!-- ============================================================ 12 LIMITS & ETHICS -->
+<!-- ============================================================ 12 ROADMAP -->
+<section class="sec" id="roadmap" aria-labelledby="road-t">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <span class="eyebrow"><span class="idx num">12</span><span data-l="ar">خارطة الطريق</span><span data-l="en">Roadmap</span></span>
+      <h2 class="sec-title" id="road-t"><span data-l="ar">ما أُنجز، وما سنفعله، وما يحتاج شركاء</span><span data-l="en">What is built, what we will do, and what needs partners</span></h2>
+      <p class="sec-lead"><span data-l="ar">بلا تواريخ وعود: لا نعد بما يتوقف على جهات أخرى. الأعمدة الثلاثة تفصل ما نستطيع إنجازه بأنفسنا عمّا يحتاج اتفاقًا.</span><span data-l="en">No promised dates: we do not promise what depends on others. The three columns separate what we can do ourselves from what needs an agreement.</span></p>
+    </div>
+    <ol class="grid g3 road" data-stagger>
+      <li class="card road-col rv" style="--sc:var(--safe)">
+        <span class="tag safe"><span data-l="ar">منجز في النموذج الأولي</span><span data-l="en">Built in this prototype</span></span>
+        <h3><span data-l="ar">الآن</span><span data-l="en">Now</span></h3>
+        <ul class="plain-list">
+          <li><span data-l="ar">ستة أخطار على مسار واحد، وكل افتراض في المحاكاة شريط تمرير موسوم SIM.</span><span data-l="en">Six hazards on one pipeline; every assumption in the simulation is a slider, marked SIM.</span></li>
+          <li><span data-l="ar">مختبر الأدلة: كاشف حريق بقواعد، ومختبر الخدع، ومختبر الحسّاسات.</span><span data-l="en">The Evidence Lab: a rule-based fire detector, the Decoy Lab and the Sensor Lab.</span></li>
+          <li><span data-l="ar">هواتف السكان: أربعة أشخاص افتراضيين، وثماني لغات (ست منها مسودات)، وسلّم إيقاظ، و«أنا بخير» و«أحتاج مساعدة».</span><span data-l="en">Resident phones: four fictional people, eight languages (six are drafts), the wake-up ladder, “I’m safe” and “I need help”.</span></li>
+          <li><span data-l="ar">دليل بناء بثلاثة مستويات، وتصدير OASIS CAP 1.2 بحالة «تمرين».</span><span data-l="en">A three-tier build guide and an OASIS CAP 1.2 export with status “Exercise”.</span></li>
+        </ul>
+      </li>
+      <li class="card road-col rv" style="--sc:var(--accent)">
+        <span class="tag cool"><span data-l="ar">مخطَّط: نستطيع إنجازه بالمدرسة</span><span data-l="en">Planned: we can do it with the school</span></span>
+        <h3><span data-l="ar">التالي</span><span data-l="en">Next</span></h3>
+        <ul class="plain-list">
+          <li><span data-l="ar">قياس لوحة التوأم: زمن استجابة الحسّاسات وجداول الإنذارات الكاذبة.</span><span data-l="en">Measure the twin board: sensor latency and false-alarm tables.</span></li>
+          <li><span data-l="ar">اختبار فهم الرسائل مع أشخاص يوافقون عليه، بعد موافقة أخلاقيات المدرسة. لم يُجرَ بعد.</span><span data-l="en">A comprehension test of the messages with people who consent, after school ethics approval. Not run yet.</span></li>
+          <li><span data-l="ar">مراجعة متحدثين أصليين للغات الست المسودة وتسجيل المراجعات في التقرير، وإضافة السنهالية والتاميلية.</span><span data-l="en">Native-speaker review of the six draft languages, logged in the report, and adding Sinhala and Tamil.</span></li>
+          <li><span data-l="ar">مراجعة إتاحة مع صمّ ومكفوفين (نطلبها من جهة مثل «مدى»). مخطَّطة ولم تتم.</span><span data-l="en">An accessibility review with Deaf and blind users (we would ask a body such as Mada). Planned, not done.</span></li>
+          <li><span data-l="ar">مراجعة صياغة الإسعاف الأولي مع مؤسسة حمد الطبية والدفاع المدني قبل أي طباعة.</span><span data-l="en">Review the first-aid wording with Hamad Medical Corporation and Civil Defence before anything is printed.</span></li>
+        </ul>
+      </li>
+      <li class="card road-col rv" style="--sc:var(--info)">
+        <span class="tag info"><span data-l="ar">يحتاج شركاء واتفاقات</span><span data-l="en">Needs partners and agreements</span></span>
+        <h3><span data-l="ar">لاحقًا</span><span data-l="en">Later</span></h3>
+        <ul class="plain-list">
+          <li><span data-l="ar">تجربة في مبنى حقيقي واحد بموافقة المالك والدفاع المدني، مع بقاء إنذار الحريق المعتمد هو الأساس.</span><span data-l="en">A pilot in one real building with the owner’s and Civil Defence’s approval; the certified fire alarm stays the primary system.</span></li>
+          <li><span data-l="ar">تسليم الحزمة إلى نظام غرفة العمليات نفسها بالصيغة التي تختارها (CAP أو غيرها). القرار قرارها.</span><span data-l="en">Hand the package to a control room’s own system in the format it chooses (CAP or another). The decision is theirs.</span></li>
+          <li><span data-l="ar">أزمنة وصول حقيقية: مزوّد مرور حيّ وبيانات مواقع المركبات من الجهة نفسها.</span><span data-l="en">Real arrival times: a live traffic provider and the authority’s own vehicle-location data.</span></li>
+          <li><span data-l="ar">حاويات تتحمل حرارة الخليج وحسّاسات معتمدة بدل حسّاسات الهواة.</span><span data-l="en">Enclosures that survive Gulf heat and certified sensors instead of hobby parts.</span></li>
+          <li><span data-l="ar">الطائرة المسيّرة تبقى مفهومًا لجهة مرخَّصة بموجب القانون رقم 10 لسنة 2026، ولا نحلّق بها نحن.</span><span data-l="en">The drone stays a concept for a licensed agency under Law No. 10 of 2026; we do not fly one.</span></li>
+        </ul>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<!-- ============================================================ 13 LIMITS & ETHICS -->
 <section class="sec alt" id="limits" aria-labelledby="lim-t">
   <div class="wrap">
     <div class="sec-head rv">
-      <span class="eyebrow"><span class="idx num">12</span><span data-l="ar">الحدود والأخلاقيات</span><span data-l="en">Limits &amp; ethics</span></span>
+      <span class="eyebrow"><span class="idx num">13</span><span data-l="ar">الحدود والأخلاقيات</span><span data-l="en">Limits &amp; ethics</span></span>
       <h2 class="sec-title" id="lim-t"><span data-l="ar">ما لا نستطيعه… وما نلتزم به</span><span data-l="en">What we cannot do, and what we commit to</span></h2>
     </div>
     <div class="grid g2 lim-cols">
@@ -749,13 +830,14 @@
   </div>
 </section>
 
-<!-- ============================================================ 13 TEAM -->
+<!-- ============================================================ 14 TEAM -->
 <section class="sec" id="team" aria-labelledby="team-t">
   <div class="wrap">
     <div class="sec-head rv">
-      <span class="eyebrow"><span class="idx num">13</span><span data-l="ar">الفريق والملكية</span><span data-l="en">Team &amp; ownership</span></span>
+      <span class="eyebrow"><span class="idx num">14</span><span data-l="ar">الفريق والملكية</span><span data-l="en">Team &amp; ownership</span></span>
       <h2 class="sec-title" id="team-t"><span data-l="ar">مَن بنى ماذا، وبمساعدة مَن</span><span data-l="en">Who built what, and with whose help</span></h2>
       <p class="sec-lead"><span data-l="ar">الحقول الملوّنة بين أقواس مزدوجة <b>يملؤها الطالب</b> قبل التقديم. لا نخترع أسماء ولا جهات.</span><span data-l="en">The highlighted fields in double braces are <b>for the student to fill in</b> before submission. We invent no names or institutions.</span></p>
+      <p class="ph-status print-hide" id="ph-status" role="status"></p>
     </div>
     <div class="grid g2 team-cols">
       <article class="card rv">

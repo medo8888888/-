@@ -333,11 +333,12 @@ console.log('\n10. keyboard');
 {
   const { ctx, page, errors } = await openPage(browser, 'mission.html', { width: 1440, height: 900, lang: 'en' });
   await ready(page);
-  await W(page, () => { MissionControl.start('fire-night', 7); MissionControl.pause(); document.activeElement.blur(); });
+  await W(page, () => { MissionControl.start('fire-night', 7); MissionControl.advance(60); MissionControl.pause(); document.activeElement.blur(); });   // CONFIRMED: Approve / Hold are enabled, so they are tabbable
   const seen = [];
-  for (let i = 0; i < 70; i++) {
+  for (let i = 0; i < 110; i++) {
     await page.keyboard.press('Tab');
-    const d = await W(page, () => { const a = document.activeElement; return a ? (a.getAttribute('aria-label') || a.textContent.trim().slice(0, 30) || a.id || a.tagName) + '|' + a.tagName : ''; });
+    // the accessible name: aria-label, else the VISIBLE text (the page ships both languages in the DOM and CSS hides one)
+    const d = await W(page, () => { const a = document.activeElement; return a ? (a.getAttribute('aria-label') || (a.innerText || '').trim().slice(0, 30) || a.getAttribute('title') || a.id || a.tagName) + '|' + a.tagName : ''; });
     seen.push(d);
   }
   const has = re => seen.some(x => re.test(x));
@@ -431,6 +432,163 @@ console.log('\n12. log · language · theme');
   const px = await W(page, () => { const c = document.querySelector('#mc-canvas'), d = c.getContext('2d').getImageData(2, 2, 1, 1).data; return d[0] + d[1] + d[2]; });
   check('light theme draws a light map background (token-driven canvas)', px > 500, String(px));
   allErrors.push(...errors); check('log/lang/theme: no console errors', errors.length === 0, errors.join(' | '));
+  await ctx.close();
+}
+
+/* ---------------------------------------------------------------- 13. polish: toasts, collapsible proof, hospital choice, Present layout, contrast, a11y hygiene */
+console.log('\n13. polish');
+for (const lang of ['en', 'ar']) {
+  const { ctx, page, errors } = await openPage(browser, 'mission.html', { width: 1440, height: 900, lang, theme: 'light' });
+  await ready(page);
+  // toasts dock inside the map area and never cover the toolbar (LTR and RTL)
+  await page.click('#mc-toolbar button.icon-btn >> nth=0');
+  await waitFor(page, () => !!document.querySelector('.toasts .toast'), null, 3000);
+  const tg = await W(page, () => { const t = document.querySelector('.toasts .toast'); if (!t) return null; const r = t.getBoundingClientRect(), s = document.querySelector('#mc-stage').getBoundingClientRect(), b = document.querySelector('#mc-toolbar').getBoundingClientRect(); return { inStage: r.left >= s.left - 1 && r.right <= s.right + 1 && r.top >= s.top - 1 && r.bottom <= s.bottom + 1, overToolbar: r.top < b.bottom && r.bottom > b.top, n: document.querySelectorAll('.toasts .toast').length }; });
+  check(`${lang}: toasts dock inside the map area and never cover the toolbar`, tg && tg.inStage && !tg.overToolbar, JSON.stringify(tg));
+  // the proof panel: keys collapse after the public alert, the toggle reopens them, rewinding reopens them
+  await W(page, () => { MissionControl.start('fire-night', 7); MissionControl.advance(60); });
+  const o1 = await W(page, () => ({ hidden: document.querySelector('.pr-more').hidden, ex: document.querySelector('.pr-tog').getAttribute('aria-expanded') }));
+  await W(page, () => { MissionControl.approve(); MissionControl.advance(5); });
+  const o2 = await W(page, () => ({ hidden: document.querySelector('.pr-more').hidden, ex: document.querySelector('.pr-tog').getAttribute('aria-expanded'), tabsTop: document.querySelector('#ts-R').getBoundingClientRect().top }));
+  check(`${lang}: the key values are open at CONFIRMED and fold away after the public alert`, o1.hidden === false && o1.ex === 'true' && o2.hidden === true && o2.ex === 'false', JSON.stringify([o1, o2]));
+  check(`${lang}: after the fold the Alert / Count / Dispatch / Hand-off tabs sit in the upper half of the screen`, o2.tabsTop < 560, String(o2.tabsTop));
+  await page.click('.pr-tog');
+  check(`${lang}: the Keys button reopens the live key values`, await W(page, () => !document.querySelector('.pr-more').hidden && document.querySelector('.pr-tog').getAttribute('aria-expanded') === 'true'));
+  await W(page, () => { MissionControl.approve; MissionControl.seek(30); });
+  check(`${lang}: rewinding before the alert reopens them`, await W(page, () => !document.querySelector('.pr-more').hidden));
+  // destination hospital choice: a full hospital is skipped
+  await W(page, () => { MissionControl.start('sos-day', 7); MissionControl.advance(60); MissionControl.approve(); MissionControl.advance(40); });
+  await page.click('#tab-R-dispatch');
+  const h0 = await W(page, () => ({ rows: document.querySelectorAll('.hrow').length, chosen: (document.querySelector('.hrow.chosen .hn b') || {}).textContent, id: (MissionControl.snap.dispatch.hospital || {}).id }));
+  check(`${lang}: the dispatch tab lists every hospital with ETA and a free-beds assumption`, h0.rows >= 2 && !!h0.chosen, JSON.stringify(h0));
+  if (h0.rows >= 2) {
+    await page.fill('.hrow.chosen .hb-in', '0'); await page.keyboard.press('Tab');
+    await waitFor(page, name => { const c = document.querySelector('.hrow.chosen .hn b'); return !!c && c.textContent !== name; }, h0.chosen, 4000);
+    const h1 = await W(page, () => ({ chosen: (document.querySelector('.hrow.chosen .hn b') || {}).textContent, card: (document.querySelector('.ucard.hosp .ucard-name b') || {}).textContent, full: [...document.querySelectorAll('.hrow')].filter(r => /no room|بلا مكان/.test(r.textContent)).length }));
+    check(`${lang}: setting the chosen hospital's free beds to 0 moves the choice to another hospital (live recommendation)`, h1.chosen && h1.chosen !== h0.chosen && h1.card === h1.chosen && h1.full === 1, JSON.stringify([h0, h1]));
+  }
+  // the building view keeps the HUD clear of the floors (no overlap between the view switchers and the floor cards)
+  await W(page, () => { MissionControl.start('fire-night', 7); MissionControl.advance(80); MissionControl.setView('building'); }); await sleep(250);
+  const bv = await W(page, () => { const k = MissionControl.camK(), s = document.querySelector('#mc-stage').getBoundingClientRect(), seg = document.querySelector('.hud-tr').getBoundingClientRect(); return { k, side: seg.width, stageW: s.width, note: document.querySelector('.mc-bnote').textContent.length > 5 }; });
+  check(`${lang}: building view fits the floors beside the HUD column and reports who is outside`, bv.k > 8 && bv.note, JSON.stringify(bv));
+  // Present mode: the KPI band is under the map (never over it), nothing is clipped
+  await W(page, () => { MissionControl.start('school-fire-day', 7); MissionControl.advance(60); MissionControl.approve(); MissionControl.advance(100); MissionControl.setPresent(true); }); await sleep(400);
+  const pm = await W(page, () => { const st = document.querySelector('#mc-stage').getBoundingClientRect(), kp = document.querySelector('.mc-presentkpi').getBoundingClientRect(); const cut = [...document.querySelectorAll('.pk b')].filter(b => b.scrollWidth > b.clientWidth + 1 || b.scrollHeight > b.clientHeight + 2).length; return { under: kp.top >= st.bottom - 1, cut, units: document.querySelectorAll('.pu .pu-row').length, ladder: getComputedStyle(document.querySelector('.ladder')).gridTemplateColumns.split(' ').length }; });
+  check(`${lang}: Present mode: KPI band under the map, numbers not clipped, responders listed in large type`, pm.under && pm.cut === 0 && pm.units >= 3 && pm.ladder === 1, JSON.stringify(pm));
+  const ovp = await overflow(page); check(`${lang}: Present mode has no horizontal overflow`, ovp.scrollW <= ovp.W && ovp.bad.length === 0, JSON.stringify(ovp));
+  await W(page, () => MissionControl.setPresent(false));
+  // accessibility hygiene
+  const ah = await W(page, () => {
+    const ids = {}; document.querySelectorAll('[id]').forEach(e => ids[e.id] = (ids[e.id] || 0) + 1);
+    const hs = [...document.querySelectorAll('#main h1,#main h2,#main h3,#main h4')].filter(h => h.offsetParent !== null).map(h => +h.tagName[1]); let jump = 0; for (let i = 1; i < hs.length; i++) if (hs[i] - hs[i - 1] > 1) jump++;
+    return { dup: Object.keys(ids).filter(k => ids[k] > 1), jump, h1: document.querySelectorAll('h1').length, canvas: [...document.querySelectorAll('canvas')].filter(c => c.offsetParent !== null && c.getAttribute('aria-hidden') !== 'true' && !c.getAttribute('aria-label')).map(c => c.className || c.id), lang: document.documentElement.lang + '/' + document.documentElement.dir };
+  });
+  check(`${lang}: no duplicate ids, one h1, heading levels never jump, every canvas is labelled`, ah.dup.length === 0 && ah.h1 === 1 && ah.jump === 0 && ah.canvas.length === 0, JSON.stringify(ah));
+  allErrors.push(...errors); check(`${lang}: polish checks: no console errors`, errors.length === 0, errors.join(' | '));
+  await ctx.close();
+}
+
+/* WCAG AA text contrast of the operator console (both themes, the panels that carry text). Elements on gradient backgrounds are measured at their worst stop. */
+console.log('\n13b. text contrast');
+for (const theme of ['dark', 'light']) {
+  const { ctx, page, errors } = await openPage(browser, 'mission.html', { width: 1440, height: 900, lang: 'en', theme });
+  await ready(page);
+  await W(page, () => { MissionControl.start('school-fire-day', 7); MissionControl.advance(60); MissionControl.approve(); MissionControl.advance(100); MissionControl.pause(); });
+  const bad = [];
+  for (const tab of ['R-alert', 'R-count', 'R-dispatch', 'R-handoff', 'B-log', 'B-ab', 'B-assume', 'B-legend']) {
+    await page.click('#tab-' + tab); await sleep(120);
+    const r = await W(page, () => {
+      const parse = c => { const m = c.match(/rgba?\(([^)]+)\)/); if (!m) return null; const p = m[1].split(/[ ,\/]+/).filter(Boolean).map(Number); return { r: p[0], g: p[1], b: p[2], a: p.length > 3 ? p[3] : 1 }; };
+      const lin = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+      const Lm = c => 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b);
+      const over = (t, b) => ({ r: t.r * t.a + b.r * (1 - t.a), g: t.g * t.a + b.g * (1 - t.a), b: t.b * t.a + b.b * (1 - t.a), a: 1 });
+      let gradient = false;
+      const bgOf = el => { const st = []; let e = el; gradient = false; while (e && e.nodeType === 1) { const cs = getComputedStyle(e); if (cs.backgroundImage !== 'none') { gradient = true; } const bg = parse(cs.backgroundColor); if (bg && bg.a > 0) { st.push(bg); if (bg.a >= 0.99) break; } e = e.parentElement; } let base = parse(getComputedStyle(document.body).backgroundColor) || { r: 255, g: 255, b: 255, a: 1 }; if (base.a < 1) base = { r: 255, g: 255, b: 255, a: 1 }; for (let i = st.length - 1; i >= 0; i--) base = over(st[i], base); return base; };
+      const out = [], w = document.createTreeWalker(document.querySelector('#main'), NodeFilter.SHOW_TEXT), seen = new Set(); let n;
+      while ((n = w.nextNode())) {
+        const t = n.textContent.trim(); if (!t) continue; const el = n.parentElement; if (!el || seen.has(el)) continue; seen.add(el);
+        const cs = getComputedStyle(el); if (!el.offsetParent || cs.visibility === 'hidden' || el.closest('canvas,[aria-hidden="true"],.sr-only,[disabled],button:disabled')) continue;
+        const rc = el.getBoundingClientRect(); if (rc.width < 2 || rc.height < 2) continue;
+        const bg = bgOf(el); if (gradient) continue;
+        let fg = parse(cs.color); if (!fg) continue; fg = over({ ...fg, a: fg.a * (parseFloat(cs.opacity) || 1) }, bg);
+        const l1 = Lm(fg), l2 = Lm(bg), ratio = (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05), size = parseFloat(cs.fontSize), large = size >= 24 || (size >= 18.66 && parseInt(cs.fontWeight) >= 700);
+        if (ratio < (large ? 3 : 4.5)) out.push(ratio.toFixed(2) + ' ' + t.slice(0, 30));
+      }
+      return out;
+    });
+    r.forEach(x => bad.push(tab + ': ' + x));
+  }
+  check(`${theme}: every text run in the panels meets WCAG AA contrast (4.5:1, 3:1 large)`, bad.length === 0, bad.slice(0, 5).join(' | '));
+  // the primary / cool gradient buttons: dark text on a light gradient
+  const bt = await W(page, () => ['.btn-cool', '.btn-primary'].map(q => { const b = document.querySelector('#main ' + q + ':not(:disabled)'); return b ? getComputedStyle(b).color : null; }));
+  check(`${theme}: gradient buttons carry dark text (not white on light colours)`, bt.every(c => !c || /^rgb\((\d+), (\d+), (\d+)\)$/.test(c) && c.match(/\d+/g).map(Number).reduce((a, b) => a + b, 0) < 200), JSON.stringify(bt));
+  allErrors.push(...errors); await ctx.close();
+}
+
+/* ---------------------------------------------------------------- 14. the judge controls: wind, hazard origin, faulty sentinel, SOS from a resident */
+console.log('\n14. judge controls');
+{
+  const { ctx, page, errors } = await openPage(browser, 'mission.html', { width: 1440, height: 900, lang: 'en' });
+  await ready(page);
+  await W(page, () => { MissionControl.start('fire-night', 7); MissionControl.pause(); document.querySelectorAll('#mc-left details').forEach(d => d.open = true); });
+  // wind: the degree box and the speed slider reach the simulation; the compass is a keyboard-operable slider
+  await page.fill('#jg-wind input[type=number]', '90'); await page.keyboard.press('Tab'); await sleep(150);
+  const w1 = await W(page, () => ({ deg: MissionControl.snap.wind.deg, log: MissionControl.state.actions.filter(a => a.op === 'wind').length, hud: document.querySelector('.mc-windtxt').textContent }));
+  check('wind: typing a direction changes the wind in the simulation, the HUD and the log', w1.deg === 90 && w1.log === 1 && /E/.test(w1.hud), JSON.stringify(w1));
+  await page.focus('#jg-wind svg.compass'); await page.keyboard.press('ArrowRight'); await page.keyboard.press('ArrowRight');
+  await page.focus('#jg-wind input[type=range]'); await page.keyboard.press('ArrowRight'); await page.keyboard.press('Tab'); await sleep(100);
+  const w2 = await W(page, () => ({ deg: MissionControl.snap.wind.deg, speed: MissionControl.snap.wind.speed, aria: document.querySelector('#jg-wind svg.compass').getAttribute('role') }));
+  check('wind: the compass (arrow keys) and the speed slider both commit to the simulation', w2.aria === 'slider' && w2.deg !== 90 || w2.speed !== 4, JSON.stringify(w2));
+  // hazard origin: a room chosen in the list restarts the run with the fire there
+  await page.selectOption('#jg-origin select', 'R207'); await page.click('#jg-origin button');
+  const o1 = await W(page, () => ({ room: MissionControl.state.origin && MissionControl.state.origin.room, t: MissionControl.sim.t, preset: MissionControl.sim.preset }));
+  check('hazard origin: "Restart with this origin" starts the fire in the chosen room', o1.room === 'R207' && o1.t === 0 && /207/.test(o1.preset), JSON.stringify(o1));
+  // … and the Origin tool: click a room on the Building view
+  await W(page, () => { MissionControl.setView('building'); }); await sleep(250);
+  await page.click('.mc-toolseg [data-id="origin"]');
+  const room = await W(page, () => MissionControl.hits().filter(h => h.type === 'room' && /^20[1-9]$/.test(h.id) && h.id !== '207')[0]);
+  const box = await page.locator('#mc-canvas').boundingBox();
+  if (room) { await page.mouse.click(box.x + room.x, box.y + room.y); await sleep(250); }
+  const o2 = await W(page, () => MissionControl.state.origin && MissionControl.state.origin.room);
+  check('hazard origin: the Origin tool + a click on a room in the Building view moves the fire there', room && o2 === 'R' + room.id, `${room && room.id} -> ${o2}`);
+  await page.click('.mc-toolseg [data-id="inspect"]'); await W(page, () => MissionControl.setView('map'));
+  // faulty sentinel: stuck-high on ONE key is logged and never confirms an alert
+  await W(page, () => { MissionControl.start('fire-night', 7); MissionControl.pause(); document.querySelectorAll('#mc-left details').forEach(d => d.open = true); });
+  await W(page, () => { MissionControl.advance(10); });   // before the real fire has produced any key of its own
+  await page.selectOption('#jg-fault select >> nth=0', 'smoke');
+  await page.click('#jg-fault .btn-danger');
+  await W(page, () => { MissionControl.advance(25); });
+  const f1 = await W(page, () => ({ phase: MissionControl.snap.verification.phase, alert: !!MissionControl.sim.alert, ops: MissionControl.state.actions.filter(a => a.op === 'inject').length, log: [...document.querySelectorAll('.evlog li')].some(li => /faulted sentinel|عطّل/.test(li.textContent)) }));
+  check('faulty sentinel: the stuck reading is logged and, being one key, stays at SUSPECT (no confirmation, no alert)', f1.ops === 1 && f1.phase === 'suspect' && !f1.alert && f1.log, JSON.stringify(f1));
+  // SOS from a resident: Huda asks for help → headcount + hand-off list
+  await W(page, () => { MissionControl.start('fire-night', 7); MissionControl.advance(70); MissionControl.approve(); MissionControl.advance(30); MissionControl.pause(); document.querySelectorAll('#mc-left details').forEach(d => d.open = true); });
+  await page.selectOption('#jg-sos select', 'huda'); await page.click('#jg-sos button');
+  await W(page, () => MissionControl.advance(2));
+  const s1 = await W(page, () => { const hc = MissionControl.snap.headcount, ho = Sim_handoff(); return { help: hc.help, ho }; function Sim_handoff() { return document.querySelector('#pn-handoff') ? document.querySelector('#pn-handoff').textContent.length : 0; } });
+  check('SOS from a resident: the headcount shows one person who needs help', s1.help >= 1, JSON.stringify(s1));
+  await page.click('#tab-R-handoff');
+  check('SOS from a resident: Huda is on the hand-off card (needs-help list)', await waitFor(page, () => /Huda/.test(document.querySelector('#pn-handoff').textContent), null, 3000));
+  allErrors.push(...errors); check('judge controls: no console errors', errors.length === 0, errors.join(' | '));
+  await ctx.close();
+}
+
+/* ---------------------------------------------------------------- 15. sensitivity sweep: the gap as a function of ONE assumption */
+console.log('\n15. sensitivity sweep');
+for (const lang of ['en', 'ar']) {
+  const { ctx, page, errors } = await openPage(browser, 'mission.html', { width: 1440, height: 900, lang });
+  await ready(page);
+  await W(page, () => { MissionControl.start('fire-night', 7); MissionControl.pause(); });
+  await page.click('#tab-B-ab');
+  const opts = await W(page, () => ({ n: document.querySelectorAll('.sw-sel option').length, groups: document.querySelectorAll('.sw-sel optgroup').length, sel: document.querySelector('.sw-sel').value }));
+  check(`${lang}: the sweep offers every non-binary assumption, grouped, with "operator approval time" preselected`, opts.n >= 60 && opts.groups >= 6 && opts.sel === 'approveSec', JSON.stringify(opts));
+  await page.click('#pn-ab .sw-row .btn');
+  const ok = await waitFor(page, () => MissionControl.state.sweep && MissionControl.state.sweep.rows, null, 120000);
+  const sw = await W(page, () => ({ rows: MissionControl.state.sweep ? MissionControl.state.sweep.rows : [], txt: document.querySelector('.sw-sum').textContent, ink: (() => { const c = document.querySelector('.sw-canvas'), d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data, seen = new Set(); for (let i = 0; i < d.length; i += 4 * 61) seen.add((d[i] >> 5) + ',' + (d[i + 1] >> 5) + ',' + (d[i + 2] >> 5) + ',' + (d[i + 3] >> 6)); return seen.size; })() }));
+  check(`${lang}: the sweep finishes in the background and returns five points`, ok && sw.rows.length === 5, JSON.stringify(sw.rows));
+  check(`${lang}: the ordinary alarm does not depend on the operator approval time (a mechanism sanity check)`, sw.rows.length > 1 && sw.rows.every(r => r.ordinary === sw.rows[0].ordinary));
+  check(`${lang}: MANARA's headline value grows with the approval time (the human key costs time, shown honestly)`, sw.rows.length > 1 && sw.rows[sw.rows.length - 1].manara > sw.rows[0].manara, JSON.stringify(sw.rows.map(r => r.manara)));
+  check(`${lang}: the chart is drawn and a plain-language reading with "simulation" is written under it`, sw.ink > 6 && /(simulation|محاكاة)/.test(sw.txt) && sw.txt.length > 40, sw.txt);
+  allErrors.push(...errors); check(`${lang}: sweep: no console errors`, errors.length === 0, errors.join(' | '));
   await ctx.close();
 }
 

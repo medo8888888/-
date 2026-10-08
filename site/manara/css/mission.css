@@ -125,9 +125,9 @@ html[data-lang=ar] .mc{line-height:1.7}
 .mc-scale{display:flex;align-items:center;gap:8px;font-size:.74rem;color:var(--ink-2);background:var(--glass);border:1px solid var(--glass-line);border-radius:8px;padding:2px 8px;backdrop-filter:blur(8px)}
 .mc-scalebar{display:block;height:5px;border:2px solid var(--ink-2);border-block-start:0;min-width:10px}
 .mc-north{font-weight:700;color:var(--muted)}
-.hud-bl{position:absolute;inset-block-end:10px;inset-inline-start:10px;display:flex;flex-direction:row;gap:6px;align-items:center;max-width:calc(100% - 312px)}
+.hud-bl{position:absolute;inset-block-end:10px;inset-inline-start:10px;display:flex;flex-direction:row;gap:6px;align-items:flex-end}
 .mc-layerbtn{box-shadow:var(--shadow-sm);flex:none}
-.mc-legend{display:flex;flex-wrap:wrap;gap:4px 12px;background:var(--glass);border:1px solid var(--glass-line);backdrop-filter:blur(8px);border-radius:10px;padding:5px 10px;font-size:.74rem;color:var(--ink-2)}
+.mc-legend{display:grid;grid-template-columns:repeat(3,auto);gap:2px 14px;background:var(--glass);border:1px solid var(--glass-line);backdrop-filter:blur(8px);border-radius:10px;padding:5px 10px;font-size:.72rem;line-height:1.35;color:var(--ink-2)}
 .lg{display:inline-flex;align-items:center;gap:5px}
 .lg-dot{width:10px;height:10px;border-radius:50%;background:var(--c);border:1.5px solid var(--surface);box-shadow:0 0 0 1px var(--line-2)}
 .lg-dot.ring{background:var(--surface);border:2px solid var(--ink-2);box-shadow:none}
@@ -321,7 +321,7 @@ html[dir=rtl] .mc-ev-prev .i{transform:none}
 .hc-prio li{counter-increment:pr}
 .prio-b{display:flex;align-items:center;gap:10px;width:100%;text-align:start;padding:6px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);font-size:.82rem}
 .prio-b:hover{border-color:var(--brand)}
-.prio-b b{display:grid;place-items:center;min-width:2.9em;padding:2px 6px;border-radius:8px;background:var(--warn);color:#1a1002;font-size:.82rem}
+.prio-b b{display:grid;place-items:center;min-width:2.9em;padding:2px 6px;border-radius:8px;background:var(--warn);color:var(--on-warn,#1a1002);font-size:.82rem}
 .hc-grid{display:flex;flex-direction:column;gap:6px}
 .hc-floor{display:flex;flex-direction:column;gap:3px}
 .hc-fl{font-size:.72rem;color:var(--muted);font-weight:600}
@@ -335,7 +335,7 @@ html[dir=rtl] .mc-ev-prev .i{transform:none}
 .tile.help{border-color:var(--danger);background:color-mix(in oklab,var(--danger) 16%,var(--surface))}
 .tile.empty{opacity:.45}
 .tile.sel,.tile[aria-pressed=true]{outline:3px solid var(--accent);outline-offset:1px}
-.t-rank{position:absolute;inset-block-start:-6px;inset-inline-end:-4px;min-width:16px;height:16px;border-radius:99px;background:var(--warn);color:#1a1002;font-size:.68rem;font-style:normal;font-weight:700;display:grid;place-items:center;font-family:var(--font-m)}
+.t-rank{position:absolute;inset-block-start:-6px;inset-inline-end:-4px;min-width:16px;height:16px;border-radius:99px;background:var(--warn);color:var(--on-warn,#1a1002);font-size:.68rem;font-style:normal;font-weight:700;display:grid;place-items:center;font-family:var(--font-m)}
 .t-rank[hidden]{display:none}
 .hc-detail{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--surface-2);display:flex;flex-direction:column;gap:6px}
 .hc-people{list-style:none;display:flex;flex-direction:column;gap:4px}
@@ -358,13 +358,13 @@ html[dir=rtl] .mc-ev-prev .i{transform:none}
 .dp-banner.warn{border-color:var(--warn);background:color-mix(in oklab,var(--warn) 13%,var(--surface))}
 .dp-banner.info{border-color:var(--accent);background:color-mix(in oklab,var(--accent) 9%,var(--surface))}
 .dp-banner .i{margin-block-start:2px}
-.dp-plan{list-style:none;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:3px}
-.dp-plan li{display:flex;flex-direction:column;align-items:center;gap:1px;font-size:.6rem;line-height:1.2;text-align:center;color:var(--muted);position:relative;padding-block-start:2px;min-width:0;overflow-wrap:anywhere}
+.dp-plan{list-style:none;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 4px}
+.dp-plan li{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:.74rem;line-height:1.25;text-align:center;color:var(--muted);position:relative;padding-block-start:2px;min-width:0}
 .dp-plan .pdot{width:12px;height:12px;border-radius:50%;background:var(--surface-3);border:2px solid var(--line-2)}
 .dp-plan li.done .pdot{background:var(--safe);border-color:var(--safe)}
 .dp-plan li.cur .pdot{background:var(--brand);border-color:var(--brand);box-shadow:0 0 0 4px color-mix(in oklab,var(--brand) 25%,transparent)}
 .dp-plan li.cur,.dp-plan li.done{color:var(--head)}
-.dp-plan time{font-size:.64rem;color:var(--muted)}
+.dp-plan time{font-size:.7rem;color:var(--muted)}
 .dp-units{display:flex;flex-direction:column;gap:8px}
 .ucard{border:1px solid var(--line);border-radius:12px;padding:9px 10px;background:var(--surface-2);display:flex;flex-direction:column;gap:6px;min-width:0}
 .ucard>header{display:flex;align-items:center;gap:9px}
@@ -397,7 +397,8 @@ html[dir=rtl] .mc-ev-prev .i{transform:none}
 .rk.best .rk-bar i{background:var(--safe)}
 .dp-ctl{display:grid;grid-template-columns:1fr;gap:10px}
 .tchart{width:100%;height:auto;aspect-ratio:640/150;border:1px solid var(--line);border-radius:10px;background:var(--surface-2)}
-.dp-roadrow{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end}
+.dp-roadrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end}
+@media (max-width:400px){.dp-roadrow{grid-template-columns:minmax(0,1fr)}.dp-roadrow .btns{flex-wrap:wrap}}
 .dp-cond{list-style:none;display:flex;flex-direction:column;gap:4px;font-size:.8rem}
 .dp-cond li{display:flex;align-items:center;gap:6px}
 .dp-cond li .icon-btn{margin-inline-start:auto}
@@ -461,7 +462,7 @@ html[dir=rtl] .mc-ev-prev .i{transform:none}
 /* ---------- legend / real vs simulated ---------- */
 .rs-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
 .rs{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--surface-2)}
-.rs h4{font-size:.88rem;margin-block-end:6px;color:var(--head)}
+.rs h3{font-size:.88rem;margin-block-end:6px;color:var(--head)}
 .rs ul{list-style:none;display:flex;flex-direction:column;gap:5px;font-size:.8rem;color:var(--ink-2)}
 .rs li{padding-inline-start:12px;position:relative}
 .rs li::before{content:"";position:absolute;inset-inline-start:0;inset-block-start:.65em;width:5px;height:5px;border-radius:50%;background:var(--muted)}
@@ -551,6 +552,7 @@ html[dir=rtl] .mc-ev-prev .i{transform:none}
 /* ---------- Present mode: the booth projector (large type, secondary panels hidden) ---------- */
 body.present .mc-left,body.present .mc-bottom,body.present .mc-purpose,body.present .mc-timeline,body.present .hud-bl,body.present .mc-toolseg,body.present .mc-scale{display:none!important}
 body.present .mc[data-layout=wide]{--lw:0px;--rw:420px}
+@media (min-width:1700px){ body.present .mc[data-layout=wide]{--rw:520px} }
 body.present .mc[data-layout=wide] .mc-left{display:none}
 body.present .mc-right .tabset,body.present .mc-right .pn-decision .pr-src,body.present .mc-right .evrow,body.present .mc-right .siren-row{display:none}
 body.present .mc-right .keys{display:none}
@@ -559,10 +561,17 @@ body.present .mc-right .pn-decision{font-size:1.1rem}
 body.present .dec-btns.big .btn{min-height:78px;font-size:1.4rem}
 body.present .ls-t b{font-size:1.1rem}body.present .ls-t small{font-size:.9rem}
 body.present .pr-note{font-size:1.2rem}
-body.present .mc-presentkpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;position:absolute;inset-inline:12px;inset-block-end:12px;pointer-events:none}
-.pk{background:var(--glass);border:1px solid var(--glass-line);backdrop-filter:blur(10px);border-radius:16px;padding:10px 16px;display:flex;flex-direction:column}
-.pk small{font-size:clamp(.9rem,1.4vw,1.2rem);color:var(--ink-2)}
-.pk b{font-size:clamp(1.6rem,3.6vw,3.2rem);line-height:1.15;color:var(--head)}
+body.present .mc-center{grid-template-rows:auto minmax(0,1fr) auto}
+body.present .mc-presentkpi{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding:10px 12px;background:var(--surface);border-block-start:1px solid var(--line);pointer-events:none}
+.pk{container-type:inline-size;background:var(--surface-2);border:1px solid var(--line);border-radius:14px;padding:8px 14px;display:flex;flex-direction:column;justify-content:center;min-width:0;min-height:5.2rem}
+.pk small{font-size:clamp(.82rem,6.4cqi,1.15rem);color:var(--ink-2);line-height:1.3}
+.pk b{font-size:clamp(1.2rem,13cqi,3rem);line-height:1.12;color:var(--head);text-wrap:balance;overflow-wrap:anywhere}
+body.present .ladder{grid-template-columns:1fr;gap:8px}
+body.present .ls{flex-direction:row;align-items:center;gap:12px;padding:10px 14px}
+body.present .ls-dot{width:34px;height:34px;font-size:1rem;flex:none}
+body.present .ls-t{flex:1}
+body.present .ls-time{font-size:1rem;flex:none}
+body.present .pr-tog{display:none}
 .pk.safe b{color:var(--safe)}.pk.warn b{color:var(--warn)}.pk.cool b{color:var(--accent)}
 body.present .mc-hclock{font-size:clamp(1.2rem,2.4vw,2rem);padding:4px 16px}
 body.present .mc-phasepill{font-size:clamp(1rem,1.8vw,1.5rem);padding:5px 18px}
@@ -574,5 +583,94 @@ body.present .mc[data-layout=narrow] .tabset{display:none}
   .g-fill,.hc-seg i,.tile{transition:none}
 }
 @media print{ .mc{height:auto} }
-/* toasts sit under the nav so they never cover the Approve / Hold buttons */
-body.mission .toasts{inset-block-end:auto;inset-block-start:calc(var(--nav-h) + 10px)}
+/* toasts: compact, docked in the map area (JS sets --mc-toast-* from the stage rectangle) so they never cover the toolbar, Approve / Hold or the tabs.
+   base.css centres them with left:50% + translateX; the one physical reset below (left:auto) and transform:none undo exactly that and nothing else. */
+body.mission .toasts{left:auto;transform:none;inset-block-end:auto;inset-block-start:var(--mc-toast-top,calc(var(--nav-h) + 120px));inset-inline-start:var(--mc-toast-x,50%);inline-size:var(--mc-toast-w,min(92vw,440px));align-items:center;gap:6px}
+body.mission .toast{inline-size:fit-content;max-inline-size:min(100%,420px);padding:6px 12px;font-size:.84rem;line-height:1.45;border-radius:10px;box-shadow:var(--shadow)}
+body.mission .toast:nth-last-child(n+3){display:none}
+
+/* ---------- proof panel: collapsible key values ---------- */
+.pr-more{display:flex;flex-direction:column;gap:10px;min-width:0}
+.pr-more[hidden]{display:none}
+.pr-tog{min-height:28px;padding:2px 8px;font-size:.78rem}
+.pr-tog .i{width:14px;height:14px;transform:rotate(90deg);transition:transform .2s var(--ease)}
+.pr-tog[aria-expanded=false] .i{transform:rotate(-90deg)}
+/* building cut-away: the wind chip is not needed there, and the view switchers share one row on wide stages */
+.mc-stage[data-view=building] .mc-windmini{display:none}
+.pop-legend{display:flex;flex-direction:column;gap:4px;margin-block-start:8px;padding-block-start:8px;border-block-start:1px dashed var(--line);font-size:.82rem;color:var(--ink-2)}
+.pop-sub{font-size:.8rem;color:var(--head)}
+.mc-right .tab{padding-inline:9px}
+
+/* ---------- touch targets on phones and tablets (>= 40 px in the toolbar, >= 36 px on the map) ---------- */
+.mc[data-layout=narrow] .mc-toolbar .seg-b{min-width:40px;min-height:40px;justify-content:center}
+.mc[data-layout=narrow] .mc-toolbar .btn-sm{min-height:40px;min-width:40px}
+.mc[data-layout=narrow] .mc-toolbar .icon-btn{width:40px;height:40px}
+.mc[data-layout=narrow] .mc-toolbar .input{min-height:40px}
+.mc[data-layout=narrow] .mc-hud .seg-b{min-width:36px;min-height:36px;justify-content:center}
+.mc[data-layout=narrow] .mc-hud .icon-btn,.mc[data-layout=narrow] .mc-zoom .icon-btn.sm{width:36px;height:36px}
+
+/* ---------- destination hospital choice ---------- */
+.dp-hopts{display:flex;flex-direction:column;gap:6px}
+.dp-hopts:empty{display:none}
+.hrow{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:6px 12px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2)}
+.hrow.chosen{border-color:var(--safe);background:color-mix(in oklab,var(--safe) 8%,var(--surface))}
+.hn{display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-width:0}
+.hn b{font-size:.84rem;color:var(--head);line-height:1.35}
+.hb{display:flex;align-items:center;gap:6px}
+.hb-in{width:4.6em;min-height:34px}
+
+/* ---------- Present mode: the responders in large type under the decision ---------- */
+.pu{display:none}
+body.present .pu{display:flex;flex-direction:column;gap:8px;margin-block-start:4px}
+body.present .pu:empty{display:none}
+.pu-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pu-h b{font-size:1.05rem;color:var(--head);flex:1;min-width:10ch}
+.pu-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:8px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2)}
+.pu-n{display:flex;flex-direction:column;min-width:0}
+.pu-n b{font-size:1.05rem;color:var(--head);line-height:1.3}
+.pu-eta{font-size:1.7rem;line-height:1;color:var(--accent)}
+body.present .pu .uico{width:42px;height:42px}
+body.present .pr-more{display:none}
+/* numbers that read "current / total" keep their order in Arabic too */
+.mc-time,.hc-big{direction:ltr}
+.hc-big{justify-content:flex-start}
+html[dir=rtl] .hc-big{justify-content:flex-end}
+
+/* ---------- laptop widths: keep the toolbar on one row, keep small stages uncluttered ---------- */
+@media (min-width:1100px) and (max-width:1560px){
+  .mc-time .muted{display:none}
+  .mc-seedwrap .mc-lbl{display:none}
+  .mc-seed{width:5.2em}
+  .mc-toolbar{gap:6px 10px}
+}
+.mc-stage.compact .mc-sirenpill{display:none}
+.mc-stage.compact .mc-windtxt{display:none}
+.mc-stage.compact .mc-windmini{padding-inline-end:4px}
+.mc-stage.compact .hud-tl{max-width:calc(100% - 110px)}
+
+/* wind controls: the compass on top at the narrow rail, the fields use the full width */
+.wind-row{flex-wrap:wrap}
+.wind-row>.stack{flex:1 1 9em;min-width:0}
+.wind-row .input,.wind-row input[type=number]{width:100%}
+.wind-row input[type=range]{width:100%}
+
+/* ---------- contrast (WCAG AA) in the light theme: tag text is darkened toward the ink; badges on --warn get white text ---------- */
+html[data-theme=light] .mc{--on-warn:#fff}
+html[data-theme=light] .mc .tag,html[data-theme=light] .mc .sc-time{color:color-mix(in oklab,var(--sc,var(--brand)) 70%,var(--ink))}
+html[data-theme=light] .mc .tag.cool,html[data-theme=light] .mc .sc-time.cool{color:color-mix(in oklab,var(--accent) 56%,var(--ink))}
+/* the cool (cyan → blue) gradient is light at both ends: dark text meets AA, white text does not */
+.mc .btn-cool{color:#06141a}
+.mc-bnote{max-width:196px;font-size:.72rem;line-height:1.4;color:var(--muted);text-align:end;pointer-events:none}
+.mc-bnote:empty{display:none}
+/* a very short map (the bottom sheet is half open on a small phone): keep only the zoom buttons over it */
+.mc-stage.tiny .hud-bl,.mc-stage.tiny .mc-toolseg,.mc-stage.tiny .mc-scale,.mc-stage.tiny .mc-windmini,.mc-stage.tiny .mc-bseg{display:none}
+/* toasts are information only: they must never swallow a click meant for the map underneath */
+body.mission .toast{pointer-events:none}
+.sw-row{align-items:center}
+.sw-sel{flex:1 1 12em;min-width:0}
+.sw-canvas{aspect-ratio:760/280}
+/* numeric readouts (value ≥ threshold, ETA · distance) keep their left-to-right order in Arabic; ≥ is not mirrored into ≤ */
+.kr-v,.rk-v,.ab-v,.ucard-eta,.pu-eta,.hb-in{direction:ltr;unicode-bidi:isolate}
+.ucard-cmp .cv bdi{white-space:nowrap}
+.ucard-fbf .fbf-n{margin-inline-start:auto;font-weight:600;white-space:nowrap}
+.ucard-fbf{flex-wrap:wrap}

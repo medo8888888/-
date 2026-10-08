@@ -359,7 +359,7 @@
     addCheckpoint();
     MC.prev = {}; MC.banner = null; MC.sel = null; MC.evScan = MC.sim.events.length; MC.log.dirty = true;
     MC.alertSent = false; MC.dispatchSig = ''; MC.busLast = 0; MC.ab = null;
-    MC.buildFor = null;
+    MC.buildFor = null; setProofOpen(true);
     if (o.keepCamera !== true) MC.camReset = true;
     afterTicks();
     updateHash();
@@ -392,9 +392,9 @@
     if (p.phase !== undefined) {
       if (cur.phase !== p.phase && PHASE_NOTE[cur.phase]) {
         announce(LL(PHASE_NOTE[cur.phase]));
-        if (cur.phase === 'confirmed') Manara.toast(PHASE_NOTE.confirmed, 'warn', 5200);
-        if (cur.phase === 'public') Manara.toast(PHASE_NOTE.public, 'safe', 5200);
+        if (cur.phase === 'public' && MC.layout === 'wide') setProofOpen(false);
       }
+      if (cur.phase !== 'public' && p.phase === 'public') setProofOpen(true);
       if (cur.local && !p.local) announce(B('انطلق الإنذار المحلي — لا ينتظر شبكة ولا إنسانًا', 'The local alarm sounded — it never waits for a network or a person'));
       if (cur.exits !== p.exits && p.exits) {
         s.exits.forEach(function (e) {
@@ -409,7 +409,7 @@
       var e = ev[i];
       if (e.type === 'redispatch' || e.type === 'far-but-faster' || e.type === 'recommendation-change') {
         MC.banner = { type: e.type, t: e.t, text: e.text, reason: e.reason || null, gainSec: e.gainSec || null, kind: e.kind || null };
-        if (e.type === 'redispatch') { Manara.toast(e.text, 'warn', 6000); announce(LL(e.text)); }
+        if (e.type === 'redispatch') announce(LL(e.text));   // the HUD banner shows it; no toast on top of the map
       }
       if (e.type === 'public-alert') MC.alertAt = e.t;
     }
@@ -466,9 +466,29 @@
   }
   function inWorld(ox, oy, k, fn) { var d = R.dpr, c = R.ctx; c.save(); c.setTransform(d * k, 0, 0, d * k, d * ox, d * oy); fn(c); c.restore(); }
   function inScreen(fn) { var d = R.dpr, c = R.ctx; c.save(); c.setTransform(d, 0, 0, d, 0, 0); fn(c); c.restore(); }
-  function haloLabel(ctx, s, x, y, color, halo, w) {                 // centred label kept inside the canvas
+  // centred label kept inside the canvas. While a frame is being drawn (R.lq is an array) labels are queued with a priority and
+  // flushed at the end by flushLabels(), which drops the ones that would overlap a more important label (names stay in the inspector).
+  function haloLabel(ctx, s, x, y, color, halo, w, prio) {
     var tw = ctx.measureText(s).width; x = clamp(x, tw / 2 + 4, Math.max(tw / 2 + 4, R.w - tw / 2 - 4));
+    if (R.lq) { R.lq.push({ s: s, x: x, y: y, tw: tw, color: color, halo: halo, w: w, font: ctx.font, dir: ctx.direction, prio: prio || 0, n: R.lq.length }); return; }
     ctx.textAlign = 'center'; haloText(ctx, s, x, y, color, halo, w);
+  }
+  function flushLabels() {
+    var q = R.lq, ctx = R.ctx; R.lq = null; if (!q || !q.length) return;
+    q.sort(function (a, b) { return b.prio - a.prio || a.n - b.n; });
+    var placed = [];
+    function hit(r) { for (var i = 0; i < placed.length; i++) { var p = placed[i]; if (r[0] < p[2] && r[2] > p[0] && r[1] < p[3] && r[3] > p[1]) return true; } return false; }
+    q.forEach(function (l) {
+      var th = 14, tries = [0, -th, th, -2 * th, 2 * th], ok = null;
+      for (var i = 0; i < tries.length && !ok; i++) {
+        var y = l.y + tries[i], r = [l.x - l.tw / 2 - 2, y - th / 2, l.x + l.tw / 2 + 2, y + th / 2];
+        if (y < th / 2 || y > R.h - th / 2) continue;
+        if (!hit(r)) ok = { r: r, y: y };
+      }
+      if (!ok) return;
+      placed.push(ok.r);
+      ctx.save(); ctx.font = l.font; ctx.direction = l.dir; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; haloText(ctx, l.s, l.x, ok.y, l.color, l.halo, l.w); ctx.restore();
+    });
   }
   function haloText(ctx, s, x, y, color, halo, w) {
     ctx.lineJoin = 'round'; ctx.lineWidth = w || 3; ctx.strokeStyle = halo; ctx.strokeText(s, x, y); ctx.fillStyle = color; ctx.fillText(s, x, y);
@@ -518,13 +538,15 @@
   }
 
   /* ---- camera ---- */
+  // room the HUD takes around the building cut-away: t/b = top and bottom bands, side = a column at the inline-end (wide stages only)
+  function bPad() { return R.w >= 700 ? { t: 46, b: 52, side: 196, start: 0 } : { t: R.w >= 520 ? 50 : 92, b: 30, side: 0, start: 0 }; }
   function bLayout() {
     var si = MC.bStruct, S = WI.structs[si]; if (!S) return null;
     var floors = []; for (var f = 0; f < S.floors; f++) floors.push(f);
     var hasRoof = S.nodes.some(function (n) { return n.fl === S.floors; }); if (hasRoof) floors.push(S.floors);
-    var pw = S.w + 2.4, ph = S.h + 2.9, best = null;
+    var pw = S.w + 2.4, ph = S.h + 2.9, best = null, pd = bPad();
     for (var cols = 1; cols <= floors.length; cols++) {
-      var rows = Math.ceil(floors.length / cols), k = Math.min(R.w * 0.97 / (cols * pw), Math.max(60, R.h - 96) / (rows * ph));
+      var rows = Math.ceil(floors.length / cols), k = Math.min((R.w * 0.97 - pd.side - pd.start) / (cols * pw), Math.max(60, R.h - pd.t - pd.b) / (rows * ph));
       if (!best || k > best.k * 1.02) best = { cols: cols, rows: rows, k: k };
     }
     var order = floors.slice().reverse();                                    // top floor first (reading order)
@@ -537,7 +559,8 @@
       R.cam.map = { x: FRAME.x + FRAME.w / 2, y: FRAME.y + FRAME.h / 2, k: k, fit: k };
     } else {
       R.bl = bLayout(); if (!R.bl) return;
-      R.cam.bld = { x: R.bl.w / 2, y: R.bl.h / 2, k: R.bl.k, fit: R.bl.k };
+      var pd = bPad(), kk = R.bl.k, off = (htmlEl.dir === 'rtl' ? -1 : 1) * (pd.start - pd.side) / 2;   // the HUD sits at the inline-end, the legend at the inline-start
+      R.cam.bld = { x: R.bl.w / 2 - off / kk, y: R.bl.h / 2 - (pd.t - pd.b) / (2 * kk), k: kk, fit: kk };
     }
     MC.drawDirty = true;
   }
@@ -561,15 +584,23 @@
   function camFocus(x, y, k) {
     var cam = MC.view === 'map' ? R.cam.map : R.cam.bld; cam.x = x; cam.y = y; if (k) cam.k = clamp(k, cam.fit * 0.7, cam.fit * 16); clampCam(); MC.drawDirty = true; updateScaleBar();
   }
+  // toasts dock inside the map area, under the HUD's first row (CSS reads these three variables)
+  function placeToasts(r) {
+    var rtl = htmlEl.dir === 'rtl', vw = htmlEl.clientWidth, w = Math.min(r.width - 20, 420), st = htmlEl.style;
+    st.setProperty('--mc-toast-top', Math.round(r.top + 54) + 'px');
+    st.setProperty('--mc-toast-x', Math.round((rtl ? vw - r.right : r.left) + 10) + 'px');
+    st.setProperty('--mc-toast-w', Math.round(r.width - 20) + 'px');
+  }
   function resizeCanvas() {
     var st = $('#mc-stage'); if (!st) return;
     var r = st.getBoundingClientRect(), w = Math.max(160, Math.floor(r.width)), h = Math.max(140, Math.floor(r.height));
+    placeToasts(r);
     var dpr = Math.min(window.devicePixelRatio || 1, 2);
     if (w === R.w && h === R.h && dpr === R.dpr && R.ctx) return;
     R.w = w; R.h = h; R.dpr = dpr;
     R.cvs.width = Math.round(w * dpr); R.cvs.height = Math.round(h * dpr);
     R.cvs.style.width = w + 'px'; R.cvs.style.height = h + 'px';
-    st.classList.toggle('compact', h < 330 || w < 520);
+    st.classList.toggle('compact', h < 330 || w < 640); st.classList.toggle('tiny', h < 300);
     R.ctx = R.cvs.getContext('2d');
     var keep = R.camFitted;
     fitView(); R.camFitted = true;
@@ -592,7 +623,8 @@
     var hz = sim.hazard;
     paint('smoke', V.smoke, mixc(C('ink'), C('bg'), isDark() ? 0.15 : 0.35), 0.78, 0.30, 0.75);
     paint('gas', V.gas, mixc(C('warn'), C('safe'), 0.35), 0.7, Math.max(300, (hs.danger || 2100)), 0.55);
-    paint('water', V.water, C('info'), 0.72, 0.5, 0.8);
+    paint('water', V.water, mixc(C('info'), C('accent'), isDark() ? 0.25 : 0.1), 0.9, 0.28, 0.7);
+    R.flood = null; if (sim.hazard === 'flood') { var wm = 0, wi = -1; for (var q = 0; q < n; q++) if (V.water[q] > wm) { wm = V.water[q]; wi = q; } if (wi >= 0 && wm > 0.02) R.flood = { x: (wi % WI.w) + 0.5, y: ((wi / WI.w) | 0) + 0.5, cm: Math.round(wm * 100) }; }
     paint('dust', V.dust, mixc(C('brand'), C('warn'), 0.5), 0.6, 425, 0.7);
     MC.fieldsDirty = false;
   }
@@ -703,6 +735,12 @@
     } else if (locked) { ctx.fillStyle = rgba(C('ink-2')); ctx.fillRect(x - 2, y - 1, 4, 3); }
     ctx.restore();
     R.hits.push({ type: 'exit', id: id, x: x, y: y, r: Math.max(w, hh) * 0.62 + 3 });
+    // the state in words as well as colour (colour alone is not enough): always for SMOKE / FIRE / LOCKED, for OPEN once zoomed in
+    if (state !== 'OPEN' || k >= 8) {
+      ctx.save(); ctx.font = '700 9.5px ' + R.font; ctx.textAlign = 'center'; ctx.direction = lang() === 'ar' ? 'rtl' : 'ltr';
+      haloLabel(ctx, LL(EXIT_STATE[state].name), x, y + hh / 2 + 9, rgba(state === 'LOCKED' ? C('ink-2') : col), rgba(C('bg'), 0.9), 3, state === 'OPEN' ? 2 : 7);
+      ctx.restore();
+    }
   }
 
   function drawMap() {
@@ -710,7 +748,7 @@
     var snap = MC.snap, sim = MC.sim, G = R.geo, layers = MC.layers, alerted = !!snap.alert, hz = snap.hazard, hs = snap.hazardState || {};
     var X = function (x) { return ox + x * k; }, Y = function (y) { return oy + y * k; };
     var dark = isDark(), tsec = R.anim, moving = !RM.matches;
-    R.hits = [];
+    R.hits = []; R.lq = [];
     ctx.setTransform(R.dpr, 0, 0, R.dpr, 0, 0);
     ctx.fillStyle = rgba(C('bg')); ctx.fillRect(0, 0, R.w, R.h);
     ctx.textBaseline = 'middle';
@@ -759,7 +797,7 @@
       R.hits.push({ type: 'building', id: id, x: X((bb.x0 + bb.x1) / 2), y: Y((bb.y0 + bb.y1) / 2), rect: { x0: X(bb.x0), y0: Y(bb.y0), x1: X(bb.x1), y1: Y(bb.y1) }, prio: 0 });
       if (labelK || id === 'RB' || id === 'SCH') {
         ctx.font = '600 ' + (k >= 9 ? 12 : 10.5) + 'px ' + R.font; ctx.textAlign = 'center'; ctx.direction = lang() === 'ar' ? 'rtl' : 'ltr';
-        haloLabel(ctx, LL(bb.name).replace(/\s*\(.*\)$/, ''), X((bb.x0 + bb.x1) / 2), Y(bb.y1) + (id === 'RB' ? 25 : 11), rgba(C('ink-2')), rgba(C('bg'), 0.85), 3);
+        haloLabel(ctx, LL(bb.name).replace(/\s*\(.*\)$/, ''), X((bb.x0 + bb.x1) / 2), Y(bb.y1) + (id === 'RB' ? 25 : 11), rgba(C('ink-2')), rgba(C('bg'), 0.85), 3, id === 'RB' || id === 'SCH' ? 6 : 5);
       }
     }
     // drone dock on the shops roof
@@ -820,6 +858,16 @@
         }
       });
     });
+    // the water lies ON the road surface too: tint the roads again (underpass first), and say how deep it is
+    if (layers.hazard && hz === 'flood') {
+      inWorld(ox, oy, k, function (c) { c.globalAlpha = 0.55; c.imageSmoothingEnabled = true; c.drawImage(R.fields.water.cvs, 0, 0, WI.w, WI.h); c.globalAlpha = 1; });
+      if (R.flood) {
+        var fx = X(R.flood.x) + 34, fy = Y(R.flood.y) + 2, ftxt = N(hs.underpassCm != null ? hs.underpassCm : R.flood.cm) + ' ' + B('سم', 'cm');
+        ctx.save(); ctx.font = '700 11px ' + R.mono; ctx.textAlign = 'center'; var fw = ctx.measureText(ftxt).width + 14; rrect(ctx, fx - fw / 2, fy - 10, fw, 20, 10); ctx.fillStyle = rgba(C('info')); ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = rgba(C('surface')); ctx.stroke();
+        ctx.fillStyle = rgba(isDark() ? C('bg') : C('surface')); ctx.fillText(ftxt, fx, fy + 0.5); ctx.restore();
+        R.hits.push({ type: 'water', id: 'depth', x: fx, y: fy, r: 14, prio: 4 });
+      }
+    }
     G.segs.forEach(function (s) {
       var ts = tm[s.id]; if (!ts) return;
       var q = clipFrame(s.a.x, s.a.y, s.b.x, s.b.y); if (!q) return;
@@ -833,7 +881,7 @@
     });
     if (k >= 11) {
       ctx.font = '600 10px ' + R.font; ctx.textAlign = 'center';
-      G.segs.forEach(function (s) { if (s.cls === 'access' || !s.name) return; var q = clipFrame(s.a.x, s.a.y, s.b.x, s.b.y); if (!q || Math.hypot(q[2] - q[0], q[3] - q[1]) < 12) return; var tmx = (q[0] + q[2]) / 2, tmy = (q[1] + q[3]) / 2; haloLabel(ctx, LL(s.name), X(tmx), Y(tmy) - 12, rgba(C('muted')), rgba(C('bg'), 0.8), 3); });
+      G.segs.forEach(function (s) { if (s.cls === 'access' || !s.name) return; var q = clipFrame(s.a.x, s.a.y, s.b.x, s.b.y); if (!q || Math.hypot(q[2] - q[0], q[3] - q[1]) < 12) return; var tmx = (q[0] + q[2]) / 2, tmy = (q[1] + q[3]) / 2; haloLabel(ctx, LL(s.name), X(tmx), Y(tmy) - 12, rgba(C('muted')), rgba(C('bg'), 0.8), 3, 1); });
     }
 
     /* assembly points, cooling shelters */
@@ -842,7 +890,7 @@
       ctx.save(); ctx.beginPath(); ctx.arc(px, py, Math.max(7, k * 0.9), 0, 6.2832); ctx.fillStyle = rgba(C('safe'), 0.16); ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = rgba(C('safe')); ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
       ctx.fillStyle = rgba(C('safe')); ctx.font = '700 11px ' + R.font; ctx.textAlign = 'center'; ctx.fillText(a.id.slice(-1), px, py + 0.5); ctx.restore();
       R.hits.push({ type: 'assembly', id: a.id, x: px, y: py, r: Math.max(10, k) + 2, prio: 1 });
-      if (k >= 9) { ctx.font = '600 10px ' + R.font; ctx.textAlign = 'center'; haloLabel(ctx, LL(a.name).split(' — ')[0], px, py + Math.max(13, k * 0.95 + 8), rgba(C('safe')), rgba(C('bg'), 0.85), 3); }
+      if (k >= 9) { ctx.font = '600 10px ' + R.font; ctx.textAlign = 'center'; haloLabel(ctx, LL(a.name).split(' — ')[0], px, py + Math.max(13, k * 0.95 + 8), rgba(C('safe')), rgba(C('bg'), 0.85), 3, 3); }
     });
     if (hz === 'heat' || k >= 7) WI.shelters.forEach(function (a) {
       var px = X(a.x), py = Y(a.y); ctx.save(); rrect(ctx, px - 6, py - 6, 12, 12, 3); ctx.fillStyle = rgba(C('accent'), 0.18); ctx.fill(); ctx.lineWidth = 1.6; ctx.strokeStyle = rgba(C('accent')); ctx.stroke();
@@ -922,7 +970,7 @@
         drawUnitIcon(ctx, a.kind, px, py, 10, { ring: ring, ringDash: dash, dim: !!busy });
         if (busy) { ctx.save(); ctx.fillStyle = rgba(C('muted')); ctx.font = '700 9px ' + R.font; ctx.textAlign = 'center'; ctx.fillText(B('مشغولة', 'BUSY'), px, py + 22); ctx.restore(); }
         R.hits.push({ type: 'station', id: a.id, x: px, y: py, r: 13, prio: 3 });
-        if (k >= 4.5 || a.kind === 'hospital') { ctx.font = '600 10px ' + R.font; ctx.textAlign = 'center'; var nm = LL(a.name).replace(/\s*[—-]\s*(تجريبي[ة]?|\(demo\))|\s*\(demo\)/g, ''); haloLabel(ctx, nm, px, py - 17, rgba(C('ink-2')), rgba(C('bg'), 0.9), 3); }
+        if (k >= 4.5 || a.kind === 'hospital') { ctx.font = '600 10px ' + R.font; ctx.textAlign = 'center'; var nm = LL(a.name).replace(/\s*[—-]\s*(تجريبي[ة]?|\(demo\))|\s*\(demo\)/g, ''); haloLabel(ctx, nm, px, py - 17, rgba(C('ink-2')), rgba(C('bg'), 0.9), 3, a.kind === 'hospital' ? 5 : 4); }
       });
       if (plan) plan.units.forEach(function (u, ui) {
         if (!u.assetId || !u.pos || !inFrame(u.pos)) return;
@@ -931,8 +979,7 @@
         var px = X(u.pos.x) + ui * 6, py = Y(u.pos.y) - ui * 3;
         ctx.save(); ctx.beginPath(); ctx.arc(px, py, 14, 0, 6.2832); ctx.fillStyle = rgba(C('bg'), 0.65); ctx.fill(); ctx.restore();
         drawUnitIcon(ctx, u.kind, px, py, 8.5, { ring: u.state === 'on-scene' ? '--safe' : '--brand' });
-        var lbl = u.state === 'on-scene' ? B('في الموقع', 'on scene') : mmss(u.etaSec);
-        ctx.font = '700 10.5px ' + R.mono; ctx.textAlign = 'center'; haloLabel(ctx, lbl, px, py + 19, rgba(C('head')), rgba(C('bg'), 0.92), 3.5);
+        if (u.state !== 'on-scene') { ctx.font = '700 10.5px ' + R.mono; ctx.textAlign = 'center'; haloLabel(ctx, mmss(u.etaSec), px, py + 19, rgba(C('head')), rgba(C('bg'), 0.92), 3.5, 8); }   // on scene: the green ring says it (and the Dispatch tab); no stacked text
         R.hits.push({ type: 'unit', id: u.assetId + ':' + u.kind, x: px, y: py, r: 13, prio: 4 });
       });
     }
@@ -951,7 +998,7 @@
       heroOrder.forEach(function (o) {
         var p = o[0], px = X(p.x), py = Y(p.y); drawPersonDot(ctx, px, py, r0 + 2, o[1], { hero: true });
         R.hits.push({ type: 'person', id: p.key, x: px, y: py, r: r0 + 6, prio: 6 });
-        if (k >= 5) { ctx.font = '700 11px ' + R.font; ctx.textAlign = 'center'; haloLabel(ctx, LL(HERO_NAME[p.hero] || p.name), px, py - r0 - 9, rgba(C('head')), rgba(C('bg'), 0.92), 3.5); }
+        if (k >= 5) { ctx.font = '700 11px ' + R.font; ctx.textAlign = 'center'; haloLabel(ctx, LL(HERO_NAME[p.hero] || p.name), px, py - r0 - 9, rgba(C('head')), rgba(C('bg'), 0.92), 3.5, 9); }
       });
     }
 
@@ -964,6 +1011,7 @@
       R.hits.push({ type: 'drone', id: 'drone', x: dx, y: dy, r: 14, prio: 7 });
     }
 
+    flushLabels();
     /* selection ring */
     if (MC.sel) { var hsel = findHit(MC.sel.type, MC.sel.id); if (hsel) { ctx.save(); ctx.lineWidth = 2.4; ctx.strokeStyle = rgba(C('head')); ctx.setLineDash([4, 3]); ctx.beginPath(); ctx.arc(hsel.x, hsel.y, (hsel.r || 12) + 4, 0, 6.2832); ctx.stroke(); ctx.restore(); } }
   }
@@ -1078,13 +1126,14 @@
         });
       }
     });
-    // a note for the people who are outside this building
-    var outside = snap.people.filter(function (p) { return !p.away && !(p.x >= S.x0 - 1 && p.x <= S.x0 + S.w + 1.5 && p.y >= S.y0 - 1 && p.y <= S.y0 + S.h + 1); }).length;
-    ctx.font = '500 11px ' + R.font; ctx.textAlign = lang() === 'ar' ? 'right' : 'left'; ctx.fillStyle = rgba(C('muted'));
-    ctx.fillText(N(outside) + ' ' + B('آخرون خارج هذا المبنى — انتقل إلى الخريطة', 'others are outside this building — switch to the map'), lang() === 'ar' ? R.w - 10 : 10, R.h - 10);
     if (MC.sel) { var hs2 = findHit(MC.sel.type, MC.sel.id); if (hs2) { ctx.save(); ctx.lineWidth = 2.4; ctx.strokeStyle = rgba(C('head')); ctx.setLineDash([4, 3]); if (hs2.rect) rrect(ctx, hs2.rect.x0 - 2, hs2.rect.y0 - 2, hs2.rect.x1 - hs2.rect.x0 + 4, hs2.rect.y1 - hs2.rect.y0 + 4, 5); else { ctx.beginPath(); ctx.arc(hs2.x, hs2.y, (hs2.r || 12) + 4, 0, 6.2832); } ctx.stroke(); ctx.restore(); } }
   }
 
+  // how many people are outside the building shown in the cut-away (the HUD says so, next to the view switch)
+  function outsideCount() {
+    var S = WI.structs[MC.bStruct]; if (!S || !MC.snap) return 0;
+    return MC.snap.people.filter(function (p) { return !p.away && !(p.x >= S.x0 - 1 && p.x <= S.x0 + S.w + 1.5 && p.y >= S.y0 - 1 && p.y <= S.y0 + S.h + 1); }).length;
+  }
   /* residents' live routes (heroes + the selected person), mapped to floors for the cut-away */
   function routeFloors(nodes) {
     var W = MC.sim.W;
@@ -1134,6 +1183,7 @@
       case 'person': var p = snap.people.filter(function (q) { return q.key === hh.id; })[0]; return p ? (p.hero ? LL(HERO_NAME[p.hero]) : (p.name ? LL(p.name) : roleName(p.role))) + (p.room ? ' · ' + B('غرفة ', 'room ') + p.room : '') + ' · ' + LL(PERSON_ST[personState(p, !!snap.alert) || 'calm'].name) : hh.id;
       case 'station': var a = assetById(hh.id); return a ? LL(a.name) : hh.id;
       case 'unit': return hh.id.split(':')[1] ? LL(UNIT[hh.id.split(':')[1]].name) + ' · ' + LL((assetById(hh.id.split(':')[0]) || {}).name) : hh.id;
+      case 'water': return B('عمق الماء في النفق', 'Water depth at the underpass') + (R.flood ? ' · ' + N(R.flood.cm) + ' ' + B('سم', 'cm') : '');
       case 'assembly': var as = WI.assembly.filter(function (q) { return q.id === hh.id; })[0]; return as ? LL(as.name) : hh.id;
       case 'shelter': var sh = WI.shelters.filter(function (q) { return q.id === hh.id; })[0]; return sh ? LL(sh.name) : hh.id;
       case 'room': return /^[A-Z]/.test(hh.id) ? hh.id : B('غرفة ', 'Room ') + hh.id;
@@ -1165,6 +1215,7 @@
       var b = h('button', { type: 'button', class: 'seg-b', 'data-id': it.id, onclick: function () { set(it.id); sync(); } });
       if (it.icon) b.appendChild(icon(it.icon)); b.appendChild(bi(it.ar, it.en, 'span')); if (it.hideLabel) b.lastChild.classList.add('seg-lab');
       if (it.ar2) lab(b, 'title', it.ar2, it.en2);
+      if (it.hideLabel) lab(b, 'aria-label', it.ar2 || it.ar, it.en2 || it.en);
       wrap.appendChild(b); return b;
     });
     function sync() { var cur = get(); btns.forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-id') === String(cur) ? 'true' : 'false'); }); }
@@ -1195,12 +1246,12 @@
   function setSpeed(s) { MC.speed = s; MC.debt = 0; updateHash(); syncPlayUI(); }
   function setView(v) {
     if (v === MC.view) return;
-    MC.view = v; closePop(); R.hits = [];
+    MC.view = v; closePop(); R.hits = []; var stg = $('#mc-stage'); if (stg) stg.setAttribute('data-view', v);
     if (v === 'building') { var pi = presetInfo(MC.sim.preset); MC.bStruct = pi.struct != null ? pi.struct : (pi.scope && pi.scope[0] === 'SCH' ? 1 : 0); R.bl = bLayout(); }
     fitView(); updateScaleBar(); syncChrome(); updateHash();
-    MC.drawDirty = true;
+    MC.drawDirty = true; MC.panelsDirty = true;
   }
-  function setBStruct(i) { MC.bStruct = i; R.bl = bLayout(); fitView(); syncChrome(); MC.drawDirty = true; }
+  function setBStruct(i) { MC.bStruct = i; R.bl = bLayout(); fitView(); syncChrome(); MC.drawDirty = true; MC.panelsDirty = true; }
   function setTool(t) { MC.tool = t; closePop(); syncChrome(); if (t !== 'inspect') toastTool(t); R.cvs.style.cursor = t === 'inspect' ? '' : 'crosshair'; }
   function toastTool(t) {
     var m = { jam: T('أداة الازدحام: انقر على طريق لإبطائه (انقر ثانيةً لإزالته).', 'Jam tool: click a road to slow it (click again to clear).'),
@@ -1215,7 +1266,7 @@
     UI.scaleBar.style.width = Math.round(pick * pxPerM) + 'px'; setText(UI.scaleTxt, N(pick) + ' ' + B('م', 'm'));
   }
   function setPresent(on) {
-    MC.present = !!on; document.body.classList.toggle('present', MC.present);
+    MC.present = !!on; MC.panelsDirty = true; document.body.classList.toggle('present', MC.present);
     if (UI.presentBtn) UI.presentBtn.setAttribute('aria-pressed', MC.present ? 'true' : 'false');
     if (MC.present) { try { var el = $('#mc-center'); if (!doc.fullscreenElement && htmlEl.requestFullscreen && matchMedia('(min-width: 1000px)').matches && false) htmlEl.requestFullscreen(); } catch (e) { /* optional */ } }
     setTimeout(function () { resizeCanvas(); fitView(); MC.drawDirty = true; }, 60);
@@ -1238,7 +1289,7 @@
     var seedWrap = h('label', { class: 'mc-seedwrap' }, h('span', { class: 'mc-lbl' }, bi('البذرة', 'Seed')), UI.seed);
     UI.share = iconBtn('link', 'نسخ رابط المشاركة (السيناريو + البذرة)', 'Copy share link (scenario + seed)', function () { updateHash(); copyText(shareURL()).then(function (ok) { Manara.toast(ok ? T('نُسخ الرابط (السيناريو + البذرة).', 'Link copied (scenario + seed).') : T('انسخ الرابط من شريط العنوان.', 'Copy the link from the address bar.'), ok ? 'safe' : 'warn', 3200); }); });
     UI.presentBtn = btn('btn btn-ghost btn-sm', 'present', 'عرض', 'Present', function () { setPresent(!MC.present); }, { 'aria-pressed': 'false' });
-    lab(UI.presentBtn, 'title', 'وضع العرض للشاشة الكبيرة (P)', 'Presentation mode for the booth screen (P)');
+    lab(UI.presentBtn, 'title', 'وضع العرض للشاشة الكبيرة (P)', 'Presentation mode for the booth screen (P)'); lab(UI.presentBtn, 'aria-label', 'وضع العرض للشاشة الكبيرة (P)', 'Presentation mode for the booth screen (P)');
     UI.keys = iconBtn('keyboard', 'اختصارات لوحة المفاتيح', 'Keyboard shortcuts', function (e) { openKeysPop(e.currentTarget); });
     var g1 = h('div', { class: 'mc-tg' }, UI.play, UI.speed, UI.reset);
     var g2 = h('div', { class: 'mc-tg mc-tg-time' }, UI.time);
@@ -1301,15 +1352,18 @@
     var hud = $('#mc-hud'); hud.replaceChildren();
     UI.hudSim = h('span', { class: 'tag warn mc-simchip' }, bi('محاكاة', 'SIM'));
     lab(UI.hudSim, 'title', 'محاكاة — فحص لآلية العمل وليس دليلاً على الأثر', 'SIMULATION — a mechanism check, not proof of impact');
+    UI.hudFict = h('span', { class: 'tag info mc-simchip mc-fictchip' }, bi('وحدات وهمية', 'FICTIONAL UNITS'));
+    lab(UI.hudFict, 'title', 'المحطات والمستشفيات ومراكز الشرطة على هذه الخريطة وهمية، وكل الأزمنة محاكاة', 'Every station, hospital and police post on this map is fictional; every time is simulated');
     UI.hudClock = h('b', { class: 'mono mc-hclock', text: '04:00:00' });
     UI.hudPhase = h('span', { class: 'mc-phasepill' }); UI.hudSiren = h('span', { class: 'mc-sirenpill' });
-    var tl = h('div', { class: 'hud-tl' }, h('div', { class: 'hud-row' }, UI.hudSim, UI.hudClock), h('div', { class: 'hud-row' }, UI.hudPhase, UI.hudSiren));
+    var tl = h('div', { class: 'hud-tl' }, h('div', { class: 'hud-row' }, UI.hudSim, UI.hudFict, UI.hudClock), h('div', { class: 'hud-row' }, UI.hudPhase, UI.hudSiren));
     // view + tools (top-end)
     var viewSeg = seg([{ id: 'map', ar: 'الخريطة', en: 'Map', icon: 'map' }, { id: 'building', ar: 'المبنى', en: 'Building', icon: 'building' }], function () { return MC.view; }, setView, ['المنظور', 'View']);
     UI.viewSeg = viewSeg;
     UI.bSeg = seg([{ id: 0, ar: 'السكن', en: 'Residence' }, { id: 1, ar: 'المدرسة', en: 'School' }], function () { return MC.bStruct; }, function (v) { setBStruct(+v); }, ['المبنى المعروض', 'Building shown']);
     UI.bSeg.classList.add('mc-bseg');
     UI.windMini = h('div', { class: 'mc-windmini' });
+    UI.bNote = h('p', { class: 'mc-bnote', 'aria-hidden': 'true' });
     var tr = h('div', { class: 'hud-tr' }, viewSeg, UI.bSeg, UI.windMini);
     tr._needsScale = true;
     // tools + zoom (bottom-end)
@@ -1322,7 +1376,7 @@
     UI.scaleBar = h('i', { class: 'mc-scalebar' }); UI.scaleTxt = h('span', { class: 'mono' });
     UI.scale = h('div', { class: 'mc-scale', 'aria-hidden': 'true' }, UI.scaleBar, UI.scaleTxt, h('span', { class: 'mc-north' }, bi('شمال ↑', 'N ↑')));
     var br = h('div', { class: 'hud-br' }, UI.toolSeg, zoom);
-    tr.appendChild(UI.scale);
+    tr.appendChild(UI.scale); tr.appendChild(UI.bNote);
     // legend + layers (bottom-start)
     UI.legend = h('div', { class: 'mc-legend' });
     UI.layerBtn = iconBtn('layers', 'الطبقات', 'Layers', function (e) { openLayersPop(e.currentTarget); }, 'mc-layerbtn');
@@ -1331,7 +1385,8 @@
     UI.tip = h('div', { class: 'mc-tip', hidden: '', role: 'tooltip' });
     UI.pop = h('div', { class: 'mc-pop', hidden: '', role: 'dialog', 'aria-modal': 'false' });
     UI.presentKpi = h('div', { class: 'mc-presentkpi', 'aria-hidden': 'true' });
-    hud.appendChild(tl); hud.appendChild(tr); hud.appendChild(br); hud.appendChild(bl); hud.appendChild(UI.banner); hud.appendChild(UI.presentKpi); hud.appendChild(UI.tip); hud.appendChild(UI.pop);
+    hud.appendChild(tl); hud.appendChild(tr); hud.appendChild(br); hud.appendChild(bl); hud.appendChild(UI.banner); hud.appendChild(UI.tip); hud.appendChild(UI.pop);
+    var ctr = $('#mc-center'); if (ctr) ctr.appendChild(UI.presentKpi);
     buildLegend();
   }
   function buildLegend() {
@@ -1348,6 +1403,11 @@
       cb.addEventListener('change', function () { MC.layers[l[0]] = cb.checked; MC.drawDirty = true; });
       body.appendChild(h('label', { class: 'switch' }, cb, bi(l[1], l[2])));
     });
+    var lg = h('div', { class: 'pop-legend' }, h('b', { class: 'pop-sub' }, bi('دلالة ألوان الأشخاص', 'What the dots mean')));
+    ['asleep', 'alerted', 'moving', 'safe', 'help', 'unacc'].forEach(function (k) {
+      lg.appendChild(h('span', { class: 'lg' }, h('i', { class: 'lg-dot' + (k === 'unacc' ? ' ring' : ''), style: '--c:var(' + PERSON_ST[k].tok + ')' }), bi(PERSON_ST[k].name.ar, PERSON_ST[k].name.en)));
+    });
+    body.appendChild(lg);
     openPopAt({ title: T('الطبقات', 'Layers'), node: body }, anchor);
   }
   function windDir8(deg) {
@@ -1378,6 +1438,7 @@
       UI.banner.hidden = false; UI.banner.className = 'hud-banner ' + (b.type === 'redispatch' ? 'warn' : 'info');
       UI.banner.replaceChildren(icon(b.type === 'redispatch' ? 'alert' : 'route'), h('span', null, h('b', { text: b.type === 'redispatch' ? B('إعادة إرسال تلقائية: ', 'AUTOMATIC RE-DISPATCH: ') : b.type === 'far-but-faster' ? B('أبعد لكن أسرع: ', 'FARTHER BUT FASTER: ') : B('تغيّرت التوصية: ', 'RECOMMENDATION CHANGED: ') }), ' ', LL(b.text)), btn('icon-btn sm', 'x', null, null, function () { MC.banner = null; refreshHud(); }, { 'aria-label': B('إخفاء', 'Dismiss') }));
     } else UI.banner.hidden = true;
+    if (MC.view === 'building') setText(UI.bNote, N(outsideCount()) + ' ' + B('آخرون خارج هذا المبنى — انتقل إلى الخريطة', 'others are outside this building — switch to the map')); else setText(UI.bNote, '');
     // present KPIs
     if (MC.present) renderPresentKpi();
     // summary for screen readers
@@ -1388,12 +1449,27 @@
     return B('خريطة المحاكاة. ', 'Simulation map. ') + LL(HZ[s.hazard].name) + ', ' + s.clock + '. ' + B('الحالة: ', 'Status: ') + s.verification.phase + '. ' +
       (hc ? N(hc.safe + hc.safeAway) + ' / ' + N(hc.registered) + ' ' + B('بأمان', 'safe') + '. ' : '') + (u.length ? u.map(function (x) { return LL(UNIT[x.kind].name) + ' ' + mmss(x.etaSec); }).join(', ') + '.' : '');
   }
+  function renderPresentUnits() {
+    var P = UI.proof, d = MC.snap.dispatch; if (!P || !P.pu) return;
+    var units = d ? d.units.filter(function (u) { return u.assetId; }) : [], hp = d ? d.hospital : null;
+    var sig = lang() + units.map(function (u) { return u.kind + u.assetId + u.state + (u.state === 'on-scene' ? '' : Math.round(u.etaSec)); }).join() + (hp ? hp.id + Math.round(hp.etaSec) : '');
+    if (P.puSig === sig) return; P.puSig = sig; P.pu.replaceChildren();
+    if (!units.length) return;
+    P.pu.appendChild(h('div', { class: 'pu-h' }, h('b', null, bi('الاستجابة: الأسرع وليس الأقرب', 'Dispatch: the fastest, not the nearest')), simTag(), fictionalTag()));
+    units.forEach(function (u) {
+      P.pu.appendChild(h('div', { class: 'pu-row' }, h('span', { class: 'uico', style: '--c:var(' + UNIT[u.kind].tok + ')' }, icon(UNIT[u.kind].icon)),
+        h('span', { class: 'pu-n' }, h('b', { text: stripDemo(LL(u.name)) }), h('small', { class: 'muted', text: LL(UNIT[u.kind].name) + ' · ' + LL(STATE_L[u.state]) })),
+        h('b', { class: 'mono pu-eta', text: u.state === 'on-scene' ? B('في الموقع', 'on scene') : mmss(u.etaSec) })));
+    });
+    if (hp) P.pu.appendChild(h('div', { class: 'pu-row' }, h('span', { class: 'uico', style: '--c:var(--danger)' }, icon('hospital')), h('span', { class: 'pu-n' }, h('b', { text: stripDemo(LL(hp.name)) }), h('small', { class: 'muted', text: B('المستشفى الوجهة', 'Destination hospital') })), h('b', { class: 'mono pu-eta', text: mmss(hp.etaSec) })));
+  }
   function renderPresentKpi() {
+    renderPresentUnits();
     var s = MC.snap, hc = s.headcount, u = s.dispatch ? s.dispatch.units.filter(function (x) { return x.assetId && x.kind === 'fire' || x.assetId && x.kind === 'ambulance'; })[0] : null;
     UI.presentKpi.replaceChildren(
       h('div', { class: 'pk' }, h('small', { text: B('الساعة', 'Clock') }), h('b', { class: 'mono', text: s.clock })),
       h('div', { class: 'pk' }, h('small', { text: B('الحالة', 'Status') }), h('b', { text: UI.hudPhase.textContent })),
-      hc ? h('div', { class: 'pk ' + (hc.unaccounted ? 'warn' : 'safe') }, h('small', { text: B('بأمان / المسجّلون', 'Safe / registered') }), h('b', { class: 'mono', text: N(hc.safe + hc.safeAway) + ' / ' + N(hc.registered) })) : null,
+      hc ? h('div', { class: 'pk ' + (hc.unaccounted ? 'warn' : 'safe') }, h('small', { text: B('بأمان / المسجّلون', 'Safe / registered') }), h('b', { class: 'mono' }, h('bdi', { dir: 'ltr', text: N(hc.safe + hc.safeAway) + ' / ' + N(hc.registered) }))) : null,
       u ? h('div', { class: 'pk cool' }, h('small', { text: LL(UNIT[u.kind].name) + ' · ' + B('الوصول', 'ETA') }), h('b', { class: 'mono', text: u.state === 'on-scene' ? B('في الموقع', 'on scene') : mmss(u.etaSec) })) : null);
   }
 
@@ -1497,6 +1573,12 @@
         rows.push([B('النوع', 'Type'), hh.type === 'assembly' ? B('نقطة تجمع', 'Assembly point') : B('مأوى مكيّف', 'Cooled shelter')]);
         break;
       }
+      case 'water': {
+        title = T('عمق الماء في النفق (محاكاة)', 'Water depth at the underpass (SIM)');
+        rows.push([B('أعمق نقطة', 'Deepest point'), N(snap.hazardState.underpassCm != null ? snap.hazardState.underpassCm : (R.flood ? R.flood.cm : 0)) + ' ' + B('سم', 'cm')], [B('عتبة التحذير', 'Warn depth'), N(sim.P.roadCloseCm) + ' ' + B('سم', 'cm') + ' (S55)'], [B('عتبة الخطر', 'Danger depth'), N(sim.P.floodBlockCm) + ' ' + B('سم', 'cm')]);
+        note = T('قيم السيناريو محاكاة؛ العتبات مشتقة من إرشاد هيئة الأرصاد الأمريكية (بحث دولي).', 'Scenario values are simulated; the thresholds are derived from US National Weather Service guidance (international research).');
+        break;
+      }
       case 'sentinel': {
         var id = hh.id, chs = sim.sensors.filter(function (c) { return id.indexOf('node:') === 0 ? (c.struct != null && WI.structs[c.struct].nodes[c.node] && 'node:' + WI.structs[c.struct].nodes[c.node].id === id) : c.id === id; });
         title = chs[0] ? chs[0].label : T('حسّاس', 'Sentinel');
@@ -1525,16 +1607,21 @@
   function onMapClick(px, py) {
     var hh = hitAt(px, py);
     if (MC.tool === 'jam' || MC.tool === 'close') {
-      if (hh && hh.type === 'road') {
-        var ts = trafficMap()[hh.id] || {};
-        if (MC.tool === 'jam') { if (ts.jam != null) act('unjam', { seg: hh.id }); else act('jam', { seg: hh.id, factor: 0.15 }); }
-        else { if (ts.closed && ts.closedBy === 'operator') act('open', { seg: hh.id }); else if (!ts.closed) act('close', { seg: hh.id }); }
+      // the road nearest to the pointer, even when a unit, a person or a label sits on top of it
+      var rd = null, rdBest = 11;
+      for (var ri = 0; ri < R.hits.length; ri++) { var qh = R.hits[ri]; if (qh.type === 'road' && qh.seg) { var dd = distSeg(px, py, qh.seg); if (dd < rdBest) { rdBest = dd; rd = qh; } } }
+      if (rd) {
+        var ts = trafficMap()[rd.id] || {};
+        if (MC.tool === 'jam') { if (ts.jam != null) act('unjam', { seg: rd.id }); else act('jam', { seg: rd.id, factor: 0.15 }); }
+        else { if (ts.closed && ts.closedBy === 'operator') act('open', { seg: rd.id }); else if (!ts.closed) act('close', { seg: rd.id }); }
         MC.drawDirty = true;
       } else Manara.toast(T('انقر على طريق (خط ملوّن).', 'Click on a road (a coloured line).'), '', 1800);
       return;
     }
     if (MC.tool === 'origin') {
-      if (hh && hh.type === 'room') setOrigin(hh.id);
+      // a person standing in a room must not hide the room: look for the room under the pointer first
+      var rm = null; for (var ri = R.hits.length - 1; ri >= 0; ri--) { var q = R.hits[ri]; if (q.type === 'room' && q.rect && px >= q.rect.x0 && px <= q.rect.x1 && py >= q.rect.y0 && py <= q.rect.y1) { rm = q; break; } }
+      if (rm) setOrigin(rm.id);
       else if (hh && hh.type === 'building' && (hh.id === 'RB' || hh.id === 'SCH')) { MC.bStruct = hh.id === 'SCH' ? 1 : 0; setView('building'); }
       else if (MC.view === 'map') Manara.toast(T('انقر على مبنى السكن أو المدرسة ثم اختر غرفة.', 'Click the residence or the school, then pick a room.'), '', 2600);
       return;
@@ -1546,6 +1633,8 @@
   var PT = { pts: {}, n: 0, moved: false, startX: 0, startY: 0, last: null, pinch: 0 };
   function localXY(e) { var r = R.cvs.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
   function bindCanvas() {
+    R.cvs.setAttribute('role', 'application');
+    lab(R.cvs, 'aria-label', 'خريطة غرفة العمليات: اسحب للتحريك، العجلة أو + و − للتكبير، N للتنقل بين العناصر، Enter للفحص', 'Operations map: drag to pan, wheel or + and − to zoom, N to move between items, Enter to inspect');
     var cv = R.cvs;
     cv.addEventListener('pointerdown', function (e) {
       if (e.button != null && e.button > 0) return;
@@ -1680,7 +1769,7 @@
   var PANELS = {};
   function panel(id, ar, en, o) {
     o = o || {};
-    var title = h('h3', { class: 'pn-t', id: 'pn-' + id + '-t' }, bi(ar, en));
+    var title = h('h2', { class: 'pn-t', id: 'pn-' + id + '-t' }, bi(ar, en));
     var head = h('header', { class: 'pn-h' }, title, o.extra || null);
     var body = h('div', { class: 'pn-b' });
     var el = h('section', { class: 'pn pn-' + id + (o.cls ? ' ' + o.cls : ''), id: 'pn-' + id, 'aria-labelledby': 'pn-' + id + '-t' }, head, body);
@@ -1892,8 +1981,10 @@
     return N(st.val, Math.abs(st.val) < 10 ? 1 : 0) + (st.unit === '0-1' ? '' : ' ' + st.unit);
   }
   function buildProofPanel() {
-    var p = panel('proof', 'الدليل قبل الذعر', 'Proof before panic', { extra: simTag(), cls: 'pn-decision' });
     var P = UI.proof = {};
+    P.tog = h('button', { type: 'button', class: 'btn btn-ghost btn-sm pr-tog', 'aria-expanded': 'true', 'aria-controls': 'pr-more', onclick: function () { setProofOpen(!P.open); } }, bi('المفاتيح', 'Keys'), icon('chevron'));
+    lab(P.tog, 'title', 'إظهار / إخفاء قيم المفاتيح الحيّة', 'Show / hide the live key values');
+    var p = panel('proof', 'الدليل قبل الذعر', 'Proof before panic', { extra: h('span', { class: 'row-tags' }, simTag(), P.tog), cls: 'pn-decision' });
     P.ladder = h('ol', { class: 'ladder' });
     [['suspect', 'اشتباه', 'SUSPECT', 'مفتاح واحد', 'one key'], ['confirmed', 'مؤكَّد', 'CONFIRMED', 'مفتاحان مستقلان', 'two independent keys'], ['approve', 'موافقة', 'APPROVE', 'المفتاح البشري (أنت)', 'the human key (you)'], ['public', 'تنبيه عام', 'PUBLIC ALERT', 'هواتف، لافتات، حارس', 'phones, signs, guard']].forEach(function (s, i) {
       var li = h('li', { class: 'ls', 'data-step': s[0] }, h('span', { class: 'ls-dot', 'aria-hidden': 'true' }, String(i + 1)), h('span', { class: 'ls-t' }, h('b', null, bi(s[1], s[2])), h('small', null, bi(s[3], s[4]))), h('time', { class: 'mono ls-time' }));
@@ -1907,10 +1998,16 @@
     P.btns = decisionButtons('big');
     P.src = h('details', { class: 'pr-src' }, h('summary', null, bi('العتبات والمصادر', 'Thresholds and sources')), P.srcBody = h('p', { class: 'small' }));
     p.body.appendChild(P.ladder); p.body.appendChild(P.note); p.body.appendChild(P.btns);
-    p.body.appendChild(h('div', { class: 'pr-keyhead' }, h('b', null, bi('المفتاحان (قيم حيّة من المحاكاة)', 'The two keys (live values from the simulation)')), P.rule));
-    p.body.appendChild(P.keys); p.body.appendChild(P.ev); p.body.appendChild(P.siren); p.body.appendChild(P.src);
+    P.more = h('div', { class: 'pr-more', id: 'pr-more' }, h('div', { class: 'pr-keyhead' }, h('b', null, bi('المفتاحان (قيم حيّة من المحاكاة)', 'The two keys (live values from the simulation)')), P.rule), P.keys, P.ev, P.siren, P.src);
+    P.pu = h('div', { class: 'pu', 'aria-hidden': 'true' });                   // Present mode only: the responders in large type
+    p.body.appendChild(P.more); p.body.appendChild(P.pu); P.open = true;
     PANEL_UPDATERS.push(updateProof);
     return p;
+  }
+  // the key values collapse by themselves once the public alert is out (wide layout) so the Dispatch / Count / Hand-off tabs get the room
+  function setProofOpen(open) {
+    var P = UI.proof; if (!P || !P.more) return;
+    P.open = !!open; P.more.hidden = !open; P.tog.setAttribute('aria-expanded', open ? 'true' : 'false'); P.tog.classList.toggle('is-closed', !open);
   }
   function rebuildKeys() {
     var P = UI.proof, hz = MC.snap.hazard; P.keys.replaceChildren(); P.rows = [];
@@ -1990,10 +2087,10 @@
     A.card = h('div', { class: 'msg-card' });
     A.ladder = h('div', { class: 'wk' });
     p.body.appendChild(A.status); p.body.appendChild(A.zones); p.body.appendChild(A.instr);
-    p.body.appendChild(h('h4', { class: 'pn-sub' }, bi('اللغات (من سجلّ المبنى)', 'Languages (from the building register)'))); p.body.appendChild(A.langs);
-    p.body.appendChild(h('h4', { class: 'pn-sub' }, bi('الصيغ', 'Formats'))); p.body.appendChild(A.fmts);
-    p.body.appendChild(h('h4', { class: 'pn-sub' }, bi('معاينة رسالة شخص', 'Preview one person’s message'))); p.body.appendChild(A.sel); p.body.appendChild(A.card);
-    p.body.appendChild(h('h4', { class: 'pn-sub' }, bi('سلّم الإيقاظ الليلي', 'Night wake-up ladder'))); p.body.appendChild(A.ladder);
+    p.body.appendChild(h('h3', { class: 'pn-sub' }, bi('اللغات (من سجلّ المبنى)', 'Languages (from the building register)'))); p.body.appendChild(A.langs);
+    p.body.appendChild(h('h3', { class: 'pn-sub' }, bi('الصيغ', 'Formats'))); p.body.appendChild(A.fmts);
+    p.body.appendChild(h('h3', { class: 'pn-sub' }, bi('معاينة رسالة شخص', 'Preview one person’s message'))); p.body.appendChild(A.sel); p.body.appendChild(A.card);
+    p.body.appendChild(h('h3', { class: 'pn-sub' }, bi('سلّم الإيقاظ الليلي', 'Night wake-up ladder'))); p.body.appendChild(A.ladder);
     p.body.appendChild(h('p', { class: 'pn-foot' }, bi('اللغات غير العربية والإنجليزية مسوّدات تنتظر مراجعة متحدث أصلي. صوت 520 هرتز (S56) ولا تُستعمل نغمة الإنذار الوطنية أبدًا.', 'Languages other than Arabic and English are drafts awaiting native-speaker review. 520 Hz tone (S56); the national alert tone is never used.')));
     PANEL_UPDATERS.push(updateAlert);
     return p;
@@ -2083,8 +2180,8 @@
     K.detail = h('div', { class: 'hc-detail', role: 'region' }); lab(K.detail, 'aria-label', 'تفاصيل الغرفة المحددة', 'Selected room details');
     K.how = h('p', { class: 'pn-foot' });
     p.body.appendChild(h('div', { class: 'hc-top' }, h('div', { class: 'hc-big' }, K.num, K.of), K.lbl)); p.body.appendChild(K.bar); p.body.appendChild(K.kpis);
-    p.body.appendChild(h('h4', { class: 'pn-sub' }, bi('تحقّق أولًا من', 'Check these first'))); p.body.appendChild(K.prio);
-    K.gridTitle = h('h4', { class: 'pn-sub' }); p.body.appendChild(K.gridTitle); p.body.appendChild(K.grid); p.body.appendChild(K.detail); p.body.appendChild(K.how);
+    p.body.appendChild(h('h3', { class: 'pn-sub' }, bi('تحقّق أولًا من', 'Check these first'))); p.body.appendChild(K.prio);
+    K.gridTitle = h('h3', { class: 'pn-sub' }); p.body.appendChild(K.gridTitle); p.body.appendChild(K.grid); p.body.appendChild(K.detail); p.body.appendChild(K.how);
     PANEL_UPDATERS.push(updateCount);
     return p;
   }
@@ -2261,6 +2358,7 @@
     STATE_ORDER.forEach(function (s) { D.state.appendChild(h('li', { 'data-s': s }, h('span', { class: 'pdot' }), h('b', null, bi(STATE_L[s].ar, STATE_L[s].en)), h('time', { class: 'mono' }))); });
     D.units = h('div', { class: 'dp-units' });
     D.hosp = h('div', { class: 'dp-hosp' });
+    D.hopts = h('div', { class: 'dp-hopts' });
     // ranking
     D.rankSeg = h('div', { class: 'seg', role: 'group' }); lab(D.rankSeg, 'aria-label', 'نوع الوحدة للترتيب', 'Unit type to rank');
     D.rank = h('div', { class: 'dp-rank' });
@@ -2285,18 +2383,18 @@
     D.busy = h('div', { class: 'dp-busy' });
     D.history = h('ol', { class: 'dp-hist' });
     D.send = btn('btn btn-cool dp-send', 'route', 'أرسل حزمة الحادث إلى غرفة التحكم (999 يبقى المُرسِل)', 'Send incident package to control room (999 stays the dispatcher)', function () { sendPackage(); });
-    p.body.appendChild(D.lead); p.body.appendChild(D.banner); p.body.appendChild(D.state); p.body.appendChild(D.units); p.body.appendChild(D.hosp);
-    p.body.appendChild(h('h4', { class: 'pn-sub' }, bi('ترتيب الوحدات المرشّحة بحسب زمن الوصول', 'Candidates ranked by time to arrive'))); p.body.appendChild(D.rankSeg); p.body.appendChild(D.rank);
-    p.body.appendChild(h('h4', { class: 'pn-sub' }, bi('المرور (محاكاة): غيّره وراقب القرار يتبدّل', 'Traffic (SIM): change it and watch the choice flip')));
+    p.body.appendChild(D.lead); p.body.appendChild(D.banner); p.body.appendChild(D.state); p.body.appendChild(D.units); p.body.appendChild(D.hosp); p.body.appendChild(D.hopts);
+    p.body.appendChild(h('h3', { class: 'pn-sub' }, bi('ترتيب الوحدات المرشّحة بحسب زمن الوصول', 'Candidates ranked by time to arrive'))); p.body.appendChild(D.rankSeg); p.body.appendChild(D.rank);
+    p.body.appendChild(h('h3', { class: 'pn-sub' }, bi('المرور (محاكاة): غيّره وراقب القرار يتبدّل', 'Traffic (SIM): change it and watch the choice flip')));
     p.body.appendChild(h('div', { class: 'dp-ctl' }, field('الوقت من اليوم', 'Time of day', h('div', { class: 'rng' }, D.hour, D.hourOut)), field('شدة الازدحام (٠ فارغ · ١ معتاد · ٢ خانق)', 'Traffic level (0 empty · 1 typical · 2 gridlock)', h('div', { class: 'rng' }, D.load, D.loadOut))));
     p.body.appendChild(D.chart);
     p.body.appendChild(h('p', { class: 'muted small' }, bi('المنحنى: ملف يومي افتراضي بذروتين صباحية ومسائية (افتراض مُسمّى)، مع طوابير في الطرق قرب المدرسة. حقيقة الحياة: مزوّد مرور حيّ وبيانات مواقع المركبات من الجهة نفسها.', 'The curve is an assumed daily profile with morning and evening peaks (a labelled assumption) plus queues on the school road. In real life: a live traffic provider and the authority’s own vehicle locations.')));
     p.body.appendChild(h('div', { class: 'dp-roadrow' }, field('طريق', 'Road', D.road), D.roadBtns)); p.body.appendChild(D.cond);
     p.body.appendChild(h('p', { class: 'muted small' }, bi('أو انقر على طريق في الخريطة (أداة «ازدحام» أو «إغلاق»).', 'Or click a road on the map (the “Jam” or “Close” tool).')));
-    p.body.appendChild(h('h4', { class: 'pn-sub' }, bi('توفّر الوحدات', 'Unit availability'))); p.body.appendChild(D.busy);
-    p.body.appendChild(h('h4', { class: 'pn-sub' }, bi('سجلّ الاستجابة', 'Dispatch history'))); p.body.appendChild(D.history);
+    p.body.appendChild(h('h3', { class: 'pn-sub' }, bi('توفّر الوحدات', 'Unit availability'))); p.body.appendChild(D.busy);
+    p.body.appendChild(h('h3', { class: 'pn-sub' }, bi('سجلّ الاستجابة', 'Dispatch history'))); p.body.appendChild(D.history);
     p.body.appendChild(D.send);
-    p.body.appendChild(h('p', { class: 'pn-foot' }, bi('المحطات والمستشفيات وهمية على خريطة محاكاة؛ الأزمنة SIM. في الواقع يبقى 999 هو المُرسِل وتحتاج منارة إلى اتفاقيات مع الجهات. زمن وصول سيارات الإسعاف الحقيقي في قطر: هدف 75٪ خلال 10 دقائق في المدن (S24 — مؤسسة حمد، 2023).', 'Stations and hospitals are fictional points on a simulated map; times are SIM. In real life 999 stays the dispatcher and MANARA would need agreements with the authorities. Real ambulance benchmark in Qatar: 75 % of calls within 10 minutes in urban areas (S24 — HMC, 2023).')));
+    p.body.appendChild(h('p', { class: 'pn-foot' }, bi('المحطات والمستشفيات وهمية على خريطة محاكاة؛ الأزمنة SIM. في الواقع يبقى 999 هو المُرسِل وتحتاج منارة إلى اتفاقيات مع الجهات. زمن وصول سيارات الإسعاف الحقيقي في قطر: هدف 75٪ خلال 10 دقائق في المدن (S24 — مؤسسة حمد، 2023).', 'Stations and hospitals are fictional points on a simulated map; times are SIM. In real life 999 stays the dispatcher and MANARA would need agreements with the authorities. Real-world target for Qatar’s ambulance service: 75 % of 999 calls reached within 10 minutes in urban areas (S24 — HMC National Health Strategy; the SIM times here are not a measurement of it).')));
     PANEL_UPDATERS.push(updateDispatch);
     return p;
   }
@@ -2347,25 +2445,59 @@
       setText(r.eta, u.state === 'on-scene' ? B('في الموقع', 'ON SCENE') : u.state === 'cleared' ? B('أنهت', 'CLEARED') : mmss(u.etaSec));
       setText(r.dist, u.state === 'on-scene' || u.state === 'cleared' ? '' : B('الوصول · ', 'ETA · ') + fmtDist(u.distM));
       setText(r.why, LL(u.why));
+      // each line: [label, name, 'eta · distance' (always left-to-right), class]. Names are text nodes; numbers sit in a <bdi dir=ltr> so Arabic never scrambles them.
       var lines = [];
-      if (wd.chosen) lines.push([B('الأسرع (الموصى بها)', 'Fastest (recommended)'), stripDemo(LL(u.name)) + ' — ' + mmss(wd.chosen.etaSec) + ' — ' + fmtDist(wd.chosen.distM), 'rec']);
-      if (u.runnerUp) lines.push([B('الثانية', 'Runner-up'), stripDemo(LL(u.runnerUp.name)) + ' — ' + mmss(u.runnerUp.etaSec) + (wd.chosen ? ' (+' + mmss(u.runnerUp.etaSec - wd.chosen.etaSec) + ')' : '') + ' — ' + fmtDist(u.runnerUp.distM), '']);
-      if (u.nearestByDistance && u.nearestByDistance.assetId !== u.assetId) lines.push([B('الأقرب بالمسافة', 'Nearest by distance'), stripDemo(LL(u.nearestByDistance.name)) + ' — ' + fmtDist(u.nearestByDistance.distM) + ' · ' + B('زمنها ', 'would take ') + mmss(u.nearestByDistance.etaSec), 'near']);
-      if (wd.skippedBusy && wd.skippedBusy.length) lines.push([B('تُخطّيت (مشغولة)', 'Skipped (busy)'), wd.skippedBusy.join('، '), '']);
-      var csig = lines.map(function (q) { return q.join('|'); }).join('||');
-      if (r.csig !== csig) { r.csig = csig; r.cmp.replaceChildren(); lines.forEach(function (q) { r.cmp.appendChild(h('li', { class: q[2] }, h('span', { class: 'cl', text: q[0] }), h('span', { class: 'cv', text: q[1] }))); }); }
-      if (wd.farButFaster) { r.badge.hidden = false; r.badge.replaceChildren(icon('route'), h('b', { text: B('أبعد لكن أسرع', 'FARTHER BUT FASTER') }), h('span', { class: 'mono', text: ' +' + fmtDist(wd.extraDistM) + ' · −' + mmss(wd.gainSec) })); } else r.badge.hidden = true;
+      if (wd.chosen) lines.push([B('الأسرع عند القرار', 'Fastest at decision'), stripDemo(LL(u.name)), mmss(wd.chosen.etaSec) + ' · ' + fmtDist(wd.chosen.distM), 'rec']);
+      if (u.runnerUp) lines.push([B('الثانية عند القرار', 'Runner-up at decision'), stripDemo(LL(u.runnerUp.name)), mmss(u.runnerUp.etaSec) + (wd.chosen ? ' (+' + mmss(u.runnerUp.etaSec - wd.chosen.etaSec) + ')' : '') + ' · ' + fmtDist(u.runnerUp.distM), '']);
+      if (u.nearestByDistance && u.nearestByDistance.assetId !== u.assetId) lines.push([B('الأقرب بالمسافة', 'Nearest by distance'), stripDemo(LL(u.nearestByDistance.name)), fmtDist(u.nearestByDistance.distM) + ' · ' + B('زمنها ', 'would take ') + mmss(u.nearestByDistance.etaSec), 'near']);
+      if (wd.skippedBusy && wd.skippedBusy.length) lines.push([B('تُخطّيت (مشغولة)', 'Skipped (busy)'), wd.skippedBusy.join('، '), '', '']);
+      var csig = lang() + lines.map(function (q) { return q.join('|'); }).join('||');
+      if (r.csig !== csig) { r.csig = csig; r.cmp.replaceChildren(); lines.forEach(function (q) { r.cmp.appendChild(h('li', { class: q[3] }, h('span', { class: 'cl', text: q[0] }), h('span', { class: 'cv' }, h('span', { text: q[1] }), q[2] ? ' ' : null, q[2] ? h('bdi', { class: 'mono', dir: 'ltr', text: q[2] }) : null))); }); }
+      if (wd.farButFaster) { r.badge.hidden = false; r.badge.replaceChildren(icon('route'), h('b', { text: B('أبعد لكن أسرع', 'FARTHER BUT FASTER') }), h('span', { class: 'fbf-n' }, h('bdi', { class: 'mono', dir: 'ltr', text: '+' + N(Math.round(wd.extraDistM / 100) / 10, 1) }), ' ', h('span', { text: B('كم أبعد', 'km farther') }), ' · ', h('bdi', { class: 'mono', dir: 'ltr', text: '−' + mmss(wd.gainSec) }), ' ', h('span', { text: B('أسرع', 'faster') }))); } else r.badge.hidden = true;
       var ui = STATE_ORDER.indexOf(u.state); $$('li', r.steps).forEach(function (li, i) { var s = li.getAttribute('data-s'); li.className = i < ui ? 'done' : i === ui ? 'cur' : ''; setText($('small', li), u.states && u.states[s] != null ? N(u.states[s]) : ''); li.title = LL(STATE_L[s]); });
       setText(r.meta, (u.reroutes ? B('أُعيد توجيهها ', 're-routed ') + N(u.reroutes) + '× · ' : '') + (u.replaced ? B('حلّت محلّ ', 'replaced ') + stripDemo(LL(u.replaced.name)) + ' (' + u.replaced.reason + ') · ' : ''));
     });
-    // hospital
-    var hp = d ? d.hospital : null;
+    // hospital: the live recommendation (re-picked from the current free beds and traffic) until the ambulance has loaded the patients
+    var hp = d ? d.hospital : null, fixedDest = sim.events.some(function (e) { return e.type === 'transport'; }), lv0 = null;
+    if (d && d.hospital && d.patients && !fixedDest) {
+      try {
+        var lv = Sim.traffic.pickHospital(sim, d.patients);
+        if (lv && lv.chosen) hp = { id: lv.chosen.asset.id, name: lv.chosen.asset.name, etaSec: Math.round(lv.chosen.etaSec), distM: Math.round(lv.chosen.distM), freeBeds: lv.chosen.freeBeds, fits: lv.chosen.fits, why: lv.why, options: lv.options.map(function (o) { return { id: o.asset.id, etaSec: Math.round(o.etaSec), freeBeds: o.freeBeds, fits: o.fits }; }) };
+      } catch (e) { lv0 = null; }
+    } else if (hp && d && d.patients) {
+      try { var lv2 = Sim.traffic.pickHospital(sim, d.patients); hp = Object.assign({}, hp, { options: lv2.options.map(function (o) { return { id: o.asset.id, etaSec: Math.round(o.etaSec), freeBeds: o.freeBeds, fits: o.fits }; }) }); } catch (e2) { /* keep the plan's list */ }
+    }
     D.hosp.replaceChildren();
     if (hp) {
       D.hosp.appendChild(h('article', { class: 'ucard hosp' }, h('header', null, h('span', { class: 'uico', style: '--c:var(--danger)' }, icon('hospital')), h('div', { class: 'ucard-t' }, h('b', null, bi('المستشفى الموصى به للمصابين', 'Recommended hospital for patients')), h('small', { class: 'muted' }, bi('الأقرب زمنًا ممن يستوفي القدرة والسعة', 'Fastest that has the capability and capacity'))), chip(hp.fits ? B('مناسب', 'FITS') : B('بلا مكان', 'NO ROOM'), hp.fits ? 'safe' : 'danger')),
         h('div', { class: 'ucard-name' }, h('b', { text: stripDemo(LL(hp.name)) }), ' ', fictionalTag()), h('div', { class: 'ucard-eta-row' }, h('b', { class: 'mono ucard-eta', text: mmss(hp.etaSec) }), h('span', { class: 'mono muted', text: fmtDist(hp.distM) + ' · ' + B('أسرّة حرة ', 'free beds ') + N(hp.freeBeds) }), simTag()),
         h('p', { class: 'ucard-why', text: LL(hp.why) })));
     }
+    // destination hospital choice: every hospital with its ETA and a free-beds assumption the judge can change (0 = full → it is skipped)
+    var hpo = hp && hp.options ? hp.options : [], osig = hpo.map(function (o) { return o.id; }).join(',') + ':' + (hp ? hp.id : '');
+    if (D.osig !== osig) {
+      D.osig = osig; D.hopts.replaceChildren(); D.orows = {};
+      if (hpo.length) {
+        D.hopts.appendChild(h('h3', { class: 'pn-sub' }, bi('اختيار المستشفى الوجهة', 'Destination hospital choice')));
+        D.hopts.appendChild(h('p', { class: 'muted small' }, bi('الأسرع زمنًا ممن يملك القدرة والسعة. «الأسرّة الحرة» افتراض محاكى: اجعلها 0 لترى القرار يتحول.', 'The fastest one that has the capability and capacity. “Free beds” is a simulated assumption: set it to 0 and watch the choice move.')));
+        D.hnote = h('p', { class: 'muted small hnote' }); D.hopts.appendChild(D.hnote);
+        hpo.forEach(function (o) {
+          var a = assetById(o.id), inp = h('input', { class: 'input mono hb-in', type: 'number', min: '0', max: '99', step: '1', value: String(o.freeBeds) });
+          lab(inp, 'aria-label', 'الأسرّة الحرة في ' + (a ? stripDemo(a.name.ar) : o.id), 'Free beds at ' + (a ? stripDemo(a.name.en) : o.id));
+          inp.addEventListener('change', function () { act('beds', { id: o.id, beds: Math.max(0, Math.min(99, Math.floor(+inp.value || 0))) }); });
+          inp.addEventListener('keydown', function (e) { e.stopPropagation(); });
+          var st = h('span', { class: 'tag' }), eta = h('b', { class: 'mono' });
+          D.orows[o.id] = { inp: inp, st: st, eta: eta, row: h('div', { class: 'hrow' }, h('span', { class: 'hn' }, h('b', { text: a ? stripDemo(LL(a.name)) : o.id }), st), eta, h('label', { class: 'hb' }, h('small', { class: 'muted' }, bi('أسرّة حرة', 'free beds')), inp)) };
+          D.hopts.appendChild(D.orows[o.id].row);
+        });
+      }
+    }
+    if (D.hnote) setText(D.hnote, fixedDest ? B('الوجهة ثُبّتت: المصابون في الطريق إلى المستشفى.', 'Destination fixed: the patients are already on their way.') : B('توصية حيّة: تُثبَّت الوجهة عندما تحمّل الإسعاف المصابين.', 'Live recommendation: the destination is fixed when the ambulance has loaded the patients.'));
+    hpo.forEach(function (o) {
+      var r = D.orows && D.orows[o.id]; if (!r) return;
+      setText(r.eta, mmss(o.etaSec)); if (doc.activeElement !== r.inp) r.inp.value = String(o.freeBeds);
+      var chosen = hp && hp.id === o.id; setText(r.st, chosen ? B('المختار', 'CHOSEN') : o.fits ? B('مناسب', 'fits') : B('بلا مكان', 'no room')); r.st.className = 'tag ' + (chosen ? 'safe' : o.fits ? 'cool' : 'danger'); r.row.classList.toggle('chosen', chosen);
+    });
     // ranking
     var kinds = dispatchKinds(), rsig = kinds.join(',');
     if (D.rsig !== rsig) {
@@ -2544,7 +2676,7 @@
     Q.banner = h('div', { class: 'note warn ab-banner' }, h('b', null, bi('محاكاة — فحص لآلية العمل وليس دليلاً على الأثر', 'SIMULATION — a mechanism check, not proof of impact')), ' ', h('span', null, bi('البذرة نفسها والفيزياء نفسها في العالمين؛ يتغيّر الإنذار فقط. النتائج تعتمد على الافتراضات في تبويب «الافتراضات».', 'Same seed and same physics in both worlds; only the alarm changes. Results depend on the assumptions in the “Assumptions” tab.')));
     Q.run = btn('btn btn-primary btn-sm', 'play', 'شغّل المقارنة لهذه البذرة', 'Run A/B for this seed', function () { startAB(); });
     Q.runN = btn('btn btn-ghost btn-sm', 'chart', 'شغّل 20 بذرة', 'Run 20 seeds', function () { startSeeds(20); });
-    Q.cancel = btn('btn btn-ghost btn-sm', 'x', 'إلغاء', 'Cancel', function () { if (BATCH) BATCH.cancel = true; BATCH = null; setABBusy(false); setText(Q.status, B('أُلغي.', 'Cancelled.')); });
+    Q.cancel = btn('btn btn-ghost btn-sm', 'x', 'إلغاء', 'Cancel', function () { if (BATCH) BATCH.cancel = true; BATCH = null; if (SWEEP) SWEEP.cancel = true; SWEEP = null; setABBusy(false); setText(Q.status, B('أُلغي.', 'Cancelled.')); });
     Q.cancel.hidden = true;
     Q.prog = h('progress', { max: '1', value: '0', class: 'ab-prog' }); lab(Q.prog, 'aria-label', 'تقدّم المحاكاة', 'Simulation progress'); Q.prog.hidden = true;
     Q.status = h('p', { class: 'muted small', role: 'status' });
@@ -2552,14 +2684,21 @@
     Q.seeds = h('div', { class: 'ab-seeds' });
     Q.cvs = h('canvas', { class: 'ab-canvas', width: '760', height: '300', role: 'img' }); lab(Q.cvs, 'aria-label', 'توزيع النتائج على عدة بذور: إنذار عادي مقابل منارة', 'Distribution of results over several seeds: ordinary alarm vs MANARA');
     Q.sum = h('p', { class: 'ab-sum' });
+    // sensitivity sweep: the same A/B at 5 values of ONE assumption (2 seeds each)
+    Q.swSel = h('select', { class: 'input sw-sel' }); lab(Q.swSel, 'aria-label', 'الافتراض المراد تغييره عبر مداه', 'Assumption to sweep across its range');
+    Q.swRun = btn('btn btn-ghost btn-sm', 'chart', 'قارن عبر مدى الافتراض', 'Sweep this assumption', function () { startSweep(); });
+    Q.swCvs = h('canvas', { class: 'ab-canvas sw-canvas', width: '760', height: '280', role: 'img' }); lab(Q.swCvs, 'aria-label', 'كيف يتغيّر المقياس الرئيسي مع قيمة افتراض واحد: إنذار عادي مقابل منارة', 'How the headline measure changes with one assumption: ordinary alarm vs MANARA');
+    Q.swSum = h('p', { class: 'ab-sum sw-sum' });
     Q.sens = h('div', { class: 'note ab-sens' }, h('b', null, bi('ملاحظة الحساسية:', 'Sensitivity note:')), ' ', bi('غيّر أي افتراض (نسبة من لديهم التطبيق، احتمال الإيقاظ، زمن اعتماد المشغّل…) فيتغيّر الفارق. لذلك نعرض الفارق مع افتراضاته، ولا نقول «ينقذ أرواحًا». الأثر الحقيقي يُقاس بتجارب ميدانية بموافقة أخلاقية.', 'Change any assumption (share with the app, wake chance, operator approval time…) and the gap changes. That is why the gap is shown with its assumptions and we never say “saves lives”. Real impact needs field trials with ethics approval.'));
     p.body.appendChild(Q.banner); p.body.appendChild(h('div', { class: 'btns' }, Q.run, Q.runN, Q.cancel)); p.body.appendChild(Q.prog); p.body.appendChild(Q.status); p.body.appendChild(Q.bars);
-    p.body.appendChild(h('h4', { class: 'pn-sub' }, bi('توزيع النتائج على عدة بذور', 'Distribution over several seeds'))); p.body.appendChild(Q.cvs); p.body.appendChild(Q.sum); p.body.appendChild(Q.sens);
+    p.body.appendChild(h('h3', { class: 'pn-sub' }, bi('توزيع النتائج على عدة بذور', 'Distribution over several seeds'))); p.body.appendChild(Q.cvs); p.body.appendChild(Q.sum);
+    p.body.appendChild(h('h3', { class: 'pn-sub' }, bi('الحساسية: كم يعتمد الفارق على افتراض واحد؟', 'Sensitivity: how much does the gap depend on one assumption?')));
+    p.body.appendChild(h('div', { class: 'row sw-row' }, Q.swSel, Q.swRun)); p.body.appendChild(Q.swCvs); p.body.appendChild(Q.swSum); p.body.appendChild(Q.sens);
     PANEL_UPDATERS.push(updateAB);
     return p;
   }
   function abKey() { return [MC.preset, MC.seed, MC.origin ? MC.origin.room : '', JSON.stringify(MC.params)].join('|'); }
-  function setABBusy(on) { var Q = UI.ab; MC.abBusy = on; Q.run.disabled = on; Q.runN.disabled = on; Q.cancel.hidden = !on; Q.prog.hidden = !on; }
+  function setABBusy(on) { var Q = UI.ab; MC.abBusy = on; Q.run.disabled = on; Q.runN.disabled = on; Q.swRun.disabled = on; Q.cancel.hidden = !on; Q.prog.hidden = !on; }
   function startAB(cb) {
     var Q = UI.ab, key = abKey(); setABBusy(true); setText(Q.status, B('تُشغَّل المقارنة في الخلفية…', 'Running the A/B in the background…')); Q.prog.value = 0;
     runBatch({ seeds: [MC.seed], onProgress: function (f) { Q.prog.value = f; }, onDone: function (res) { setABBusy(false); MC.ab = { key: key, res: res[0] }; setText(Q.status, B('اكتملت المقارنة (محاكاة).', 'A/B finished (simulation).')); MC.panelsDirty = true; updateAB(); if (cb) cb(res[0]); }, onCancel: function () { setABBusy(false); } });
@@ -2597,7 +2736,102 @@
       }
     }
     if (!MC.runs || MC.runs.key !== abKey()) { /* keep the old canvas but mark it stale */ }
-    drawSeeds();
+    fillSweepSel(); drawSeeds(); drawSweep();
+  }
+  /* ---- sensitivity sweep ---- */
+  var SWEEP = null;
+  function sweepDef(key) { for (var i = 0; i < Sim.PARAMS.length; i++) if (Sim.PARAMS[i].key === key) return Sim.PARAMS[i]; return null; }
+  function sweepValues(d) {
+    var raw = [d.min, (d.min + d.default) / 2, d.default, (d.default + d.max) / 2, d.max], out = [];
+    raw.forEach(function (v) { v = clamp(Math.round(v / d.step) * d.step, d.min, d.max); v = +v.toFixed(6); if (out.indexOf(v) < 0) out.push(v); });
+    return out.sort(function (a, b) { return a - b; });
+  }
+  function fillSweepSel() {
+    var Q = UI.ab, sig = lang(); if (Q.swLang === sig) return; Q.swLang = sig;
+    var keep = Q.swSel.value || 'approveSec'; Q.swSel.replaceChildren();
+    Sim.PARAM_GROUPS.forEach(function (g) {
+      var defs = Sim.PARAMS.filter(function (d) { return d.group === g.id && d.unit !== '0/1' && d.max > d.min; }); if (!defs.length) return;
+      var og = h('optgroup'); og.label = LL(g.label);
+      defs.forEach(function (d) { var o = h('option', { value: d.key }); o.textContent = LL(d.label) + (d.unit ? ' (' + d.unit + ')' : ''); og.appendChild(o); });
+      Q.swSel.appendChild(og);
+    });
+    Q.swSel.value = keep;
+  }
+  function runSweep(opts) {
+    if (SWEEP) SWEEP.cancel = true;
+    var s = SWEEP = { cancel: false, vi: 0, si: 0, job: 0, sim: null, done: 0, total: opts.values.length * opts.seeds.length * 2, acc: opts.values.map(function () { return { ho: 0, no: 0, hm: 0, nm: 0 }; }), label: null, unit: null };
+    var dur = Sim.PRESETS[MC.preset].durationSec, preset = originPresetId(MC.preset, MC.origin);
+    function pump() {
+      if (s.cancel) { if (opts.onCancel) opts.onCancel(); return; }
+      var t0 = now();
+      while (now() - t0 < 12) {
+        if (!s.sim) { var pr = Object.assign({}, MC.params); pr[opts.key] = opts.values[s.vi]; s.sim = Sim.create({ preset: preset, params: pr, seed: opts.seeds[s.si], mode: s.job === 0 ? 'ordinary' : 'manara', autoApprove: true }); }
+        Sim.step(s.sim, 1); s.done++;
+        if (s.sim.t >= dur || s.sim.done) {
+          var m = Sim.metrics(s.sim), hv = m.headline && isNum(m.headline.value) ? m.headline.value : null, a = s.acc[s.vi];
+          if (m.headline) { s.label = m.headline.label; s.unit = m.headline.unit; }
+          if (s.job === 0) { if (hv != null) { a.ho += hv; a.no++; } s.job = 1; }
+          else { if (hv != null) { a.hm += hv; a.nm++; } s.job = 0; s.si++; if (s.si >= opts.seeds.length) { s.si = 0; s.vi++; } }
+          s.sim = null;
+          if (s.vi >= opts.values.length) { SWEEP = null; opts.onDone(s.acc.map(function (a2, i) { return { value: opts.values[i], ordinary: a2.no ? a2.ho / a2.no : null, manara: a2.nm ? a2.hm / a2.nm : null }; }), s.label, s.unit); return; }
+        }
+      }
+      if (opts.onProgress) opts.onProgress(s.done / s.total);
+      setTimeout(pump, 0);
+    }
+    setTimeout(pump, 0); return s;
+  }
+  function startSweep() {
+    var Q = UI.ab, key = Q.swSel.value, d = sweepDef(key); if (!d) return;
+    var vals = sweepValues(d), seeds = [MC.seed, MC.seed + 1], ak = abKey();
+    setABBusy(true); Q.prog.value = 0; setText(Q.status, B('تُشغَّل ' + N(vals.length * seeds.length * 2) + ' محاكاة في الخلفية (نحو عشر ثوانٍ).', 'Running ' + N(vals.length * seeds.length * 2) + ' simulations in the background (about ten seconds).'));
+    runSweep({ key: key, values: vals, seeds: seeds, onProgress: function (f) { Q.prog.value = f; },
+      onDone: function (rows, label, unit) { MC.sweep = { key: ak, param: key, rows: rows, label: label, unit: unit, seeds: seeds }; setABBusy(false); setText(Q.status, B('اكتمل مسح الحساسية (محاكاة).', 'Sensitivity sweep finished (simulation).')); drawSweep(); },
+      onCancel: function () { setABBusy(false); } });
+  }
+  function drawSweep() {
+    var Q = UI.ab, cv = Q.swCvs, c = cv.getContext('2d'), w = cv.width, hh = cv.height, sw = MC.sweep && MC.sweep.key === abKey() ? MC.sweep : null;
+    c.clearRect(0, 0, w, hh); c.textBaseline = 'middle'; c.direction = 'ltr';
+    if (!sw) { c.font = '600 17px ' + R.font; c.textAlign = 'center'; c.fillStyle = rgba(C('muted')); c.fillText(B('اختر افتراضًا واضغط «قارن عبر مدى الافتراض»', 'Pick an assumption and press “Sweep this assumption”'), w / 2, hh / 2); setText(Q.swSum, ''); return; }
+    var d = sweepDef(sw.param), rows = sw.rows, padL = 66, padR = 28, padT = 58, padB = 46, vmin = rows[0].value, vmax = rows[rows.length - 1].value, X = function (i) { return vmax > vmin ? padL + (rows[i].value - vmin) / (vmax - vmin) * (w - padL - padR) : w / 2; };
+    var all = []; rows.forEach(function (r) { if (r.ordinary != null) all.push(r.ordinary); if (r.manara != null) all.push(r.manara); });
+    c.textAlign = lang() === 'ar' ? 'right' : 'left'; c.fillStyle = rgba(C('head')); c.font = '700 16px ' + R.font; c.direction = lang() === 'ar' ? 'rtl' : 'ltr';
+    c.fillText(LL(sw.label || T('المقياس الرئيسي', 'Headline measure')) + ' · ' + LL(d.label), lang() === 'ar' ? w - 12 : 12, 16);
+    c.direction = 'ltr';
+    if (!all.length) { c.textAlign = 'center'; c.fillStyle = rgba(C('muted')); c.font = '500 15px ' + R.font; c.fillText(B('غير متاح لهذا المثير', 'N/A for this stimulus'), w / 2, hh / 2); setText(Q.swSum, ''); return; }
+    var hi = Math.max.apply(null, all), lo = Math.min(0, Math.min.apply(null, all)); if (hi - lo < 1) hi = lo + 1;
+    var Y = function (v) { return padT + (1 - (v - lo) / (hi - lo)) * (hh - padT - padB); };
+    c.strokeStyle = rgba(C('line-2')); c.lineWidth = 1; c.beginPath(); c.moveTo(padL, hh - padB); c.lineTo(w - padR, hh - padB); c.moveTo(padL, padT); c.lineTo(padL, hh - padB); c.stroke();
+    c.font = '500 13px ' + R.mono; c.fillStyle = rgba(C('muted')); c.textAlign = 'right'; c.fillText(N(Math.round(hi)), padL - 8, padT); c.fillText(N(Math.round(lo)), padL - 8, hh - padB);
+    // the area between the lines: green where MANARA is lower (better), red where it is higher
+    for (var i = 0; i + 1 < rows.length; i++) {
+      var a = rows[i], b = rows[i + 1]; if (a.ordinary == null || a.manara == null || b.ordinary == null || b.manara == null) continue;
+      c.beginPath(); c.moveTo(X(i), Y(a.ordinary)); c.lineTo(X(i + 1), Y(b.ordinary)); c.lineTo(X(i + 1), Y(b.manara)); c.lineTo(X(i), Y(a.manara)); c.closePath();
+      c.fillStyle = rgba((a.ordinary - a.manara + b.ordinary - b.manara) >= 0 ? C('safe') : C('danger'), 0.16); c.fill();
+    }
+    [['ordinary', C('warn'), T('عادي', 'Ordinary')], ['manara', C('safe'), T('منارة', 'MANARA')]].forEach(function (ln, li) {
+      c.strokeStyle = rgba(ln[1]); c.lineWidth = 3; c.lineJoin = 'round'; c.beginPath(); var pen = false;
+      rows.forEach(function (r, i2) { var v = r[ln[0]]; if (v == null) { pen = false; return; } if (pen) c.lineTo(X(i2), Y(v)); else { c.moveTo(X(i2), Y(v)); pen = true; } }); c.stroke();
+      rows.forEach(function (r, i2) { var v = r[ln[0]]; if (v == null) return; c.beginPath(); c.arc(X(i2), Y(v), 5, 0, 6.2832); c.fillStyle = rgba(ln[1]); c.fill(); c.lineWidth = 1.5; c.strokeStyle = rgba(C('surface')); c.stroke(); });
+      c.font = '700 13px ' + R.font; c.fillStyle = rgba(ln[1]); c.textAlign = 'left'; c.fillText(LL(ln[2]), padL + 8 + li * 90, 38);
+    });
+    rows.forEach(function (r, i3) { var isDef = Math.abs(r.value - d.default) < 1e-9; c.font = (isDef ? '700 ' : '500 ') + '13px ' + R.mono; c.fillStyle = rgba(isDef ? C('head') : C('muted')); c.textAlign = 'center'; c.fillText(N(r.value, d.step < 1 ? (String(d.step).split('.')[1] || '').length : 0), X(i3), hh - padB + 16); if (isDef) { c.strokeStyle = rgba(C('head'), 0.5); c.setLineDash([4, 4]); c.beginPath(); c.moveTo(X(i3), padT); c.lineTo(X(i3), hh - padB); c.stroke(); c.setLineDash([]); c.font = '600 12px ' + R.font; c.fillText(B('الافتراضي', 'default'), X(i3), hh - padB + 32); } });
+    // the plain-language reading: stated honestly, including where the advantage shrinks or reverses
+    var dec = d.step < 1 ? (String(d.step).split('.')[1] || '').length : 0, fv = function (q) { return N(q.v, dec); }, lst = function (a) { return a.map(fv).join(lang() === 'ar' ? '، ' : ', '); };
+    var gaps = rows.filter(function (r) { return r.ordinary != null && r.manara != null; }).map(function (r) { return { v: r.value, g: r.ordinary - r.manara }; }), tol = 0.05 * Math.max(1, hi);
+    var worse = gaps.filter(function (q) { return q.g < -tol; }), tiny = gaps.filter(function (q) { return q.g >= -tol && q.g < tol; }), better = gaps.filter(function (q) { return q.g >= tol; }), unit = sw.unit === 's' ? B(' ث', ' s') : '';
+    var parts = [];
+    if (!gaps.length) parts.push(B('غير متاح لهذا المثير.', 'N/A for this stimulus.'));
+    else {
+      if (better.length === gaps.length) { var mn = Math.min.apply(null, better.map(function (q) { return q.g; })), mx = Math.max.apply(null, better.map(function (q) { return q.g; })); parts.push(B('في كل القيم المختبرة تبقى منارة أفضل، بفارق بين ' + N(Math.round(mn)) + ' و' + N(Math.round(mx)) + unit + '.', 'At every tested value MANARA stays better, by between ' + N(Math.round(mn)) + ' and ' + N(Math.round(mx)) + unit + '.')); }
+      else {
+        if (better.length) parts.push(B('منارة أفضل عند ' + lst(better) + '.', 'MANARA is better at ' + lst(better) + '.'));
+        if (tiny.length) parts.push(B('لا فارق يُذكر عند ' + lst(tiny) + '.', 'There is no meaningful difference at ' + lst(tiny) + '.'));
+        if (worse.length) parts.push(B('عند ' + lst(worse) + ' ينعكس الفارق: منارة ليست أفضل هناك — وهذه حدود النتيجة.', 'At ' + lst(worse) + ' the gap reverses: MANARA is not better there — that is the limit of this result.'));
+      }
+    }
+    var msg = parts.join(' ');
+    setText(Q.swSum, msg + ' ' + B('(بذرتان لكل نقطة — محاكاة، فحص للآلية.)', '(2 seeds per point — simulation, a mechanism check.)'));
   }
   function drawSeeds() {
     var Q = UI.ab, cv = Q.cvs, c = cv.getContext('2d'), w = cv.width, hh = cv.height, res = MC.runs && MC.runs.key === abKey() ? MC.runs.results : [];
@@ -2615,7 +2849,7 @@
       if (!all.length) { c.textAlign = 'center'; c.fillStyle = rgba(C('muted')); c.font = '500 15px ' + R.font; c.fillText(B('غير متاح لهذا المثير', 'N/A for this stimulus'), w / 2, y0 + ph / 2 + 6); return; }
       var lo = Math.min.apply(null, all), hi = Math.max.apply(null, all); if (hi - lo < 1) { hi = lo + 1; }
       var padL = 110, padR = 20, X = function (v) { return padL + (v - lo) / (hi - lo) * (w - padL - padR); };
-      [['o', vo, T('عادي', 'Ordinary'), C('warn'), y0 + ph * 0.42], ['m', vm, T('منارة', 'MANARA'), C('safe'), y0 + ph * 0.78]].forEach(function (row) {
+      [['o', vo, T('عادي', 'Ordinary'), C('warn'), y0 + ph * 0.38], ['m', vm, T('منارة', 'MANARA'), C('safe'), y0 + ph * 0.66]].forEach(function (row) {
         var vals = row[1].slice().sort(function (a, b2) { return a - b2; }), y = row[4];
         c.textAlign = 'left'; c.direction = 'ltr'; c.fillStyle = rgba(row[3]); c.font = '700 14px ' + R.font; c.fillText(LL(row[2]), 12, y);
         c.strokeStyle = rgba(C('line-2')); c.lineWidth = 1; c.beginPath(); c.moveTo(padL, y); c.lineTo(w - padR, y); c.stroke();
@@ -2626,7 +2860,7 @@
           c.strokeStyle = rgba(C('head')); c.lineWidth = 2.5; c.beginPath(); c.moveTo(X(q(0.5)), y - 15); c.lineTo(X(q(0.5)), y + 15); c.stroke();
         }
       });
-      c.fillStyle = rgba(C('muted')); c.font = '500 13px ' + R.mono; c.textAlign = 'center'; c.direction = 'ltr'; c.fillText(N(Math.round(lo)), X(lo), y0 + ph - 2); c.fillText(N(Math.round(hi)), X(hi), y0 + ph - 2);
+      c.fillStyle = rgba(C('muted')); c.font = '500 13px ' + R.mono; c.textAlign = 'center'; c.direction = 'ltr'; c.fillText(N(Math.round(lo)), X(lo), y0 + ph * 0.88); c.fillText(N(Math.round(hi)), X(hi), y0 + ph * 0.88);
     });
     var better = 0, n = 0, hd = [];
     res.forEach(function (r) { var d = r.delta.headline; if (d != null) { n++; if (d > 0) better++; hd.push(d); } });
@@ -2702,25 +2936,25 @@
   function renderLegendPanel() {
     var p = UI.legendPanel, b = p.body; b.replaceChildren();
     function li(ar, en) { return h('li', null, bi(ar, en)); }
-    var real = h('section', { class: 'rs rs-real' }, h('h4', null, bi('حقيقي (مصدره موثّق أو معيار منشور)', 'Real (sourced or a published standard)')), h('ul', null,
+    var real = h('section', { class: 'rs rs-real' }, h('h3', null, bi('حقيقي (مصدره موثّق أو معيار منشور)', 'Real (sourced or a published standard)')), h('ul', null,
       li('عتبات الحسّاسات: حرارة 57°م (S58)، غاز البترول 1000/2100 ppm (S48)، WBGT 32.1°م (S19)، PM10 150 µg/m³ (S31).', 'Sensor thresholds: heat 57 °C (S58), LPG 1000/2100 ppm (S48), WBGT 32.1 °C (S19), PM10 150 µg/m³ (S31).'),
       li('نموذج انتشار الحريق: خلية آلية منشورة (Alexandridis وآخرون 2008).', 'The fire-spread model is a published cellular automaton (Alexandridis et al. 2008).'),
       li('صيغة CAP 1.2 معيار OASIS؛ ملفاتنا بحالة «تمرين».', 'CAP 1.2 is an OASIS standard; our files have status “Exercise”.'),
       li('قاعدة الوميض ≤ 3 في الثانية (S57)، ونبرة 520 هرتز للإيقاظ (S56).', 'The ≤ 3 flashes per second rule (S57) and the 520 Hz wake-up tone (S56).'),
       li('معيار زمن وصول الإسعاف في قطر (S24) مرجع للمقارنة فقط.', 'The Qatar ambulance response benchmark (S24) is a reference only.')));
-    var simu = h('section', { class: 'rs rs-sim' }, h('h4', null, bi('محاكى (SIM)', 'Simulated (SIM)')), h('ul', null,
+    var simu = h('section', { class: 'rs rs-sim' }, h('h3', null, bi('محاكى (SIM)', 'Simulated (SIM)')), h('ul', null,
       li('الحيّ والسكان واللغات (مزيج توضيحي) والمدرسة والمبنى.', 'The district, residents, language mix (illustrative), school and building.'),
       li('المرور وأزمنة الوصول: ملف يومي افتراضي وطوابير ومحطات ومستشفيات وهمية.', 'Traffic and ETAs: an assumed daily profile, queues, and fictional stations and hospitals.'),
       li('قراءات الحسّاسات وضجيجها، والطقس (مطر، غبار، حرارة).', 'Sensor readings and their noise, and the weather inputs (rain, dust, heat).'),
       li('احتمالات الاستيقاظ وأزمنة التفاعل وزمن اعتماد المشغّل وتوفّر الوحدات وسعة المستشفيات.', 'Wake-up chances, reaction times, operator approval time, unit availability and hospital capacity.'),
       li('كل أرقام المقارنة A/B: فحص لآلية العمل وليست دليلاً على الأثر.', 'Every A/B number: a mechanism check, not proof of impact.')));
-    var limits = h('section', { class: 'rs rs-lim' }, h('h4', null, bi('حدود صريحة', 'Stated limits')), h('ul', null,
+    var limits = h('section', { class: 'rs rs-lim' }, h('h3', null, bi('حدود صريحة', 'Stated limits')), h('ul', null,
       li('الرؤية الحاسوبية بقواعد لا ذكاء اصطناعي: 12 من 18 صورة ثابتة محجوزة (مختبر الأدلة، عيّنة صغيرة)؛ لا تنذر وحدها أبدًا.', 'The vision is rule-based, not AI: 12 of 18 held-out still images (Evidence Lab, small sample); it never alerts alone.'),
       li('حسّاسات MQ حساسة لغازات أخرى وتحتاج معايرة وتسخينًا.', 'MQ sensors are cross-sensitive and need calibration and warm-up.'),
       li('الطائرة مفهوم تشغّله جهة مخوّلة وفق قواعد الطيران (القانون 10 لسنة 2026 — S34).', 'The drone is a concept operated by an authorised agency under aviation rules (Law No. 10 of 2026 — S34).'),
       li('اللغات غير العربية والإنجليزية مسوّدات تنتظر مراجعة متحدث أصلي.', 'Languages other than Arabic and English are drafts awaiting native-speaker review.'),
       li('منارة تكمل الأنظمة الوطنية ولا تستبدلها؛ 999 يبقى هو المُرسِل.', 'MANARA complements national systems and does not replace them; 999 stays the dispatcher.')));
-    var key = h('section', { class: 'rs rs-key' }, h('h4', null, bi('مفتاح الرموز', 'Map key')));
+    var key = h('section', { class: 'rs rs-key' }, h('h3', null, bi('مفتاح الرموز', 'Map key')));
     var rowsK = [];
     ['asleep', 'alerted', 'moving', 'safe', 'help', 'unacc'].forEach(function (k) { rowsK.push([lgCanvas(function (c) { drawPersonDot(c, 17, 13, 5, k); }), PERSON_ST[k].name]); });
     [['OPEN'], ['SMOKE'], ['FIRE'], ['LOCKED']].forEach(function (s) { var st = s[0]; rowsK.push([lgCanvas(function (c) { var col = tokColor(EXIT_STATE[st].tok); rrect(c, 4, 4, 26, 18, 9); c.fillStyle = rgba(C('surface')); c.fill(); c.lineWidth = 2; c.strokeStyle = rgba(col); c.stroke(); c.fillStyle = rgba(col); c.font = '700 11px ' + R.font; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('A', 17, 13.5); }), T('المخرج: ' + EXIT_STATE[st].name.ar, 'Exit: ' + st)]); });
@@ -2988,7 +3222,7 @@
     if (UI.dispatch) UI.dispatch.sig = '';
     if (UI.judge && MC.sim) onRunStarted();
     MC.log.dirty = true; renderLegendPanel(); buildLegend(); updateTwinUI(); syncPlayUI(); syncChrome();
-    MC.panelsDirty = true; refreshAll();
+    MC.panelsDirty = true; MC.dirtyResize = true; refreshAll();
   }
   function onThemeChange() {
     readColors(); MC.fieldsDirty = true; MC.drawDirty = true; if (UI.dispatch) UI.dispatch.chartSig = null; renderLegendPanel(); MC.panelsDirty = true; refreshAll();

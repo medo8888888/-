@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl" data-lang="ar">
 <head>
 <meta charset="utf-8">
-<script>/* a static host serves this page for ANY missing address, even /manara/a/b/c: resolve the stylesheets, scripts and links from the /manara/ folder instead of the missing path */(function(){try{var p=location.pathname,i=p.lastIndexOf('/manara/');if(i>=0){var base=p.slice(0,i+8);if(p.slice(0,p.lastIndexOf('/')+1)!==base)document.write('<base href="'+location.protocol+'//'+location.host+base+'">')}}catch(e){}})();</script>
+<script>/* a static host serves this page for ANY missing address, even /manara/a/b/c: resolve the stylesheets, scripts and links from the /manara/ folder instead of the missing path */(function(){try{var p=location.pathname,i=p.lastIndexOf('/manara/');if(i>=0){var base=p.slice(0,i+8);if(p.slice(0,p.lastIndexOf('/')+1)!==base){var b=document.createElement('base');b.href=location.protocol+'//'+location.host+base;document.head.insertBefore(b,document.head.firstChild)}}}catch(e){}})();</script>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title data-en="MANARA — Page not found">منارة — الصفحة غير موجودة</title>
 <meta name="description" content="الصفحة المطلوبة غير موجودة. عُد إلى منارة.">
@@ -45,6 +45,7 @@
   </section>
 </main>
 <footer class="foot" data-footer></footer>
-<script>(function(){function go(){var n=document.querySelector('[data-nf-logo]');if(n&&window.Manara)n.innerHTML=window.Manara.logo(76)}if(window.__manaraReady)go();else window.addEventListener('load',go)})();</script>
+<script>(function(){function go(){var n=document.querySelector('[data-nf-logo]');if(n&&window.Manara)n.innerHTML=window.Manara.logo(76).replace(/mn-b2/g,'nf-b2').replace(/mn-b/g,'nf-b')}if(window.__manaraReady)go();else window.addEventListener('load',go)})();</script>
+<script>/* core.js still carries the fire-only tagline and footer text (shared file): say the multi-hazard version here until it is updated there (same override as js/home.js) */(function(){function go(){var M=window.Manara;if(!M||!M.TAGLINE)return;var t={ar:'ترى الخطر… توقظ الجميع… وتُضيء طريق النجاة',en:'Sees the danger. Wakes everyone. Lights the safe way out.'};if(M.TAGLINE.en===t.en)return;M.TAGLINE.ar=t.ar;M.TAGLINE.en=t.en;M.strings({'foot.about':{ar:'منصة «آخر مئة متر» لكل أنواع الطوارئ — حريق وغاز وسيول وغبار وحرارة وشخص يحتاج مساعدة: تتحقق قبل أن تُنذر، وتوقظ كل إنسان بلغته وبالصيغة التي تناسبه، وتدلّه على طريق آمن فعلًا، وتُحصي الجميع. مشروع ابتكار طلابي يكمّل الدفاع المدني والإسعاف ولا يحلّ محلّهما.',en:'The last-100-metres platform for every kind of emergency (fire, gas, flood, dust, heat, someone needing help): it proves before it alerts, wakes each person in their own language and format, lights a route that is really safe, and counts everyone. A student innovation project that complements Civil Defence and the ambulance service and replaces neither.'},'foot.made':{ar:'نموذج أولي لمسابقة الابتكار — فرق الطوارئ تواجه الخطر، والمنارة تُوصل كل إنسان إلى الأمان',en:'Innovation-competition prototype — responders fight the hazard; the lighthouse gets every person to safety'}});M.setLang(M.lang())}if(window.__manaraReady)go();else window.addEventListener('load',go)})();</script>
 </body>
 </html>

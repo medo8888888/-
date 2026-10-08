@@ -16,9 +16,14 @@
 //  10  nearby card: consent tap, one query, results, offline / denied / failed messages, nothing stored, two-step 999
 //  11  QR card on the page: canvas decodes to the link, file:// note, long-link message
 //  12  language switch re-renders; draft banner for Malayalam; large text, high contrast, persona URLs, accessibility basics
+//  13  WCAG AA contrast of every visible text in both themes × both languages in every state, no box holds content wider than itself (nothing
+//      silently clipped), pictograms fit in large-text mode, the wall's phones line up, the one-phone side panel
+//  QR also gets a second opinion from zxing-cpp (pip install zxing-cpp) when it is installed.
 import fs from 'node:fs';
 import vm from 'node:vm';
 import path from 'node:path';
+import os from 'node:os';
+import { execFileSync } from 'node:child_process';
 import { launch, openPage, overflow, check, done, SITE, ROOT } from './lib.mjs';
 
 const read = f => fs.readFileSync(path.join(SITE, f), 'utf8');
@@ -115,6 +120,26 @@ function qrDecode(rows) {
   check('QR: all versions 1–10 and several masks exercised', versions.size === 10 && masks.size >= 6, `versions ${versions.size}, masks ${[...masks].sort().join('')}`);
   check('QR: too-long payloads return null (the page shows a message)', A.qr.encode('x'.repeat(400)) === null);
   check('QR: capacity is 271 bytes at V10-L and 213 at V10-M', A.qr.capacityBytes(10, 'L') === 271 && A.qr.capacityBytes(10, 'M') === 213);
+  // a second, scanner-grade opinion: if the Python package zxing-cpp is installed (pip install zxing-cpp), render every version × level as a
+  // picture with a quiet zone and let it find, sample and decode the code like a phone camera app would. Skipped (not failed) without it.
+  {
+    const have = (() => { try { execFileSync('python3', ['-I', '-c', 'import zxingcpp, PIL'], { stdio: 'ignore' }); return true; } catch (e) { return false; } })();
+    if (!have) console.log('  skip QR: zxing-cpp is not installed (pip install zxing-cpp) — the independent JS decoder above still ran');
+    else {
+      const items = [];
+      for (let v = 1; v <= 10; v++) for (const ec of ['L', 'M', 'Q', 'H']) {
+        const t = rnd(Math.max(1, A.qr.capacityBytes(v, ec) - 1), v * 31 + ec.charCodeAt(0)), q = A.qr.encode(t, { ec, minVersion: v });
+        items.push({ text: t, rows: q.rows(), version: q.version, ec: q.ec });
+      }
+      for (const t of ['http://192.168.1.20:8765/manara/alert.html?persona=ravi&lang=ml&hazard=fire&level=evacuate&asleep=1', 'منارة — هواتف السكان', 'héllo ✓ 日本']) { const q = A.qr.encode(t, { ec: 'M' }); items.push({ text: t, rows: q.rows(), version: q.version, ec: q.ec }); }
+      const tmp = path.join(os.tmpdir(), `manara-qr-${process.pid}.json`); fs.writeFileSync(tmp, JSON.stringify(items));
+      const py = `import json,sys,zxingcpp\nfrom PIL import Image\nbad=[]\nfor i,it in enumerate(json.load(open(sys.argv[1]))):\n  n=len(it['rows']);sc=8;q=4\n  im=Image.new('L',((n+2*q)*sc,(n+2*q)*sc),255)\n  for y,r in enumerate(it['rows']):\n    for x,c in enumerate(r):\n      if c=='1': im.paste(0,((x+q)*sc,(y+q)*sc,(x+q+1)*sc,(y+q+1)*sc))\n  r=zxingcpp.read_barcodes(im)\n  if not(len(r)==1 and r[0].text==it['text'] and r[0].format==zxingcpp.BarcodeFormat.QRCode): bad.append('V%s-%s'%(it['version'],it['ec']))\nprint(json.dumps({'n':len(json.load(open(sys.argv[1]))),'bad':bad}))`;
+      let res = { n: 0, bad: ['python failed'] };
+      try { res = JSON.parse(execFileSync('python3', ['-I', '-c', py, tmp], { encoding: 'utf8' })); } catch (e) { res.bad = [String(e.message).slice(0, 120)]; }
+      fs.rmSync(tmp, { force: true });
+      check(`QR: zxing-cpp (an independent scanner library) reads all ${res.n} codes — versions 1–10, levels L/M/Q/H, URL, Arabic and UTF-8`, res.bad.length === 0 && res.n === 43, res.bad.join(','));
+    }
+  }
   const q = A.qr.encode('HELLO'), rows = q.rows();
   check('QR: finder patterns in three corners, timing pattern alternates', rows[0].slice(0, 7) === '1111111' && rows[0].slice(-7) === '1111111' && rows[q.size - 1].slice(0, 7) === '1111111' &&
     [...Array(q.size - 16)].every((_, i) => rows[6][8 + i] === (i % 2 === 0 ? '1' : '0')));
@@ -139,7 +164,8 @@ const FIXTURE = { version: 0.6, elements: [
 ] };
 {
   const qs = O.query(P0.lat, P0.lon, 12000);
-  check('query: Overpass QL with JSON output, a timeout, the three amenities and `out center`', /^\[out:json\]\[timeout:\d+\];/.test(qs) && ['hospital', 'police', 'fire_station'].every(k => qs.includes(`"amenity"="${k}"`)) && /out center tags;$/.test(qs));
+  check('query: Overpass QL with JSON output, a timeout, the three amenities and `out center`', /^\[out:json\]\[timeout:\d+\];/.test(qs) && ['hospital', 'police', 'fire_station'].every(k => qs.includes(`"amenity"="${k}"`)) && /\);out center;$/.test(qs), qs);
+  check('query: keeps the default body verbosity — `tags`, `ids` or `skel` would drop node coordinates (OSM wiki: tags prints "not coordinates") and every node-mapped facility would vanish', !/\bout\b[^;]*\b(tags|ids|skel)\b/.test(qs));
   check('query: radius and position appear once per amenity, nothing else', (qs.match(/around:12000,0\.50000,0\.50000/g) || []).length === 3);
   check('query: radius is clamped (500 m … 50 km) and position is clamped to the globe', /around:50000,90\.00000,-180\.00000/.test(O.query(999, -999, 1e9)) && /around:500,/.test(O.query(0, 0, 1)));
   const r = O.parse(FIXTURE, P0.lat, P0.lon);
@@ -380,6 +406,32 @@ if (on(6)) {
   await ctx.close();
 }
 
+section('6b A tap is never swallowed by a re-render');
+if (on(6)) {
+  // Mission Control repeats its alert about every 2 s. A phone that rebuilt its screen while a finger was down on "I'm safe" would lose the tap
+  // (the button the finger touched no longer exists when it lifts). Unchanged repeats must not rebuild anything; real changes wait for the finger.
+  const { ctx, page, errors } = await mk({ width: 1440, lang: 'en', query: '?persona=huda' });
+  const p2 = await ctx.newPage(); await p2.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort()); await p2.goto(page.url()); await ready(p2);
+  const base = { type: 'alert', id: 'A9', hazard: 'dust', level: 'warning', lang: 'ar', persona: 'adult', action: 'dust.shelter', person: 'huda', etaMin: 6, distanceM: 400, bearingDeg: 90, wind: { deg: 270, speed: 5 }, you: { x: 40, y: 30 } };
+  await p2.evaluate(m => Manara.link.send(m), base);
+  await page.waitForSelector('[data-phone="huda"] [data-act="safe"]');
+  await page.evaluate(() => { document.querySelector('[data-phone="huda"] [data-act="safe"]').__mark = 1; });
+  await p2.evaluate(m => Manara.link.send(Object.assign({}, m, { type: 'alert-update' })), base);
+  await page.waitForTimeout(250);
+  check('an unchanged repeat of the alert (only the time differs) rebuilds nothing', await page.evaluate(() => document.querySelector('[data-phone="huda"] [data-act="safe"]').__mark === 1));
+  await page.locator('[data-phone="huda"] [data-act="safe"]').scrollIntoViewIfNeeded();
+  const box = await page.locator('[data-phone="huda"] [data-act="safe"]').boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2); await page.mouse.down();
+  await p2.evaluate(m => Manara.link.send(Object.assign({}, m, { type: 'alert-update', etaMin: 5, distanceM: 380 })), base);   // a real change arrives while the finger is down
+  await page.waitForTimeout(300);
+  await page.mouse.up(); await page.waitForTimeout(250);
+  const ph = await page.evaluate(() => ManaraAlert.debug.phone('huda'));
+  check('a real change that arrives while the finger is on "I\'m safe" does not swallow the tap: the check-in is sent', ph.checkin === 'safe', JSON.stringify(ph.checkin));
+  check('…and the held-back change is shown right after (the screen now carries the new distance, 380 m)', /380/.test(await text(page, '[data-phone="huda"] .al-route')), (await text(page, '[data-phone="huda"] .al-route')).slice(0, 120));
+  check('6b: no console errors', errors.length === 0, errors.join(' | '));
+  await ctx.close();
+}
+
 section('7 Wake-up ladder (fake timers)');
 if (on(7)) {
   const { ctx, page, errors } = await mk({ width: 1440, lang: 'en', clock: true });
@@ -584,8 +636,9 @@ if (on(10)) {
   await d.page.addInitScript(() => {});
   await d.page.evaluate(() => { navigator.geolocation.getCurrentPosition = (ok, bad) => setTimeout(() => bad({ code: 1, message: 'denied' }), 10); });
   await pickHazard(d.page, 'fire');
+  await d.page.click('[data-lm="en"]');                                      // Huda's own language is Arabic: show her phone in English for the wording check
   await d.page.click('[data-phone="huda"] [data-act="nearby"]'); await d.page.waitForTimeout(200);
-  check('location denied: "Location access was not allowed." and a way to try again', /Location access was not allowed\./.test(await text(d.page, '[data-phone="huda"] .al-nb')));
+  check('location denied: "Location access was not allowed." and a way to try again', /Location access was not allowed\./.test(await text(d.page, '[data-phone="huda"] .al-nb')) && (await d.page.locator('[data-phone="huda"] [data-act="nearby"]').count()) === 1 && (await d.page.locator('a[href^="tel:"]').count()) === 0);
   await d.ctx.close();
 }
 
@@ -682,6 +735,105 @@ if (on(12)) {
   check('the mode switch returns to the wall with all four phones', (await b.page.locator('#wall > [data-phone]').count()) === 4);
   check('persona URLs: no console errors', errors.length === 0 && b.errors.length === 0, errors.concat(b.errors).join(' | '));
   await b.ctx.close();
+}
+
+/* ============================================================================================
+ * 13  contrast (WCAG 1.4.3) of every visible text in both themes and languages, in every state; layout checks
+ * ============================================================================================ */
+section('13 Contrast, pictogram fit, wall alignment, one-phone panel');
+const CONTRAST_AUDIT = () => {
+  const cv = document.createElement('canvas'); cv.width = cv.height = 1; const cx = cv.getContext('2d', { willReadFrequently: true });
+  const rgba = css => { cx.clearRect(0, 0, 1, 1); cx.fillStyle = '#000'; cx.fillStyle = css; cx.fillRect(0, 0, 1, 1); const d = cx.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2], d[3] / 255]; };
+  const over = (t, b) => { const a = t[3] + b[3] * (1 - t[3]); if (!a) return [0, 0, 0, 0]; return [0, 1, 2].map(i => (t[i] * t[3] + b[i] * b[3] * (1 - t[3])) / a).concat([a]); };
+  const lum = c => { const f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+  const bgOf = el => {
+    let acc = [0, 0, 0, 0];
+    for (let e = el; e && e.nodeType === 1; e = e.parentElement) {
+      const cs = getComputedStyle(e); let c = rgba(cs.backgroundColor), bi = cs.backgroundImage;
+      if (bi && bi !== 'none' && /gradient/.test(bi)) { const cols = (bi.match(/(rgba?\([^)]*\)|color\([^)]*\)|oklab\([^)]*\)|#[0-9a-f]{3,8})/gi) || []).map(rgba); if (cols.length) c = [0, 1, 2].map(i => cols.reduce((a, x) => a + x[i], 0) / cols.length).concat([Math.max(...cols.map(x => x[3]))]); }
+      acc = over(acc, c); if (acc[3] >= 0.999) break;
+    }
+    if (acc[3] < 0.999) acc = over(acc, rgba(getComputedStyle(document.documentElement).backgroundColor === 'rgba(0, 0, 0, 0)' ? '#fff' : getComputedStyle(document.documentElement).backgroundColor));
+    return acc;
+  };
+  const bad = [], seen = new Set(), w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT); let n = 0;
+  while (w.nextNode()) {
+    const t = w.currentNode, el = t.parentElement; if (!t.nodeValue.trim() || !el || seen.has(el)) continue; seen.add(el);
+    if (el.closest('button:disabled,[disabled],[aria-hidden="true"],[hidden],script,style,.sr-only,[data-nav],[data-footer],.nav,.foot,option,canvas,svg')) continue;
+    const r = el.getBoundingClientRect(); if (r.width < 1 || r.height < 1) continue;
+    const cs = getComputedStyle(el); if (cs.visibility === 'hidden' || cs.display === 'none' || +cs.opacity === 0) continue;
+    let op = 1; for (let e = el; e && e.nodeType === 1; e = e.parentElement) op *= +getComputedStyle(e).opacity;
+    const bg = bgOf(el); let fg = rgba(cs.color); fg = over([fg[0], fg[1], fg[2], fg[3] * op], bg);
+    const L1 = lum(fg), L2 = lum(bg), ratio = (Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05), px = parseFloat(cs.fontSize);
+    const need = px >= 24 || (px >= 18.66 && +cs.fontWeight >= 700) ? 3 : 4.5; n++;
+    if (ratio < need) bad.push(`${(typeof el.className === 'string' && el.className) || el.tagName} "${t.nodeValue.trim().slice(0, 24)}" ${ratio.toFixed(2)}<${need}`);
+  }
+  return { n, bad: bad.slice(0, 6), count: bad.length };
+};
+if (on(13)) {
+  const STATES = [
+    ['idle', null],
+    ...HZ.map(h => [h, `ManaraAlert.debug.demo('${h}','${h === 'dust' ? 'warning' : 'evacuate'}',{night:${h === 'fire' || h === 'gas'}})`]),
+    ['night fire: guard view + ladder step 3', `ManaraAlert.debug.demo('fire','evacuate',{night:true}); document.querySelector('[data-more="guard"]').click(); document.getElementById('demo-speed').value='10'; document.getElementById('demo-speed').dispatchEvent(new Event('change')); ManaraAlert.debug.demo('fire','evacuate',{night:true})`],
+    ['large text + high contrast', `document.getElementById('set-hc').click(); document.getElementById('set-big').click()`],
+    ['answered, details open', `['awake','help'].forEach(a=>document.querySelectorAll('[data-act='+a+']').forEach((b,i)=>{ if(i<2) b.click(); })); ['why','drone','more','needs'].forEach(a=>document.querySelectorAll('[data-act='+a+']').forEach(b=>b.click()))`],
+    ['all-clear', `document.getElementById('demo-clear').click()`]
+  ];
+  let total = 0, worst = [];
+  for (const theme of ['dark', 'light']) for (const lang of ['ar', 'en']) {
+    const { ctx, page } = await mk({ width: 1440, theme, lang });
+    for (const [name, pre] of STATES) {
+      if (pre) await page.evaluate(pre);
+      await page.waitForTimeout(120);
+      if (name === 'night fire: guard view + ladder step 3') await page.waitForTimeout(3300);
+      const r = await page.evaluate(CONTRAST_AUDIT); total += r.n;
+      if (r.count) worst.push(`${theme}/${lang}/${name}: ${r.bad.join(' ; ')}`);
+    }
+    await ctx.close();
+  }
+  check(`contrast: all ${total} visible text runs meet WCAG AA (4.5, or 3 for large text) in dark + light × ar + en, across idle, six hazards, ladder, guard view, large text + high contrast, answered, all-clear`, worst.length === 0, worst.slice(0, 3).join(' || '));
+
+  // the page clips horizontal overflow (overflow-x: clip), so a long word or link that spills out of its box would be invisible to a scrollWidth
+  // test of the page: look at every box instead — no element may hold content wider than itself (scroll containers excepted)
+  {
+    const AUD = () => { const bad = []; document.querySelectorAll('body *').forEach(el => {
+      if (/^(svg|canvas|path|g|circle|rect|line|polyline|text|use|defs|tspan|option|select|input)$/i.test(el.tagName) || el.closest('svg,[hidden],#al-store,.sr-only')) return;
+      const cs = getComputedStyle(el); if (['none', 'inline', 'contents'].includes(cs.display) || !el.getBoundingClientRect().width || ['auto', 'scroll'].includes(cs.overflowX)) return;
+      if (el.scrollWidth > el.clientWidth + 1) bad.push(((typeof el.className === 'string' && el.className) || el.tagName).split(' ').slice(0, 2).join('.') + ` ${el.scrollWidth}>${el.clientWidth}`);
+    }); return bad.slice(0, 6); };
+    const SH = [['idle', null], ['fire', `ManaraAlert.debug.demo('fire','evacuate',{night:true})`], ['flood', `ManaraAlert.debug.demo('flood','evacuate',{night:false})`], ['sos', `ManaraAlert.debug.demo('sos','evacuate',{night:false})`],
+      ['details open', `['why','drone','more','needs'].forEach(a=>document.querySelectorAll('[data-act='+a+']').forEach(b=>b.click()))`]];
+    const found = []; let runs = 0;
+    for (const [w, q] of [[390, ''], [390, '?mode=wall'], [390, '?persona=ravi&lang=ml'], [1440, '']]) for (const lang of ['ar', 'en']) {
+      const { ctx, page } = await mk({ width: w, height: w < 600 ? 844 : 900, lang, query: q });
+      for (const [name, pre] of SH) { if (pre) await page.evaluate(pre); await page.waitForTimeout(120); const b = await page.evaluate(AUD); runs++; if (b.length) found.push(`${w}${q} ${lang} ${name}: ${b.join(', ')}`); }
+      await ctx.close();
+    }
+    check(`no box holds content wider than itself (${runs} states: 390 phone / 390 wall / QR link / 1440 × ar, en) — nothing is silently clipped`, found.length === 0, found.slice(0, 3).join(' || '));
+  }
+
+  // pictograms stay inside their cards, also in large-text mode (Huda is Deaf: large text by default) on a 390 px phone
+  for (const lang of ['ar', 'en']) {
+    const { ctx, page } = await mk({ width: 390, height: 844, lang, query: '?persona=huda&hazard=gas&level=evacuate' });
+    const fit = await page.evaluate(() => [...document.querySelectorAll('#solo-phone .p-screen .pic')].map(c => { const a = c.getBoundingClientRect(), b = c.querySelector('svg').getBoundingClientRect(); return b.left >= a.left - 0.5 && b.right <= a.right + 0.5 && b.width > 40; }));
+    check(`390 px (${lang}) large-text phone: all ${fit.length} pictograms fit inside their cards and stay bigger than 40 px`, fit.length >= 4 && fit.every(Boolean), JSON.stringify(fit));
+    await ctx.close();
+  }
+  {
+    const { ctx, page } = await mk({ width: 1440, lang: 'en' });
+    const g = await page.evaluate(() => ({ tops: [...document.querySelectorAll('#wall .phone')].map(p => Math.round(p.getBoundingClientRect().top)), hero: Math.round(document.querySelector('.al-hero-t').getBoundingClientRect().left), wall: Math.round(document.querySelector('#wall').getBoundingClientRect().left), ctl: Math.round(document.querySelector('.ctl').getBoundingClientRect().left) }));
+    check('wall: the four phones start at the same height whatever the caption length, and hero, controls and wall share one left edge', g.tops.length === 4 && new Set(g.tops).size === 1 && g.hero === g.wall && g.ctl === g.wall, JSON.stringify(g));
+    await ctx.close();
+  }
+  {
+    const { ctx, page } = await mk({ width: 1440, lang: 'en', query: '?persona=lina' });
+    check('one phone (desktop): the side panel shows Lina\'s language and need tags and the six "try a hazard" chips', (await page.locator('#solo-info .tag').count()) >= 2 && (await page.locator('#solo-info [data-try]').count()) === 6);
+    await page.click('#solo-info [data-try="gas"]'); await page.waitForTimeout(150);
+    check('one phone: a "try a hazard" chip starts that hazard on this phone, with Lina\'s own wording', (await text(page, '[data-phone="lina"] .al-title')) === expected('lina', 'gas').headline);
+    await page.click('#solo-info [data-soloqr]'); await page.waitForTimeout(150);
+    check('one phone: "QR code for this phone" selects Lina in the QR card', (await page.inputValue('#qr-person')) === 'lina' && /persona=lina/.test(await text(page, '#qr-link')));
+    await ctx.close();
+  }
 }
 
 /* ============================================================================================
