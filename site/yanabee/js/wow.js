@@ -354,7 +354,7 @@
      ==================================================================================== */
   const headings = (() => {
     if (reduced()) return null;
-    const SKIP = '.verse,.hadith,.chat,.search,.sheet,.nav,.tabbar,footer,[data-no-split]';
+    const SKIP = '.verse,.hadith,.chat,.search,.sheet,.nav,.tabbar,footer,.story,[data-no-split]'; // .story has its own word system (story.css .w)
     const mk = (cls) => { const s = doc.createElement('span'); s.className = cls; return s; };
     let hold = true;
     const held = new Set();

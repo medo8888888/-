@@ -121,6 +121,7 @@ console.log('live mode (desktop 1440×900)');
     ticks.push([i, await act(p), await p.$eval(`.story-tick[data-act="${i}"]`, b => b.getAttribute('aria-current') === 'step')]);
   }
   check('rail ticks scroll to their acts (and mark the current one)', ticks.every(([i, a, cur]) => i === a && cur), JSON.stringify(ticks));
+  check('the story label is left alone by the headline splitter (no stray .w word blur)', await p.evaluate(() => { const k = document.querySelector('.story-head .kicker'); return !!k && !k.querySelector('.w') && getComputedStyle(k).filter === 'none'; }));
   check('the rail fills with the progress', await p.evaluate(() => +getComputedStyle(document.querySelector('.story-rail')).getPropertyValue('--rp') > 0.9));
 
   // off-screen: the loop pauses
