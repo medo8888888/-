@@ -1,1 +1,137 @@
-/* story — placeholder */
+/* ==========================================================================
+   Home — the mission, performed (js/story.js, tools/yanabee/wow_story.py).
+
+   DEFAULT = a calm, non-pinned block: the four mission fragments as four cards with a
+   small static illustration. That is what you get without JavaScript, in print, and with
+   prefers-reduced-motion. story.js (or the tiny inline script after the section) adds
+   `.is-live`, which turns the section into a tall scroll track with a sticky full-viewport
+   stage: canvas particles, big crossfading caption, progress rail.
+   Positions of tags / droplet / closing line are canvas pixels (set by JS), hence left/top.
+   ========================================================================== */
+
+.story{position:relative;padding-block:clamp(56px,8vw,104px);--sc:var(--brand);
+  --story-cold:#51668a;--story-cold-2:#7a8fb2}
+:root[data-theme=dark] .story{--story-cold:#9db0d0;--story-cold-2:#7387ab}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]) .story{--story-cold:#9db0d0;--story-cold-2:#7387ab}}
+
+/* decorative layers exist only in the live version */
+.story-bg,.story-canvas,.story-tags,.story-core,.story-final,.story-rail,.story-hint{display:none}
+.story-track,.story-stage{position:relative}
+.story-ui{max-width:1200px;margin:0 auto;padding:0 24px}
+.story-head{margin-bottom:clamp(22px,3.4vw,38px)}
+.story-head .kicker{margin:0;font-size:1rem}
+
+.story-mission{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.frag{--fc:var(--story-cold-2);position:relative;display:flex;flex-direction:column;gap:14px;padding:clamp(22px,2.8vw,32px) clamp(22px,2.8vw,34px);
+  border-radius:var(--r-lg);overflow:hidden;isolation:isolate;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow-sm)}
+.frag:nth-child(2){--fc:var(--accent)}
+.frag:nth-child(3){--fc:var(--sky)}
+.frag:nth-child(4){--fc:var(--brand)}
+.frag::before{content:"";position:absolute;inset-inline-start:0;inset-block:22px;width:4px;border-radius:4px;background:var(--fc)}
+.frag::after{content:"";position:absolute;inset-inline-end:-60px;top:-60px;width:180px;height:180px;border-radius:50%;z-index:-1;
+  background:radial-gradient(circle,color-mix(in oklab,var(--fc) 16%,transparent),transparent 70%)}
+.frag-no{position:absolute;inset-inline-end:22px;top:14px;font-family:var(--font-h);font-weight:700;font-size:2.4rem;line-height:1;
+  color:color-mix(in oklab,var(--fc) 24%,transparent)}
+.frag-art{width:min(100%,160px);height:auto;align-self:flex-start}
+.frag-text{font-family:var(--font-h);font-weight:600;font-size:clamp(1.12rem,2.1vw,1.5rem);line-height:1.8;color:var(--head);text-wrap:pretty}
+.frag .w.em{color:color-mix(in oklab,var(--fc) 78%,var(--ink))}
+@media(max-width:700px){.story-mission{grid-template-columns:1fr}.story-ui{padding:0 18px}}
+
+/* ==========================================================================
+   LIVE: tall track + sticky stage (never in print, never with reduced motion, never on very short screens)
+   ========================================================================== */
+@media screen and (prefers-reduced-motion:no-preference) and (min-height:500px){
+  .story.is-live{padding:0}
+  .story.is-live .story-track{height:460vh;height:460svh}
+  .story.is-live .story-stage{position:sticky;top:0;height:100vh;height:100svh;overflow:clip;isolation:isolate;background:var(--bg);
+    --zb:64%}
+  .story.is-live .story-bg,.story.is-live .story-canvas,.story.is-live .story-tags{display:block;position:absolute;inset:0}
+  .story.is-live .story-canvas{width:100%;height:100%;z-index:1}
+
+  /* atmosphere: three washes that JS fades between acts */
+  .story-bg{z-index:0;pointer-events:none;-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 140px,#000 calc(100% - 140px),transparent 100%);
+    mask-image:linear-gradient(to bottom,transparent 0,#000 140px,#000 calc(100% - 140px),transparent 100%)}
+  .story-bg i{position:absolute;inset:0;opacity:0;will-change:opacity}
+  .sb-cold{background:radial-gradient(120% 95% at 50% 55%,transparent 28%,color-mix(in oklab,var(--story-cold) 30%,transparent) 100%),
+    radial-gradient(60% 50% at 30% 40%,color-mix(in oklab,var(--sky) 9%,transparent),transparent 70%)}
+  .sb-team{background:conic-gradient(from 0deg at 50% 46%,var(--t1),var(--t2),var(--t3),var(--t4),var(--t5),var(--t6),var(--t7),var(--t1));
+    -webkit-mask-image:radial-gradient(closest-side at 50% 46%,transparent 10%,#000 40%,transparent 96%);mask-image:radial-gradient(closest-side at 50% 46%,transparent 10%,#000 40%,transparent 96%);
+    }
+  .sb-brand{background:radial-gradient(65% 62% at 50% 50%,color-mix(in oklab,var(--accent) 24%,transparent),transparent 72%),
+    radial-gradient(90% 60% at 50% 100%,color-mix(in oklab,var(--sky) 14%,transparent),transparent 70%)}
+
+  /* legibility scrim behind the caption */
+  .story.is-live .story-stage::after{content:"";position:absolute;inset:calc(var(--zb) - 44px) 0 0 0;z-index:2;pointer-events:none;
+    background:linear-gradient(to bottom,transparent 0,color-mix(in oklab,var(--bg) 82%,transparent) 44px,color-mix(in oklab,var(--bg) 92%,transparent) 100%)}
+
+  /* team labels (act 2), droplet + closing line (act 4): placed by JS in canvas pixels */
+  .story.is-live .story-tags{z-index:3;pointer-events:none}
+  .story-tag{position:absolute;left:0;top:0;display:inline-flex;align-items:center;gap:7px;padding:3px 12px 3px 10px;border-radius:999px;white-space:nowrap;
+    font-family:var(--font-h);font-weight:600;font-size:.82rem;line-height:1.6;color:var(--head);
+    background:color-mix(in oklab,var(--bg) 84%,transparent);border:1px solid color-mix(in oklab,var(--tc) 55%,transparent);
+    transform:translate(var(--x,0px),var(--y,0px)) translate(-50%,-50%);opacity:var(--o,0);will-change:transform,opacity}
+  .story-tag i{width:9px;height:9px;border-radius:50%;background:var(--tc);box-shadow:0 0 10px var(--tc)}
+  .story.is-live .story-core{display:block;position:absolute;left:0;top:0;z-index:3;pointer-events:none;width:var(--cs,84px);height:var(--cs,84px);
+    transform:translate(var(--x,0px),var(--y,0px)) translate(-50%,-50%) scale(var(--s,0));opacity:var(--o,0);will-change:transform,opacity}
+  .story-logo{width:100%;height:100%;filter:drop-shadow(0 0 16px color-mix(in oklab,var(--accent) 80%,transparent)) drop-shadow(0 10px 26px rgba(16,143,176,.5))}
+  .story.is-live .story-final{display:block;position:absolute;left:0;top:0;z-index:3;pointer-events:none;width:min(88%,560px);text-align:center;
+    font-family:var(--font-h);font-weight:500;font-size:clamp(.8rem,1.35vw,1.02rem);line-height:1.6;color:var(--ink-2);text-wrap:balance;
+    transform:translate(var(--x,0px),var(--y,0px)) translate(-50%,0);opacity:var(--o,0)}
+
+  /* caption: the mission, four crossfading fragments whose words light up with the scroll */
+  .story.is-live .story-ui{position:absolute;inset:0;z-index:4;max-width:none;margin:0;pointer-events:none;
+    padding:calc(var(--nav-h) + 20px) clamp(18px,6vw,96px) calc(var(--tab-h) + clamp(46px,8.5vh,88px));
+    display:flex;flex-direction:column;justify-content:space-between;align-items:center}
+  .story.is-live .story-head{margin:0}
+  .story.is-live .story-head .kicker{background:color-mix(in oklab,var(--bg) 82%,transparent);border:1px solid var(--line)}
+  .story.is-live .story-mission{display:grid;grid-template-columns:minmax(0,1fr);width:100%;max-width:1060px;text-align:center}
+  .story.is-live .frag{grid-area:1/1;display:block;padding:0;border:0;border-radius:0;background:none;box-shadow:none;overflow:visible;isolation:auto;
+    opacity:var(--fo,0);transform:translateY(calc((1 - var(--fo,0)) * 24px))}
+  .story.is-live .frag::before,.story.is-live .frag::after,.story.is-live .frag-no,.story.is-live .frag-art{display:none}
+  .story.is-live .frag-text{display:block;font-size:clamp(1.42rem,3.25vw,3rem);font-weight:700;line-height:1.55;color:var(--head);text-wrap:balance;
+    text-shadow:0 2px 28px color-mix(in oklab,var(--bg) 85%,transparent)}
+  .story.is-live .w{display:inline-block;opacity:calc(.13 + .87 * var(--l,0));transform:translateY(calc((1 - var(--l,0)) * .32em));
+    filter:blur(calc((1 - var(--l,0)) * 3px))}
+  .story.is-live .frag .w.em{color:inherit}
+  .story.is-live .frag[data-act="0"] .w.em{color:var(--story-cold)}
+  .story.is-live .frag[data-act="1"] .w.em{color:var(--accent)}
+  .story.is-live .frag[data-act="2"] .w.em,.story.is-live .frag[data-act="3"] .w.em{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;
+    padding-inline:.04em}
+
+  /* progress rail (inline-end edge): four ticks = four acts, clickable */
+  .story.is-live .story-rail{display:flex;flex-direction:column;justify-content:space-between;align-items:center;position:absolute;z-index:5;
+    inset-inline-end:clamp(8px,2.2vw,24px);top:calc(50% - 20px);translate:0 -50%;width:30px;height:min(40vh,320px)}
+  @media(min-width:1280px){.story.is-live .story-rail{inset-inline-end:68px}}
+  .rail-line{position:absolute;inset-block:15px;inset-inline-start:50%;margin-inline-start:-1px;width:2px;border-radius:2px;background:var(--line-2);overflow:hidden}
+  .rail-line b{position:absolute;inset:0;background:var(--grad);transform-origin:top;transform:scaleY(var(--rp,0));will-change:transform}
+  .story-tick{position:relative;z-index:1;width:30px;height:30px;display:grid;place-items:center;border-radius:50%}
+  .story-tick i{width:11px;height:11px;border-radius:50%;background:var(--bg);border:2px solid var(--line-2);
+    transition:transform .35s var(--ease),background-color .3s,border-color .3s,box-shadow .35s}
+  .story-tick.is-past i{border-color:var(--accent);background:color-mix(in oklab,var(--accent) 45%,var(--bg))}
+  .story-tick.is-on i{background:var(--accent);border-color:var(--accent);transform:scale(1.4);box-shadow:0 0 0 5px color-mix(in oklab,var(--accent) 26%,transparent)}
+  .story-tick:hover i,.story-tick:focus-visible i{border-color:var(--brand);transform:scale(1.4)}
+  .tick-label{position:absolute;inset-inline-end:38px;top:50%;translate:6px -50%;white-space:nowrap;padding:5px 12px;border-radius:10px;
+    font-size:.85rem;font-weight:600;font-family:var(--font-h);background:var(--surface);color:var(--head);border:1px solid var(--line-2);box-shadow:var(--shadow);
+    opacity:0;pointer-events:none;transition:opacity .2s,translate .25s var(--ease)}
+  @media(hover:hover){.story-tick:hover .tick-label,.story-tick:focus-visible .tick-label{opacity:1;translate:0 -50%}}
+
+  /* "scroll" hint at the very start */
+  .story.is-live .story-hint{display:flex;flex-direction:column;align-items:center;gap:6px;position:absolute;z-index:5;inset-inline:0;margin-inline:auto;width:max-content;
+    top:calc(var(--zb) - 74px);font-family:var(--font-h);font-weight:500;font-size:.82rem;color:var(--muted);pointer-events:none;opacity:var(--ho,1)}
+  .hint-mouse{width:20px;height:32px;border-radius:12px;border:2px solid var(--line-2);display:block;position:relative}
+  .hint-mouse i{position:absolute;left:50%;top:6px;width:3px;height:7px;margin-left:-1.5px;border-radius:3px;background:var(--accent);animation:story-wheel 1.8s ease-in-out infinite}
+  @keyframes story-wheel{0%{transform:translateY(0);opacity:1}70%{transform:translateY(9px);opacity:0}100%{opacity:0}}
+
+  @media(max-width:700px){
+    .story.is-live .story-track{height:400vh;height:400svh}
+    .story.is-live .story-ui{padding-inline:16px;padding-bottom:calc(var(--tab-h) + clamp(40px,7vh,64px))}
+    .story.is-live .frag-text{font-size:clamp(1.3rem,6vw,1.7rem);line-height:1.6}
+    .story-tag{font-size:.68rem;padding:2px 9px 2px 8px;gap:5px}
+    .story-tag i{width:7px;height:7px}
+    .story.is-live .story-rail{inset-inline-end:2px;width:26px;height:min(34vh,250px);top:calc(50% - 40px)}
+    .story-tick{width:26px;height:26px}
+    .story-tick i{width:9px;height:9px}
+    .tick-label{display:none}
+  }
+  @media(max-height:560px){.story.is-live .frag-text{font-size:clamp(1.15rem,3.2vw,1.8rem)}.story.is-live .story-hint{display:none}}
+}
