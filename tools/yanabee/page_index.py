@@ -5,6 +5,8 @@ import json
 import re
 
 import art
+import wow_gallery
+import wow_story
 from core import (PAGE_LABEL, PLATFORM as P, QURAN as Q, TEAMS, TEAM_IDS, btn, cta, ic, logo, page, paren,
                   plain, short, split_kicker, strip_colon, t)
 
@@ -38,6 +40,7 @@ def hero():
       </div>'''
     return f'''
 <section class="hero hero-home">
+  <canvas class="water" data-water aria-hidden="true"></canvas>
   <div class="hero-bg" aria-hidden="true"><span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span></div>
   <div class="hero-art" aria-hidden="true">{art.home_band('hb')}</div>
   <div class="wrap hero-grid">
@@ -127,6 +130,7 @@ def teams():
 <section class="sec band teams-home" id="teams">
   <div class="wrap">
     <header class="sec-head rv"><div><span class="kicker">{ic('users')}{t(k)}</span><h2>{t(main)}</h2><p class="sec-sub">{t(s2.paras[0])}</p></div></header>
+    {wow_gallery.gallery()}
     <div class="team-grid" data-stagger>{cards}
     </div>
   </div>
@@ -269,11 +273,22 @@ def initiative():
 </section>'''
 
 
+# Opening scene (once per browser session, home page only; see js/intro.js, css/intro.css).
+INTRO_HEAD = ("<script>(function(){try{if(!sessionStorage.getItem('yb-intro')&&!matchMedia('(prefers-reduced-motion: reduce)').matches"
+              "&&!location.hash){document.documentElement.classList.add('intro-on')}}catch(e){}})();</script>")
+INTRO = f'''<div class="intro" id="intro" aria-hidden="true"><canvas class="intro-canvas"></canvas>
+  <div class="intro-mark">{logo(84, 'intro', 'intro-logo')}</div></div>
+'''
+
+
 def build():
-    body = (hero() + s1() + teams() + model() + s9() + initiative()
+    body = (INTRO + hero() + wow_story.story() + s1() + teams() + model() + s9() + initiative()
             + cta(t(P.meta['title']), 'اسأل المساعد عن أي تفصيل في وثائق المشروع، أو ابحث في الفرق والمحاور والمؤشرات.',
                   f'<button type="button" class="btn btn-primary" data-open-chat>{ic("sparkles")}<span>اسأل مساعد ينابيع</span></button>'
                   f'<button type="button" class="btn btn-ghost" data-open-search>{ic("search")}<span>ابحث في الموقع</span></button>'))
     desc = P['s1']['vision'].paras[0]
-    page('index.html', 'مشروع «ينابيع»', body, desc, css=('css/home.css',), js=('js/springs.js', 'js/home.js'))
+    page('index.html', 'مشروع «ينابيع»', body, desc,
+         css=('css/home.css', 'css/water.css', 'css/story.css', 'css/gallery.css', 'css/intro.css'),
+         js=('js/springs.js', 'js/home.js', 'js/water.js', 'js/story.js', 'js/gallery.js', 'js/intro.js'),
+         head=INTRO_HEAD)
     return 'index.html'
