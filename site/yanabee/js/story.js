@@ -1,11 +1,14 @@
-// Home — the mission, performed.
-// A pinned, scroll-driven particle story. Scroll progress p (0..1) over the tall track drives one canvas
-// of ~1800 particles through four acts, each synchronised with one fragment of the mission paragraph:
+// Home — the mission as scrollytelling.
+// The page scrolls like a normal article. Four text steps (the mission paragraph, verbatim) sit in normal flow; a small
+// STICKY companion panel holds one canvas of ~1800 particles. The step nearest the reading line (viewport centre on
+// desktop, the middle of the visible area under the panel on phones) picks the act, and the scene morphs there in
+// ~400 ms (time based, interruptible: a new target continues from the current state):
 //   1 scattered loners (cold, dim, screen-lit)  →  2 seven team clusters (orbiting, labelled)
 //   →  3 seven racing streams with light trails  →  4 one arch (the seven streams merge), a droplet in its
 //   heart, and the word «ينابيع» drawn by particles sampled from the real heading font.
-// Everything decorative is aria-hidden; the mission text itself stays in the DOM, once, in order.
-// Without JS or with prefers-reduced-motion nothing here runs and the section is a normal block (story.css).
+// Nothing here scrolls, pins, smooths or intercepts the page: one passive scroll listener only reads positions.
+// Everything decorative is aria-hidden; the mission text stays in the DOM, once, in order, as selectable paragraphs.
+// Without JS, with prefers-reduced-motion or on very short screens nothing here runs and the section is a normal block.
 // Classic script, no dependencies, works from file://.
 (() => {
   'use strict';
@@ -14,25 +17,24 @@
   const $ = (s, r = root) => r.querySelector(s);
   const $$ = (s, r = root) => [...r.querySelectorAll(s)];
   const mqReduce = matchMedia('(prefers-reduced-motion: reduce)');
-  const mqTall = matchMedia('(min-height: 500px)');   // a pinned stage needs room (landscape phones get the static block)
-  const track = $('.story-track'), stage = $('.story-stage'), canvas = $('.story-canvas');
-  if (!track || !stage || !canvas || !canvas.getContext) return;
+  const mqTall = matchMedia('(min-height: 500px)');   // a sticky panel needs room (landscape phones get the static block)
+  const mqWide = matchMedia('(min-width: 900px)');    // two columns: steps | companion
+  const comp = $('.story-companion'), canvas = $('.story-canvas');
+  const steps = $$('.step'), dots = $$('.story-dot');
+  if (!comp || !canvas || !canvas.getContext || steps.length < 4) return;
   const html = document.documentElement;
 
   /* ============================== tuning knobs ============================== */
   const CFG = {
     count: [1800, 1300, 800],            // particles: desktop / tablet / phone
     dpr: [2, 2, 1.5],                    // canvas pixel-ratio cap per class
-    // scroll progress windows in which the scene morphs: scatter→clusters, clusters→streams, streams→arch, arch→word
-    win: [[0.20, 0.34], [0.45, 0.58], [0.69, 0.80], [0.82, 0.93]],
+    // the scene is a function of u (0..4): window j morphs scene j into scene j+1 while u runs from j to j+1
+    // (scatter→clusters, clusters→streams, streams→arch, arch→word)
+    win: [[0, 1], [1, 2], [2, 3], [3, 4]],
+    uAct: [0, 1, 2, 4],                  // u at which step 1..4 is "home" (the last one ends with the word complete)
+    dur: [350, 450],                     // ms a retarget takes (grows a little with the distance)
     stagger: 0.75,                       // how much particles lag each other inside a window (0 = all together)
-    actAt: [0, 0.23, 0.47, 0.71],        // progress at which act 1..4 becomes "current"
-    stops: [0.15, 0.41, 0.65, 0.985],    // where a rail tick scrolls to (scene fully formed, caption fully lit)
-    // caption fragments: [fade-in from, fade-in to, fade-out from, fade-out to, words light from, words light to]
-    cap: [[-1, 0, 0.185, 0.225, 0.015, 0.175], [0.235, 0.28, 0.425, 0.465, 0.26, 0.41],
-          [0.475, 0.52, 0.665, 0.705, 0.50, 0.645], [0.715, 0.76, 2, 3, 0.74, 0.89]],
     keep: 0.26,                          // share of particles that stay in the arch when the others form the word
-    smooth: 7,                           // scroll smoothing (1/s): higher = snappier
     pointerR: [150, 190, 120, 140],      // pointer influence radius per act (px, scaled)
     pointerG: 5200,                      // pointer force
   };
@@ -60,19 +62,19 @@
   const NMAX = CFG.count[0];
   let N = NMAX, nAct = NMAX;            // allocated / currently drawn (quality governor lowers nAct)
   let W = 1, H = 1, dpr = 1, sc = 1, ctx = null;
-  let dark = true, teamC = [], accentC, skyC, greyC, stops8 = [];
+  let dark = true, teamC = [], accentC, skyC, greyC, brandC, stops8 = [];
   let live = false, visible = false, running = false, raf = 0, lastT = 0, aliveT = 0, firstFrame = true;
-  let p = 0, ps = 0, pPrev = 0, energy = 0;
-  let act = -1, lastProg = -1;
+  let U = 0, UPrev = 0, tw = null, energy = 0;    // U: scene progress 0..4; tw: the running retarget {from,to,t0,dur}
+  let act = -1;                                   // active step 0..3
   const ptr = { x: 0, y: 0, on: false };
   const ripples = [];
   let fontH = 'system-ui,sans-serif';
   let wordPts = null, wordAspect = 0.34, wordMeta = null, wordBmp = null, wordBmpOff = [0, 0];
   const stat = { frames: 0, work: 0, interval: 0, slow: 0 };
 
-  // layout (css px, stage coordinates)
-  const L = { zy0: 120, zy1: 600, cx: 0, cy: 0, ringRx: 1, ringRy: 1, cR: 40, ccx: [], ccy: [], gap: 60, laneTop: 0, laneBot: 0, laneX: [],
-              A: 1, Hd: 1, baseY: 0, dropX: 0, dropY: 0, dropS: 80, wordW: 300, wordY: 0, finalY: 0 };
+  // layout (css px, companion coordinates)
+  const L = { zy0: 14, zy1: 300, cx: 0, cy: 0, ringRx: 1, ringRy: 1, cR: 40, ccx: [], ccy: [], gap: 60, laneTop: 0, laneBot: 0, laneX: [],
+              A: 1, Hd: 1, baseY: 0, dropX: 0, dropY: 0, dropS: 80, wordW: 300, wordY: 0, tags: true };
 
   /* ============================== particles ============================== */
   const F32 = () => new Float32Array(NMAX);
@@ -118,10 +120,11 @@
     dark = html.dataset.theme ? html.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
     teamC = Array.from({ length: TEAMS }, (_, i) => parseCol(cs.getPropertyValue('--t' + (i + 1))));
     accentC = parseCol(cs.getPropertyValue('--accent'));
+    brandC = parseCol(cs.getPropertyValue('--brand'));
     skyC = parseCol(cs.getPropertyValue('--sky'));
     greyC = dark ? [139, 156, 184] : [92, 108, 134];
-    const g0 = dark ? accentC : parseCol(cs.getPropertyValue('--brand'));   // light theme: start from the deeper teal for contrast
-    stops8 = Array.from({ length: 8 }, (_, s) => mix3(g0, skyC, s / 7));
+    const g0 = dark ? accentC : brandC;   // light theme: start from the deeper teal for contrast
+    stops8 = Array.from({ length: 8 }, (_, s) => mix3(g0, skyC, (s / 7) * 0.4));
     fontH = cs.getPropertyValue('--font-h').trim() || 'system-ui,sans-serif';
     spr.fill(undefined); scr[0] = scr[1] = null;
     if (wordMeta) buildWordBmp();
@@ -212,7 +215,7 @@
     } catch (e) { /* no word: goers simply stay in the arch */ }
   };
 
-  // A faint, crisp copy of the word (brand gradient + glow) that the particles settle into: it keeps the word legible
+  // A faint, crisp copy of the word (one plain colour + a soft glow) that the particles settle into: it keeps the word legible
   // and correctly shaped at any particle count. Pre-rendered once per layout / theme.
   const buildWordBmp = () => {
     wordBmp = null;
@@ -223,9 +226,7 @@
       const cv = document.createElement('canvas'); cv.width = Math.ceil(bw * dpr); cv.height = Math.ceil(bh * dpr);
       const g = cv.getContext('2d'); g.scale(dpr, dpr);
       g.font = `700 ${m.FS * k}px ${fontH}`; g.direction = 'rtl'; g.textAlign = 'center'; g.textBaseline = 'alphabetic';
-      const gr = g.createLinearGradient(pad, 0, pad + m.iw * k, 0);
-      gr.addColorStop(0, rgba(stops8[0], 1)); gr.addColorStop(1, rgba(stops8[7], 1));
-      g.fillStyle = gr; g.shadowColor = rgba(accentC, dark ? 0.9 : 0.5); g.shadowBlur = 16;
+      g.fillStyle = rgba(stops8[0], 1); g.shadowColor = rgba(accentC, dark ? 0.8 : 0.4); g.shadowBlur = 14;
       g.fillText(word, pad + m.left * k, pad + m.asc * k);
       g.shadowBlur = 0; g.fillText(word, pad + m.left * k, pad + m.asc * k);
       wordBmp = cv; wordBmpOff = [pad + m.iw * k / 2, pad + m.ih * k / 2, bw, bh];
@@ -233,56 +234,80 @@
   };
 
   /* ============================== layout ============================== */
+  // Everything is derived from the companion's own size (ResizeObserver), so the arch and the word fit at 56-62svh on
+  // desktop and 30-44vh on phones. The bottom 46px belong to the step indicator.
   const layout = () => {
-    const sr = stage.getBoundingClientRect();
-    W = Math.max(1, stage.clientWidth); H = Math.max(1, stage.clientHeight);
-    const phone = W < 700, tablet = W < 1100;
-    const cls = phone ? 2 : tablet ? 1 : 0;
+    W = Math.max(1, comp.clientWidth); H = Math.max(1, comp.clientHeight);
+    const cls = innerWidth < 600 || W < 380 ? 2 : innerWidth < 900 ? 1 : 0;
     dpr = Math.min(window.devicePixelRatio || 1, CFG.dpr[cls]);
     canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    sc = clamp(Math.min(W / 1300, H / 820), phone ? 0.72 : 0.7, 1.15);
+    sc = clamp(Math.min(W / 780, H / 640), 0.62, 1.1);
     N = Math.min(NMAX, Math.round(CFG.count[cls] * ((navigator.hardwareConcurrency || 8) <= 4 ? 0.8 : 1)));
     nAct = Math.min(nAct, N);
     if (stat.frames < 5 || nAct > N) nAct = N;
 
-    const head = $('.story-head'), mis = $('.story-mission');
-    const hr = head.getBoundingClientRect(), mr = mis.getBoundingClientRect();
-    L.zy0 = hr.bottom - sr.top + 22;
-    L.zy1 = Math.max(L.zy0 + 220, mr.top - sr.top - 20);
-    stage.style.setProperty('--zb', (mr.top - sr.top) + 'px');
+    L.zy0 = 14; L.zy1 = Math.max(L.zy0 + 120, H - 46);
     const Zh = L.zy1 - L.zy0;
     L.cx = W / 2; L.cy = (L.zy0 + L.zy1) / 2;
 
     // scatter
     for (let i = 0; i < NMAX; i++) {
-      s0x[i] = lerp(W * 0.02, W * 0.98, u1[i]);
-      s0y[i] = u2[i] < 0.88 ? lerp(L.zy0 - 26, L.zy1 + 30, (u2[i] / 0.88)) : lerp(0, H, (u2[i] - 0.88) / 0.12);
+      s0x[i] = lerp(W * 0.03, W * 0.97, u1[i]);
+      s0y[i] = u2[i] < 0.88 ? lerp(L.zy0 - 8, L.zy1 + 16, (u2[i] / 0.88)) : lerp(0, H, (u2[i] - 0.88) / 0.12);
     }
-    // clusters on a ring
-    const tagH = ($('.story-tag') || { offsetHeight: 28 }).offsetHeight || 28;
-    L.cR = clamp(Math.min(Zh * 0.145, W * (phone ? 0.11 : 0.07)), 30, 92);
-    L.ringRx = Math.min(W * (phone ? 0.34 : 0.33), 500);
-    L.ringRy = Math.max(Zh * 0.2, Zh / 2 - L.cR - tagH - 10);
-    for (let k = 0; k < TEAMS; k++) {
-      const a = -Math.PI / 2 + TAU * (k + 0.35) / TEAMS;
-      L.ccx[k] = L.cx + Math.cos(a) * L.ringRx; L.ccy[k] = L.cy + Math.sin(a) * L.ringRy;
-    }
+
+    // clusters on a ring; when the team labels fit they decide how big the ring may be, otherwise they are hidden
+    const cR0 = clamp(Math.min(Zh * 0.115, W * 0.085), 20, 62);
+    const rx0 = Math.min(W * 0.34, 400), ry0 = Math.max(Zh * 0.18, Zh / 2 - cR0 - 6);
+    const placeRing = s => {
+      L.cR = cR0 * Math.pow(s, 0.8); L.ringRx = rx0 * s; L.ringRy = ry0 * s;
+      for (let k = 0; k < TEAMS; k++) {
+        const a = -Math.PI / 2 + TAU * (k + 0.35) / TEAMS;
+        L.ccx[k] = L.cx + Math.cos(a) * L.ringRx; L.ccy[k] = L.cy + Math.sin(a) * L.ringRy;
+      }
+    };
+    const tagEls = $$('.story-tag');
+    const tryTags = () => {
+      const rects = [];
+      for (let k = 0; k < TEAMS; k++) {
+        const el = tagEls[k], w = el.offsetWidth, h = el.offsetHeight;
+        if (!w || !h) return false;
+        const a = -Math.PI / 2 + TAU * (k + 0.35) / TEAMS, sa = Math.sin(a), ca2 = Math.cos(a);
+        let x = L.ccx[k], y = L.ccy[k];
+        if (Math.abs(sa) > 0.9) y += (sa < 0 ? -1 : 1) * (L.cR + h / 2 + 6);          // the top and bottom clusters: label above / below
+        else x += (ca2 < 0 ? -1 : 1) * (L.cR + w / 2 + 8);                             // the others: label to the outside
+        const r = { x0: x - w / 2, x1: x + w / 2, y0: y - h / 2, y1: y + h / 2, x, y };
+        if (r.x0 < 12 || r.x1 > W - 12 || r.y0 < 10 || r.y1 > L.zy1 - 2) return false;
+        if (rects.some(q => r.x0 < q.x1 + 6 && r.x1 > q.x0 - 6 && r.y0 < q.y1 + 4 && r.y1 > q.y0 - 4)) return false;
+        for (let j = 0; j < TEAMS; j++) {   // not on top of a cluster either
+          const nx = clamp(L.ccx[j], r.x0, r.x1), ny = clamp(L.ccy[j], r.y0, r.y1);
+          if (Math.hypot(nx - L.ccx[j], ny - L.ccy[j]) < L.cR * 0.9) return false;
+        }
+        rects.push(r);
+      }
+      tagEls.forEach((el, k) => { el.style.setProperty('--x', rects[k].x.toFixed(1) + 'px'); el.style.setProperty('--y', rects[k].y.toFixed(1) + 'px'); });
+      return true;
+    };
+    comp.classList.remove('no-tags');
+    let tagsOk = false;
+    if (W >= 360) for (let s = 1; s >= 0.5 && !tagsOk; s -= 0.03) { placeRing(s); tagsOk = tryTags(); }
+    if (!tagsOk) { placeRing(1); comp.classList.add('no-tags'); }
+    L.tags = tagsOk;
+
     // lanes
-    L.gap = clamp(W * 0.092, 44, 132);
+    L.gap = clamp(W * 0.105, 34, 92);
     for (let k = 0; k < TEAMS; k++) L.laneX[k] = L.cx + (3 - k) * L.gap; // team 1 on the right (RTL reading order)
-    L.laneTop = L.zy0 - 12; L.laneBot = L.zy1 + 34;
-    // arch + droplet + word
-    L.A = clamp(Math.min(W * (phone ? 0.46 : 0.42), Zh * 1.08), 130, 620);
-    L.Hd = Math.min(Zh * 0.9, L.A * (phone ? 2.05 : 1.0));
-    L.baseY = L.zy1 - 6;
-    // everything under the arch is placed from the arch's own height, so a short viewport shrinks droplet and word with it
+    L.laneTop = L.zy0 - 8; L.laneBot = L.zy1 + 18;
+
+    // arch + droplet + word: everything under the arch is placed from the arch's own height
+    L.baseY = L.zy1 - 2;
+    L.Hd = Zh * 0.93;
+    L.A = clamp(Math.min(W * 0.37, L.Hd * 0.8), 80, 420);
     const apexY = L.baseY - L.Hd;
-    L.dropX = L.cx; L.dropY = apexY + L.Hd * 0.27; L.dropS = clamp(Math.min(L.Hd * 0.16, W * 0.062), 38, 92);
-    L.wordW = Math.min(phone ? W * 0.68 : Math.min(W * 0.36, 540), (L.Hd * 0.46) / wordAspect, L.A * 1.45);
-    const wordH = L.wordW * wordAspect;
-    L.wordY = apexY + L.Hd * 0.64;
-    L.finalY = L.wordY + wordH / 2 + (phone ? 12 : 14);
+    L.dropX = L.cx; L.dropY = apexY + L.Hd * 0.27; L.dropS = clamp(Math.min(L.Hd * 0.15, W * 0.07), 30, 84);
+    L.wordW = Math.min(L.A * 1.5, W * 0.6, (L.Hd * 0.45) / wordAspect);
+    L.wordY = apexY + L.Hd * 0.66;
     let gi = 0;
     for (let i = 0; i < NMAX; i++) {
       if (keeper[i] || !wordPts) { wx[i] = L.cx; wy[i] = L.wordY; continue; }
@@ -290,26 +315,8 @@
       wx[i] = L.cx + q[0] * L.wordW; wy[i] = L.wordY + q[1] * L.wordW;
     }
 
-    // DOM overlays in canvas pixels
-    const tags = $$('.story-tag');
-    const ringCx = L.cx, ringCy = L.cy;
-    tags.forEach((el, k) => {
-      const w = el.offsetWidth, h = el.offsetHeight, dx = L.ccx[k] - ringCx, dy = L.ccy[k] - ringCy, d = Math.hypot(dx, dy) || 1;
-      let x, y;
-      if (phone) { // above / below the cluster so labels stay inside a narrow stage
-        x = L.ccx[k]; y = L.ccy[k] + (dy < 0 ? -1 : 1) * (L.cR + h * 0.7 + 4);
-      } else { // outward from the ring, leaning to the side on the flanks
-        x = L.ccx[k] + (dx / d) * (L.cR + 12) + Math.sign(dx) * Math.max(0, Math.abs(dx / d) - 0.35) * w * 0.55;
-        y = L.ccy[k] + (dy / d) * (L.cR + 8) + (dy / d) * h * 0.5;
-      }
-      const padL = phone ? 36 : 116;                       // keep clear of the progress rail on the inline-end (left) edge
-      x = clamp(x, w / 2 + padL, W - w / 2 - 12); y = clamp(y, L.zy0 + h / 2, L.zy1 - h / 2 - 2);
-      el.style.setProperty('--x', x.toFixed(1) + 'px'); el.style.setProperty('--y', y.toFixed(1) + 'px');
-    });
     const core = $('.story-core');
     core.style.setProperty('--cs', L.dropS + 'px'); core.style.setProperty('--x', L.dropX.toFixed(1) + 'px'); core.style.setProperty('--y', L.dropY.toFixed(1) + 'px');
-    const fin = $('.story-final');
-    fin.style.setProperty('--x', L.cx.toFixed(1) + 'px'); fin.style.setProperty('--y', L.finalY.toFixed(1) + 'px');
     LU.fill(1); LS.fill(1);
     buildWordBmp();
   };
@@ -349,13 +356,13 @@
     const w0 = Wn[0], w1 = Wn[1], w2 = Wn[2], w3 = Wn[3];
     // region of the story: 0 hold0, 1 T01, 2 hold1, 3 T12, 4 hold2, 5 T23, 6 hold3, 7 T34, 8 hold4
     let region;
-    if (ps < w0[0]) region = 0; else if (ps <= w0[1]) region = 1; else if (ps < w1[0]) region = 2; else if (ps <= w1[1]) region = 3;
-    else if (ps < w2[0]) region = 4; else if (ps <= w2[1]) region = 5; else if (ps < w3[0]) region = 6; else if (ps <= w3[1]) region = 7; else region = 8;
+    if (U < w0[0]) region = 0; else if (U <= w0[1]) region = 1; else if (U < w1[0]) region = 2; else if (U <= w1[1]) region = 3;
+    else if (U < w2[0]) region = 4; else if (U <= w2[1]) region = 5; else if (U < w3[0]) region = 6; else if (U <= w3[1]) region = 7; else region = 8;
     for (let k = 0; k < TEAMS; k++) lp[k] = laneV[k] * t + laneA[k] * Math.sin(0.35 * t + laneP[k]);
     // unstaggered progress of each window, for atmosphere / labels / glows
-    const gw = j => ez(clamp((ps - Wn[j][0]) / (Wn[j][1] - Wn[j][0]), 0, 1));
+    const gw = j => ez(clamp((U - Wn[j][0]) / (Wn[j][1] - Wn[j][0]), 0, 1));
     G.g0 = gw(0); G.g1 = gw(1); G.g2 = gw(2); G.g3 = gw(3);
-    const pa = ps < 0.27 ? 0 : ps < 0.47 ? 1 : ps < 0.71 ? 2 : 3;
+    const pa = U < 0.5 ? 0 : U < 1.5 ? 1 : U < 2.5 ? 2 : 3;
     mode = pa === 1 ? 0.55 : -1; rp = CFG.pointerR[pa] * sc;
     const pOn = ptr.on && !mqReduce.matches, R2 = rp * rp;
     const sp0 = w0[1] - w0[0], sp1 = w1[1] - w1[0], sp2 = w2[1] - w2[0], sp3 = w3[1] - w3[0];
@@ -368,22 +375,22 @@
       let e0 = 1, e1 = 0, e2 = 0, e3 = 0, e = 0, tx = 0, ty = 0, fx0 = 0, fy0 = 0, fx1 = 0, fy1 = 0;
       wrapped = false;
       if (region <= 1) {
-        e0 = region === 0 ? 0 : ez(clamp((ps - w0[0]) / sp0 * (1 + stg) - sA * stg, 0, 1));
+        e0 = region === 0 ? 0 : ez(clamp((U - w0[0]) / sp0 * (1 + stg) - sA * stg, 0, 1));
         k0(i, t); fx0 = ox; fy0 = oy;
         if (e0 > 0) { k1(i, t); fx1 = ox; fy1 = oy; e = e0; }
       } else if (region === 2) { k1(i, t); fx0 = ox; fy0 = oy; }
       else if (region === 3) {
-        e1 = ez(clamp((ps - w1[0]) / sp1 * (1 + stg) - ((sA + 0.31) % 1) * stg, 0, 1));
+        e1 = ez(clamp((U - w1[0]) / sp1 * (1 + stg) - ((sA + 0.31) % 1) * stg, 0, 1));
         k1(i, t); fx0 = ox; fy0 = oy; k2(i, t); fx1 = ox; fy1 = oy; e = e1;
       } else if (region === 4) { e1 = 1; k2(i, t); fx0 = ox; fy0 = oy; }
       else if (region === 5) {
-        e1 = 1; e2 = ez(clamp((ps - w2[0]) / sp2 * (1 + stg) - ((sA + 0.62) % 1) * stg, 0, 1));
+        e1 = 1; e2 = ez(clamp((U - w2[0]) / sp2 * (1 + stg) - ((sA + 0.62) % 1) * stg, 0, 1));
         k2(i, t); fx0 = ox; fy0 = oy; domePos(i, t); fx1 = ox; fy1 = oy; e = e2;
       } else {
         e1 = 1; e2 = 1;
         if (keep) { domePos(i, t); fx0 = ox; fy0 = oy; }
         else {
-          e3 = region === 8 ? 1 : ez(clamp((ps - w3[0]) / sp3 * (1 + stg) - ((sA + 0.17) % 1) * stg, 0, 1));
+          e3 = region === 8 ? 1 : ez(clamp((U - w3[0]) / sp3 * (1 + stg) - ((sA + 0.17) % 1) * stg, 0, 1));
           const wX = wx[i] + Math.sin(t * 1.3 + wph[i]) * jit, wY = wy[i] + Math.cos(t * 1.1 + wph[i]) * jit;
           if (e3 >= 1) { fx0 = wX; fy0 = wY; }
           else if (e3 <= 0) { domePos(i, t); fx0 = ox; fy0 = oy; }
@@ -508,7 +515,7 @@
       ctx.drawImage(wordBmp, L.cx - wordBmpOff[0], L.wordY - wordBmpOff[1], wordBmpOff[2], wordBmpOff[3]);
       ctx.globalAlpha = 1;
     }
-    // water rings (arch complete, word complete, pointer presses)
+    // water rings (pointer presses)
     for (let i = ripples.length - 1; i >= 0; i--) {
       const rp2 = ripples[i], q = (now - rp2.t) / rp2.d;
       if (q >= 1) { ripples.splice(i, 1); continue; }
@@ -521,7 +528,7 @@
     // light trails: one stroked path per team, built from the particles' velocity (racing streams + scroll energy)
     const lanePart = G.g1 * (1 - G.g2);
     let swirlPart = 0;
-    for (let j = 0; j < 4; j++) { const q = (ps - Wn[j][0]) / (Wn[j][1] - Wn[j][0]); if (q > 0 && q < 1) swirlPart = Math.max(swirlPart, Math.sin(Math.PI * q)); }
+    for (let j = 0; j < 4; j++) { const q = (U - Wn[j][0]) / (Wn[j][1] - Wn[j][0]); if (q > 0 && q < 1) swirlPart = Math.max(swirlPart, Math.sin(Math.PI * q)); }
     const tAmt = clamp(lanePart * 0.75 + swirlPart * 0.3 + energy * 0.25, 0, 1);
     if (tAmt > 0.04) {
       const maxStreak = (10 + 30 * lanePart) * sc, paths = [];
@@ -559,82 +566,83 @@
     return getSprite(team, jq, fq, stop);
   };
 
-  /* ============================== captions, labels, rail ============================== */
-  const frags = $$('.frag').map(el => ({ el, words: $$('.w', el), lw: [], fo: -1 }));
+  /* ============================== labels, droplet, atmosphere ============================== */
   const tagEls = $$('.story-tag'), tagO = tagEls.map(() => -1);
-  const core = $('.story-core'), fin = $('.story-final'), hint = $('.story-hint'), rail = $('.story-rail');
-  const ticks = $$('.story-tick'), bgCold = $('.sb-cold'), bgTeam = $('.sb-team'), bgBrand = $('.sb-brand');
-  let coreO = -1, coreS = -1, finO = -1, hintO = -1, railP = -1, bgC = -1, bgT = -1, bgB = -1;
+  const core = $('.story-core'), bgCold = $('.sb-cold'), bgTeam = $('.sb-team'), bgBrand = $('.sb-brand');
+  let coreO = -1, coreS = -1, bgC = -1, bgT = -1, bgB = -1;
   const setVar = (el, k, v) => el.style.setProperty(k, v);
 
-  const railFrac = v => {
-    const S = CFG.stops;
-    if (v <= S[0]) return 0;
-    for (let i = 1; i < S.length; i++) if (v <= S[i]) return (i - 1 + (v - S[i - 1]) / (S[i] - S[i - 1])) / (S.length - 1);
-    return 1;
-  };
   const updateUI = () => {
-    // caption fragments + progressive word light
-    frags.forEach((f, a) => {
-      const c = CFG.cap[a];
-      const fo = sstep(c[0], c[1], ps) * (1 - sstep(c[2], c[3], ps));
-      if (Math.abs(fo - f.fo) > 0.008 || (fo === 0) !== (f.fo === 0)) { f.fo = fo; setVar(f.el, '--fo', fo.toFixed(3)); }
-      if (fo > 0) {
-        const q = clamp((ps - c[4]) / (c[5] - c[4]), 0, 1), n = f.words.length;
-        for (let j = 0; j < n; j++) {
-          const l = sstep(0, 1, clamp(q * (n + 1.4) - j, 0, 1));
-          if (Math.abs(l - (f.lw[j] === undefined ? -1 : f.lw[j])) > 0.02) { f.lw[j] = l; setVar(f.words[j], '--l', l.toFixed(2)); }
-        }
-      }
-    });
     // team labels belong to act 2
     const gT = sstep(0.55, 0.98, G.g0) * (1 - sstep(0, 0.3, G.g1));
     tagEls.forEach((el, k) => {
       const o = clamp(gT * 1.4 - k * 0.05, 0, 1);
       if (Math.abs(o - tagO[k]) > 0.02) { tagO[k] = o; setVar(el, '--o', o.toFixed(2)); }
     });
-    // droplet in the heart of the arch, closing line under the word
+    // droplet in the heart of the arch
     const cO = sstep(0.1, 0.7, G.g2), cS = 0.35 + 0.65 * ez(sstep(0.1, 1, G.g2)) + 0.06 * G.g3;
     if (Math.abs(cO - coreO) > 0.01 || Math.abs(cS - coreS) > 0.01) { coreO = cO; coreS = cS; setVar(core, '--o', cO.toFixed(2)); setVar(core, '--s', cS.toFixed(3)); }
-    const fO = sstep(0.55, 1, G.g3);
-    if (Math.abs(fO - finO) > 0.01) { finO = fO; setVar(fin, '--o', fO.toFixed(2)); }
-    const hO = 1 - sstep(0.004, 0.035, p);
-    if (Math.abs(hO - hintO) > 0.02) { hintO = hO; setVar(hint, '--ho', hO.toFixed(2)); }
     // atmosphere: cold → team colours → brand glow
-    const bc = (1 - sstep(0.1, 0.3, ps)) * 0.95, bt = sstep(0.18, 0.38, ps) * (1 - sstep(0.6, 0.8, ps)) * 0.2, bb = sstep(0.62, 0.95, ps);
+    const bc = (1 - sstep(0, 0.8, U)) * 0.95, bt = sstep(0.2, 1, U) * (1 - sstep(1.3, 2.3, U)) * 0.2, bb = sstep(2, 3, U);
     if (Math.abs(bc - bgC) > 0.01) { bgC = bc; bgCold.style.opacity = bc.toFixed(2); }
     if (Math.abs(bt - bgT) > 0.01) { bgT = bt; bgTeam.style.opacity = bt.toFixed(2); }
     if (Math.abs(bb - bgB) > 0.01) { bgB = bb; bgBrand.style.opacity = bb.toFixed(2); }
-    // rail
-    const rf = railFrac(ps);
-    if (Math.abs(rf - railP) > 0.002) { railP = rf; setVar(rail, '--rp', rf.toFixed(3)); }
-    const A = CFG.actAt;
-    const na = ps >= A[3] ? 3 : ps >= A[2] ? 2 : ps >= A[1] ? 1 : 0;
-    if (na !== act) {
-      act = na; root.dataset.act = String(na);
-      ticks.forEach((b, i) => {
-        b.classList.toggle('is-on', i === na); b.classList.toggle('is-past', i < na);
-        if (i === na) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current');
-      });
-    }
-    if (Math.abs(p - lastProg) > 0.003) { lastProg = p; root.dataset.progress = p.toFixed(3); }
   };
 
-  // one-shot rings when the arch and the word complete
-  let archDone = false, wordDone = false;
-  const milestones = now => {
-    if (G.g2 > 0.98 && !archDone) { archDone = true; }
-    if (G.g2 < 0.5) archDone = false;
-    if (G.g3 > 0.98 && !wordDone) { wordDone = true; }
-    if (G.g3 < 0.5) wordDone = false;
+  /* ============================== active step ============================== */
+  // The reading line: the viewport centre on desktop; on phones the middle of what the sticky panel leaves visible
+  // (between its bottom edge and the tab bar / viewport bottom).
+  const readingLine = () => {
+    const vh = innerHeight;
+    if (mqWide.matches) return vh / 2;
+    const cb = comp.getBoundingClientRect().bottom, tb = document.querySelector('.tabbar');
+    let bottom = vh;
+    if (tb) { const r = tb.getBoundingClientRect(); if (r.height > 0 && r.top > cb) bottom = r.top; }
+    return (cb + bottom) / 2;
   };
+  // A new target continues from wherever the scene is now (never restarts); jumps while paused / on the first frame.
+  const retarget = a => {
+    const to = CFG.uAct[a];
+    if (!running || firstFrame) { U = to; tw = null; return; }
+    if (Math.abs(to - U) < 1e-4) { tw = null; return; }
+    tw = { from: U, to, t0: performance.now(), dur: Math.min(CFG.dur[1], CFG.dur[0] + 50 * Math.abs(to - U)) };
+  };
+  const setActive = i => {
+    if (i === act) return;
+    act = i; root.dataset.act = String(i);
+    steps.forEach((s, j) => s.classList.toggle('is-active', j === i));
+    dots.forEach((b, j) => { if (j === i) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current'); });
+    retarget(i);
+  };
+  let rafA = 0;
+  const pick = () => {
+    rafA = 0;
+    if (!live) return;
+    const line = readingLine();
+    let best = 0, bd = Infinity;
+    for (let i = 0; i < steps.length; i++) {
+      const r = steps[i].getBoundingClientRect(), d = Math.abs((r.top + r.bottom) / 2 - line);
+      if (d < bd) { bd = d; best = i; }
+    }
+    setActive(best);
+  };
+  const queuePick = () => { if (live && visible && !rafA) rafA = requestAnimationFrame(pick); };
+  addEventListener('scroll', queuePick, { passive: true });
+
+  // indicator buttons: the browser's own smooth scroll puts the step on the reading line. scrollIntoView centres the step
+  // inside the scroll-padding-reduced viewport, so the difference to the reading line goes into an asymmetric scroll-margin.
+  const goStep = i => {
+    const el = steps[i];
+    if (!el) return;
+    const cs = getComputedStyle(html), pt = parseFloat(cs.scrollPaddingTop) || 0, pb = parseFloat(cs.scrollPaddingBottom) || 0;
+    const d = 2 * ((pt + (innerHeight - pb)) / 2 - readingLine());
+    el.style.scrollMarginBlock = d > 0 ? '0 ' + d.toFixed(1) + 'px' : (-d).toFixed(1) + 'px 0';
+    el.scrollIntoView({ block: 'center', behavior: mqReduce.matches ? 'auto' : 'smooth' });
+  };
+  dots.forEach((b, i) => b.addEventListener('click', () => goStep(i)));
 
   /* ============================== loop ============================== */
-  const measure = () => {
-    const r = track.getBoundingClientRect();
-    const range = Math.max(1, r.height - stage.clientHeight);
-    return clamp(-r.top / range, 0, 1);
-  };
+  const easeOut = x => 1 - Math.pow(1 - x, 2.4);
   const frame = now => {
     raf = 0;
     if (!running) return;
@@ -643,15 +651,15 @@
     if (lastT) stat.interval = lerp(stat.interval || dt * 1000, dt * 1000, 0.08);
     lastT = now;
     aliveT += dt;
-    p = measure();
-    if (firstFrame) { ps = p; pPrev = p; }
-    const k = 1 - Math.exp(-dt * CFG.smooth);
-    ps += (p - ps) * k;
-    if (Math.abs(p - ps) < 0.00005) ps = p;
-    energy = lerp(energy, clamp(Math.abs(ps - pPrev) / dt * 2.2, 0, 1), 0.12); pPrev = ps;
+    if (tw) {   // time-based, ease-out, interruptible
+      const q = clamp((now - tw.t0) / tw.dur, 0, 1);
+      U = q >= 1 ? tw.to : lerp(tw.from, tw.to, easeOut(q));
+      if (q >= 1) tw = null;
+    }
+    if (firstFrame) UPrev = U;
+    energy = lerp(energy, clamp(Math.abs(U - UPrev) / dt * 0.2, 0, 1), 0.12); UPrev = U;
     ig = sstep(0, 0.9, aliveT);
     step(dt, now / 1000);
-    milestones(now);
     draw(now / 1000, now);
     updateUI();
     // quality governor: shed particles if the browser can't keep up
@@ -661,24 +669,23 @@
   };
   const start = () => {
     if (running || !live || !visible || document.hidden) return;
+    pick();                                   // decide the step first, so the scene opens on the right act (no glide)
     running = true; lastT = 0; aliveT = firstFrame ? 0 : 0.5; firstFrame = true;
+    if (tw) { U = tw.to; tw = null; }
+    U = CFG.uAct[act < 0 ? 0 : act];
     raf = requestAnimationFrame(frame);
   };
   const stop = () => { running = false; if (raf) cancelAnimationFrame(raf); raf = 0; };
 
   /* ============================== wiring ============================== */
-  const scrollToProgress = v => {
-    const r = track.getBoundingClientRect();
-    const range = Math.max(1, r.height - stage.clientHeight);
-    window.scrollTo({ top: window.scrollY + r.top + v * range, behavior: mqReduce.matches ? 'auto' : 'smooth' });
-  };
-  ticks.forEach((b, i) => b.addEventListener('click', () => scrollToProgress(CFG.stops[i])));
-
-  const local = e => { const r = stage.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
-  stage.addEventListener('pointermove', e => { if (!live) return; const [x, y] = local(e); ptr.x = x; ptr.y = y; ptr.on = true; });
-  stage.addEventListener('pointerleave', () => { ptr.on = false; });
-  stage.addEventListener('pointerdown', e => {
-    if (!live || e.target.closest('.story-rail')) return;
+  // pointer: coordinates relative to the canvas; a press sends a shock wave through the particles
+  const local = e => { const r = canvas.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+  comp.addEventListener('pointermove', e => { if (!live) return; const [x, y] = local(e); ptr.x = x; ptr.y = y; ptr.on = true; });
+  comp.addEventListener('pointerleave', () => { ptr.on = false; });
+  comp.addEventListener('pointercancel', () => { ptr.on = false; });
+  comp.addEventListener('pointerup', e => { if (e.pointerType === 'touch') ptr.on = false; });
+  comp.addEventListener('pointerdown', e => {
+    if (!live || e.target.closest('.story-dots')) return;
     const [x, y] = local(e); ptr.x = x; ptr.y = y;
     const now = performance.now(), R = 230 * sc;
     ripples.push({ x, y, t: now, d: 1300, R: 120 * sc, sq: 0.5 });
@@ -689,13 +696,13 @@
   });
 
   let resizeQ = 0;
-  const relayout = () => { resizeQ = 0; if (live) layout(); };
+  const relayout = () => { resizeQ = 0; if (live) { layout(); pick(); } };
   const queueLayout = () => { if (!resizeQ) resizeQ = requestAnimationFrame(relayout); };
-  if ('ResizeObserver' in window) new ResizeObserver(queueLayout).observe(stage); else addEventListener('resize', queueLayout);
+  if ('ResizeObserver' in window) new ResizeObserver(queueLayout).observe(comp); else addEventListener('resize', queueLayout);
   addEventListener('themechange', readColors);
   document.addEventListener('visibilitychange', () => (document.hidden ? stop() : start()));
   if ('IntersectionObserver' in window) {
-    new IntersectionObserver(es => { visible = es[es.length - 1].isIntersecting; visible ? start() : stop(); }, { rootMargin: '120px 0px', threshold: 0 }).observe(track);
+    new IntersectionObserver(es => { visible = es[es.length - 1].isIntersecting; visible ? start() : stop(); }, { rootMargin: '120px 0px', threshold: 0 }).observe(comp);
   } else visible = true;
 
   const goLive = () => {
@@ -719,15 +726,20 @@
       return true;
     } catch (err) { live = false; root.classList.remove('is-live'); return false; }
   };
-  const goStatic = () => { stop(); live = false; root.classList.remove('is-live'); };
+  const goStatic = () => { stop(); live = false; act = -1; root.classList.remove('is-live'); };
   const sync = () => { if (mqReduce.matches || !mqTall.matches) goStatic(); else goLive(); };
-  [mqReduce, mqTall].forEach(m => (m.addEventListener ? m.addEventListener('change', sync) : m.addListener && m.addListener(sync)));
+  [mqReduce, mqTall, mqWide].forEach(m => (m.addEventListener ? m.addEventListener('change', m === mqWide ? queueLayout : sync) : m.addListener && m.addListener(m === mqWide ? queueLayout : sync)));
   sync();
 
   // read-only handle for tests / profiling
   window.YanabeeStory = {
     get live() { return live; },
-    get progress() { return ps; },
+    get act() { return act; },
+    get u() { return U; },
+    get progress() { return U / 4; },
+    get settled() { return !tw; },
+    readingLine,
+    geometry: () => ({ W, H, A: L.A, Hd: L.Hd, baseY: L.baseY, cx: L.cx, wordW: L.wordW, wordH: L.wordW * wordAspect, wordY: L.wordY, dropY: L.dropY, dropS: L.dropS, tags: L.tags, zy1: L.zy1 }),
     stats: () => ({ particles: nAct, allocated: N, dpr, word: wordPts ? wordPts.length : 0, frames: stat.frames, workMs: +stat.work.toFixed(2), frameMs: +(stat.interval || 0).toFixed(2) }),
   };
 })();

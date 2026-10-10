@@ -1,28 +1,27 @@
-"""Home: cinematic pinned horizontal gallery of the seven teams (+ inclusion).
+"""Home: app-style swipe carousel of the seven teams (+ inclusion) with a detail sheet.
 
-Markup contract (css/gallery.css, js/gallery.js):
+Markup contract (css/gallery.css, js/gallery.js). Nothing is pinned, nothing is staged:
 
-  .tgal[data-gallery]                      root; hidden below 1000px (the plain .team-grid shows there)
-    .tgal-pin                              becomes the tall scroll track in live mode (JS adds .is-live)
-      .tgal-stage                          sticky full-viewport stage in live mode
-        .tgal-wash > i*8                   team-colour washes, cross-faded by scroll progress
-        .tgal-bubbles > i*14               spring bubbles (CSS animation only)
-        a.tgal-skip                        keyboard skip link
-        .tgal-viewport > ol.tgal-track     native horizontal scroller by default (scroll-snap), moved by transform when live
-          li.tg-panel*8                    one per team (TEAM_IDS order) + the inclusion card (section s3)
-        nav.tgal-hud                       counter + 8-segment rail + hint (JS-only controls)
-    span#tgal-end                          skip-link target
+  div.tgal[data-gallery]  role=region aria-roledescription=carousel     root (also carries .rv: the shared fade-up)
+    ul.tgal-scroller[data-scroller]                native scroll-snap row along the inline axis (RTL), peeking neighbours
+      li.tg-item#g-t1 … #g-t7, #g-s3               8 cards: the seven teams + inclusion (deep-link ids)
+        a.tg-card[href=teams.html#tN]              the whole card is the tap target; JS opens the detail sheet instead
+          div.tg-media > div.tg-photo (arched photo) + span.tg-ic (icon badge)
+          div.tg-body > h3.tg-title, .tg-sub, .tg-brief, .tg-go
+        div.tg-detail[hidden]                      verbatim detail used by the sheet (and printed): work text, three impact
+                                                   lines, the details link. Never fetched, never invented.
+    div.tgal-bar[data-bar]                         prev / 8 segment buttons / next (JS-only controls, shown with .is-ready)
+  template[data-sheet-tpl]                         skeleton of the detail sheet (js/gallery.js clones it into <body>)
 
-Every content word comes from content/yanabee/platform.txt through t(); only the labels of the
-controls (التفاصيل, the rail and tab-list names, the skip link, the scroll hint) are UI chrome.
+Every content word comes from content/yanabee/platform.txt through t(); only the labels of the controls
+(السابق, التالي, إغلاق, التفاصيل, the tab-list names) are UI chrome.
 """
-import re
-
 import art
-from core import PLATFORM as P, TEAMS, TEAM_IDS, ic, plain, short, split_kicker, strip_colon, t, paren
+from core import PLATFORM as P, TEAMS, TEAM_IDS, ic, plain, short, split_kicker, strip_colon, svg, t, paren
 
-_LATIN = re.compile(r'[A-Za-z"]')
 IMPACT_ICON = ('user', 'home', 'users')  # الفرد / الأسرة / المجتمع
+CHEV_NEXT = svg('<path d="m15 18-6-6 6-6"/>')   # points left: "next" in RTL
+CHEV_PREV = svg('<path d="m9 18 6-6-6-6"/>')    # points right: "previous" in RTL
 
 
 def _item(node, label):
@@ -32,38 +31,25 @@ def _item(node, label):
     raise KeyError(label)
 
 
-def _title_words(text):
-    """Title with every word in its own inline-block span so the words can rise one after another
-    (shaping is per word, so Arabic letters still join). Falls back to plain t() for Latin/quotes."""
-    if _LATIN.search(text):
-        return t(text)
-    return ' '.join(f'<span class="tg-w" style="--k:{k}">{t(w)}</span>' for k, w in enumerate(text.split()))
-
-
-def _tabs(pid, label, rows):
-    """rows: [(tab label, body, icon)] -> a [data-tabs] group (main.js wires it). Without JS every body is
-    shown under its own label (CSS hides the tab list and the inline labels when JS runs)."""
-    tabs = ''.join(
-        f'<button type="button" role="tab" id="{pid}-tab{k}" aria-controls="{pid}-p{k}" aria-selected="{"true" if k == 0 else "false"}" '
-        f'tabindex="{0 if k == 0 else -1}">{ic(icn)}<span>{t(lab)}</span></button>'
-        for k, (lab, _, icn) in enumerate(rows))
-    panels = ''.join(
-        f'<div class="tg-tp" role="tabpanel" id="{pid}-p{k}" aria-labelledby="{pid}-tab{k}">'
-        f'<b class="tg-tl">{t(lab)}:</b> <span>{t(body)}</span></div>'
-        for k, (lab, body, _) in enumerate(rows))
-    return (f'<div class="tg-imp tg-l" data-tabs style="--s:4"><div class="tg-tabs" role="tablist" aria-label="{plain(label)}">{tabs}</div>'
-            f'{panels}</div>')
-
-
-def _media(photo, icon, pos=None):
-    return (f'<div class="tg-media" aria-hidden="true"><span class="tg-arch2"></span><span class="tg-shadow"></span>'
-            f'<div class="tg-photo"><div class="tg-mask">{art.photo(photo, pos=pos)}<i class="tg-tint"></i></div></div>'
+def _media(photo, icon):
+    return (f'<div class="tg-media" aria-hidden="true"><div class="tg-photo">{art.photo(photo)}<i class="tg-tint"></i></div>'
             f'<span class="tg-ic">{ic(icon)}</span></div>')
 
 
-def _more(href, who):
-    return (f'<a class="tg-more tg-l" href="{href}" style="--s:5"><span>التفاصيل<span class="sr-only"> — {plain(who)}</span></span>'
-            f'{ic("arrow-left")}</a>')
+def _detail(href, who, tabs_label, work, rows):
+    """Hidden verbatim detail of one card. rows: [(label, body, icon)] -> the sheet's three tabs."""
+    work_html = f'<p class="tg-d-work"><b>{t(work.label)}:</b> {t(work.body)}</p>' if work else ''
+    imp = ''.join(
+        f'<p class="tg-d-i"><span class="tg-d-ic" aria-hidden="true">{ic(icn)}</span><b class="tg-d-l">{t(lab)}:</b> <span class="tg-d-b">{t(body)}</span></p>'
+        for lab, body, icn in rows)
+    return (f'<div class="tg-detail" hidden data-tabs-label="{plain(tabs_label)}">{work_html}'
+            f'<div class="tg-d-imp">{imp}</div>'
+            f'<a class="tg-d-more" href="{href}"><span>التفاصيل</span><span class="sr-only"> — {plain(who)}</span></a></div>')
+
+
+def _dot(i, tc, who):
+    return (f'<button type="button" class="tg-dot" style="--tc:{tc}" data-go="{i}" aria-label="{plain(who)}">'
+            f'<i></i></button>')
 
 
 def gallery():
@@ -71,73 +57,81 @@ def gallery():
     k2, main2 = split_kicker(s2.title)
     name = main2.split(' وأثرها')[0]  # 'الفرق السبع التخصصية'
     total = len(TEAM_IDS) + 1
-    panels, segs, wash, names = '', '', '', []
+    items, dots = '', ''
 
-    for i, tid in enumerate(TEAM_IDS, 1):
+    for i, tid in enumerate(TEAM_IDS):
         node = s2[tid]
         work = _item(node, 'طبيعة العمل')
         sub = paren(node.title)
         who = short(node.title)
-        names.append(who)
         rows = [(strip_colon(it.label), it.body, icn)
                 for it, icn in zip((_item(node, 'الأثر على الفرد'), _item(node, 'الأثر على الأسرة'), _item(node, 'الأثر على المجتمع')),
                                    IMPACT_ICON)]
-        panels += f'''
-        <li class="tg-panel" id="g-{tid}" style="--tc:var(--{tid})" data-i="{i - 1}">
-          <span class="tg-num" aria-hidden="true">{i:02d}</span>
-          <div class="tg-copy">
-            <h3 class="tg-title" style="--s:0">{_title_words(who)}</h3>
-            {f'<p class="tg-sub tg-l" style="--s:2">{t(sub)}</p>' if sub else ''}
-            <p class="tg-work tg-l" style="--s:3"><b>{t(work.label)}:</b> {t(work.body)}</p>
-            {_tabs(f'g-{tid}', 'أبعاد الأثر', rows)}
-            {_more(f'teams.html#{tid}', who)}
-          </div>
+        tc = f'var(--{tid})'
+        items += f'''
+      <li class="tg-item" id="g-{tid}" style="--tc:{tc}" data-i="{i}">
+        <a class="tg-card" href="teams.html#{tid}" draggable="false" aria-labelledby="g-{tid}-h" aria-describedby="g-{tid}-b">
           {_media('team-' + tid, TEAMS[tid])}
-        </li>'''
-        segs += (f'<button type="button" class="tg-seg" style="--tc:var(--{tid})" data-go="{i - 1}" title="{plain(who)}" aria-label="{i}. {plain(who)}">'
-                 f'<i><b></b></i></button>')
-        wash += f'<i style="--tc:var(--{tid})"></i>'
+          <div class="tg-body">
+            <h3 class="tg-title" id="g-{tid}-h">{t(who)}</h3>
+            {f'<p class="tg-sub">{t(sub)}</p>' if sub else ''}
+            <p class="tg-brief" id="g-{tid}-b">{t(work.body)}</p>
+            <span class="tg-go" aria-hidden="true"><span>التفاصيل</span>{ic('arrow-left')}</span>
+          </div>
+        </a>
+        {_detail(f'teams.html#{tid}', who, 'أبعاد الأثر', work, rows)}
+      </li>'''
+        dots += _dot(i, tc, who)
 
     k3, main3 = split_kicker(s3.title)
-    names.append(main3)
     rows3 = [(strip_colon(it.label), it.body, icn) for it, icn in zip(s3.items, ('accessibility', 'map', 'heart'))]
-    panels += f'''
-        <li class="tg-panel tg-incl" id="g-s3" style="--tc:var(--brand)" data-i="{total - 1}">
-          <span class="tg-num" aria-hidden="true">{total:02d}</span>
-          <div class="tg-copy">
-            <span class="tg-kick tg-l" style="--s:0">{t(k3)}</span>
-            <h3 class="tg-title" style="--s:0">{_title_words(main3)}</h3>
-            {_tabs('g-s3', 'محاور الشمول', rows3)}
-            {_more('teams.html#s3', main3)}
-          </div>
+    chips = ''.join(f'<span class="tg-chip">{t(strip_colon(it.label))}</span>' for it in s3.items)
+    items += f'''
+      <li class="tg-item tg-incl" id="g-s3" style="--tc:var(--brand)" data-i="{total - 1}">
+        <a class="tg-card" href="teams.html#s3" draggable="false" aria-labelledby="g-s3-h" aria-describedby="g-s3-b">
           {_media('inclusion', 'accessibility')}
-        </li>'''
-    segs += (f'<button type="button" class="tg-seg" style="--tc:var(--brand)" data-go="{total - 1}" title="{plain(main3)}" aria-label="{total}. {plain(main3)}">'
-             f'<i><b></b></i></button>')
-    wash += '<i style="--tc:var(--brand)"></i>'
-
-    roll = ''.join(f'<i>{k:02d}</i>' for k in range(1, total + 1))
-    # spring bubbles rising behind everything (pure CSS animation; deterministic spread, no randomness)
-    bubbles = ''.join(
-        f'<i style="--x:{(k * 37 + 11) % 97}%;--sz:{14 + (k * 29) % 38}px;--d:{-((k * 53) % 19)}s;--t:{15 + (k * 7) % 11}s;--dx:{((k * 41) % 120) - 60}px"></i>'
-        for k in range(14))
-    return f'''
-    <div class="tgal" data-gallery role="group" aria-label="{plain(name)}" style="--n:{total}">
-      <div class="tgal-pin" data-pin>
-        <div class="tgal-stage" data-stage>
-          <div class="tgal-wash" aria-hidden="true">{wash}</div>
-          <div class="tgal-bubbles" aria-hidden="true">{bubbles}</div>
-          <a class="tgal-skip" href="#tgal-end">تخطَّ المعرض</a>
-          <div class="tgal-viewport" data-viewport>
-            <ol class="tgal-track" data-track>{panels}
-            </ol>
+          <div class="tg-body">
+            <p class="tg-kick">{t(k3)}</p>
+            <h3 class="tg-title" id="g-s3-h">{t(main3)}</h3>
+            <div class="tg-chips" id="g-s3-b">{chips}</div>
+            <span class="tg-go" aria-hidden="true"><span>التفاصيل</span>{ic('arrow-left')}</span>
           </div>
-          <nav class="tgal-hud" aria-label="التنقل بين الفرق" data-hud>
-            <span class="tg-count" dir="ltr" aria-hidden="true"><span class="tg-roll"><span class="tg-strip" data-roll>{roll}</span></span><span class="tg-of">/ {total:02d}</span></span>
-            <span class="tg-rail">{segs}</span>
-            <span class="tg-hint" aria-hidden="true">{ic('chevron-down')}<span>مرِّر للأسفل</span></span>
-          </nav>
-        </div>
+        </a>
+        {_detail('teams.html#s3', main3, 'محاور الشمول', None, rows3)}
+      </li>'''
+    dots += _dot(total - 1, 'var(--brand)', main3)
+
+    return f'''
+    <div class="tgal rv" data-gallery role="region" aria-roledescription="carousel" aria-label="{plain(name)}" style="--n:{total}">
+      <ul class="tgal-scroller" data-scroller aria-label="{plain(name)}">{items}
+      </ul>
+      <div class="tgal-bar" data-bar>
+        <button type="button" class="tg-nav tg-prev" data-prev aria-label="الفريق السابق">{CHEV_PREV}</button>
+        <div class="tg-dots" role="group" aria-label="التنقل بين الفرق">{dots}</div>
+        <button type="button" class="tg-nav tg-next" data-next aria-label="الفريق التالي">{CHEV_NEXT}</button>
       </div>
-      <span class="tgal-end" id="tgal-end" tabindex="-1"></span>
+      <template data-sheet-tpl>
+        <div class="tsheet" hidden>
+          <div class="tsheet-scrim" data-close></div>
+          <div class="tsheet-panel" role="dialog" aria-modal="true" aria-labelledby="tsheet-title" tabindex="-1">
+            <div class="tsheet-top" data-grab>
+              <span class="tsheet-handle" aria-hidden="true"></span>
+              <div class="tsheet-head">
+                <span class="tsheet-ic" data-slot="ic" aria-hidden="true"></span>
+                <div class="tsheet-ttl"><h2 class="tsheet-title" id="tsheet-title" data-slot="title"></h2><p class="tsheet-sub" data-slot="sub"></p></div>
+                <button type="button" class="tsheet-x" data-close aria-label="إغلاق">{ic('x')}</button>
+              </div>
+              <div class="tsheet-art" data-slot="art" aria-hidden="true"><div class="tsheet-art-in" data-slot="art-in"></div></div>
+            </div>
+            <div class="tsheet-body" data-body>
+              <div class="tsheet-text">
+                <p class="tsheet-work" data-slot="work"></p>
+                <div class="tg-seg" role="tablist" data-seg="own" data-slot="tabs"><span class="seg-ind" aria-hidden="true"></span></div>
+                <div class="tsheet-panels" data-slot="panels"></div>
+                <div class="tsheet-foot" data-slot="more"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
     </div>'''

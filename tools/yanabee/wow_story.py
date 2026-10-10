@@ -1,12 +1,17 @@
-"""Home: the pinned scroll story — the mission, performed.
+"""Home: the mission as scrollytelling.
 
-The mission paragraph (platform.txt, s1 / mission) is cut VERBATIM into four consecutive
-fragments; scroll drives a particle canvas through four acts, one per fragment
-(js/story.js, css/story.css). Without JS, or with prefers-reduced-motion, the same markup is a
-plain readable block: the four fragments as cards with a calm static illustration.
+The mission paragraph (platform.txt, s1 / mission) is cut VERBATIM into four consecutive fragments. They are
+four ordinary text steps in normal flow (real, selectable paragraphs). Beside them (desktop) or above them
+(phones) a small sticky companion panel holds a particle canvas; the step nearest the reading line decides
+which act it performs (js/story.js, css/story.css): loners -> seven team clusters -> racing streams -> one arch
+and the word «ينابيع». The page itself always scrolls 1:1, nothing is pinned or hijacked.
 
-The accessible text is one paragraph (the mission, once, in order); everything else —
-canvas, team labels, droplet, closing line, progress rail art — is decorative (aria-hidden).
+Without JS, with prefers-reduced-motion, in print and on very short screens the same markup is a plain block:
+the four fragments as cards with a calm static illustration, and the closing word as text.
+
+The accessible text is the mission once, in order (the four <p class="step-text">); the canvas, team labels and
+droplet are decorative (aria-hidden); the only controls are the four step-indicator buttons.
+The section deliberately has NO id (fx.js builds its section dots from main > section[id]).
 """
 import math
 import re
@@ -16,7 +21,7 @@ from core import PLATFORM as P, TEAM_IDS, ic, logo, plain, short, t
 # Where the paragraph is cut. Each marker is the first words of the NEXT fragment.
 _JOINTS = ('إلى مشاركة مجتمعية', 'تتنافس في مجالات', 'تحت مظلة وطنية')
 
-# One short verbatim phrase per act (rail tooltips / labels). Asserted to be inside its fragment.
+# One short verbatim phrase per act (indicator button labels). Asserted to be inside its fragment.
 _TAGS = ('الانعزالية', 'فرق تخصصية تكاملية', 'تتنافس', 'مظلة وطنية موحدة')
 
 # Words that carry the colour of their act (style only; nothing is added or removed).
@@ -41,17 +46,18 @@ def fragments():
     return para, frags
 
 
-def _words(frag, emph):
+def _text(frag, emph):
+    """The fragment word by word (so key words can take their act colour); the join is the fragment again."""
     out = []
     for w in frag.split(' '):
-        em = ' em' if re.sub(r'[،.:؛]', '', w) in emph else ''
-        out.append(f'<span class="w{em}">{t(w)}</span>')
+        word = t(w)
+        out.append(f'<span class="em">{word}</span>' if re.sub(r'[،.:؛]', '', w) in emph else word)
     return ' '.join(out)
 
 
-# --- calm static illustrations (only shown without JS / with reduced motion) ------------------
+# --- calm static illustrations (only shown in the static block) --------------------------------
 def _svg(inner):
-    return (f'<svg class="frag-art" viewBox="0 0 160 64" width="160" height="64" aria-hidden="true" focusable="false">{inner}</svg>')
+    return (f'<svg class="step-art" viewBox="0 0 160 64" width="160" height="64" aria-hidden="true" focusable="false">{inner}</svg>')
 
 
 def _art_alone():
@@ -86,8 +92,9 @@ def _art_arch():
                 '<path d="M80 26c0 0-9 10-9 16a9 9 0 0 0 18 0c0-6-9-16-9-16Z" fill="var(--accent)"/>')
 
 
-# Goes live while the HTML is still parsing (no layout jump later): not reduced motion, canvas available, JS running.
-# story.js confirms by setting window.__storyReady; if it never does, the section falls back to the static block.
+# Goes live while the HTML is still parsing, so the companion's reserved height is in place before first paint (no layout
+# shift): JS running, not reduced motion, a screen tall enough, canvas available. story.js confirms by setting
+# window.__storyReady; if it never does, the section falls back to the static block.
 _BOOT = '<script>(function(){try{var s=document.currentScript.previousElementSibling;if(s&&document.documentElement.classList.contains(\'js\')&&!matchMedia(\'(prefers-reduced-motion: reduce)\').matches&&innerHeight>=500&&document.createElement(\'canvas\').getContext){s.classList.add(\'is-live\');setTimeout(function(){if(!window.__storyReady)s.classList.remove(\'is-live\')},4000)}}catch(e){}})();</script>'
 
 _ARTS = (_art_alone, _art_teams, _art_lanes, _art_arch)
@@ -97,34 +104,32 @@ def story():
     mission = P['s1']['mission']
     _, frags = fragments()
     word = re.search(r'"([^"]+)"', P.meta['title']).group(1)  # «ينابيع» from the project title
-    subtitle = P.meta['subtitle'].strip('()')
 
-    cards = ''.join(
-        f'<span class="frag" data-act="{i}"><span class="frag-no" aria-hidden="true">{n}</span>{_ARTS[i]()}'
-        f'<span class="frag-text">{_words(f, _EMPHASIS[i])}</span></span>'
-        for i, (f, n) in enumerate(zip(frags, '١٢٣٤')))
+    steps = ''.join(
+        f'<div class="step" data-step="{i}">{_ARTS[i]()}<p class="step-text">{_text(f, _EMPHASIS[i])}</p></div>'
+        for i, f in enumerate(frags))
     tags = ''.join(
         f'<span class="story-tag" style="--tc:var(--{tid})"><i></i>{t(short(P["s2"][tid].title))}</span>' for tid in TEAM_IDS)
-    ticks = ''.join(
-        f'<button type="button" class="story-tick" data-act="{i}" aria-label="{plain("الانتقال إلى: " + tag)}">'
-        f'<i aria-hidden="true"></i><span class="tick-label" aria-hidden="true">{t(tag)}</span></button>'
+    dots = ''.join(
+        f'<button type="button" class="story-dot" data-act="{i}" aria-label="{plain("الانتقال إلى: " + tag)}"><i aria-hidden="true"></i></button>'
         for i, tag in enumerate(_TAGS))
 
     return f'''
 <section class="story" aria-labelledby="story-h" data-story data-word="{plain(word)}">
-  <div class="story-track" id="story">
-    <div class="story-stage">
-      <div class="story-bg" aria-hidden="true"><i class="sb-cold"></i><i class="sb-team"></i><i class="sb-brand"></i></div>
-      <canvas class="story-canvas" aria-hidden="true"></canvas>
-      <div class="story-tags" aria-hidden="true">{tags}</div>
-      <div class="story-core" aria-hidden="true">{logo(96, 'story', 'story-logo')}</div>
-      <div class="story-final" aria-hidden="true">{t(subtitle)}</div>
-      <div class="story-ui">
-        <header class="story-head"><h2 class="kicker" id="story-h">{ic('route')}{t(mission.title)}</h2></header>
-        <p class="story-mission">{cards}</p>
+  <div class="wrap">
+    <header class="story-head"><h2 class="kicker" id="story-h">{ic('route')}{t(mission.title)}</h2></header>
+    <div class="story-grid">
+      <div class="story-steps">
+        {steps}
+        <p class="story-end" aria-hidden="true">{t(word)}</p>
       </div>
-      <nav class="story-rail" aria-label="مراحل الرسالة"><i class="rail-line" aria-hidden="true"><b></b></i>{ticks}</nav>
-      <div class="story-hint" aria-hidden="true"><span class="hint-mouse"><i></i></span>مرّر للأسفل</div>
+      <div class="story-companion">
+        <div class="story-bg" aria-hidden="true"><i class="sb-cold"></i><i class="sb-team"></i><i class="sb-brand"></i></div>
+        <canvas class="story-canvas" aria-hidden="true"></canvas>
+        <div class="story-tags" aria-hidden="true">{tags}</div>
+        <div class="story-core" aria-hidden="true">{logo(96, 'story', 'story-logo')}</div>
+        <nav class="story-dots" aria-label="مراحل الرسالة">{dots}</nav>
+      </div>
     </div>
   </div>
 </section>
