@@ -1,1 +1,215 @@
-/* gallery — placeholder */
+/* ==========================================================================
+   Home: cinematic pinned gallery of the seven teams (+ inclusion).
+   Markup: tools/yanabee/wow_gallery.py   Behaviour: js/gallery.js
+
+   States (exactly one of the gallery / the plain .team-grid is displayed):
+     < 1000px ........ .tgal hidden, the card grid shows (carousel on phones)
+     >= 1000px ....... .tgal shown, the grid is hidden
+        no JS ........ native horizontal scroller with scroll-snap
+        .is-native ... same scroller, plus rail + counter (reduced motion / short screens)
+        .is-live ..... tall scroll track + sticky stage: scroll moves the panels sideways (JS)
+   Knobs: --pw (panel width) --gap --step (scroll length per panel, in screens) on .tgal.
+   ========================================================================== */
+.tgal{
+  --pw:min(76vw,1400px);--gap:clamp(28px,4.5vw,84px);--step:.85;--hud:150px;
+  --tgal-top:calc(var(--nav-h) + 20px);--cur:var(--brand);
+  display:none;position:relative}
+@media(min-width:1000px){
+  .tgal{display:block;inline-size:100vw;margin-inline:calc(50% - 50vw);margin-block-start:clamp(4px,1.5vw,20px)}
+  .tgal + .team-grid{display:none}
+}
+
+/* ---------- default: native scroller (no JS, reduced motion) ---------- */
+.tgal-stage{position:relative}
+.tgal-viewport{overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;
+  scrollbar-width:thin;scrollbar-color:var(--line-2) transparent;padding-block:12px 28px}
+.tgal-track{display:flex;gap:var(--gap);inline-size:max-content;min-inline-size:100%;
+  padding-inline:calc((100vw - var(--pw)) / 2)}
+.tgal-wash,.tgal-bubbles{display:none}
+
+.tg-panel{--tc:var(--brand);--tc-ink:color-mix(in oklab,var(--tc) 48%,var(--ink));
+  position:relative;flex:none;inline-size:var(--pw);scroll-snap-align:center;
+  display:grid;grid-template-columns:minmax(0,1.12fr) minmax(0,.88fr);column-gap:clamp(24px,4vw,72px);align-items:center;
+  padding:clamp(28px,3.4vw,52px) clamp(22px,3.4vw,64px);border-radius:var(--r-lg);
+  border:1px solid color-mix(in oklab,var(--tc) 28%,var(--line));box-shadow:var(--shadow-sm);
+  background:radial-gradient(60% 70% at 78% 30%,color-mix(in oklab,var(--tc) 17%,transparent),transparent 70%),
+             radial-gradient(45% 55% at 12% 90%,color-mix(in oklab,var(--tc) 10%,transparent),transparent 70%),var(--surface)}
+
+/* huge outlined numeral */
+.tg-num{position:absolute;z-index:0;inset-block-start:50%;inset-inline-start:1%;translate:0 -52%;pointer-events:none;user-select:none;
+  font-family:var(--font-h);font-weight:700;font-size:clamp(12rem,31vw,34rem);line-height:.8;
+  color:color-mix(in oklab,var(--tc) 7%,transparent);
+  -webkit-text-stroke:clamp(1.5px,.13vw,2.5px) color-mix(in oklab,var(--tc) 30%,transparent)}
+[data-theme=dark] .tg-num{-webkit-text-stroke-color:color-mix(in oklab,var(--tc) 30%,transparent)}
+
+/* copy (sizes scale by --fit, which gallery.js sets so the tallest panel fits between the nav and the rail) */
+.tg-copy{position:relative;z-index:2;display:flex;flex-direction:column;align-items:flex-start;gap:calc(var(--fit,1) * clamp(8px,1.4vh,16px));max-inline-size:clamp(30rem,32vw,40rem)}
+.tg-copy::before{content:"";inline-size:calc(var(--fit,1) * 64px);block-size:5px;border-radius:5px;background:var(--tc);margin-block-end:4px;transform-origin:100% 50%}
+.tg-kick{display:inline-flex;align-items:center;font:600 calc(var(--fit,1) * 1.02rem)/1.4 var(--font-h);color:var(--tc-ink)}
+.tg-title{font-size:calc(var(--fit,1) * clamp(1.85rem,3.5vw,4.3rem));line-height:1.28;font-weight:700;color:var(--head)}
+.tg-w{display:inline-block}
+.tg-sub{font-family:var(--font-h);font-weight:600;font-size:calc(var(--fit,1) * clamp(1rem,1.3vw,1.45rem));line-height:1.6;color:var(--tc-ink)}
+.tg-work{font-size:calc(var(--fit,1) * clamp(.98rem,1.1vw,1.3rem));line-height:1.95;color:var(--ink-2);max-inline-size:34rem}
+.tg-work b{font-weight:600;color:var(--head)}
+
+/* impact tabs (main.js wires [data-tabs]; without JS every body shows under its own label) */
+.tg-imp{inline-size:100%;margin-block-start:4px}
+.tg-tabs{display:none;flex-wrap:wrap;gap:8px}
+.js .tg-tabs{display:flex}
+.js .tg-tl{display:none}
+.tg-tl{font-weight:600;color:var(--head)}
+.tg-tabs [role=tab]{display:inline-flex;align-items:center;gap:.55em;padding:.5em 1.05em .5em 1em;border-radius:999px;min-block-size:2.5em;
+  border:1px solid color-mix(in oklab,var(--tc) 30%,var(--line));background:color-mix(in oklab,var(--surface) 72%,transparent);
+  font:600 calc(var(--fit,1) * clamp(.9rem,.9vw,1.05rem))/1.3 var(--font-h);color:var(--ink-2);transition:background-color .25s,border-color .25s,color .25s,transform .25s var(--ease)}
+.tg-tabs [role=tab] .i{width:1.1em;height:1.1em;color:var(--tc-ink)}
+.tg-tabs [role=tab]:hover{border-color:var(--tc);transform:translateY(-1px)}
+.tg-tabs [role=tab][aria-selected=true]{background:color-mix(in oklab,var(--tc) 17%,var(--surface));border-color:var(--tc);color:var(--head)}
+.tg-tp{margin-block-start:.6em;padding:.75em 1em;border-radius:1em;font-size:calc(var(--fit,1) * clamp(.98rem,1vw,1.16rem));line-height:1.85;color:var(--ink-2);
+  background:color-mix(in oklab,var(--surface) 80%,transparent);border:1px solid color-mix(in oklab,var(--tc) 20%,var(--line))}
+.js .tg-tp{min-block-size:calc(3 * 1.85em + 1.5em)}
+.tg-tp[hidden]{display:none}
+.tg-tp:not([hidden]){animation:tg-tp .55s var(--ease)}
+@keyframes tg-tp{from{opacity:0;translate:0 8px}}
+.tg-tp+.tg-tp{margin-block-start:.5em}
+.js .tg-tp+.tg-tp{margin-block-start:.6em}
+
+.tg-more{display:inline-flex;align-items:center;gap:.6em;margin-block-start:.5em;padding:.7em 1.4em;border-radius:999px;text-decoration:none;
+  font:600 calc(var(--fit,1) * 1rem)/1.4 var(--font-h);color:var(--tc-ink);border:1.5px solid color-mix(in oklab,var(--tc) 55%,transparent);
+  background:color-mix(in oklab,var(--tc) 9%,transparent);transition:background-color .25s,color .25s,border-color .25s,transform .3s var(--ease)}
+.tg-more .i{inline-size:1.15em;block-size:1.15em;transition:transform .3s var(--ease)}
+.tg-more:hover{background:var(--tc-ink);border-color:var(--tc-ink);color:var(--surface)}
+.tg-more:hover .i{transform:translateX(-5px)}
+
+/* photo in an arch, an outlined twin behind it, the icon badge on its foot */
+.tg-media{--mh:clamp(300px,32vw,460px);--arch:50% 50% 30px 30px / 37.7% 37.7% 30px 30px;
+  position:relative;z-index:1;justify-self:center;block-size:var(--mh);aspect-ratio:4/5.3}
+.tg-arch2{position:absolute;inset:0;border-radius:var(--arch);border:2px solid color-mix(in oklab,var(--tc) 55%,transparent);
+  translate:-5% 3.5%;scale:1.03}
+.tg-shadow{position:absolute;z-index:-1;inset-inline:-4%;inset-block-end:-22px;block-size:84px;border-radius:50%;
+  background:radial-gradient(closest-side,color-mix(in oklab,var(--tc) 50%,rgba(2,12,18,.78)),transparent);filter:blur(10px);opacity:.75}
+.tg-photo{position:absolute;inset:0;border-radius:var(--arch)}
+.tg-mask{position:absolute;inset:0;overflow:hidden;border-radius:inherit;background:color-mix(in oklab,var(--tc) 22%,var(--surface-2))}
+.tg-mask .ph{inline-size:100%;block-size:100%;object-fit:cover;display:block;transform-origin:50% 62%}
+[data-theme=dark] .tg-mask .ph{filter:brightness(.86)}
+.tg-tint{position:absolute;inset:0;pointer-events:none;opacity:.4;
+  background:linear-gradient(to top,color-mix(in oklab,var(--tc) 60%,transparent),transparent 56%),
+             linear-gradient(160deg,color-mix(in oklab,var(--tc) 26%,transparent),transparent 55%)}
+.tg-ic{position:absolute;inset-inline:0;margin-inline:auto;inset-block-end:-34px;inline-size:76px;aspect-ratio:1;border-radius:50%;
+  display:grid;place-items:center;color:var(--tc-ink);background:var(--surface);
+  border:3px solid color-mix(in oklab,var(--tc) 38%,var(--surface));box-shadow:var(--shadow)}
+.tg-ic .i{inline-size:32px;block-size:32px}
+.tg-ic::before,.tg-ic::after{content:"";position:absolute;inset:-3px;border-radius:50%;border:2px solid var(--tc);opacity:0;pointer-events:none}
+.tg-incl .tg-copy::before{background:var(--grad)}
+.tg-incl .tg-title{font-size:calc(var(--fit,1) * clamp(1.65rem,3vw,3.6rem))}
+
+/* controls (hidden until JS builds the mode) */
+.tgal-hud{display:none}
+.tgal-skip{position:absolute;z-index:6;inset-block-start:var(--tgal-top);inset-inline-start:16px;inline-size:1px;block-size:1px;overflow:hidden;white-space:nowrap;
+  clip-path:inset(50%);padding:0;border-radius:10px;background:var(--brand);color:var(--on-brand);font:600 .95rem/1.4 var(--font-h);text-decoration:none}
+.tgal-skip:focus-visible{inline-size:auto;block-size:auto;overflow:visible;clip-path:none;padding:8px 16px}
+.tgal-end{position:absolute;inset-block-end:0;inset-inline-start:0;inline-size:1px;block-size:1px;outline:0}
+
+.tgal.is-native .tgal-hud,.tgal.is-live .tgal-hud{display:flex;align-items:center;gap:clamp(12px,2vw,22px);
+  inline-size:max-content;max-inline-size:calc(100% - 32px);margin-inline:auto;padding:7px clamp(14px,1.8vw,22px);border-radius:999px;
+  background:color-mix(in oklab,var(--surface) 80%,transparent);border:1px solid var(--line);box-shadow:var(--shadow-sm);
+  -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.tgal.is-native .tgal-hud{margin-block-start:4px;margin-block-end:8px}
+.tg-count{display:inline-flex;align-items:baseline;gap:6px;direction:ltr;font:700 1.12rem/1.4 var(--font-h);font-variant-numeric:tabular-nums;min-inline-size:5.2ch}
+.tg-roll{display:block;block-size:1.4em;overflow:clip;color:color-mix(in oklab,var(--cur) 72%,var(--ink))}
+.tg-strip{display:flex;flex-direction:column;transition:transform .6s var(--ease)}
+.tg-strip i{font-style:normal;block-size:1.4em;line-height:1.4em;display:block}
+.tg-of{color:var(--muted);font-weight:500;font-size:.92rem}
+.tg-rail{display:flex;gap:5px;align-items:center}
+.tg-seg{position:relative;inline-size:clamp(26px,3.6vw,54px);block-size:30px;display:grid;place-items:center;padding:0;border-radius:8px}
+.tg-seg i{display:block;inline-size:100%;block-size:5px;border-radius:5px;position:relative;overflow:hidden;
+  background:color-mix(in oklab,var(--tc) 24%,var(--line-2));transition:block-size .3s var(--ease),box-shadow .3s}
+.tg-seg i b{position:absolute;inset:0;background:var(--tc);transform-origin:100% 50%;transform:scaleX(0)}
+.tg-seg:hover i{block-size:8px}
+.tg-seg.is-on i{block-size:9px;box-shadow:0 0 16px color-mix(in oklab,var(--tc) 75%,transparent)}
+.tg-hint{display:inline-flex;align-items:center;gap:6px;font-size:.85rem;color:var(--ink-2);white-space:nowrap;transition:opacity .5s,translate .5s var(--ease)}
+.tg-hint .i{inline-size:16px;block-size:16px;color:var(--cur)}
+.tg-hud-moved .tg-hint{opacity:0;translate:0 6px}
+
+/* ==========================================================================
+   Live mode (js/gallery.js adds .is-live): tall track + sticky stage, panels move by transform
+   ========================================================================== */
+.tgal.is-live .tgal-pin{block-size:calc(100vh * (1 + (var(--n) - 1) * var(--step)));
+  block-size:calc(100svh * (1 + (var(--n) - 1) * var(--step)))}
+.tgal.is-live .tgal-stage{position:sticky;inset-block-start:0;block-size:100vh;block-size:100svh;display:flex;flex-direction:column;
+  padding-block:var(--tgal-top) var(--hud);overflow:hidden;overflow:clip}
+.tgal.is-live .tgal-wash{display:block;position:absolute;inset:0;pointer-events:none;overflow:clip;
+  -webkit-mask-image:linear-gradient(transparent,#000 16%,#000 84%,transparent);mask-image:linear-gradient(transparent,#000 16%,#000 84%,transparent)}
+.tgal-wash i{position:absolute;inset:-8% -12%;opacity:0;
+  background:radial-gradient(52% 60% at 28% 44%,color-mix(in oklab,var(--tc) 30%,transparent),transparent 72%),
+             radial-gradient(42% 48% at 80% 76%,color-mix(in oklab,var(--tc) 20%,transparent),transparent 72%),
+             radial-gradient(30% 36% at 62% 8%,color-mix(in oklab,var(--tc) 14%,transparent),transparent 72%)}
+[data-theme=dark] .tgal-wash i{background:
+  radial-gradient(52% 60% at 28% 44%,color-mix(in oklab,var(--tc) 28%,transparent),transparent 72%),
+  radial-gradient(42% 48% at 80% 76%,color-mix(in oklab,var(--tc) 20%,transparent),transparent 72%),
+  radial-gradient(30% 36% at 62% 8%,color-mix(in oklab,var(--tc) 14%,transparent),transparent 72%)}
+.tgal.is-live .tgal-viewport{position:relative;flex:1;min-block-size:0;overflow:hidden;overflow:clip;scroll-snap-type:none;padding:0;
+  -webkit-mask-image:linear-gradient(to right,transparent,#000 7%,#000 93%,transparent);mask-image:linear-gradient(to right,transparent,#000 7%,#000 93%,transparent)}
+.tgal.is-live .tgal-track{position:absolute;inset-block:0;inset-inline-start:0;padding:0;min-inline-size:0;align-items:center;
+  transform:translate3d(0,0,0)}
+.tgal.is-live .tg-panel{block-size:min(100%,clamp(420px,86vh,860px));border:0;border-radius:0;box-shadow:none;background:none;
+  scroll-snap-align:none;padding-block:0}
+.tgal.is-live .tg-media{block-size:min(calc(100% - 50px),clamp(300px,64vh,720px))}
+.tgal.is-live .tgal-hud{position:absolute;inset-inline:0;inset-block-end:84px;margin:0 auto} /* clears the fixed explorer chip (play.css) */
+/* layers only while moving, and only for what is on screen (washes / panels beyond the neighbours stay flat) */
+.tgal.is-live.is-moving .tgal-track,.tgal.is-live.is-moving .tg-panel.is-near,.tgal.is-live.is-moving .tg-panel.is-near .tg-photo,
+.tgal.is-live.is-moving .tgal-wash i.is-w{will-change:transform,opacity}
+
+/* spring bubbles: CSS only, paused while the gallery is off screen, tinted by the active team (--cur is set on .tgal) */
+.tgal.is-live .tgal-bubbles{display:block;position:absolute;inset:0;pointer-events:none;overflow:clip}
+.tgal-bubbles i{position:absolute;inset-inline-start:var(--x);inset-block-end:-70px;inline-size:var(--sz);aspect-ratio:1;border-radius:50%;opacity:0;
+  background:radial-gradient(circle at 30% 26%,rgba(255,255,255,.55),transparent 22%),radial-gradient(circle,transparent 56%,color-mix(in oklab,var(--cur,var(--brand)) 34%,transparent) 100%);
+  border:1px solid color-mix(in oklab,var(--cur,var(--brand)) 50%,transparent);
+  animation:tg-bub var(--t) linear var(--d) infinite;animation-play-state:paused}
+.tgal.in-view .tgal-bubbles i{animation-play-state:running}
+@keyframes tg-bub{0%{transform:translate3d(0,0,0) scale(.6);opacity:0}12%{opacity:.42}80%{opacity:.26}100%{transform:translate3d(var(--dx,0),-112vh,0) scale(1.05);opacity:0}}
+
+/* pointer parallax (fine pointers; gallery.js writes the `translate` of the depth layers, these glide it) */
+@media(hover:hover) and (pointer:fine){
+  .tgal.is-live .tg-arch2,.tgal.is-live .tg-photo,.tgal.is-live .tg-num,.tgal.is-live .tg-copy{transition:translate .8s var(--ease)}
+}
+
+/* rising lines: a panel's copy appears when the panel becomes the active one */
+.tgal.is-live .tg-l,.tgal.is-live .tg-w,.tgal.is-live .tg-copy::before{opacity:0;transition:opacity .22s,transform .3s}
+.tgal.is-live .tg-l{transform:translate3d(0,34px,0)}
+.tgal.is-live .tg-w{transform:translate3d(0,.6em,0)}
+.tgal.is-live .tg-copy::before{transform:scaleX(0)}
+.tgal.is-live .tg-panel:not(.is-active) .tg-copy{pointer-events:none}
+.tgal.is-live .tg-panel.is-active .tg-l{opacity:1;transform:none;
+  transition:opacity .7s var(--ease) calc(.14s + var(--s,0) * .09s),transform .95s var(--ease) calc(.14s + var(--s,0) * .09s)}
+.tgal.is-live .tg-panel.is-active .tg-w{opacity:1;transform:none;
+  transition:opacity .7s var(--ease) calc(.06s + var(--k,0) * .075s),transform .95s var(--ease) calc(.06s + var(--k,0) * .075s)}
+.tgal.is-live .tg-panel.is-active .tg-copy::before{opacity:1;transform:none;transition:opacity .4s,transform .9s var(--ease)}
+.tgal.is-live .tg-media{cursor:default}
+.tgal.is-live .tg-panel:not(.is-active) .tg-media{cursor:pointer}
+.tgal.is-live .tg-photo{transform-origin:50% 60%}
+
+/* the active photo breathes slowly (Ken Burns, composited `scale`) */
+.tgal.is-live .tg-panel.is-active .tg-mask .ph{animation:tg-kb 18s ease-in-out infinite alternate}
+@keyframes tg-kb{to{scale:1.06}}
+
+/* the icon floats; a spring ripple widens from it while its team is active */
+.tgal.is-live .tg-ic{animation:tg-float 5.5s ease-in-out infinite;animation-play-state:paused}
+.tgal.is-live .tg-panel.is-near .tg-ic{animation-play-state:running}
+.tgal.is-live .tg-panel.is-active .tg-ic::before{animation:tg-ring 3.6s cubic-bezier(.2,.6,.3,1) infinite}
+.tgal.is-live .tg-panel.is-active .tg-ic::after{animation:tg-ring 3.6s cubic-bezier(.2,.6,.3,1) 1.8s infinite}
+@keyframes tg-float{0%,100%{translate:0 0}50%{translate:0 -10px}}
+@keyframes tg-ring{0%{scale:.92;opacity:.6}100%{scale:2.3;opacity:0}}
+@keyframes tg-bob{0%,100%{translate:0 -2px}50%{translate:0 3px}}
+.tgal.is-live .tg-hint .i,.tgal.is-native .tg-hint{animation:tg-bob 1.6s ease-in-out infinite}
+.tgal.is-native .tg-hint{display:none}
+
+/* narrow stages: the scroll hint gives way to the rail */
+@media(max-width:1120px){.tg-hint{display:none}}
+
+@media(prefers-reduced-motion:reduce){
+  .tgal *,.tgal *::before,.tgal *::after{animation:none!important;transition:none!important}
+}
+@media print{
+  .tgal{display:none!important}
+  .tgal + .team-grid{display:grid!important}
+}

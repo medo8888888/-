@@ -31,9 +31,10 @@ console.log('home (index.html)');
   await p.mouse.click(700, 500);
   check('press makes a water ripple', await p.evaluate(() => !!document.querySelector('.fx-ripple')));
   // card tilt + glow
-  await p.evaluate(() => document.querySelector('#teams').scrollIntoView());
+  // (from 1000px up the teams grid is replaced by the pinned gallery, so the tilt is checked on another card)
+  await p.evaluate(() => document.querySelector('.b-mission').scrollIntoView({ block: 'center' }));
   await p.waitForTimeout(1200);
-  const card = await p.$('.team-card');
+  const card = await p.$('.b-mission');
   const b = await card.boundingBox();
   await p.mouse.move(b.x + b.width * 0.8, b.y + b.height * 0.25);
   await p.mouse.move(b.x + b.width * 0.82, b.y + b.height * 0.27);
@@ -164,8 +165,8 @@ console.log('reduced motion + touch stay calm');
   const { ctx, p, errs } = await open('index.html', { reducedMotion: 'reduce' });
   await p.click('.hero-sub');
   check('reduced motion: no ripple', await p.evaluate(() => !document.querySelector('.fx-ripple')));
-  await p.evaluate(() => document.querySelector('#teams').scrollIntoView());
-  const c = await p.$('.team-card');
+  await p.evaluate(() => document.querySelector('.b-mission').scrollIntoView({ block: 'center' }));
+  const c = await p.$('.b-mission');
   const b = await c.boundingBox();
   await p.mouse.move(b.x + 40, b.y + 40); await p.mouse.move(b.x + 60, b.y + 60);
   check('reduced motion: no tilt', await c.evaluate(el => el.style.transform === ''));
