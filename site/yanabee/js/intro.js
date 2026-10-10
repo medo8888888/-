@@ -134,7 +134,7 @@
         const cy = el.style.getPropertyValue('--cy');
         rim.style.setProperty('--cx', '50%'); rim.style.setProperty('--cy', cy);
         // let the hero begin its own entrance a beat after the hole starts to open
-        setTimeout(() => root.classList.remove('intro-on'), 260);
+        setTimeout(() => { root.classList.remove('intro-on'); window.dispatchEvent(new CustomEvent('yanabee:intro-reveal')); }, 260);
         // ripples on the water surface under the hole (water.js listens)
         const cyPx = parseFloat(cy) || iy;
         [[0, 0, 1], [140, -0.12, 0.7], [260, 0.14, 0.6], [380, -0.22, 0.5], [500, 0.24, 0.5]].forEach(([d, k, s]) =>
@@ -157,6 +157,7 @@
     removeEventListener('resize', size);
     ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(ev => removeEventListener(ev, skip));
     root.classList.remove('intro-on');
+    window.dispatchEvent(new CustomEvent('yanabee:intro-reveal'));
     if (rim) rim.remove();
     el.remove();
     window.dispatchEvent(new CustomEvent('yanabee:intro-end'));

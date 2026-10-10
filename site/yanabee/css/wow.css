@@ -1,1 +1,108 @@
-/* wow — placeholder */
+/* ==========================================================================
+   Sitewide "wow" layer (js/wow.js). Everything here is enhancement: without
+   the script, or under prefers-reduced-motion, the pages look exactly as before.
+   1 water-drop cursor · 2 water-wipe transitions · 3 word-by-word headlines
+   4 wave scroll progress · 5 parallax · 6 sound button
+   ========================================================================== */
+:root{
+  --wow-cover:var(--grad);
+  --wow-drop:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath d='M24 3.5C24 3.5 9.5 19.6 9.5 29.6a14.5 14.5 0 0 0 29 0C38.5 19.6 24 3.5 24 3.5Z' fill='%23fff' fill-opacity='.96'/%3E%3Cpath d='M15.2 29.4c3-2.7 6-2.7 8.8 0s5.9 2.7 8.8 0' fill='none' stroke='%2314a3b8' stroke-width='2.6' stroke-linecap='round'/%3E%3Cpath d='M18.2 35.4c2-1.8 3.9-1.8 5.8 0s3.9 1.8 5.8 0' fill='none' stroke='%232c63d6' stroke-opacity='.7' stroke-width='2.3' stroke-linecap='round'/%3E%3C/svg%3E");
+  --wow-ease:cubic-bezier(.62,.02,.2,1);
+}
+:root[data-theme=dark]{--wow-cover:linear-gradient(135deg,#0c5b66 0%,#0a3f5c 52%,#16398a 100%)}
+
+/* ---------- 1. water-drop cursor (canvas lives only on fine pointers without reduced motion) ---------- */
+.wow-cursor{position:fixed;inset:0;width:100%;height:100%;z-index:140;pointer-events:none}
+
+/* ---------- 2. water-wipe page transitions ---------- */
+/* leaving: a circle of water grows from the click point; a team-coloured rim leads it */
+.yb-wipe{position:fixed;inset:0;z-index:2147483000;overflow:hidden;touch-action:none}
+.yb-wipe i{position:absolute;inset:0;clip-path:circle(0px at var(--wx,50%) var(--wy,50%));will-change:clip-path}
+.yb-wipe .a{background:var(--wc,var(--accent))}
+.yb-wipe .b{background:var(--wow-drop) center/76px no-repeat,var(--wow-cover)}
+.yb-wipe.go .a{animation:wow-cover .46s var(--wow-ease) forwards}
+.yb-wipe.go .b{animation:wow-cover .46s var(--wow-ease) .009s forwards}
+.yb-wipe.out{opacity:0;transition:opacity .3s ease-out}
+@keyframes wow-cover{to{clip-path:circle(var(--wr,150vmax) at var(--wx,50%) var(--wy,50%))}}
+/* arriving: the inline head script added html.wipe-in before first paint, so the page starts covered (no flash);
+   wow.js then adds .wipe-play and the water drains toward the point that was pressed */
+html.wipe-in::before,html.wipe-in::after{content:"";position:fixed;inset:0;pointer-events:none;
+  animation:wow-failsafe .01s linear 1.15s forwards}
+html.wipe-in::before{z-index:2147483001;background:var(--wow-drop) center/76px no-repeat,var(--wow-cover)}
+html.wipe-in::after{z-index:2147483000;background:var(--wc,var(--accent))}
+html.wipe-in.wipe-play::before{animation:wow-open .56s var(--wow-ease) both,wow-failsafe .01s linear 1.15s forwards}
+html.wipe-in.wipe-play::after{animation:wow-open .56s var(--wow-ease) .009s both,wow-failsafe .01s linear 1.15s forwards}
+@keyframes wow-open{from{clip-path:circle(var(--wr,150vmax) at var(--wx,50%) var(--wy,50%))}to{clip-path:circle(0px at var(--wx,50%) var(--wy,50%))}}
+@keyframes wow-failsafe{to{visibility:hidden;opacity:0}}
+/* the cross-document view transition (base.css) must not fade or lift anything while the water is up */
+html.wipe-out::view-transition-old(root),html.wipe-in::view-transition-new(root),html.wipe-in::view-transition-old(root){animation:none}
+html.wipe-out .nav,html.wipe-out .tabbar,html.wipe-in .nav,html.wipe-in .tabbar{view-transition-name:none}
+
+/* ---------- 3. headlines rise word by word out of a mask ---------- */
+.wow-split .w{display:inline-block;vertical-align:baseline;clip-path:inset(-.35em -.2em -.1em -.2em)}
+.wow-split .wi{display:inline-block;transition:transform .85s var(--ease),opacity .6s ease-out,filter .8s ease-out;
+  transition-delay:calc(var(--i,0) * var(--step,55ms))}
+.wow-split:not(.wow-go) .wi{opacity:0;transform:translateY(112%) rotate(3deg);transform-origin:100% 100%;filter:blur(7px)}
+.wow-split.wow-go .wi{opacity:1;transform:none;filter:none}
+.wow-split.wow-done .w{clip-path:none}
+.wow-split.wow-done .wi{transition:none}
+/* gradient-text spans (background-clip:text) cannot hold transformed children: they come in as one unit */
+.wow-split .wow-u{transition:opacity .7s ease-out,filter .8s ease-out,transform .85s var(--ease);transition-delay:calc(var(--i,0) * var(--step,55ms))}
+.wow-split .wow-ui{display:inline-block}
+.wow-split:not(.wow-go) .wow-u{opacity:0;filter:blur(9px)}
+.wow-split:not(.wow-go) .wow-ui{transform:translateY(.45em)}
+.wow-split.wow-done .wow-u{transition:none}
+/* a heading that also carries .rv: the words do the revealing, the block itself must not move or fade twice */
+.js .wow-split.rv,.js .wow-split.rv.in{opacity:1;transform:none;transition:none}
+
+/* ---------- 4. wave scroll progress ---------- */
+html.wow-prog .progress{height:5px;background:none;transform:none!important;overflow:visible;
+  filter:drop-shadow(0 1px 5px color-mix(in oklab,var(--accent) 60%,transparent))}
+html.wow-prog .progress::before{content:"";position:absolute;inset:0;
+  background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.62) 50%,transparent 70%) 120% 0/60% 100% no-repeat,var(--grad);
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='34' height='5' viewBox='0 0 34 5'%3E%3Cpath d='M0 0H34V2.7C29.5 4.7 21.5 4.7 17 2.7S4.5.7 0 2.7Z'/%3E%3C/svg%3E") 0 0/34px 5px repeat-x;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='34' height='5' viewBox='0 0 34 5'%3E%3Cpath d='M0 0H34V2.7C29.5 4.7 21.5 4.7 17 2.7S4.5.7 0 2.7Z'/%3E%3C/svg%3E") 0 0/34px 5px repeat-x;
+  clip-path:inset(0 0 0 calc((1 - var(--p,0)) * 100%))}
+html.wow-prog .progress.flow::before{animation:wow-flow 1s linear infinite}
+@keyframes wow-flow{to{-webkit-mask-position:-34px 0;mask-position:-34px 0;background-position:-60% 0,0 0}}
+.wow-head{position:absolute;top:-1px;left:0;width:13px;height:13px;margin:0 0 0 -6.5px;border-radius:50%;pointer-events:none;opacity:0;
+  background:radial-gradient(circle at 36% 30%,#fff 0 18%,color-mix(in oklab,var(--accent) 80%,#fff) 40%,var(--accent) 70%,var(--sky));
+  box-shadow:0 0 0 2px color-mix(in oklab,var(--accent) 30%,transparent),0 0 12px color-mix(in oklab,var(--accent) 80%,transparent);
+  transition:opacity .3s}
+.progress.on .wow-head{opacity:1}
+.progress.flow .wow-head{animation:wow-bob .9s ease-in-out infinite alternate}
+@keyframes wow-bob{from{scale:1}to{scale:1.22}}
+
+/* ---------- 5. parallax ---------- */
+/* oversize the layers that sit inside an overflow:hidden frame so a shift never shows an edge */
+html.wow-par-on .b-photo img.wow-par,html.wow-par-on .b-photo svg.wow-par{height:calc(100% + 72px);margin-block:-36px}
+html.wow-par-on .tc-art img.wow-par,html.wow-par-on .tc-art svg.wow-par{height:calc(100% + 34px);margin-block:-17px}
+html.wow-par-on .cta-bg.wow-par{inset-block:-40px}
+html.wow-par-on .init-pattern.wow-par{inset-block:-40px}
+/* hero blobs: fx.css owns their `translate` (pointer light); this adds the scroll term */
+html.wow-par-on .hero .blob{translate:calc(var(--px,0) * -26px) calc(var(--py,0) * -18px + var(--wy,0px) * .8)}
+html.wow-par-on .hero .blob.b2{translate:calc(var(--px,0) * 34px) calc(var(--py,0) * 20px + var(--wy,0px) * 1.5)}
+html.wow-par-on .hero .blob.b3{translate:calc(var(--px,0) * -14px) calc(var(--py,0) * 30px + var(--wy,0px) * 2.3)}
+
+/* ---------- 6. sound button ---------- */
+.sound-btn .x{display:none}
+.sound-btn:not([aria-pressed=true]) .w1,.sound-btn:not([aria-pressed=true]) .w2{display:none}
+.sound-btn:not([aria-pressed=true]) .x{display:block}
+.sound-btn[aria-pressed=true]{color:var(--brand);background:color-mix(in oklab,var(--brand) 12%,transparent)}
+.sound-btn[aria-pressed=true] .w1{animation:wow-wave 2.4s ease-in-out infinite}
+.sound-btn[aria-pressed=true] .w2{animation:wow-wave 2.4s ease-in-out .35s infinite}
+@keyframes wow-wave{0%,100%{opacity:1}50%{opacity:.35}}
+
+/* ---------- quiet by request ---------- */
+@media(prefers-reduced-motion:reduce){
+  .wow-cursor,.yb-wipe,html.wipe-in::before,html.wipe-in::after{display:none!important}
+  .wow-split .w{clip-path:none}
+  .wow-split .wi,.wow-split .wow-u{opacity:1!important;transform:none!important;filter:none!important;transition:none!important}
+  .sound-btn[aria-pressed=true] .w1,.sound-btn[aria-pressed=true] .w2{animation:none}
+  html.wow-prog .progress.flow::before,.progress.flow .wow-head{animation:none}
+}
+@media print{
+  .wow-cursor,.yb-wipe,.wow-head,html.wipe-in::before,html.wipe-in::after,.sound-btn{display:none!important}
+  .wow-split .w{clip-path:none}
+  .wow-split .wi,.wow-split .wow-u{opacity:1!important;transform:none!important;filter:none!important;transition:none!important}
+}

@@ -34,6 +34,11 @@ site/yanabee/js/home.js        home: funding donut hover, growth phases highligh
 site/yanabee/js/search.js      Ctrl+K search overlay over window.YANABEE_KB
 site/yanabee/js/chat.js        «مساعد ينابيع»: Gemini via /api/chat (site: "yanabee"), offline answers from the KB
 site/yanabee/js/<page>.js      page-only behaviour (springs.js = home hero canvas, …)
+site/yanabee/js/wow.js + css/wow.css       sitewide "wow" layer (cursor, page wipe, headline reveals, wave progress, parallax, sound)
+site/yanabee/js/intro.js + css/intro.css   opening scene (home, first visit per session)
+site/yanabee/js/water.js + css/water.css   home hero: live WebGL water surface (2D fallback)
+tools/yanabee/wow_story.py + js/story.js + css/story.css       home: pinned scroll story «الرسالة» performed with particles
+tools/yanabee/wow_gallery.py + js/gallery.js + css/gallery.css home: pinned horizontal gallery of the seven teams (+ inclusion)
 ```
 
 ## Laws
@@ -136,3 +141,24 @@ button and the tappable hero springs. Without JavaScript every page is still com
 The hero canvas's seven streams are the seven teams (`data-teams` on the canvas, built from the content): hover shows
 the team, a press opens `teams.html#tN`. Elements with `data-goto="id"` scroll to that id. The select-to-ask text is UI
 chrome; the question sent to the assistant is the selected content text in «…».
+
+## The "wow" pack (animation layer)
+
+Everything here is progressive enhancement: each piece has a calm static fallback (no JS, `prefers-reduced-motion`, small
+screens), pauses off-screen, and uses only content that is already in `content/yanabee/*.txt`.
+
+| Piece | Where | What it does | Hooks |
+|---|---|---|---|
+| Opening scene | `index.html` | a drop falls, splashes in the seven team colours, the logo rises, a circular hole opens onto the hero. Once per browser session; `?intro` replays it (and is the only way to see it under automation); skipped on a keypress/press and when the page was reached through a water wipe | `html.intro-on`, `sessionStorage['yb-intro']`, events `yanabee:intro-reveal`, `yanabee:intro-end` |
+| Water hero | `index.html` hero | WebGL1 analytic ripple surface with caustics, calmer behind the copy; reacts to pointer/touch; 2D fallback; software rasterisers get the 2D version (`window.YANABEE_WATER={gl:'force'}` overrides) | event `yanabee:drop` `{x,y,strength}` (client coords), `window.YanabeeWater` |
+| Scroll story | `index.html` after the hero | the mission paragraph (verbatim, cut into 4 fragments) performed by ~1800 particles: loners → seven team clusters → racing streams → one arch → the word «ينابيع». Tall sticky track; static block without JS/reduced motion | `window.YanabeeStory`, tuning in `CFG` (story.js) |
+| Teams gallery | `index.html` teams section | pinned horizontal panels (parallax numerals, arch photos, colour washes, impact tabs, rail); grid below 1000px and in reduced motion | `window.YanabeeGallery`, knobs `K` (gallery.js) |
+| Water-drop cursor | all pages, fine pointer | droplet follower + trail, swells over interactive items, splash on press | `YanabeeWow.cursor.splash(x,y)` |
+| Water wipe | all pages | same-site `.html` links expand a gradient circle from the click, the next page drains it (`sessionStorage['yb-wipe']`, `html.wipe-in` set by the inline head script); fail-safes: 1.15 s CSS auto-uncover, blocked navigation, Esc, bfcache | `YanabeeWow.go(href,x,y)` — use it instead of `location.href =` |
+| Headlines | all pages | `main h1/h2` split per word (never per letter) and rise from a mask; wait for the wipe and the intro | |
+| Wave progress, parallax | all pages | wavy scroll bar with a droplet head; `[data-par="0.2"]` + auto targets | |
+| Water sound | all pages, **off by default** | WebAudio synth (drop/ripple/whoosh/good/bad), nav toggle «صوت الماء», `localStorage['yanabee-sound']` | event `yanabee:sound` `{type}` (the learn page sends `good`/`bad`) |
+
+Tests: `test-intro`, `test-story`, `test-gallery`, `test-wow`, `test-water` (all `node tools/yanabee/<name>.mjs`; `npm run test:yanabee` runs everything).
+Headless Chromium in the sandbox renders WebGL in software, so frame timings measured there are pessimistic; nothing was measured on real
+GPUs or on Safari/Firefox.

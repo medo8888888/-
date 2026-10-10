@@ -52,6 +52,7 @@
     if (!f || !f.confetti) return;
     if (el) { const r = el.getBoundingClientRect(); f.confetti(r.left + r.width / 2, r.top + Math.min(r.height / 2, 220), big); } else f.confetti();
   };
+  const snd = type => window.dispatchEvent(new CustomEvent('yanabee:sound', { detail: { type } }));
   const bump = (el, cls = 'pop') => { if (!el) return; el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); };
 
   /* ---------------- daily card ---------------- */
@@ -161,7 +162,7 @@
         locked = true;
         setTimeout(() => {
           [a, b].forEach(x => { x.classList.add('done'); x.setAttribute('aria-disabled', 'true'); x.setAttribute('aria-label', label(x, true)); bump(x, 'cheer'); });
-          matched++; locked = false;
+          matched++; locked = false; snd('good');
           announce(`تطابق! ${TEAM[a.dataset.pair].short}`);
           if (matched === n) finish();
         }, reduced() ? 60 : 420);
@@ -304,6 +305,7 @@
       S.locked = true; clearInterval(S.tid);
       const { q, opts } = S.cur;
       const ok = i >= 0 && opts[i].ok;
+      snd(ok ? 'good' : 'bad');
       let gain = 0;
       if (ok) {
         S.streak++; S.best = Math.max(S.best, S.streak); S.correct++;

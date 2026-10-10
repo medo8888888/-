@@ -156,7 +156,7 @@
     canvas.addEventListener('pointerleave', () => setHover(-1));
     canvas.addEventListener('click', e => {
       const [x, y] = local(e), i = hit(x, y, e.pointerType === 'touch' ? 38 : 28);
-      if (i >= 0 && teams[i]) location.href = teams[i].href;
+      if (i >= 0 && teams[i]) { if (window.YanabeeWow && YanabeeWow.go) YanabeeWow.go(teams[i].href, e.clientX, e.clientY); else location.href = teams[i].href; }
     });
   }
 
