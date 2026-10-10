@@ -1,0 +1,188 @@
+/* ==========================================================================
+   Home: swipe carousel of the seven teams (+ inclusion) and its detail sheet.
+   Markup: tools/yanabee/wow_gallery.py   Behaviour: js/gallery.js
+
+   Nothing is pinned or staged. The row is a native scroll-snap scroller along the inline axis (RTL), full-bleed so
+   the neighbours peek on both sides; touch is purely native, JS adds the mouse drag, the distance scale/fade, the
+   prev/next buttons, the segment indicator and the detail sheet (z-index 135: above nav/progress/tab bar/fab,
+   below the cursor ring 140 and the menu sheet 150, chat 160, search 170, toasts 430).
+   Knobs on .tgal: --cw (card width) --gap.
+   States: no JS .... plain scroller of linked cards (controls and details stay hidden)
+           .is-ready  controls shown      .dragging  mouse drag in progress     html.tsheet-open  sheet open (scroll locked)
+   ========================================================================== */
+.tgal{
+  --cw:min(79vw,380px);--gap:14px;--pad:calc((100% - var(--cw)) / 2);--cur:var(--brand);
+  position:relative;inline-size:100vw;margin-inline:calc(50% - 50vw);margin-block-start:clamp(4px,1.5vw,20px)}
+@media(min-width:600px){.tgal{--cw:clamp(260px,46vw,340px);--gap:16px}}
+@media(min-width:1000px){.tgal{--cw:clamp(280px,26vw,360px);--gap:18px}}
+.tgal + .team-grid{display:none}  /* the plain card grid is the same list: the carousel replaces it at every width */
+
+/* ---------- the row ---------- */
+.tgal-scroller{display:flex;align-items:stretch;gap:var(--gap);overflow-x:auto;overflow-y:hidden;
+  scroll-snap-type:x mandatory;overscroll-behavior-x:contain;scrollbar-width:none;touch-action:pan-x pan-y;
+  padding-inline:var(--pad);scroll-padding-inline:var(--pad);padding-block:14px 30px;margin-block:-14px -8px;list-style:none;
+  -webkit-overflow-scrolling:touch}
+.tgal-scroller::-webkit-scrollbar{display:none}
+.tgal-scroller:focus-visible{outline:3px solid var(--accent);outline-offset:-3px;border-radius:12px}
+@media(hover:hover) and (pointer:fine){.tgal-scroller{cursor:grab}}
+.tgal-scroller.dragging{cursor:grabbing;scroll-snap-type:none;scroll-behavior:auto;user-select:none;-webkit-user-select:none}
+.tgal-scroller.dragging *{cursor:grabbing}
+
+/* ---------- a card ---------- */
+.tg-item{flex:none;inline-size:var(--cw);display:flex;scroll-snap-align:center;scroll-snap-stop:always;transform-origin:50% 50%}
+.tgal-scroller.is-moving .tg-item{will-change:transform,opacity}
+.tg-card{--tc-ink:color-mix(in oklab,var(--tc) 62%,var(--ink));
+  flex:1;min-inline-size:0;display:flex;flex-direction:column;padding:10px 10px 18px;border-radius:28px;text-decoration:none;color:inherit;
+  border:1px solid color-mix(in oklab,var(--tc) 26%,var(--line));
+  background:radial-gradient(90% 52% at 50% 0%,color-mix(in oklab,var(--tc) 16%,transparent),transparent 78%),var(--surface);
+  box-shadow:var(--shadow-sm);cursor:inherit;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;
+  transition:transform var(--dur-fast,120ms) var(--spring,cubic-bezier(.22,.8,.24,1)),box-shadow var(--dur,200ms) ease-out,border-color var(--dur,200ms) ease-out}
+.tg-card:active{transform:scale(.97)}
+@media(hover:hover) and (pointer:fine){
+  .tg-card:hover{box-shadow:var(--shadow);border-color:color-mix(in oklab,var(--tc) 50%,var(--line));translate:0 -3px}
+  .tg-card:hover .tg-go .i{transform:translateX(-4px)}
+}
+.tg-card:focus-visible{outline-offset:2px}
+.tg-incl .tg-card{border-style:dashed;
+  background:radial-gradient(90% 52% at 50% 0%,color-mix(in oklab,var(--tc) 16%,transparent),transparent 78%),var(--grad-soft),var(--surface)}
+
+.tg-media{position:relative;margin-block-end:36px}
+.tg-photo{position:relative;aspect-ratio:4/3;overflow:hidden;border-radius:50% 50% 20px 20px / 66.66% 66.66% 20px 20px;
+  background:color-mix(in oklab,var(--tc) 22%,var(--surface-2))}
+.tg-photo .ph{inline-size:100%;block-size:100%;object-fit:cover;display:block;-webkit-user-drag:none}
+.tg-tint{position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(to top,color-mix(in oklab,var(--tc) 38%,transparent),transparent 58%)}
+.tg-ic{position:absolute;inset-inline:0;margin-inline:auto;inset-block-end:-32px;inline-size:62px;aspect-ratio:1;border-radius:50%;
+  display:grid;place-items:center;color:var(--tc-ink);background:var(--surface);
+  border:3px solid color-mix(in oklab,var(--tc) 34%,var(--surface));box-shadow:var(--shadow-sm)}
+.tg-ic .i{inline-size:28px;block-size:28px}
+
+.tg-body{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;padding-inline:8px;text-align:center}
+.tg-kick{font:600 .85rem/1.4 var(--font-h);color:var(--tc-ink)}
+.tg-title{font-size:1.14rem;line-height:1.5;font-weight:700;color:var(--head);text-wrap:balance}
+.tg-sub{font:600 .86rem/1.5 var(--font-h);color:var(--tc-ink)}
+.tg-brief{font-size:.93rem;line-height:1.85;color:var(--ink-2);text-wrap:balance;
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3;overflow:hidden}
+.tg-chips{display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
+.tg-chip{font-size:.82rem;line-height:1.5;padding:3px 11px;border-radius:999px;background:var(--surface);border:1px solid var(--line);color:var(--ink-2)}
+.tg-go{margin-block-start:auto;padding-block-start:10px;display:inline-flex;align-items:center;gap:6px;font:600 .92rem/1.4 var(--font-h);color:var(--tc-ink)}
+.tg-go .i{inline-size:17px;block-size:17px;transition:transform var(--dur,200ms) var(--ease)}
+
+/* ---------- controls (JS-only: shown with .is-ready) ---------- */
+.tgal-bar{display:none}
+.tgal.is-ready .tgal-bar{display:flex;align-items:center;justify-content:center;gap:8px;margin-block-start:2px}
+.tg-nav{inline-size:44px;block-size:44px;border-radius:50%;display:grid;place-items:center;flex:none;color:var(--ink-2);
+  background:var(--surface);border:1px solid var(--line-2);box-shadow:var(--shadow-sm);-webkit-tap-highlight-color:transparent;
+  transition:transform var(--dur-fast,120ms) var(--spring,cubic-bezier(.22,.8,.24,1)),opacity var(--dur,200ms),color var(--dur,200ms),border-color var(--dur,200ms)}
+.tg-nav .i{inline-size:22px;block-size:22px}
+@media(hover:hover) and (pointer:fine){.tg-nav:not(:disabled):hover{color:var(--brand);border-color:var(--brand)}}
+.tg-nav:not(:disabled):active{transform:scale(.94)}
+.tg-nav:disabled{opacity:.38;cursor:default;box-shadow:none}
+.tg-dots{display:flex;align-items:center}
+.tg-dot{inline-size:26px;block-size:44px;display:grid;place-items:center;padding:0;-webkit-tap-highlight-color:transparent}
+.tg-dot i{display:block;inline-size:18px;block-size:6px;border-radius:6px;
+  background:color-mix(in oklab,var(--tc) 36%,var(--line-2));
+  transition:transform var(--dur,200ms) var(--spring,cubic-bezier(.22,.8,.24,1)),background-color var(--dur,200ms)}
+.tg-dot:active i{transform:scaleY(1.4)}
+.tg-dot[aria-current=true] i{background:var(--tc);transform:scaleY(1.5)}
+@media(hover:hover) and (pointer:fine){.tg-dot:hover i{background:color-mix(in oklab,var(--tc) 70%,var(--line-2))}.tg-dot[aria-current=true]:hover i{background:var(--tc)}}
+
+/* ==========================================================================
+   Detail sheet (built by js/gallery.js from <template data-sheet-tpl>, appended to <body>)
+   ========================================================================== */
+html.tsheet-open{overflow:hidden;scrollbar-gutter:stable}
+.tsheet{position:fixed;inset:0;z-index:135;display:grid;justify-items:center;align-items:end;overscroll-behavior:contain}
+.tsheet[hidden]{display:none}
+.tsheet-scrim{position:absolute;inset:0;background:rgba(2,14,19,.56);touch-action:none}
+.tsheet-panel{--tc-ink:color-mix(in oklab,var(--tc) 62%,var(--ink));--sr:26px;
+  position:relative;isolation:isolate;inline-size:min(100%,720px);max-block-size:92vh;max-block-size:92dvh;display:flex;flex-direction:column;outline:0;
+  background:var(--surface);color:var(--ink);border:1px solid var(--line);border-bottom:0;border-radius:var(--sr) var(--sr) 0 0;
+  box-shadow:var(--shadow-lg)}
+.tsheet-panel.is-morph::before{content:"";position:absolute;z-index:-1;border-radius:inherit;background:var(--surface);
+  inset:calc(var(--ex-t,0px) * -1) calc(var(--ex-r,0px) * -1) calc(var(--ex-b,0px) * -1) calc(var(--ex-l,0px) * -1)}
+.tsheet.is-dragging .tsheet-panel{will-change:transform}
+
+.tsheet-top{flex:none;touch-action:none;cursor:grab;-webkit-user-select:none;user-select:none}
+.tsheet.is-dragging .tsheet-top{cursor:grabbing}
+.tsheet-handle{display:block;inline-size:42px;block-size:5px;border-radius:5px;background:var(--line-2);margin:8px auto 0}
+.tsheet-head{display:flex;align-items:center;gap:12px;padding:8px 14px 10px 12px}
+.tsheet-ic{flex:none;inline-size:46px;block-size:46px;border-radius:15px;display:grid;place-items:center;color:var(--tc-ink);
+  background:color-mix(in oklab,var(--tc) 15%,var(--surface))}
+.tsheet-ic .i{inline-size:24px;block-size:24px}
+.tsheet-ttl{flex:1;min-inline-size:0;display:flex;flex-direction:column}
+.tsheet-sub.is-kick{order:-1}
+.tsheet-title{font-size:1.2rem;line-height:1.45;font-weight:700;color:var(--head);text-wrap:balance}
+.tsheet-sub{font:600 .86rem/1.5 var(--font-h);color:var(--tc-ink)}
+.tsheet-sub:empty{display:none}
+.tsheet-x{flex:none;inline-size:44px;block-size:44px;border-radius:50%;display:grid;place-items:center;color:var(--ink-2);
+  background:var(--surface-2);border:1px solid var(--line);-webkit-tap-highlight-color:transparent;
+  transition:transform var(--dur-fast,120ms) var(--spring,cubic-bezier(.22,.8,.24,1)),color var(--dur,200ms)}
+.tsheet-x:active{transform:scale(.92)}
+@media(hover:hover) and (pointer:fine){.tsheet-x:hover{color:var(--brand)}}
+
+.tsheet-body{flex:1;min-block-size:0;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;
+  padding:4px 16px calc(24px + env(safe-area-inset-bottom))}
+.tsheet-art{position:relative;margin:2px 16px 12px;border-radius:20px;overflow:hidden;block-size:clamp(100px,18dvh,180px);
+  background:color-mix(in oklab,var(--tc) 22%,var(--surface-2))}
+.tsheet-art-in{position:absolute;inset-inline:0;top:0;block-size:100%;transform-origin:0 0}  /* JS sizes it 4:3 and centres it: the card's photo shrinks into this banner */
+.tsheet-art-in .ph{inline-size:100%;block-size:100%;object-fit:cover;display:block}
+.tsheet-art-in .tg-tint{background:linear-gradient(to top,color-mix(in oklab,var(--tc) 30%,transparent),transparent 60%)}
+.tsheet-panel.is-morph .tsheet-art{overflow:visible} /* only the animated clip-path crops it while it morphs */
+.tsheet-ghost{position:absolute;z-index:3;margin:0;pointer-events:none;transform-origin:0 0;translate:none;box-shadow:none;border-color:transparent;background:none;transition:none}
+.tsheet-ghost .tg-media{visibility:hidden}
+.tsheet-work{font-size:1rem;line-height:1.95;color:var(--ink-2)}
+.tsheet-work b{font-weight:600;color:var(--head)}
+.tsheet-work:empty{display:none}
+
+/* sliding segmented tabs (own indicator: data-seg="own") */
+.tg-seg{position:relative;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:4px;margin-block:14px 10px;
+  border-radius:16px;background:var(--surface-2);border:1px solid var(--line)}
+.tg-seg .seg-ind{position:absolute;inset-block:4px;left:0;inline-size:var(--iw,0px);border-radius:12px;pointer-events:none;
+  background:var(--surface);border:1px solid color-mix(in oklab,var(--tc) 40%,var(--line));box-shadow:var(--shadow-sm);
+  transform:translateX(var(--ix,0px))}
+.tg-seg.is-set .seg-ind{transition:transform var(--dur,200ms) var(--ease)}
+.tg-seg [role=tab]{position:relative;z-index:1;min-block-size:46px;padding:6px 6px;border-radius:12px;display:flex;align-items:center;justify-content:center;gap:6px;
+  font:600 .84rem/1.4 var(--font-h);color:var(--muted);text-align:center;-webkit-tap-highlight-color:transparent;
+  transition:color var(--dur,200ms),transform var(--dur-fast,120ms) var(--spring,cubic-bezier(.22,.8,.24,1))}
+.tg-seg [role=tab]:active{transform:scale(.96)}
+.tg-seg [role=tab] .i{inline-size:16px;block-size:16px;flex:none}
+.tg-seg [role=tab][aria-selected=true]{color:var(--head)}
+.tg-seg [role=tab][aria-selected=true] .i{color:var(--tc-ink)}
+@media(max-width:480px){.tg-seg [role=tab] .i{display:none}}
+.tsheet-panels{display:grid}
+.tg-tp{grid-area:1/1;padding:14px 16px;border-radius:16px;font-size:1rem;line-height:1.9;color:var(--ink-2);
+  background:color-mix(in oklab,var(--tc) 8%,var(--surface));border:1px solid color-mix(in oklab,var(--tc) 22%,var(--line))}
+.tg-tp[hidden]{display:block;visibility:hidden}  /* stacked in one cell: the panel area keeps the height of the longest text */
+.tsheet-foot{display:flex;margin-block-start:16px}
+.tsheet-more{inline-size:100%;justify-content:center}
+
+@media(min-width:760px){
+  .tsheet{align-items:center;padding:24px}
+  .tsheet-panel{max-block-size:86vh;max-block-size:86dvh;border-radius:var(--sr);border-bottom:1px solid var(--line)}
+  .tsheet-handle{display:none}
+  .tsheet-head{padding:14px 18px 10px 14px}
+  .tsheet-body{padding-inline:20px}
+  .tsheet-art{margin-inline:20px}
+  .tsheet-more{inline-size:auto}
+}
+
+/* ---------- reduced motion: no scale/fade, no transitions ---------- */
+@media(prefers-reduced-motion:reduce){
+  .tgal *,.tgal *::before,.tgal *::after,.tsheet *,.tsheet *::before,.tsheet *::after{transition:none!important;animation:none!important}
+  .tg-item{transform:none!important;opacity:1!important}
+}
+
+/* ---------- print: a grid of all cards with the details text visible ---------- */
+@media print{
+  .tgal{inline-size:auto;margin-inline:0}
+  .tgal-scroller{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible;padding:0;margin:0;gap:14px;cursor:auto}
+  .tg-item{display:block;inline-size:auto;transform:none!important;opacity:1!important;break-inside:avoid}
+  .tg-card{box-shadow:none;background:none;border-color:#999;padding-block-end:10px;transform:none!important}
+  .tg-photo,.tg-ic{display:none}
+  .tg-media{margin:0}
+  .tg-brief,.tg-chips,.tg-go,.tg-d-more,.tg-d-ic{display:none!important}
+  .tg-detail[hidden]{display:block}
+  .tg-detail{padding:8px 12px;font-size:.92rem;line-height:1.8;color:#000}
+  .tg-d-work,.tg-d-i{margin-block:4px}
+  .tgal-bar,.tsheet{display:none!important}
+}

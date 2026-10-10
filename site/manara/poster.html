@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="ar" dir="rtl" data-lang="ar">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title data-en="MANARA — Display board">منارة — لوحة العرض</title>
+<meta name="description" content="لوحة عرض جاهزة للطباعة لمشروع منارة: لوحة ثلاثية الطي للطاولة أو ملصق A0، بالعربية والإنجليزية معًا. الدليل قبل الذعر.">
+<meta name="theme-color" content="#0a0e15">
+<meta name="color-scheme" content="light dark">
+<script>(function(){var d=document.documentElement,t,l;try{t=localStorage.getItem('manara-theme');l=localStorage.getItem('manara-lang')}catch(e){}var q=/[?&]lang=(ar|en)/.exec(location.search);if(q)l=q[1];if(t!=='light'&&t!=='dark')t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';if(l!=='en')l='ar';d.dataset.theme=t;d.dataset.lang=l;d.lang=l;d.dir=l==='ar'?'rtl':'ltr';d.classList.add('js');setTimeout(function(){if(!window.__manaraReady)d.classList.remove('js')},2500)})();</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/poster.css">
+<style id="page-rule">@page{size:297mm 420mm;margin:0}</style>
+<script src="js/core.js" defer></script>
+<script src="js/poster.js" defer></script>
+</head>
+<body data-page="poster.html">
+<a class="skip" href="#main">تخطَّ إلى المحتوى</a>
+<header class="nav" data-nav></header>
+
+<!-- icon sprite: stroke icons, drawn with currentColor (static, authored here) -->
+<svg class="sprite" width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute">
+  <defs>
+    <symbol id="pi-fire" viewBox="0 0 24 24"><path d="M12 22c4 0 7-2.7 7-6.7 0-3.6-2.6-6-4.2-8.3-.4 1.8-1.3 3-2.8 3.6C12.6 7.3 11 4.3 8.5 2c.3 3.4-3.5 6.2-3.5 10.8C5 19 8 22 12 22z"/></symbol>
+    <symbol id="pi-gas" viewBox="0 0 24 24"><rect x="7" y="9" width="10" height="12" rx="4"/><path d="M10 9V6h4v3M11 6V3h2v3M17 5h3"/></symbol>
+    <symbol id="pi-flood" viewBox="0 0 24 24"><path d="M2 8c2.5-2 4.5-2 7 0s4.500 2 7 0 4-1.500 6 0M2 13c2.500-2 4.500-2 7 0s4.500 2 7 0 4-1.500 6 0M2 18c2.500-2 4.500-2 7 0s4.500 2 7 0 4-1.500 6 0"/></symbol>
+    <symbol id="pi-dust" viewBox="0 0 24 24"><path d="M3 8h10a3 3 0 1 0-3-3M3 12h15a3 3 0 1 1-3 3M3 16h7"/></symbol>
+    <symbol id="pi-heat" viewBox="0 0 24 24"><path d="M14 14.8V4a2 2 0 0 0-4 0v10.8a4 4 0 1 0 4 0z"/><path d="M12 9v7"/></symbol>
+    <symbol id="pi-sos" viewBox="0 0 24 24"><path d="M12 21s-8-5-8-11a4.500 4.500 0 0 1 8-2.800A4.500 4.500 0 0 1 20 10c0 6-8 11-8 11z"/><path d="M12 9v5M9.500 11.500h5"/></symbol>
+    <symbol id="pi-hospital" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 7v10M7 12h10"/></symbol>
+    <symbol id="pi-police" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 7.500l1.300 2.700 2.900.4-2.100 2 .5 2.900-2.600-1.400-2.600 1.400.5-2.900-2.100-2 2.900-.4z"/></symbol>
+    <symbol id="pi-phone" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/></symbol>
+    <symbol id="pi-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.300 21a1.900 1.900 0 0 0 3.400 0"/></symbol>
+    <symbol id="pi-siren" viewBox="0 0 24 24"><path d="M6 18a6 6 0 0 1 12 0"/><path d="M4 18h16v3H4z"/><path d="M12 3v3M5 6l2 2M19 6l-2 2"/></symbol>
+    <symbol id="pi-camera" viewBox="0 0 24 24"><path d="M4 7h3l2-3h6l2 3h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="4"/></symbol>
+    <symbol id="pi-drone" viewBox="0 0 24 24"><circle cx="5" cy="5" r="3"/><circle cx="19" cy="5" r="3"/><circle cx="5" cy="19" r="3"/><circle cx="19" cy="19" r="3"/><path d="M7.500 7.500l2.500 2.500M16.500 7.500L14 10M7.500 16.500l2.500-2.500M16.500 16.500L14 14"/><rect x="9.500" y="9.500" width="5" height="5" rx="1.500"/></symbol>
+    <symbol id="pi-chip" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/></symbol>
+    <symbol id="pi-door" viewBox="0 0 24 24"><path d="M14 3h5v18h-5"/><path d="M3 12h10M9 8l4 4-4 4"/></symbol>
+    <symbol id="pi-doc" viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></symbol>
+    <symbol id="pi-key" viewBox="0 0 24 24"><circle cx="8" cy="12" r="4"/><path d="M12 12h9M18 12v3M21 12v2"/></symbol>
+    <symbol id="pi-person" viewBox="0 0 24 24"><circle cx="12" cy="7" r="3.500"/><path d="M5 21v-2a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v2"/></symbol>
+    <symbol id="pi-check" viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></symbol>
+    <symbol id="pi-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+    <symbol id="pi-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></symbol>
+    <symbol id="pi-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></symbol>
+    <symbol id="pi-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v1"/><path d="M16 4a4 4 0 0 1 0 8M22 21v-1a6 6 0 0 0-4-5.600"/></symbol>
+    <symbol id="pi-pin" viewBox="0 0 24 24"><path d="M12 22s7-6.200 7-12a7 7 0 1 0-14 0c0 5.800 7 12 7 12z"/><circle cx="12" cy="10" r="2.500"/></symbol>
+    <symbol id="pi-wrench" viewBox="0 0 24 24"><path d="M14.700 6.300a4 4 0 0 0-5.400 5.400L3 18l3 3 6.300-6.300a4 4 0 0 0 5.400-5.400l-2.600 2.600-2.400-.6-.6-2.400z"/></symbol>
+    <symbol id="pi-radar" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><path d="M12 12l6-6"/><circle cx="12" cy="12" r="1"/></symbol>
+    <symbol id="pi-eye" viewBox="0 0 24 24"><path d="M2 12s3.500-7 10-7 10 7 10 7-3.500 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="pi-route" viewBox="0 0 24 24"><circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19h8.500a3.500 3.500 0 0 0 0-7h-9a3.500 3.500 0 0 1 0-7H16"/></symbol>
+    <symbol id="pi-signal" viewBox="0 0 24 24"><path d="M5 12a7 7 0 0 1 14 0M8.500 12a3.500 3.500 0 0 1 7 0"/><circle cx="12" cy="12" r="1"/><path d="M12 13v8"/></symbol>
+  </defs>
+</svg>
+
+<main id="main">
+
+<!-- ====================================================================== page header (screen only) -->
+<section class="wrap wide pt-hero print-hide" aria-labelledby="pt-title">
+  <span class="eyebrow" data-icon="layers"><span data-l="ar">لوحة العرض · جاهزة للطباعة</span><span data-l="en">Display board · print-ready</span></span>
+  <h1 id="pt-title"><span data-l="ar">لوحة منارة للكشك: ثلاثية الطي أو ملصق A0</span><span data-l="en">The MANARA booth board: tri-fold or A0 poster</span></h1>
+  <p class="pt-lead"><span data-l="ar">اختر الشكل والمقاس، املأ بياناتك، ثم اطبع أو احفظ PDF. تظهر العربية والإنجليزية معًا، وكل رقم فيها مأخوذ من اختبارات المشروع أو من مصدر مذكور بجانبه.</span><span data-l="en">Pick a layout and size, fill in your details, then print or save a PDF. Arabic and English appear together, and every number comes from the project's own tests or from a source printed beside it.</span></p>
+</section>
+
+<!-- ====================================================================== controls (screen only) -->
+<section class="wrap wide print-hide" aria-labelledby="tools-h">
+  <div class="tools card">
+    <h2 class="tools-h" id="tools-h"><span data-l="ar">الإعدادات</span><span data-l="en">Settings</span></h2>
+    <div class="tgrid">
+
+      <fieldset class="tg" id="tg-layout">
+        <legend class="tg-h"><span data-l="ar">الشكل</span><span data-l="en">Layout</span></legend>
+        <div class="seg">
+          <label class="seg-i"><input type="radio" name="layout" value="tri" checked><span data-icon="layers"><span data-l="ar">لوحة ثلاثية الطي</span><span data-l="en">Tri-fold board</span></span></label>
+          <label class="seg-i"><input type="radio" name="layout" value="a0"><span data-icon="slides"><span data-l="ar">ملصق A0 عمودي</span><span data-l="en">A0 portrait poster</span></span></label>
+        </div>
+        <p class="tg-note" id="size-note"></p>
+      </fieldset>
+
+      <div class="tg" id="tg-size">
+        <label class="field" for="sel-size"><span class="tg-h"><span data-l="ar">مقاس اللوحة (للثلاثية)</span><span data-l="en">Board size (tri-fold)</span></span></label>
+        <select id="sel-size">
+          <option value="b90">90 × 60 cm — 3 × 300 × 600 mm</option>
+          <option value="a3">3 × A3 — 297 × 420 mm (one language)</option>
+          <option value="a2">3 × A2 — 420 × 594 mm</option>
+          <option value="custom" id="opt-custom">Custom / مخصص</option>
+        </select>
+        <div class="custom-size" id="custom-size" hidden>
+          <label class="field"><span><span data-l="ar">عرض اللوحة (مم)</span><span data-l="en">Panel width (mm)</span></span><input class="input" id="in-cw" type="number" inputmode="numeric" min="200" max="1000" step="1" value="300"></label>
+          <label class="field"><span><span data-l="ar">ارتفاعها (مم)</span><span data-l="en">Panel height (mm)</span></span><input class="input" id="in-ch" type="number" inputmode="numeric" min="280" max="1400" step="1" value="500"></label>
+        </div>
+      </div>
+
+      <fieldset class="tg" id="tg-lang">
+        <legend class="tg-h"><span data-l="ar">اللغة</span><span data-l="en">Language</span></legend>
+        <label class="switch"><input type="checkbox" id="opt-both" checked><span><span data-l="ar">اعرض اللغتين معًا</span><span data-l="en">Show both languages</span></span></label>
+        <button class="btn btn-ghost btn-sm" type="button" id="btn-primary" data-icon="globe"><span data-l="ar">اللغة الأساسية: العربية — بدّل إلى الإنجليزية</span><span data-l="en">Main language: English — switch to Arabic</span></button>
+      </fieldset>
+
+      <fieldset class="tg" id="tg-opts">
+        <legend class="tg-h"><span data-l="ar">الطباعة</span><span data-l="en">Print options</span></legend>
+        <label class="switch"><input type="checkbox" id="opt-paper"><span><span data-l="ar">عاين بألوان الورق</span><span data-l="en">Preview in paper colours</span></span></label>
+        <label class="switch"><input type="checkbox" id="opt-guides"><span><span data-l="ar">أظهر حدّ القص والهامش الآمن</span><span data-l="en">Show trim line and safe margin</span></span></label>
+        <label class="switch"><input type="checkbox" id="opt-bleed"><span><span data-l="ar">أضف 3 مم قصاصة وعلامات قص</span><span data-l="en">Add 3 mm bleed and crop marks</span></span></label>
+      </fieldset>
+
+      <div class="tg" id="tg-link">
+        <label class="field" for="in-url"><span class="tg-h"><span data-l="ar">رابط المشروع المنشور (لرموز QR)</span><span data-l="en">Your published link (for the QR codes)</span></span></label>
+        <input class="input" id="in-url" type="url" inputmode="url" dir="ltr" autocomplete="off" spellcheck="false" placeholder="https://example.org/manara/">
+        <p class="tg-note" id="qr-note"></p>
+      </div>
+
+      <div class="tg tg-wide" id="tg-zoom">
+        <span class="tg-h" id="zoom-h"><span data-l="ar">المعاينة</span><span data-l="en">Preview</span></span>
+        <div class="zoombar" role="group" aria-labelledby="zoom-h">
+          <button class="btn btn-ghost btn-sm" type="button" id="z-fit"><span data-l="ar">ملاءمة العرض</span><span data-l="en">Fit width</span></button>
+          <button class="btn btn-ghost btn-sm" type="button" id="z-page"><span data-l="ar">ملاءمة الصفحة</span><span data-l="en">Fit page</span></button>
+          <button class="icon-btn" type="button" id="z-out" aria-label="Zoom out"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"/></svg></button>
+          <output class="zread num" id="z-read" for="z-fit z-page z-out z-in" aria-live="off">–</output>
+          <button class="icon-btn" type="button" id="z-in" aria-label="Zoom in"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg></button>
+          <span class="zsep" aria-hidden="true"></span>
+          <span class="zpanels" id="zpanels" role="group" aria-label="Panels">
+            <button class="chip" type="button" data-panel="1">1</button>
+            <button class="chip" type="button" data-panel="2">2</button>
+            <button class="chip" type="button" data-panel="3">3</button>
+          </span>
+        </div>
+        <p class="tg-note"><span data-l="ar">على الهاتف: اضغط 1 أو 2 أو 3 لقراءة لوحة بحجم مريح، أو كبّر بالأصابع.</span><span data-l="en">On a phone: tap 1, 2 or 3 to read a panel at a comfortable size, or pinch to zoom.</span></p>
+      </div>
+
+      <details class="tg tg-wide" id="details">
+        <summary class="tg-h"><span data-l="ar">بيانات الفريق (تظهر في اللوحة)</span><span data-l="en">Team details (shown on the board)</span> <span class="ph-status" id="ph-status" role="status"></span></summary>
+        <p class="tg-note"><span data-l="ar">الحقول الفارغة تُطبع كما هي بين أقواس مزدوجة، فاملأها قبل الطباعة. لا نخترع أسماء ولا جهات. تُحفظ في هذا المتصفح فقط.</span><span data-l="en">Empty fields print as they are, in double braces, so fill them before printing. We invent no names or institutions. They are kept in this browser only.</span></p>
+        <div class="fields" id="fields"></div>
+      </details>
+    </div>
+
+    <div class="printrow">
+      <button class="btn btn-primary" type="button" id="btn-print" data-icon="download"><span data-l="ar">اطبع أو احفظ PDF</span><span data-l="en">Print or save as PDF</span></button>
+      <p class="fit-status" id="fit-status" role="status" aria-live="polite"></p>
+    </div>
+    <div class="note howto">
+      <b><span data-l="ar">كيف تحفظ PDF</span><span data-l="en">How to save a PDF</span></b>
+      <ol>
+        <li><span data-l="ar">اضغط «اطبع أو احفظ PDF»، وفي نافذة الطباعة اختر الوجهة <b>حفظ بتنسيق PDF</b>.</span><span data-l="en">Press “Print or save as PDF”, and in the print dialog pick the destination <b>Save as PDF</b>.</span></li>
+        <li><span data-l="ar">حجم الورق يُضبط تلقائيًا من الصفحة (<b class="num" id="how-size">297 × 420 mm</b>). إن طلب المتصفح حجمًا فاختر الأقرب (A3 أو A0) أو «مخصص».</span><span data-l="en">The paper size is set by the page itself (<b class="num" id="how-size-en">297 × 420 mm</b>). If your browser asks, pick the closest (A3 or A0) or “Custom”.</span></li>
+        <li><span data-l="ar">الهوامش: <b>بلا</b>. المقياس: <b>100%</b>. فعّل <b>الرسوم الخلفية</b>. أوقف «الرؤوس والتذييلات».</span><span data-l="en">Margins: <b>None</b>. Scale: <b>100%</b>. Turn <b>Background graphics</b> on. Turn “Headers and footers” off.</span></li>
+        <li><span data-l="ar">أرسل ملف PDF إلى المطبعة واطلب الطباعة بحجمه الفعلي دون «ملاءمة الصفحة». اطبع نسخة تجريبية على A4 أولًا وافحص رموز QR بهاتفك.</span><span data-l="en">Send the PDF to the print shop and ask for actual size, no “fit to page”. Print a test copy on A4 first and scan the QR codes with your phone.</span></li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- ====================================================================== the board -->
+<section class="wrap wide viewer-wrap" aria-label="Board preview">
+  <div class="viewer scroll-x" id="viewer" tabindex="0" role="region" aria-label="Board preview / معاينة اللوحة">
+    <div class="stagebox" id="stagebox">
+      <div class="board bi" id="board" data-layout="tri">
+
+        <!-- ================================================================ PANEL 1 — WHY -->
+        <article class="panel" id="panel-1" data-panel="1" aria-labelledby="m-problem-t">
+          <div class="pbg" aria-hidden="true"></div>
+          <div class="pin">
+
+            <section class="mod" id="m-problem" aria-labelledby="m-problem-t">
+              <h2 class="mh" id="m-problem-t"><span class="mn num">01</span><span class="mt bl"><span data-l="ar">المشكلة: الدقائق الأولى يعيشها الناس وحدهم</span><span data-l="en">The problem: people live the first minutes alone</span></span></h2>
+              <div class="stats">
+                <article class="stat" style="--sc:var(--info)">
+                  <div class="stat-n num" dir="ltr">46.6<small>%</small></div>
+                  <div class="stat-t">
+                    <p class="bl"><span data-l="ar">من سكان قطر سُجّلوا في «سكن العمال»، و92.7% منهم غير قطريين.</span><span data-l="en">of Qatar's residents were counted in shared worker accommodation; 92.7% are non-Qatari.</span></p>
+                    <p class="src bl il"><span data-l="ar">المصدر: تعداد قطر 2020 (جهاز التخطيط والإحصاء، عبر GLMM) · النسبتان محسوبتان منّا</span><span data-l="en">Source: Qatar census 2020 (PSA, via GLMM) · percentages computed by us</span></p>
+                  </div>
+                </article>
+                <article class="stat" style="--sc:var(--info)">
+                  <div class="stat-n num" dir="ltr">7–10<small><span data-l="ar">د</span><span data-l="en">min</span></small></div>
+                  <div class="stat-t">
+                    <p class="bl"><span data-l="ar">زمن وصول الدفاع المدني في قطر إلى البلاغات عام 2017. رقم قديم نذكر سنته.</span><span data-l="en">Qatar Civil Defence time to reach incidents, 2017. An old figure, so we show its year.</span></p>
+                    <p class="src bl il"><span data-l="ar">المصدر: قطر تريبيون، 31 يناير 2018</span><span data-l="en">Source: Qatar Tribune, 31 Jan 2018</span></p>
+                  </div>
+                </article>
+                <article class="stat" style="--sc:var(--accent)">
+                  <div class="stat-n num" dir="ltr">1–2<small><span data-l="ar">د</span><span data-l="en">min</span></small></div>
+                  <div class="stat-t">
+                    <p class="bl"><span data-l="ar">قد لا تتجاوز مهلة الهروب دقيقة أو دقيقتين بعد رنين الإنذار (بحث أمريكي).</span><span data-l="en">As little as one or two minutes to escape once the smoke alarm sounds (US research).</span></p>
+                    <p class="src bl il"><span data-l="ar">المصدر: NFPA، التخطيط للهروب من حريق منزلي</span><span data-l="en">Source: NFPA, home fire escape planning</span></p>
+                  </div>
+                </article>
+              </div>
+            </section>
+
+            <section class="mod" id="m-gap" aria-labelledby="m-gap-t">
+              <h2 class="mh" id="m-gap-t"><span class="mn num">02</span><span class="mt bl"><span data-l="ar">الفجوة: آخر مئة متر</span><span data-l="en">The gap: the last 100 metres</span></span></h2>
+              <ol class="journey">
+                <li class="ok"><svg class="pi" aria-hidden="true"><use href="#pi-check"/></svg><b class="bl"><span data-l="ar">الرصد</span><span data-l="en">Detect</span></b></li>
+                <li class="ok"><svg class="pi" aria-hidden="true"><use href="#pi-check"/></svg><b class="bl"><span data-l="ar">الاستجابة</span><span data-l="en">Respond</span></b></li>
+                <li class="miss"><svg class="pi" aria-hidden="true"><use href="#pi-x"/></svg><b class="bl"><span data-l="ar">آخر مئة متر</span><span data-l="en">The last 100 m</span></b></li>
+              </ol>
+              <figure class="fig" data-fig="gap" data-alt-ar="رسم بياني: مهلة الهروب دقيقة إلى دقيقتين، ووصول الدفاع المدني من 7 إلى 10 دقائق، وبينهما فجوة لا يوجد فيها غير الناس أنفسهم." data-alt-en="Chart: the escape window is one to two minutes, Civil Defence arrives in seven to ten minutes, and in between only the people themselves are there."><svg class="sv" role="img" viewBox="0 0 600 152" preserveAspectRatio="xMidYMid meet"></svg></figure>
+              <p class="src bl"><span data-l="ar">مصدران مختلفان لا حادثة واحدة: نضعهما معًا لشرح الفكرة فقط.</span><span data-l="en">Two different sources, not one event: shown together only to explain the idea.</span></p>
+              <p class="falcons bl"><span data-l="ar"><b>الصقور تكافح النار… والمنارة تُخرج الجميع بأمان.</b> نحترم «صقر» و«شاهين» و«سُهيل» وطائرات الدفاع المدني ومشروع آيسف 2025: المنارة هي المنصة حولها، لا منافسة لها.</span><span data-l="en"><b>The falcons fight the fire. The lighthouse gets everyone out.</b> We respect Saqr, Shaheen, Suhail, Civil Defence drones and the ISEF 2025 student project: MANARA is the platform around them, not a competitor.</span></p>
+            </section>
+
+            <section class="mod" id="m-inclusive" aria-labelledby="m-inclusive-t">
+              <h2 class="mh" id="m-inclusive-t"><span class="mn num">03</span><span class="mt bl"><span data-l="ar">لكل إنسان رسالته</span><span data-l="en">A message for each person</span></span></h2>
+              <ul class="personas">
+                <li><span class="av" aria-hidden="true">R</span><div><b class="bl"><span data-l="ar">رافي · عامل، المالايالامية</span><span data-l="en">Ravi · worker, Malayalam</span></b><span class="bl sm"><span data-l="ar">إيقاظ بلغته + بطاقة مصوّرة</span><span data-l="en">wake-up in his language + picture card</span></span></div></li>
+                <li><span class="av" aria-hidden="true">H</span><div><b class="bl"><span data-l="ar">هدى · صمّاء</span><span data-l="en">Huda · Deaf</span></b><span class="bl sm"><span data-l="ar">وميض بموافقتها واهتزاز ونص</span><span data-l="en">opt-in strobe, vibration, text</span></span></div></li>
+                <li><span class="av" aria-hidden="true">A</span><div><b class="bl"><span data-l="ar">أبو سالم · كرسي متحرك</span><span data-l="en">Abu Salem · wheelchair</span></b><span class="bl sm"><span data-l="ar">لا يُرسَل إلى الدرج أبدًا</span><span data-l="en">never sent to the stairs</span></span></div></li>
+                <li><span class="av" aria-hidden="true">L</span><div><b class="bl"><span data-l="ar">لينا · تلميذة، 9 سنوات</span><span data-l="en">Lina · pupil, age 9</span></b><span class="bl sm"><span data-l="ar">بطاقة مصوّرة، تتبع معلّمتها</span><span data-l="en">picture card, follows her teacher</span></span></div></li>
+              </ul>
+              <ul class="langs" aria-label="Languages">
+                <li class="done"><b lang="ar">العربية</b><small class="bl il"><span data-l="ar">كاملة</span><span data-l="en">complete</span></small></li>
+                <li class="done"><b lang="en">English</b><small class="bl il"><span data-l="ar">كاملة</span><span data-l="en">complete</span></small></li>
+                <li class="draft"><b lang="ml">മലയാളം</b><small class="bl il"><span data-l="ar">مسودة</span><span data-l="en">draft</span></small></li>
+                <li class="draft"><b lang="ne">नेपाली</b><small class="bl il"><span data-l="ar">مسودة</span><span data-l="en">draft</span></small></li>
+                <li class="draft"><b lang="bn">বাংলা</b><small class="bl il"><span data-l="ar">مسودة</span><span data-l="en">draft</span></small></li>
+                <li class="draft"><b lang="ur">اردو</b><small class="bl il"><span data-l="ar">مسودة</span><span data-l="en">draft</span></small></li>
+                <li class="draft"><b lang="tl">Tagalog</b><small class="bl il"><span data-l="ar">مسودة</span><span data-l="en">draft</span></small></li>
+                <li class="draft"><b lang="hi">हिन्दी</b><small class="bl il"><span data-l="ar">مسودة</span><span data-l="en">draft</span></small></li>
+              </ul>
+              <p class="bl sm-note"><span data-l="ar">ست مسودات تنتظر متحدثًا أصليًا · لا سنهالية ولا تاميلية بعد · لا ترجمة آلية حيّة.</span><span data-l="en">Six drafts await a native speaker · no Sinhala or Tamil yet · no live machine translation.</span></p>
+            </section>
+
+            <section class="mod" id="m-plug" aria-labelledby="m-plug-t">
+              <h2 class="mh" id="m-plug-t"><span class="mn num">04</span><span class="mt bl"><span data-l="ar">تتصل بمنظومات قطر ولا تحلّ محلّها</span><span data-l="en">Plugs into Qatar's systems; replaces none</span></span></h2>
+              <ul class="plugs">
+                <li><svg class="pi" aria-hidden="true"><use href="#pi-signal"/></svg><div><b class="bl"><span data-l="ar">999 · مطراش</span><span data-l="en">999 · Metrash</span></b><span class="bl sm"><span data-l="ar">يستلم حزمة موثّقة جاهزة</span><span data-l="en">receives a verified package</span></span></div></li>
+                <li><svg class="pi" aria-hidden="true"><use href="#pi-doc"/></svg><div><b class="bl"><span data-l="ar">نظام التحذير العام</span><span data-l="en">Public Warning System</span></b><span class="bl sm"><span data-l="ar">تصدير CAP 1.2 «تمرين»</span><span data-l="en">CAP 1.2 export, “Exercise”</span></span></div></li>
+                <li><svg class="pi" aria-hidden="true"><use href="#pi-bell"/></svg><div><b class="bl"><span data-l="ar">مراقبة الإنذارات المركزية</span><span data-l="en">Central Alarm Monitoring</span></b><span class="bl sm"><span data-l="ar">تُخبر الغرفة؛ ومنارة كل شخص</span><span data-l="en">tells the room; MANARA each person</span></span></div></li>
+                <li><svg class="pi" aria-hidden="true"><use href="#pi-hospital"/></svg><div><b class="bl"><span data-l="ar">الدفاع المدني · إسعاف حمد</span><span data-l="en">Civil Defence · HMC ambulance</span></b><span class="bl sm"><span data-l="ar">الوحدة الأسرع (SIM)</span><span data-l="en">the fastest unit (SIM)</span></span></div></li>
+                <li><svg class="pi" aria-hidden="true"><use href="#pi-person"/></svg><div><b class="bl"><span data-l="ar">992 للصمّ</span><span data-l="en">992 for Deaf callers</span></b><span class="bl sm"><span data-l="ar">بجانب 999 بعد التحقق من القواعد</span><span data-l="en">beside 999 once the rules are checked</span></span></div></li>
+                <li><svg class="pi" aria-hidden="true"><use href="#pi-globe"/></svg><div><b class="bl"><span data-l="ar">الأرصاد · أشغال · البلدية</span><span data-l="en">QMD · Ashghal · Municipality</span></b><span class="bl sm"><span data-l="ar">تحذير الأرصاد مفتاح ثانٍ</span><span data-l="en">a weather warning as second key</span></span></div></li>
+              </ul>
+              <p class="bl sm-note"><span data-l="ar"><b>لا يوجد اليوم أي ربط حيّ بأي نظام حقيقي</b>؛ كل ربط يحتاج اتفاقًا مع الجهة نفسها.</span><span data-l="en"><b>Today there is no live link to any real system</b>; every link needs an agreement with the authority itself.</span></p>
+            </section>
+
+            <section class="mod" id="m-limits" aria-labelledby="m-limits-t">
+              <h2 class="mh" id="m-limits-t"><span class="mn num">05</span><span class="mt bl"><span data-l="ar">حدودنا بصراحة</span><span data-l="en">Our limits, plainly</span></span></h2>
+              <ul class="limits">
+                <li class="bl"><span data-l="ar">الكاشف رؤية بقواعد لا ذكاء اصطناعي: 66.7% على صور محجوزة.</span><span data-l="en">The detector is rule-based vision, not AI: 66.7% on held-out photos.</span></li>
+                <li class="bl"><span data-l="ar">المحاكاة SIM فحص آلية لا برهان أثر؛ ولا نقول «ننقذ أرواحًا».</span><span data-l="en">SIM is a mechanism check, not proof of impact; we never say “we save lives”.</span></li>
+                <li class="bl"><span data-l="ar">حسّاسات MQ الرخيصة تستجيب لأكثر من غاز وغير معتمدة.</span><span data-l="en">Cheap MQ sensors react to several gases and are not certified.</span></li>
+                <li class="bl"><span data-l="ar">المحطات والمرور افتراضية، و999 هو المرسِل.</span><span data-l="en">Stations and traffic are fictional; 999 is the dispatcher.</span></li>
+                <li class="bl"><span data-l="ar">اختبار فهم الرسائل لم يُجرَ بعد (يحتاج موافقة الأخلاقيات).</span><span data-l="en">The comprehension test has not been run (needs ethics approval).</span></li>
+                <li class="bl"><span data-l="ar">الطائرة مفهوم لجهة مرخَّصة (القانون 10 لسنة 2026).</span><span data-l="en">The drone is a concept for a licensed agency (Law No. 10 of 2026).</span></li>
+              </ul>
+            </section>
+
+            <footer class="pfoot"><span class="pf-brand"><img src="assets/logo.svg" alt="" width="40" height="40"><b class="bl il"><span data-l="ar">منارة</span><span data-l="en">MANARA</span></b></span><span class="pf-n bl"><span data-l="ar">اللوحة 1 من 3 · لماذا</span><span data-l="en">Panel 1 of 3 · Why</span></span></footer>
+          </div>
+          <div class="crop" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        </article>
+
+        <!-- ================================================================ PANEL 2 — WHAT -->
+        <article class="panel" id="panel-2" data-panel="2" aria-labelledby="hero-t">
+          <div class="pbg" aria-hidden="true"></div>
+          <div class="pin">
+
+            <header class="mod hero" id="m-hero" aria-labelledby="hero-t">
+              <img class="hero-logo" src="assets/logo.svg" alt="" width="256" height="256">
+              <div class="hero-body">
+                <p class="hero-eyebrow bl"><span data-l="ar">نموذج أولي لمسابقة الابتكار · قطر</span><span data-l="en">Innovation-competition prototype · Qatar</span></p>
+                <h2 class="hero-title" id="hero-t"><span class="bl"><span data-l="ar">منارة</span><span data-l="en">MANARA</span></span></h2>
+                <p class="hero-tag bl"><span data-l="ar">ترى الخطر… توقظ الجميع… وتُضيء طريق النجاة</span><span data-l="en">Sees the danger. Wakes everyone. Lights the safe way out.</span></p>
+                <p class="hero-pos bl"><span data-l="ar">فرق الطوارئ تواجه الخطر… والمنارة تُوصل كل إنسان إلى الأمان</span><span data-l="en">Responders fight the hazard. The lighthouse gets every person to safety.</span></p>
+                <p class="hero-slogan bl"><span data-l="ar">لا نائمَ يُنسى، ولا أحدَ يُترك خلفنا</span><span data-l="en">No one left asleep. No one left behind.</span></p>
+              </div>
+              <figure class="qr hero-qr" data-qr="index.html">
+                <div class="qr-box" role="img"></div>
+                <figcaption class="qr-cap"><b class="bl"><span data-l="ar">ابدأ من هنا</span><span data-l="en">Start here</span></b><code dir="ltr"></code></figcaption>
+              </figure>
+              <ul class="hero-chips">
+                <li class="bl il"><span data-l="ar">ستة أخطار · منصة واحدة</span><span data-l="en">Six hazards · one platform</span></li>
+                <li class="bl il"><span data-l="ar">يعمل دون إنترنت</span><span data-l="en">Works offline</span></li>
+                <li class="bl il"><span data-l="ar">SIM = محاكاة</span><span data-l="en">SIM = simulated</span></li>
+              </ul>
+            </header>
+
+            <section class="mod" id="m-arch" aria-labelledby="m-arch-t">
+              <h2 class="mh" id="m-arch-t"><span class="mn num">06</span><span class="mt bl"><span data-l="ar">كيف تعمل: ست خطوات لكل خطر</span><span data-l="en">How it works: six steps for any hazard</span></span></h2>
+              <figure class="fig" data-fig="arch" data-alt-ar="مخطط المعمارية: مدخلات (استغاثة السكان، كاميرا، طائرة، حارس ESP32) تدخل نواة منارة ذات ست خطوات: أرصد، أتحقق، أُبلغ، أُرشد، أعُدّ، أُسلّم، وتخرج منها المخرجات (بطاقة التسليم إلى 999، هواتف السكان، نقطة آمن، لافتات وصفارة). الإنذار المحلي لا ينتظر." data-alt-en="Architecture: inputs (resident SOS, camera, drone, ESP32 sentinel) feed MANARA's six-step core (Sense, Prove, Reach, Guide, Count, Hand off), which produces outputs (hand-off card to 999, residents' phones, safe point, exit signs and siren). The local alarm never waits."><svg class="sv" role="img" viewBox="0 0 600 268" preserveAspectRatio="xMidYMid meet"></svg></figure>
+            </section>
+
+            <section class="mod" id="m-proof" aria-labelledby="m-proof-t">
+              <h2 class="mh" id="m-proof-t"><span class="mn num">07</span><span class="mt bl"><span data-l="ar">الدليل قبل الذعر</span><span data-l="en">Proof before panic</span></span></h2>
+              <figure class="fig" data-fig="proof" data-alt-ar="سلّم التحقق: مراقبة بلا مفاتيح، اشتباه بمفتاح واحد، مؤكَّد بمفتاحين مستقلين، وإنذار عام بعد موافقة الإنسان." data-alt-en="The proof ladder: watching with no keys, suspect with one key, confirmed with two independent keys, public alert after the human approves."><svg class="sv" role="img" viewBox="0 0 600 148" preserveAspectRatio="xMidYMid meet"></svg></figure>
+              <p class="bl lead-s"><span data-l="ar"><b>لا إنذار عامًّا بمستشعر واحد.</b> الكاشف رؤية حاسوبية بقواعد، وليس ذكاءً اصطناعيًا.</span><span data-l="en"><b>No public alert from one sensor.</b> The detector is rule-based computer vision, not AI.</span></p>
+            </section>
+
+            <section class="mod" id="m-hazards" aria-labelledby="m-hazards-t">
+              <h2 class="mh" id="m-hazards-t"><span class="mn num">08</span><span class="mt bl"><span data-l="ar">ستة أخطار، منصة واحدة</span><span data-l="en">Six hazards, one platform</span></span></h2>
+              <ul class="hz6">
+                <li style="--sc:var(--danger)"><svg class="pi" aria-hidden="true"><use href="#pi-fire"/></svg><b class="bl"><span data-l="ar">حريق ودخان</span><span data-l="en">Fire &amp; smoke</span></b><span class="act bl"><span data-l="ar">مخرج مفتوح فعلًا</span><span data-l="en">a really open exit</span></span></li>
+                <li style="--sc:var(--warn)"><svg class="pi" aria-hidden="true"><use href="#pi-gas"/></svg><b class="bl"><span data-l="ar">تسرّب غاز</span><span data-l="en">Gas leak</span></b><span class="act bl"><span data-l="ar">بعرض الريح، بلا مفاتيح</span><span data-l="en">across the wind, no switches</span></span></li>
+                <li style="--sc:var(--info)"><svg class="pi" aria-hidden="true"><use href="#pi-flood"/></svg><b class="bl"><span data-l="ar">سيول وأمطار</span><span data-l="en">Flash flood</span></b><span class="act bl"><span data-l="ar">إلى الأعلى، وتجنّب الأنفاق</span><span data-l="en">go up, avoid underpasses</span></span></li>
+                <li style="--sc:var(--brand)"><svg class="pi" aria-hidden="true"><use href="#pi-dust"/></svg><b class="bl"><span data-l="ar">عاصفة غبارية</span><span data-l="en">Dust storm</span></b><span class="act bl"><span data-l="ar">ابقَ في الداخل</span><span data-l="en">shelter indoors</span></span></li>
+                <li style="--sc:var(--danger)"><svg class="pi" aria-hidden="true"><use href="#pi-heat"/></svg><b class="bl"><span data-l="ar">إجهاد حراري</span><span data-l="en">Extreme heat</span></b><span class="act bl"><span data-l="ar">أوقف العمل، ظلّ مبرَّد</span><span data-l="en">stop work, cooled shelter</span></span></li>
+                <li style="--sc:var(--safe)"><svg class="pi" aria-hidden="true"><use href="#pi-sos"/></svg><b class="bl"><span data-l="ar">شخص يحتاج مساعدة</span><span data-l="en">Someone needs help</span></b><span class="act bl"><span data-l="ar">نُحضر المساعدة إليه</span><span data-l="en">bring help to the person</span></span></li>
+              </ul>
+            </section>
+
+            <section class="mod" id="m-fast" aria-labelledby="m-fast-t">
+              <h2 class="mh" id="m-fast-t"><span class="mn num">09</span><span class="mt bl"><span data-l="ar">الأسرع وصولًا يستجيب</span><span data-l="en">The fastest unit responds</span></span></h2>
+              <div class="faststrip">
+                <span class="fu" style="--sc:var(--safe)"><svg class="pi" aria-hidden="true"><use href="#pi-hospital"/></svg><b class="bl"><span data-l="ar">مستشفى / إسعاف</span><span data-l="en">Hospital · ambulance</span></b></span>
+                <span class="fu" style="--sc:var(--info)"><svg class="pi" aria-hidden="true"><use href="#pi-police"/></svg><b class="bl"><span data-l="ar">شرطة</span><span data-l="en">Police</span></b></span>
+                <span class="fu" style="--sc:var(--danger)"><svg class="pi" aria-hidden="true"><use href="#pi-fire"/></svg><b class="bl"><span data-l="ar">إطفاء وإنقاذ</span><span data-l="en">Fire &amp; rescue</span></b></span>
+              </div>
+              <figure class="fig" data-fig="fast" data-alt-ar="مقارنة: الوحدة الأقرب مسافة (500 م) تصل في 181 ثانية وقت الذروة، والوحدة الأبعد (1,118 م) تصل في 118 ثانية، فتستجيب الأبعد. محاكاة." data-alt-en="Comparison: the nearer unit (500 m) takes 181 s at rush hour, the farther unit (1,118 m) takes 118 s, so the farther one responds. Simulation."><svg class="sv" role="img" viewBox="0 0 600 134" preserveAspectRatio="xMidYMid meet"></svg></figure>
+              <p class="bl lead-s"><span data-l="ar">توصي منارة بالوحدة التي تصل <b>أولًا في ظل المرور</b>، لا الأقرب مسافةً. <b>محاكاة SIM · و999 يبقى هو المرسِل.</b></span><span data-l="en">MANARA recommends the unit that arrives <b>first given traffic</b>, not the nearest. <b>Simulated (SIM); 999 stays the dispatcher.</b></span></p>
+            </section>
+
+            <footer class="pfoot"><span class="pf-brand"><img src="assets/logo.svg" alt="" width="40" height="40"><b class="bl il"><span data-l="ar">منارة</span><span data-l="en">MANARA</span></b></span><span class="pf-n bl"><span data-l="ar">اللوحة 2 من 3 · ماذا</span><span data-l="en">Panel 2 of 3 · What</span></span></footer>
+          </div>
+          <div class="crop" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        </article>
+
+        <!-- ================================================================ PANEL 3 — PROOF & HONESTY -->
+        <article class="panel" id="panel-3" data-panel="3" aria-labelledby="m-try-t">
+          <div class="pbg" aria-hidden="true"></div>
+          <div class="pin">
+
+            <section class="mod" id="m-try" aria-labelledby="m-try-t">
+              <h2 class="mh" id="m-try-t"><span class="mn num">10</span><span class="mt bl"><span data-l="ar">جرّب بنفسك: ثلاث ركائز</span><span data-l="en">Try it: three pillars</span></span></h2>
+              <div class="pillars">
+                <article class="pillar" style="--sc:var(--brand)">
+                  <span class="pn num" aria-hidden="true">1</span>
+                  <h3 class="bl"><span data-l="ar">اختر كارثة… فتستجيب منارة بشكل صحيح</span><span data-l="en">Pick a disaster — MANARA responds correctly</span></h3>
+                  <p class="pill-sub bl il"><span data-l="ar">غرفة العمليات</span><span data-l="en">Mission Control</span></p>
+                  <figure class="qr" data-qr="mission.html"><div class="qr-box" role="img"></div><figcaption class="qr-cap"><code dir="ltr"></code></figcaption></figure>
+                </article>
+                <article class="pillar" style="--sc:var(--accent)">
+                  <span class="pn num" aria-hidden="true">2</span>
+                  <h3 class="bl"><span data-l="ar">الدليل قبل الذعر: حاوِل خداع الكاشف</span><span data-l="en">Proof before panic — try to fool the detector</span></h3>
+                  <p class="pill-sub bl il"><span data-l="ar">مختبر الأدلة</span><span data-l="en">Evidence Lab</span></p>
+                  <figure class="qr" data-qr="detect.html"><div class="qr-box" role="img"></div><figcaption class="qr-cap"><code dir="ltr"></code></figcaption></figure>
+                </article>
+                <article class="pillar" style="--sc:var(--safe)">
+                  <span class="pn num" aria-hidden="true">3</span>
+                  <h3 class="bl"><span data-l="ar">كل شخص يصله الإنذار ويُحصى</span><span data-l="en">Every person reached and counted</span></h3>
+                  <p class="pill-sub bl il"><span data-l="ar">هواتف السكان</span><span data-l="en">Resident Phones</span></p>
+                  <figure class="qr" data-qr="alert.html"><div class="qr-box" role="img"></div><figcaption class="qr-cap"><code dir="ltr"></code></figcaption></figure>
+                </article>
+              </div>
+              <p class="bl sm-note"><span data-l="ar">امسح الرمز أو افتح الرابط · يعمل دون إنترنت · لوحة التوأم تستعمل بدائل آمنة (كوب ساخن، بخار معقّم، كوب ماء).</span><span data-l="en">Scan the code or open the link · works offline · the tabletop twin uses safe stand-ins (hot mug, sanitiser vapour, cup of water).</span></p>
+            </section>
+
+            <section class="mod" id="m-results" aria-labelledby="m-results-t">
+              <h2 class="mh" id="m-results-t"><span class="mn num">11</span><span class="mt bl"><span data-l="ar">أرقامنا كما قِسناها</span><span data-l="en">Our numbers, as measured</span></span></h2>
+              <div class="res">
+                <figure class="fig" data-fig="det" data-alt-ar="دقة كاشف الصور الثابتة: 87.5% على مجموعة ضُبط عليها، و81.3% على مجموعة ضبط، و66.7% على 18 صورة محجوزة." data-alt-en="Still-photo detector accuracy: 87.5% on a set it was tuned on, 81.3% on a tuning set, and 66.7% on 18 held-out photos."><p class="res-h"><b class="bl"><span data-l="ar">الكاشف: صور ثابتة (قياس حقيقي)</span><span data-l="en">The detector: still photos (measured)</span></b></p><svg class="sv" role="img" viewBox="0 0 600 116" preserveAspectRatio="xMidYMid meet"></svg><ul class="chips6" id="det-chips"></ul></figure>
+                <figure class="fig" data-fig="ab" data-alt-ar="مقارنة بالمحاكاة لحريق ليلي، البذرة 1: الإنذار العادي مقابل منارة. وقت وصول 90% إلى الأمان 626 ثم 317 ثانية، وإرسال الوحدات 225 ثم 47 ثانية، والوصول إلى الموقع 339 ثم 161 ثانية، والمصابون في النموذج 10 ثم 5." data-alt-en="Simulation comparison, night fire, seed 1: ordinary alarm versus MANARA. 90 percent safe 626 versus 317 seconds, units dispatched 225 versus 47 seconds, units on scene 339 versus 161 seconds, injured in the model 10 versus 5."><p class="res-h"><b class="bl"><span data-l="ar">حريق ليلي: إنذار عادي ← منارة</span><span data-l="en">Night fire: ordinary alarm → MANARA</span></b> <span class="tag warn">SIM</span></p><svg class="sv" role="img" viewBox="0 0 600 160" preserveAspectRatio="xMidYMid meet"></svg></figure>
+              </div>
+              <p class="res-h"><b class="bl"><span data-l="ar">الأخطار الأخرى (بذرة 1)</span><span data-l="en">The other hazards (seed 1)</span></b> <span class="tag warn">SIM</span></p>
+              <ul class="hzres" id="hz-res"></ul>
+              <p class="bl lead-s trade"><span data-l="ar"><b>مقايضة صريحة:</b> أول رسالة شخصية بعد 39 ث والصفّارة بعد 14 ث؛ ومع 0% تسرّب غاز تعرّض منارة أعلى (682 مقابل 0). <b>فحص آلية لا برهان أثر.</b></span><span data-l="en"><b>An honest trade-off:</b> the first personal message comes at 39 s, the siren at 14 s; with 0% gas seeping indoors MANARA's exposure is higher (682 vs 0). <b>A mechanism check, not proof of impact.</b></span></p>
+              <p class="src bl" id="res-src"></p>
+            </section>
+
+            <section class="mod" id="m-hw" aria-labelledby="m-hw-t">
+              <h2 class="mh" id="m-hw-t"><span class="mn num">12</span><span class="mt bl"><span data-l="ar">يبنيها طالب على ثلاثة مستويات</span><span data-l="en">A student can build it, in three tiers</span></span></h2>
+              <figure class="fig" data-fig="hw" data-alt-ar="تكلفة تقديرية: حاسوب فقط من 2 إلى 10 دولارات، ولوحة الحارس من 80 إلى 227، والكشك الكامل من 95 إلى 270." data-alt-en="Estimated cost: laptop only US$ 2–10, sentinel board US$ 80–227, full booth US$ 95–270."><svg class="sv" role="img" viewBox="0 0 600 112" preserveAspectRatio="xMidYMid meet"></svg></figure>
+              <p class="src bl"><span data-l="ar">تقديرات من جدول القطع في «بناء النموذج» (بعض الأسعار رُصدت والباقي تقدير) · عرض آمن: بلا لهب ولا غاز قابل للاشتعال.</span><span data-l="en">Estimates from the “Build It” parts table (some prices seen, the rest estimated) · Booth-safe: no flames, no flammable gas.</span></p>
+            </section>
+
+            <section class="mod team" id="m-team" aria-labelledby="m-team-t">
+              <h2 class="mh sm" id="m-team-t"><span class="mt bl"><span data-l="ar">الفريق والملكية وإفصاح الذكاء الاصطناعي</span><span data-l="en">Team, ownership and AI disclosure</span></span></h2>
+              <dl class="team-dl">
+                <div><dt class="bl il"><span data-l="ar">الطالب</span><span data-l="en">Student</span></dt><dd><bdi class="ph" data-ph="STUDENT_NAME">{{STUDENT_NAME}}</bdi></dd></div>
+                <div><dt class="bl il"><span data-l="ar">المدرسة</span><span data-l="en">School</span></dt><dd><bdi class="ph" data-ph="SCHOOL_NAME">{{SCHOOL_NAME}}</bdi></dd></div>
+                <div><dt class="bl il"><span data-l="ar">الصف</span><span data-l="en">Grade</span></dt><dd><bdi class="ph" data-ph="GRADE_CLASS">{{GRADE_CLASS}}</bdi></dd></div>
+                <div><dt class="bl il"><span data-l="ar">المرشد / المعلّم</span><span data-l="en">Mentor / teacher</span></dt><dd><bdi class="ph" data-ph="MENTOR_NAME">{{MENTOR_NAME}}</bdi></dd></div>
+                <div><dt class="bl il"><span data-l="ar">بنيتُه بنفسي</span><span data-l="en">I built</span></dt><dd><bdi class="ph" data-ph="BUILT_BY_STUDENT">{{BUILT_BY_STUDENT}}</bdi></dd></div>
+                <div><dt class="bl il"><span data-l="ar">اشتريتُه أو أعدتُ استعماله</span><span data-l="en">Bought or reused</span></dt><dd><bdi class="ph" data-ph="BOUGHT_OR_REUSED">{{BOUGHT_OR_REUSED}}</bdi></dd></div>
+                <div><dt class="bl il"><span data-l="ar">ساعدني فيه</span><span data-l="en">Helped by</span></dt><dd><bdi class="ph" data-ph="HELPED_BY">{{HELPED_BY}}</bdi></dd></div>
+                <div><dt class="bl il"><span data-l="ar">أدوات الذكاء الاصطناعي وفيمَ استُعملت</span><span data-l="en">AI tools used, and what for</span></dt><dd><bdi class="ph" data-ph="AI_TOOLS_USED">{{AI_TOOLS_USED}}</bdi></dd></div>
+              </dl>
+              <p class="bl sm-note"><span data-l="ar">استُعينَ بأدوات ذكاء اصطناعي في صياغة أجزاء من الشيفرة والنصوص ومراجعتها، ونفصح عن ذلك؛ والطالب يشرح كل معادلة ويدافع عن كل قرار.</span><span data-l="en">AI tools helped draft and review parts of the code and text, and we disclose it; the student explains every formula and defends every decision.</span></p>
+            </section>
+
+            <footer class="pfoot"><span class="pf-brand"><img src="assets/logo.svg" alt="" width="40" height="40"><b class="bl il"><span data-l="ar">منارة</span><span data-l="en">MANARA</span></b></span><span class="pf-n bl"><span data-l="ar">اللوحة 3 من 3 · الدليل والصدق</span><span data-l="en">Panel 3 of 3 · Proof and honesty</span></span></footer>
+          </div>
+          <div class="crop" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        </article>
+
+      </div>
+    </div>
+  </div>
+  <noscript><p class="note warn"><span data-l="ar">الرسوم البيانية وأدوات الإعداد تحتاج جافاسكربت؛ النصوص والأرقام والمصادر ظاهرة بدونها.</span><span data-l="en">The charts and the settings need JavaScript; the text, numbers and sources are visible without it.</span></p></noscript>
+</section>
+
+</main>
+<footer class="foot" data-footer></footer>
+</body>
+</html>

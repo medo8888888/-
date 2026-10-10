@@ -1,0 +1,78 @@
+SAQR extra test photos — credits and licences
+=============================================
+
+Used only by tools/saqr/test-fire.mjs to measure SaqrFire.scoreImage (see labels.json for the 'tuning' and
+'test' sets). All from Wikimedia Commons; licences read from the Commons API (extmetadata) on 2026-10-07.
+Modification: downscaled to 320 px wide and recompressed as JPEG.
+
+x-fire-1.jpg   "Bonfire Night (Unsplash).jpg" — Tasi Zoltán — CC0 1.0
+               https://commons.wikimedia.org/wiki/File:Bonfire_Night_(Unsplash).jpg
+x-fire-2.jpg   "Prescribed burn in forest.jpg" — U.S. Fish and Wildlife Service — public domain (U.S. government work)
+               https://commons.wikimedia.org/wiki/File:Prescribed_burn_in_forest.jpg
+x-fire-3.jpg   "Wickiup Rx Project- Firefighters are silhouetted by nightime flames on a slope behind them during a
+               prescribed burn Nez Perce-Clearwater National Forests (52798194336).jpg" — Forest Service, Northern Region —
+               public domain (U.S. government work)
+               https://commons.wikimedia.org/wiki/File:Wickiup_Rx_Project-_Firefighters_are_silhouetted_by_nightime_flames_on_a_slope_behind_them_during_a_prescribed_burn_Nez_Perce-Clearwater_National_Forests_(52798194336).jpg
+x-fire-4.jpg   "Vandenberg Fire Team Conducts Prescribed Burn Exercise (9751279).jpg" — U.S. Space Force photo by
+               Staff Sgt. Kevin Hernandez — public domain (U.S. government work)
+               https://commons.wikimedia.org/wiki/File:Vandenberg_Fire_Team_Conducts_Prescribed_Burn_Exercise_(9751279).jpg
+x-fire-5.jpg   "Dean Creek prescribed burn (52242392387).jpg" — BLM Oregon & Washington — public domain (U.S. government work)
+               https://commons.wikimedia.org/wiki/File:Dean_Creek_prescribed_burn_(52242392387).jpg
+x-smoke-1.jpg  "Smoke Column - Mangum Fire.jpg" — Kaibab National Forest, Arizona — public domain (U.S. government work)
+               https://commons.wikimedia.org/wiki/File:Smoke_Column_-_Mangum_Fire.jpg
+x-smoke-2.jpg  "Smoke column from the Borel Fire on August 8, 2024.jpg" — InciWeb — public domain (U.S. government work)
+               https://commons.wikimedia.org/wiki/File:Smoke_column_from_the_Borel_Fire_on_August_8,_2024.jpg
+x-smoke-3.jpg  "Rice Ridge Fire smoke columns.jpg" — InciWeb — public domain (U.S. government work)
+               https://commons.wikimedia.org/wiki/File:Rice_Ridge_Fire_smoke_columns.jpg
+x-none-1.jpg   "Cumulus clouds in the sky.jpg" — desilia — CC0 1.0
+               https://commons.wikimedia.org/wiki/File:Cumulus_clouds_in_the_sky.jpg
+x-none-2.jpg   "Desert Sunrise (Unsplash).jpg" — Red Morley Hewitt — CC0 1.0
+               https://commons.wikimedia.org/wiki/File:Desert_Sunrise_(Unsplash).jpg
+x-none-3.jpg   "08988jfOrange flowers in the Philippinesfvf 01.jpg" — Judgefloro — CC0 1.0
+               https://commons.wikimedia.org/wiki/File:08988jfOrange_flowers_in_the_Philippinesfvf_01.jpg
+x-none-4.jpg   "Sky Forest Clouds.jpg" — unknown author — CC0 1.0
+               https://commons.wikimedia.org/wiki/File:Sky_Forest_Clouds.jpg
+x-none-5.jpg   "Surreal Sunrise in Oljato-Monument Valley (Unsplash).jpg" — Andrew Coelho — CC0 1.0
+               https://commons.wikimedia.org/wiki/File:Surreal_Sunrise_in_Oljato-Monument_Valley_(Unsplash).jpg
+x-none-6.jpg   "Fire engine at Wright-Patterson Air Force Base.JPG" — William Pugh, U.S. Air Force — public domain (U.S. government work)
+               https://commons.wikimedia.org/wiki/File:Fire_engine_at_Wright-Patterson_Air_Force_Base.JPG
+x-none-7.jpg   "Guangfu North Road in Night 20141218a.jpg" — 玄史生 — CC0 1.0
+               https://commons.wikimedia.org/wiki/File:Guangfu_North_Road_in_Night_20141218a.jpg
+x-none-8.jpg   "Autumnal Retreat in Old Quebec- A Canvas of Fading Reds and Vibrant Oranges.jpg" — Wilfredor — CC0 1.0
+               https://commons.wikimedia.org/wiki/File:Autumnal_Retreat_in_Old_Quebec-_A_Canvas_of_Fading_Reds_and_Vibrant_Oranges.jpg
+t-fire-1.jpg   "Pioneer Fire - Night - Flames fury burn trees.jpg" — U.S. Department of Agriculture / U.S. Forest Service — public domain (U.S. government work)
+               https://commons.wikimedia.org/wiki/File:Pioneer_Fire_-_Night_-_Flames_fury_burn_trees.jpg
+t-fire-2.jpg   "Bonfire (8208196).jpg" — U.S. Air Force photo by Senior Airman Vaughn Weber — public domain (U.S. government work)
+               https://commons.wikimedia.org/wiki/File:Bonfire_(8208196).jpg
+t-fire-3.jpg   "Bonfire inferno.jpg" — Madmatt52 — public domain (released by the author)
+               https://commons.wikimedia.org/wiki/File:Bonfire_inferno.jpg
+t-fire-4.jpg   "Fire in a fire pit.jpg" — Kurt Kaiser — CC0 1.0
+               https://commons.wikimedia.org/wiki/File:Fire_in_a_fire_pit.jpg
+t-fire-5.jpg   "Campfire (200922903).jpeg" — Gergő Gulyás — CC0 1.0
+               https://commons.wikimedia.org/wiki/File:Campfire_(200922903).jpeg
+t-fire-6.jpg   "2017 08 12-23.05.26.714-CDT.jpg" — US Forest Service — public domain (U.S. government work)
+               https://commons.wikimedia.org/wiki/File:2017_08_12-23.05.26.714-CDT.jpg
+t-smoke-1.jpg  "Smoke column from River Road East Fire (53798692195).jpg" — Forest Service, Northern Region — public domain (U.S. government work)
+               https://commons.wikimedia.org/wiki/File:Smoke_column_from_River_Road_East_Fire_(53798692195).jpg
+t-smoke-2.jpg  "Salt Fire Smoke Column July 4 2021.jpg" — InciWeb — public domain (U.S. government work)
+               https://commons.wikimedia.org/wiki/File:Salt_Fire_Smoke_Column_July_4_2021.jpg
+t-smoke-3.jpg  "Bouquet Fire smoke column from Sierra Pelona Ridge.jpg" — unknown author — public domain
+               https://commons.wikimedia.org/wiki/File:Bouquet_Fire_smoke_column_from_Sierra_Pelona_Ridge.jpg
+t-none-1.jpg   "Tulip Field Tulips Red Holland Nature Flowers.jpg" — Filio — CC0 1.0
+               https://commons.wikimedia.org/wiki/File:Tulip_Field_Tulips_Red_Holland_Nature_Flowers.jpg
+t-none-2.jpg   "Dust storm in Jaffa, February 14, 2026.jpg" — D. Benjamin Miller — CC0 1.0
+               https://commons.wikimedia.org/wiki/File:Dust_storm_in_Jaffa,_February_14,_2026.jpg
+t-none-3.jpg   "Sunset behind telecommunications mast.jpg" — W.carter — CC0 1.0
+               https://commons.wikimedia.org/wiki/File:Sunset_behind_telecommunications_mast.jpg
+t-none-4.jpg   "Night Lights (218082587).jpeg" — Nils Söderman — CC0 1.0
+               https://commons.wikimedia.org/wiki/File:Night_Lights_(218082587).jpeg
+t-none-5.jpg   "Cumulus congestus clouds (27075262952).jpg" — HO JJ — CC0 1.0
+               https://commons.wikimedia.org/wiki/File:Cumulus_congestus_clouds_(27075262952).jpg
+t-none-6.jpg   "Vintage car parked in front of old buildings (Unsplash).jpg" — Darius Soodmand — CC0 1.0
+               https://commons.wikimedia.org/wiki/File:Vintage_car_parked_in_front_of_old_buildings_(Unsplash).jpg
+t-none-7.jpg   "Fog On The Water In Morning (184580635).jpeg" — Pawel Owsinski — CC0 1.0
+               https://commons.wikimedia.org/wiki/File:Fog_On_The_Water_In_Morning_(184580635).jpeg
+t-none-8.jpg   "Desert Dunes (Unsplash).jpg" — Joe Mania — CC0 1.0
+               https://commons.wikimedia.org/wiki/File:Desert_Dunes_(Unsplash).jpg
+t-none-9.jpg   "Iraqi fire truck.jpg" — Sharhonda R. McCoy, U.S. Army — public domain (U.S. government work)
+               https://commons.wikimedia.org/wiki/File:Iraqi_fire_truck.jpg

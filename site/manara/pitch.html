@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="ar" dir="rtl" data-lang="ar">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title data-en="MANARA — The Pitch">منارة — العرض التقديمي</title>
+<meta name="description" content="العرض التقديمي لمنارة: شرائح بوضع ملء الشاشة، ونص كلامي لثلاث دقائق بالثواني، وأجوبة صادقة عن أسئلة الحَكَم، وقائمة جاهزية الطاولة. كل رقم محاكى موسوم SIM.">
+<meta name="theme-color" content="#0a0e15">
+<meta name="color-scheme" content="light dark">
+<script>(function(){var d=document.documentElement,t,l;try{t=localStorage.getItem('manara-theme');l=localStorage.getItem('manara-lang')}catch(e){}var q=/[?&]lang=(ar|en)/.exec(location.search);if(q)l=q[1];if(t!=='light'&&t!=='dark')t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';if(l!=='en')l='ar';d.dataset.theme=t;d.dataset.lang=l;d.lang=l;d.dir=l==='ar'?'rtl':'ltr';d.classList.add('js');setTimeout(function(){if(!window.__manaraReady)d.classList.remove('js')},2500)})();</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/pitch.css">
+<script src="js/core.js" defer></script>
+<script src="js/sim.js" defer></script>
+<script src="js/pitch.js" defer></script>
+</head>
+<body data-page="pitch.html" class="pitch">
+<a class="skip" href="#main">تخطَّ إلى المحتوى</a>
+<header class="nav" data-nav></header>
+
+<main id="main" tabindex="-1">
+
+  <!-- ============================================================ page header (one-line purpose) -->
+  <section class="pt-hero" aria-labelledby="pt-h1">
+    <div class="wrap wide pt-hero-in">
+      <div class="pt-hero-copy">
+        <span class="eyebrow" data-icon="slides"><span data-l="ar">حزمة العرض</span><span data-l="en">Pitch kit</span></span>
+        <h1 id="pt-h1"><span data-l="ar">العرض التقديمي</span><span data-l="en">The pitch</span></h1>
+        <p class="pt-purpose"><span data-l="ar">اعرض «منارة» في ثلاث دقائق: شرائح بوضع ملء الشاشة، ونص كلامي بالثواني، وأجوبة صادقة لأسئلة الحَكَم، وقائمة جاهزية للطاولة.</span><span data-l="en">Present MANARA in three minutes: full-screen slides, a second-by-second script, honest answers to judge questions, and a booth checklist.</span></p>
+        <div class="btns pt-hero-cta">
+          <button class="btn btn-primary" type="button" id="pt-start"><span data-l="ar">ابدأ العرض (F)</span><span data-l="en">Start presenting (F)</span></button>
+          <button class="btn btn-ghost" type="button" id="pt-go-script"><span data-l="ar">اقرأ النص الكلامي</span><span data-l="en">Read the script</span></button>
+        </div>
+      </div>
+      <ul class="pt-facts" aria-label="">
+        <li><span class="dot"></span><span data-l="ar">مسار صارم: 3 دقائق · ومسار ممتد: 7 دقائق</span><span data-l="en">Strict path: 3 minutes · extended path: 7 minutes</span></li>
+        <li><span class="dot" style="--sc:var(--accent)"></span><span data-l="ar">لحظة حيّة واحدة يقودها الحَكَم</span><span data-l="en">One live moment, driven by the judge</span></li>
+        <li><span class="dot" style="--sc:var(--warn)"></span><span data-l="ar">كل رقم محاكى موسوم SIM — فحص آلية لا برهان أثر</span><span data-l="en">Every simulated number is marked SIM — a mechanism check, not proof of impact</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <noscript><p class="note warn wrap" style="margin-block:16px"><span data-l="ar">يحتاج العرض إلى JavaScript. افتح الصفحة في متصفح حديث (تعمل دون إنترنت).</span><span data-l="en">The pitch needs JavaScript. Open the page in a modern browser (it works offline).</span></p></noscript>
+
+  <div class="wrap wide pt-shell">
+
+    <!-- ============================================================ tabs -->
+    <div class="tabs" role="tablist" id="pt-tabs" aria-label="">
+      <button class="tab" role="tab" id="t-slides" aria-controls="p-slides" aria-selected="true" tabindex="0" type="button" data-icon="slides"><span data-l="ar">الشرائح</span><span data-l="en">Slides</span></button>
+      <button class="tab" role="tab" id="t-script" aria-controls="p-script" aria-selected="false" tabindex="-1" type="button" data-icon="clock"><span data-l="ar">النص الكلامي</span><span data-l="en">Script</span></button>
+      <button class="tab" role="tab" id="t-qa" aria-controls="p-qa" aria-selected="false" tabindex="-1" type="button" data-icon="help"><span data-l="ar">أسئلة الحَكَم</span><span data-l="en">Judge Q&amp;A</span></button>
+      <button class="tab" role="tab" id="t-booth" aria-controls="p-booth" aria-selected="false" tabindex="-1" type="button" data-icon="check"><span data-l="ar">الطاولة</span><span data-l="en">Booth</span></button>
+    </div>
+
+    <!-- ============================================================ 1. SLIDES -->
+    <section class="tabpanel" id="p-slides" role="tabpanel" aria-labelledby="t-slides">
+      <div class="deck" id="deck" data-mode="stage">
+        <div class="deck-grid">
+          <div class="deck-main">
+            <div class="stage-wrap">
+              <div class="stage" id="stage" tabindex="0" role="group" aria-roledescription="carousel" data-i18n-attr="aria-label:pt.stage">
+
+                <!-- ---------- 1. Title ---------- -->
+                <section class="slide s-title" id="slide-1" data-slide="title" aria-roledescription="slide" aria-labelledby="st-1">
+                  <div class="sl-bg" aria-hidden="true"></div>
+                  <div class="ti-grid">
+                    <div class="ti-copy">
+                      <p class="sl-kick sl-in"><span class="sl-num num">01</span><span data-l="ar">مسابقة الابتكار · قطر</span><span data-l="en">Innovation competition · Qatar</span></p>
+                      <h2 class="ti-name sl-in" id="st-1"><span data-l="ar">منارة</span><span data-l="en">MANARA</span></h2>
+                      <p class="ti-tag sl-in"><span data-l="ar">ترى الخطر… توقظ الجميع… وتُضيء طريق النجاة</span><span data-l="en">Sees the danger. Wakes everyone. Lights the safe way out.</span></p>
+                      <p class="ti-sub sl-in"><span data-l="ar">منصة «آخر مئة متر» لكل أنواع الطوارئ: حريق ودخان، غاز، سيول، غبار، حرّ، وشخص يحتاج مساعدة.</span><span data-l="en">The last-100-metres platform for every kind of emergency: fire and smoke, gas, flash flood, dust, heat, and someone who needs help.</span></p>
+                      <ul class="ti-chips sl-in">
+                        <li><span data-l="ar">نموذج أولي</span><span data-l="en">Prototype</span></li>
+                        <li class="warn"><span data-l="ar">المحاكاة موسومة SIM</span><span data-l="en">Simulation marked SIM</span></li>
+                        <li><span data-l="ar">يعمل دون إنترنت</span><span data-l="en">Works offline</span></li>
+                      </ul>
+                      <p class="ti-by sl-in" data-mine="by" hidden></p>
+                      <p class="ti-slogan sl-in"><span data-l="ar">لا نائمَ يُنسى، ولا أحدَ يُترك خلفنا</span><span data-l="en">No one left asleep. No one left behind.</span></p>
+                    </div>
+                    <div class="ti-art" id="ti-art" aria-hidden="true"></div>
+                  </div>
+                </section>
+
+                <!-- ---------- 2. Problem ---------- -->
+                <section class="slide s-problem" id="slide-2" data-slide="problem" aria-roledescription="slide" aria-labelledby="st-2">
+                  <div class="sl-bg" aria-hidden="true"></div>
+                  <header class="sl-head">
+                    <p class="sl-kick sl-in"><span class="sl-num num">02</span><span data-l="ar">المشكلة</span><span data-l="en">The problem</span></p>
+                    <h2 class="sl-title sl-in" id="st-2"><span data-l="ar">الخطر لا يختار وقتًا… وأمامنا دقائق قليلة</span><span data-l="en">Danger doesn't pick a time — and we have only minutes</span></h2>
+                  </header>
+                  <div class="sl-body pr-grid">
+                    <div class="pr-viz sl-card sl-in">
+                      <p class="viz-h"><span data-l="ar">رقمان منشوران في مقياس واحد (دقائق)</span><span data-l="en">Two published figures on one scale (minutes)</span></p>
+                      <div class="minutes" role="img" aria-labelledby="mn-desc">
+                        <span class="sr-only" id="mn-desc"><span data-l="ar">شريطان زمنيان: وقت النجاة نحو دقيقة إلى دقيقتين بعد انطلاق الإنذار (NFPA)، ووصول الدفاع المدني خلال 7 إلى 10 دقائق عام 2017. الفاصل بينهما هو المدة التي يجب أن يتحرك فيها الناس بأنفسهم.</span><span data-l="en">Two time bars: the escape window is about one to two minutes after the alarm sounds (NFPA), and Civil Defence reached incidents in 7 to 10 minutes in 2017. The space between them is when people must move on their own.</span></span>
+                        <div class="mn-axis" aria-hidden="true"><i style="--k:0">0</i><i style="--k:2">2</i><i style="--k:4">4</i><i style="--k:6">6</i><i style="--k:8">8</i><i style="--k:10">10</i><em><span data-l="ar">دقيقة</span><span data-l="en">min</span></em></div>
+                        <div class="mn-plot" aria-hidden="true">
+                          <div class="mn-gap"></div>
+                          <div class="mn-row"><span class="mn-cap escape-cap"><span data-l="ar">1–2 د: وقت النجاة</span><span data-l="en">1–2 min: escape window</span></span><i class="mn-bar escape" style="--from:0;--to:2"></i></div>
+                          <div class="mn-mid"><b><span data-l="ar">مَن يحرّك الناس هنا؟</span><span data-l="en">Who moves people here?</span></b></div>
+                          <div class="mn-row"><span class="mn-cap crew-cap"><span data-l="ar">7–10 د: وصول الدفاع المدني</span><span data-l="en">7–10 min: Civil Defence arrives</span></span><i class="mn-bar crew" style="--from:7;--to:10"></i></div>
+                        </div>
+                      </div>
+                      <ul class="viz-notes">
+                        <li><span class="tag warn"><span data-l="ar">بحث دولي</span><span data-l="en">International research</span></span> <span data-l="ar">«قد لا يتبقى سوى دقيقة أو دقيقتين للنجاة بعد انطلاق إنذار الدخان» — NFPA</span><span data-l="en">"as little as one or two minutes to escape safely once the smoke alarm sounds" — NFPA</span></li>
+                        <li><span class="tag info"><span data-l="ar">قطر · 2017</span><span data-l="en">Qatar · 2017</span></span> <span data-l="ar">وصل الدفاع المدني إلى البلاغات خلال 7–10 دقائق (أرقام قديمة) — Qatar Tribune 2018</span><span data-l="en">Civil Defence reached incidents in 7–10 minutes (old figures) — Qatar Tribune 2018</span></li>
+                      </ul>
+                    </div>
+                    <div class="pr-stats">
+                      <article class="stat sl-card sl-in">
+                        <b class="stat-n num" dir="ltr">49%</b>
+                        <p><span data-l="ar">من وفيات الحرائق السكنية وقعت بين 11 مساءً و7 صباحًا</span><span data-l="en">of residential fire deaths happened between 11 p.m. and 7 a.m.</span></p>
+                        <small class="sl-src"><span data-l="ar">المصدر: USFA — بيانات أمريكية</span><span data-l="en">Source: USFA — US data</span></small>
+                      </article>
+                      <article class="stat sl-card sl-in">
+                        <b class="stat-n num" dir="ltr">46.6%</b>
+                        <p><span data-l="ar">من سكان قطر سُجّلوا في «سكن العمال» (المساكن الجماعية)</span><span data-l="en">of Qatar's residents were counted in shared worker accommodation</span></p>
+                        <small class="sl-src"><span data-l="ar">المصدر: تعداد 2020 (جهاز التخطيط والإحصاء، عبر GLMM)</span><span data-l="en">Source: Census 2020 (PSA, via GLMM)</span></small>
+                      </article>
+                      <article class="stat sl-card sl-in stat-text">
+                        <p><span data-l="ar"><b>حريق سكني في الخليج عام 2024</b>، نحو الرابعة فجرًا: معظم الوفيات من استنشاق الدخان أثناء النوم، وباب سطح مقفل منع الهروب.</span><span data-l="en"><b>A 2024 Gulf residential fire</b>, about 4 a.m.: most deaths were from smoke inhalation while asleep, and a locked rooftop door blocked escape.</span></p>
+                        <small class="sl-src"><span data-l="ar">المصدر: تقارير عامة — بلا صور</span><span data-l="en">Source: public reports — no imagery</span></small>
+                      </article>
+                    </div>
+                  </div>
+                </section>
+
+                <!-- ---------- 3. Gap ---------- -->
+                <section class="slide s-gap" id="slide-3" data-slide="gap" aria-roledescription="slide" aria-labelledby="st-3">
+                  <div class="sl-bg" aria-hidden="true"></div>
+                  <header class="sl-head">
+                    <p class="sl-kick sl-in"><span class="sl-num num">03</span><span data-l="ar">الفجوة</span><span data-l="en">The gap</span></p>
+                    <h2 class="sl-title sl-in" id="st-3"><span data-l="ar">الأنظمة قوية… والفجوة في «آخر مئة متر»</span><span data-l="en">The systems are strong. The gap is the last 100 metres.</span></h2>
+                  </header>
+                  <div class="sl-body gp-grid">
+                    <div class="gp-have sl-in">
+                      <p class="viz-h"><span data-l="ar">ما لدى قطر اليوم (موثّق)</span><span data-l="en">What Qatar has today (verified)</span></p>
+                      <ul class="gp-list" id="gp-list"></ul>
+                    </div>
+                    <div class="gp-bridge sl-in" aria-hidden="true">
+                      <div class="gp-line"><i></i></div>
+                      <b class="gp-label"><span data-l="ar">آخر مئة متر</span><span data-l="en">The last 100 metres</span></b>
+                    </div>
+                    <div class="gp-person sl-in">
+                      <p class="viz-h"><span data-l="ar">لكن رسالة واحدة للجميع لا تعرف…</span><span data-l="en">But one message for everyone can't know…</span></p>
+                      <ul class="gp-unknown" id="gp-unknown"></ul>
+                    </div>
+                  </div>
+                  <p class="sl-band sl-in"><span data-l="ar">الصقور تكافح النار… <b>والمنارة تُخرج الجميع بأمان</b> — نتّصل بالأنظمة الموجودة ولا نستبدل أيًّا منها.</span><span data-l="en">The falcons fight the fire… <b>the lighthouse gets everyone out</b> — we plug into what exists and replace none of it.</span></p>
+                </section>
+
+                <!-- ---------- 4. Solution ---------- -->
+                <section class="slide s-solution" id="slide-4" data-slide="solution" aria-roledescription="slide" aria-labelledby="st-4">
+                  <div class="sl-bg" aria-hidden="true"></div>
+                  <header class="sl-head">
+                    <p class="sl-kick sl-in"><span class="sl-num num">04</span><span data-l="ar">الحل</span><span data-l="en">The solution</span></p>
+                    <h2 class="sl-title sl-in" id="st-4"><span data-l="ar">منارة: ست خطوات، ومسار واحد</span><span data-l="en">MANARA: six steps, one pipeline</span></h2>
+                  </header>
+                  <div class="sl-body">
+                    <ol class="pipe sl-in" id="pipe"></ol>
+                    <div class="pipe-foot sl-in">
+                      <p class="pipe-local"><span class="dot live" style="--sc:var(--safe)"></span><span data-l="ar"><b>الإنذار المحلي لا ينتظر أحدًا:</b> لا شبكة ولا طائرة ولا موافقة.</span><span data-l="en"><b>The local alarm never waits:</b> not for a network, a drone or an approval.</span></p>
+                      <p class="pipe-one"><span data-l="ar">الشيفرة نفسها لستة أخطار: <b>منصة واحدة، لا ستة أجهزة</b>.</span><span data-l="en">The same code serves six hazards: <b>one platform, not six gadgets</b>.</span></p>
+                    </div>
+                  </div>
+                </section>
+
+                <!-- ---------- 5. Proof before panic ---------- -->
+                <section class="slide s-proof" id="slide-5" data-slide="proof" aria-roledescription="slide" aria-labelledby="st-5">
+                  <div class="sl-bg" aria-hidden="true"></div>
+                  <header class="sl-head">
+                    <p class="sl-kick sl-in"><span class="sl-num num">05</span><span data-l="ar">الدليل قبل الذعر</span><span data-l="en">Proof before panic</span></p>
+                    <h2 class="sl-title sl-in" id="st-5"><span data-l="ar">مفتاح واحد لا يكفي أبدًا</span><span data-l="en">One key is never enough</span></h2>
+                  </header>
+                  <div class="sl-body pf-grid">
+                    <div class="pf-demo sl-card sl-in" data-no-swipe>
+                      <p class="viz-h"><span data-l="ar">جرّبها: اضغط المفاتيح</span><span data-l="en">Try it: press the keys</span></p>
+                      <div class="pf-keys" role="group">
+                        <button type="button" class="pf-key" data-key="k1" aria-pressed="false"><span class="pf-key-ico" data-ico="thermo"></span><b><span data-l="ar">المفتاح 1 · الحرارة</span><span data-l="en">Key 1 · Heat</span></b><small><span data-l="ar">كاميرا حرارية</span><span data-l="en">thermal camera</span></small></button>
+                        <button type="button" class="pf-key" data-key="k2" aria-pressed="false"><span class="pf-key-ico" data-ico="smoke"></span><b><span data-l="ar">المفتاح 2 · الدخان/الرؤية</span><span data-l="en">Key 2 · Smoke / vision</span></b><small><span data-l="ar">مستقل عن الأول</span><span data-l="en">independent of key 1</span></small></button>
+                        <button type="button" class="pf-key pf-human" data-key="k3" aria-pressed="false" disabled><span class="pf-key-ico" data-ico="users"></span><b><span data-l="ar">مفتاح الإنسان · اعتماد</span><span data-l="en">Human key · Approve</span></b><small><span data-l="ar">المشغّل يضغط</span><span data-l="en">the operator taps</span></small></button>
+                      </div>
+                      <div class="pf-steps" aria-hidden="true"><i data-st="clear"></i><i data-st="suspect"></i><i data-st="confirmed"></i><i data-st="public"></i></div>
+                      <div class="pf-out" role="status" aria-live="polite">
+                        <span class="pf-badge" id="pf-badge" data-state="clear"></span>
+                        <p id="pf-text"></p>
+                      </div>
+                      <div class="pf-decoys">
+                        <span class="pf-decoys-h"><span data-l="ar">أو جرّب خدعة:</span><span data-l="en">Or try a decoy:</span></span>
+                        <button type="button" class="chip" data-decoy="mug"><span data-l="ar">كوب ساخن</span><span data-l="en">Hot mug</span></button>
+                        <button type="button" class="chip" data-decoy="video"><span data-l="ar">فيديو حريق على هاتف</span><span data-l="en">Fire video on a phone</span></button>
+                        <button type="button" class="chip" data-decoy="reset"><span data-l="ar">إعادة</span><span data-l="en">Reset</span></button>
+                      </div>
+                      <p class="pf-local"><span class="dot live" style="--sc:var(--safe)"></span><span data-l="ar">الإنذار المحلي في المبنى يعمل فورًا في كل الحالات.</span><span data-l="en">The local alarm in the building sounds at once in every case.</span></p>
+                    </div>
+                    <div class="pf-side">
+                      <article class="pf-honest sl-card sl-in">
+                        <h3><span data-l="ar">كاشف الصور: رؤية حاسوبية بقواعد — وليس ذكاءً اصطناعيًا</span><span data-l="en">The image detector: rule-based computer vision — not AI</span></h3>
+                        <div class="pf-score" role="img" aria-labelledby="pf-score-d">
+                          <span class="sr-only" id="pf-score-d"><span data-l="ar">12 من 18 صورة محجوزة صحيحة، أي 66.7%.</span><span data-l="en">12 of 18 held-out photos correct, that is 66.7%.</span></span>
+                          <b class="num" dir="ltr">66.7%</b>
+                          <span class="pf-bar" aria-hidden="true"><i style="--v:66.7"></i></span>
+                          <small class="num" dir="ltr">12 / 18</small>
+                        </div>
+                        <ul class="pf-list">
+                          <li><span data-l="ar">وجد <b class="num" dir="ltr">6 / 6</b> من صور النار</span><span data-l="en">found <b class="num" dir="ltr">6 / 6</b> fire photos</span></li>
+                          <li><span data-l="ar">أخطأ في <b class="num" dir="ltr">3 / 12</b> من الصور بلا نار</span><span data-l="en">wrong on <b class="num" dir="ltr">3 / 12</b> fire-free photos</span></li>
+                          <li><span data-l="ar">لم يجد دخانًا في <b class="num" dir="ltr">3 / 3</b> من صور الدخان</span><span data-l="en">missed smoke in <b class="num" dir="ltr">3 / 3</b> smoke photos</span></li>
+                          <li><span data-l="ar">كاشف الفيديو يرفض الأجسام الحمراء الثابتة</span><span data-l="en">the video detector rejects static red objects</span></li>
+                        </ul>
+                        <p class="sl-src"><span data-l="ar">عيّنة صغيرة — لا نعمّمها. ولهذا لا يقرّر وحده أبدًا.</span><span data-l="en">A small sample — we do not generalise it. That is why it never decides alone.</span></p>
+                      </article>
+                      <div class="btns pf-links sl-in">
+                        <a class="btn btn-primary btn-sm" href="detect.html" target="_blank" rel="noopener" data-icon="eye"><span data-l="ar">افتح مختبر الأدلة</span><span data-l="en">Open the Evidence Lab</span></a>
+                        <a class="btn btn-ghost btn-sm" href="detect.html#fool" target="_blank" rel="noopener" data-icon="target"><span data-l="ar">حاوِل خداعه</span><span data-l="en">Fool me if you can</span></a>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <!-- ---------- 6. Hazards ---------- -->
+                <section class="slide s-hazards" id="slide-6" data-slide="hazards" aria-roledescription="slide" aria-labelledby="st-6">
+                  <div class="sl-bg" aria-hidden="true"></div>
+                  <header class="sl-head">
+                    <p class="sl-kick sl-in"><span class="sl-num num">06</span><span data-l="ar">ستة أخطار</span><span data-l="en">Six hazards</span></p>
+                    <h2 class="sl-title sl-in" id="st-6"><span data-l="ar">ستة أخطار… منصة واحدة</span><span data-l="en">Six hazards… one platform</span></h2>
+                  </header>
+                  <div class="sl-body">
+                    <div class="hz-grid" id="hz-grid"></div>
+                    <p class="hz-note sl-in"><span data-l="ar">الزلزال خطر منخفض في قطر بحسب إدارة الأرصاد (2013)، لذلك لم نبنِ له سيناريو. كل خطر يملك مفتاحَيه وإجراءه الواقي، والباقي مشترك.</span><span data-l="en">Earthquakes are low-risk in Qatar according to the Meteorology Department (2013), so we built no scenario for them. Each hazard has its own two keys and protective action; everything else is shared.</span></p>
+                  </div>
+                </section>
+
+                <!-- ---------- 7. Live moment ---------- -->
+                <section class="slide s-live" id="slide-7" data-slide="live" aria-roledescription="slide" aria-labelledby="st-7">
+                  <div class="sl-bg" aria-hidden="true"></div>
+                  <header class="sl-head">
+                    <p class="sl-kick sl-in"><span class="sl-num num">07</span><span data-l="ar">اللحظة الحيّة</span><span data-l="en">The live moment</span> <span class="tag danger live-tag"><span class="dot live"></span><span data-l="ar">حيّ</span><span data-l="en">LIVE</span></span> <span class="tag warn">SIM</span></p>
+                    <h2 class="sl-title sl-in" id="st-7"><span data-l="ar">الآن دورك: أنتَ الحَكَم</span><span data-l="en">Now you drive: you are the judge</span></h2>
+                  </header>
+                  <div class="sl-body lv-grid">
+                    <div class="lv-left">
+                      <ol class="lv-steps sl-in" id="lv-steps"></ol>
+                      <div class="btns lv-actions sl-in">
+                        <a class="btn btn-primary" id="lv-open" href="mission.html#scenario=fire-night&amp;seed=1" target="_blank" rel="noopener" data-icon="radar"><span data-l="ar">افتح غرفة العمليات</span><span data-l="en">Open Mission Control</span></a>
+                        <a class="btn btn-ghost btn-sm" href="alert.html" target="_blank" rel="noopener" data-icon="phone"><span data-l="ar">هواتف السكان</span><span data-l="en">Resident phones</span></a>
+                      </div>
+                      <p class="sl-src sl-in"><span data-l="ar">محاكاة: اللهب ممنوع في القاعة، والسكان والمرور والمحطات افتراضية. 999 يبقى هو المرسِل.</span><span data-l="en">Simulation: flames are banned in the hall; residents, traffic and stations are fictional. 999 stays the dispatcher.</span></p>
+                    </div>
+                    <div class="lv-viz sl-card sl-in" data-no-swipe>
+                      <p class="viz-h"><span data-l="ar">النسخة الاحتياطية: المبنى في مقطع</span><span data-l="en">The backup: the building in section</span></p>
+                      <div class="bld" id="bld"></div>
+                      <div class="lv-ctl">
+                        <button type="button" class="chip" id="lv-lock" aria-pressed="false"><span data-l="ar">اقفل الدرج «أ»</span><span data-l="en">Lock Stair A</span></button>
+                        <button type="button" class="chip" id="lv-safe" aria-pressed="false"><span data-l="ar">«أنا بخير» من رافي</span><span data-l="en">Ravi taps "I'm safe"</span></button>
+                      </div>
+                      <p class="lv-msg" id="lv-msg" role="status" aria-live="polite"></p>
+                    </div>
+                  </div>
+                </section>
+
+                <!-- ---------- 8. Every person ---------- -->
+                <section class="slide s-people" id="slide-8" data-slide="people" aria-roledescription="slide" aria-labelledby="st-8">
+                  <div class="sl-bg" aria-hidden="true"></div>
+                  <header class="sl-head">
+                    <p class="sl-kick sl-in"><span class="sl-num num">08</span><span data-l="ar">كل إنسان</span><span data-l="en">Every person</span></p>
+                    <h2 class="sl-title sl-in" id="st-8"><span data-l="ar">بلغته… وبالصيغة التي يحتاجها</span><span data-l="en">In their language… in the format they need</span></h2>
+                  </header>
+                  <div class="sl-body">
+                    <div class="pe-grid" id="pe-grid"></div>
+                    <div class="pe-bottom">
+                      <div class="pe-ladder sl-in">
+                        <p class="viz-h"><span data-l="ar">سلّم الإيقاظ الليلي — يصعد حتى يؤكد الشخص</span><span data-l="en">The night wake-up ladder — it climbs until the person confirms</span></p>
+                        <ol class="ladder" id="ladder"></ol>
+                      </div>
+                      <div class="pe-lang sl-in">
+                        <p class="viz-h"><span data-l="ar">اللغات</span><span data-l="en">Languages</span></p>
+                        <ul class="langs" id="langs"></ul>
+                        <p class="pe-stat"><b class="num" dir="ltr">92.7%</b> <span data-l="ar">من السكان غير قطريين — العربية والإنجليزية وحدهما لا تصلان إلى الجميع. <small class="sl-src">تعداد 2020 (عبر GLMM)</small></span><span data-l="en">of residents are non-Qatari — Arabic and English alone do not reach everyone. <small class="sl-src">Census 2020 (via GLMM)</small></span></p>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <!-- ---------- 9. Fastest responder ---------- -->
+                <section class="slide s-dispatch" id="slide-9" data-slide="dispatch" aria-roledescription="slide" aria-labelledby="st-9">
+                  <div class="sl-bg" aria-hidden="true"></div>
+                  <header class="sl-head">
+                    <p class="sl-kick sl-in"><span class="sl-num num">09</span><span data-l="ar">أقرب جهة استجابة</span><span data-l="en">Nearest responder</span> <span class="tag warn">SIM</span></p>
+                    <h2 class="sl-title sl-in" id="st-9"><span data-l="ar">الأسرع وصولًا بحسب الازدحام… لا الأقرب مسافة</span><span data-l="en">Fastest given traffic… not nearest by distance</span></h2>
+                  </header>
+                  <div class="sl-body dp-grid">
+                    <div class="dp-map-card sl-card sl-in" data-no-swipe>
+                      <div class="dp-ctl">
+                        <label class="field dp-f"><span><span data-l="ar">الساعة</span><span data-l="en">Time of day</span> <output class="num" id="dp-hour-o">07:00</output></span><input type="range" id="dp-hour" min="0" max="23.5" step="0.5" value="7"></label>
+                        <label class="field dp-f"><span><span data-l="ar">الازدحام</span><span data-l="en">Traffic</span> <output class="num" id="dp-load-o">1.0×</output></span><input type="range" id="dp-load" min="0.5" max="1.5" step="0.1" value="1"></label>
+                      </div>
+                      <div class="dp-map" id="dp-map" role="img" aria-labelledby="dp-map-d"></div>
+                      <span class="sr-only" id="dp-map-d"><span data-l="ar">خريطة طرق افتراضية: الطرق ملوّنة بالازدحام، والمسار المختار مرسوم نحو المبنى.</span><span data-l="en">A fictional road map: roads are coloured by congestion and the chosen route is drawn to the building.</span></span>
+                      <div class="dp-road btns">
+                        <label class="field dp-f dp-sel"><span><span data-l="ar">طريق للتعطيل</span><span data-l="en">Road to disturb</span></span><select id="dp-seg"></select></label>
+                        <button type="button" class="chip" id="dp-jam"><span data-l="ar">ازدحام</span><span data-l="en">Jam it</span></button>
+                        <button type="button" class="chip" id="dp-close"><span data-l="ar">أغلقه</span><span data-l="en">Close it</span></button>
+                        <button type="button" class="chip" id="dp-clear"><span data-l="ar">مسح</span><span data-l="en">Clear</span></button>
+                      </div>
+                    </div>
+                    <div class="dp-side">
+                      <div class="dp-rows sl-in" id="dp-rows" aria-live="polite"></div>
+                      <ol class="dp-how sl-in" id="dp-how"></ol>
+                      <p class="sl-src sl-in"><span data-l="ar">المحطات والمستشفيات افتراضية، والمرور محاكى (SIM). في الواقع: مزوّد مرور حيّ وبيانات المركبات من الجهة نفسها، و999 هو المرسِل.</span><span data-l="en">Stations and hospitals are fictional and traffic is simulated (SIM). In real life: a live traffic provider and the authority's own vehicle data, and 999 is the dispatcher.</span></p>
+                    </div>
+                  </div>
+                </section>
+
+                <!-- ---------- 10. Evidence ---------- -->
+                <section class="slide s-evidence" id="slide-10" data-slide="evidence" aria-roledescription="slide" aria-labelledby="st-10">
+                  <div class="sl-bg" aria-hidden="true"></div>
+                  <header class="sl-head">
+                    <p class="sl-kick sl-in"><span class="sl-num num">10</span><span data-l="ar">الأدلة</span><span data-l="en">Evidence</span></p>
+                    <h2 class="sl-title sl-in" id="st-10"><span data-l="ar">ما قِسناه… وما لم نقِسه بعد</span><span data-l="en">What we measured… and what we haven't yet</span></h2>
+                  </header>
+                  <div class="sl-body ev-grid">
+                    <article class="ev-col ev-real sl-card sl-in">
+                      <h3><span class="tag safe"><span data-l="ar">مقيس</span><span data-l="en">Measured</span></span><span data-l="ar">اختبارات الشيفرة الحقيقية</span><span data-l="en">Real code, real tests</span></h3>
+                      <div class="ev-big"><b class="num" dir="ltr">66.7%</b><span data-l="ar">دقة الكاشف على <b class="num" dir="ltr">12 / 18</b> صورة محجوزة</span><span data-l="en">detector accuracy on <b class="num" dir="ltr">12 / 18</b> held-out photos</span></div>
+                      <ul class="ev-list">
+                        <li><span data-l="ar">وجد <b class="num" dir="ltr">6 / 6</b> من صور النار، وأخطأ في <b class="num" dir="ltr">3 / 12</b> من الصور بلا نار، ولم يجد دخان <b class="num" dir="ltr">3 / 3</b> من صور الدخان</span><span data-l="en">found <b class="num" dir="ltr">6 / 6</b> fire photos, was wrong on <b class="num" dir="ltr">3 / 12</b> fire-free photos, and missed the smoke in <b class="num" dir="ltr">3 / 3</b> smoke photos</span></li>
+                        <li><span data-l="ar"><b class="num" dir="ltr">14 / 14</b> تجربة خداع لم تصل إلى «نار» (مشاهد مولَّدة بالشيفرة — فحص آلية)</span><span data-l="en"><b class="num" dir="ltr">14 / 14</b> decoy trials never reached FIRE (scenes generated in code — a mechanism check)</span></li>
+                        <li><span data-l="ar">اختبارات آلية لمحرّك المحاكاة وللكاشف</span><span data-l="en">Automated tests for the simulation engine and the detector</span></li>
+                      </ul>
+                    </article>
+                    <article class="ev-col ev-sim sl-card sl-in" data-no-swipe>
+                      <h3><span class="tag warn">SIM</span><span data-l="ar">محاكاة A/B — فحص آلية لا برهان أثر</span><span data-l="en">A/B simulation — a mechanism check, not proof</span></h3>
+                      <div class="ev-bars" id="ev-bars" aria-live="polite"></div>
+                      <p class="ev-trade" id="ev-trade"></p>
+                      <div class="ev-run">
+                        <label class="field"><span><span data-l="ar">السيناريو</span><span data-l="en">Scenario</span></span><select id="ev-preset"></select></label>
+                        <label class="field"><span><span data-l="ar">البذرة</span><span data-l="en">Seed</span></span><input class="input num" id="ev-seed" type="number" min="1" max="999" step="1" value="1" inputmode="numeric"></label>
+                        <button type="button" class="btn btn-ghost btn-sm" id="ev-go"><span data-l="ar">شغّل المحاكاة</span><span data-l="en">Run the simulation</span></button>
+                      </div>
+                    </article>
+                    <article class="ev-col ev-todo sl-card sl-in">
+                      <h3><span class="tag"><span data-l="ar">لم يُنجَز</span><span data-l="en">Not yet</span></span><span data-l="ar">نقولها صراحةً</span><span data-l="en">We say it openly</span></h3>
+                      <ul class="ev-list" id="ev-todo"></ul>
+                    </article>
+                  </div>
+                </section>
+
+                <!-- ---------- 11. Build + plug in ---------- -->
+                <section class="slide s-build" id="slide-11" data-slide="build" aria-roledescription="slide" aria-labelledby="st-11">
+                  <div class="sl-bg" aria-hidden="true"></div>
+                  <header class="sl-head">
+                    <p class="sl-kick sl-in"><span class="sl-num num">11</span><span data-l="ar">البناء والتكامل</span><span data-l="en">Build and plug-in</span></p>
+                    <h2 class="sl-title sl-in" id="st-11"><span data-l="ar">بسيطة في البناء… ومصمَّمة لتتصل بما هو موجود</span><span data-l="en">Simple to build… designed to plug into what exists</span></h2>
+                  </header>
+                  <div class="sl-body bd-grid">
+                    <div class="bd-left sl-card sl-in">
+                      <p class="viz-h"><span data-l="ar">الحارس: لوحة ESP32 وحسّاسات رخيصة</span><span data-l="en">The sentinel: an ESP32 board and cheap sensors</span></p>
+                      <div class="sentinel" id="sentinel"></div>
+                      <p class="bd-cost"><span data-l="ar"><b>التكلفة:</b> أغلى قطعة هي الكاميرا الحرارية: <b class="num" dir="ltr">US$ 74.95</b> (Adafruit، أكتوبر 2026). الباقي في الغالب بضعة دولارات (تقديرات؛ الشحن والجمارك غير مشمولة). القائمة الكاملة في صفحة البناء.</span><span data-l="en"><b>Cost:</b> the biggest single part is the thermal camera: <b class="num" dir="ltr">US$ 74.95</b> (Adafruit, October 2026). Most of the rest are a few dollars (estimates; shipping and customs not included). Full list on the Build page.</span></p>
+                    </div>
+                    <div class="bd-right sl-card sl-in">
+                      <p class="viz-h"><span data-l="ar">منارة تتّصل ولا تستبدل</span><span data-l="en">MANARA plugs in; it replaces none</span></p>
+                      <ul class="plug" id="plug"></ul>
+                      <p class="sl-src"><span data-l="ar">أي ربط حقيقي يحتاج اتفاقًا مع الجهة المعنية. المسيّرة مفهوم لجهة مرخَّصة (القانون 10 لسنة 2026).</span><span data-l="en">Any real link needs an agreement with the authority. The drone is a concept for a licensed agency (Law No. 10 of 2026).</span></p>
+                    </div>
+                  </div>
+                </section>
+
+                <!-- ---------- 12. Roadmap + ask + thanks ---------- -->
+                <section class="slide s-close" id="slide-12" data-slide="close" aria-roledescription="slide" aria-labelledby="st-12">
+                  <div class="sl-bg" aria-hidden="true"></div>
+                  <header class="sl-head">
+                    <p class="sl-kick sl-in"><span class="sl-num num">12</span><span data-l="ar">الخطوة التالية</span><span data-l="en">Next steps</span></p>
+                    <h2 class="sl-title sl-in" id="st-12"><span data-l="ar">إلى أين نمضي… وماذا نطلب منكم</span><span data-l="en">Where we go next… and what we ask of you</span></h2>
+                  </header>
+                  <div class="sl-body cl-grid">
+                    <ol class="road sl-in" id="road"></ol>
+                    <div class="ask sl-card sl-in">
+                      <p class="viz-h"><span data-l="ar">ما نطلبه</span><span data-l="en">Our ask</span></p>
+                      <ul id="ask"></ul>
+                    </div>
+                  </div>
+                  <div class="cl-end sl-in">
+                    <p class="cl-slogan"><span data-l="ar">لا نائمَ يُنسى، ولا أحدَ يُترك خلفنا</span><span data-l="en">No one left asleep. No one left behind.</span></p>
+                    <p class="cl-thanks"><b><span data-l="ar">شكرًا لكم</span><span data-l="en">Thank you</span></b> <span data-l="ar">— يسعدنا سؤالكم. نحترم عمل الدفاع المدني وفريق آيسف 2025: منارة تعمل حولهم لا ضدهم.</span><span data-l="en">— we are glad to take your questions. We respect Civil Defence and the ISEF 2025 team: MANARA works around them, not against them.</span></p>
+                    <div class="btns cl-links">
+                      <button type="button" class="btn btn-ghost btn-sm" data-goto-tab="qa"><span data-l="ar">أسئلة الحَكَم</span><span data-l="en">Judge Q&amp;A</span></button>
+                      <button type="button" class="btn btn-ghost btn-sm" data-goto-tab="qa" data-weak="1"><span data-l="ar">نقاط ضعفنا — نقولها أولًا</span><span data-l="en">Our weak spots — we say them first</span></button>
+                    </div>
+                  </div>
+                </section>
+
+              </div><!-- /stage -->
+            </div>
+            <div class="deck-bar" id="deck-bar"></div>
+          </div>
+          <aside class="notes" id="notes" aria-label=""></aside>
+        </div>
+        <div class="overview" id="overview" role="dialog" aria-modal="true" aria-label="" hidden></div>
+        <div class="kbd-help" id="kbd-help" role="dialog" aria-modal="true" aria-label="" hidden></div>
+        <div class="sr-only" id="deck-live" role="status" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ 2. SCRIPT -->
+    <section class="tabpanel" id="p-script" role="tabpanel" aria-labelledby="t-script" hidden></section>
+
+    <!-- ============================================================ 3. Q&A -->
+    <section class="tabpanel" id="p-qa" role="tabpanel" aria-labelledby="t-qa" hidden></section>
+
+    <!-- ============================================================ 4. BOOTH -->
+    <section class="tabpanel" id="p-booth" role="tabpanel" aria-labelledby="t-booth" hidden></section>
+
+  </div>
+
+  <div id="print-root" class="print-root" aria-hidden="true"></div>
+</main>
+
+<footer class="foot" data-footer></footer>
+</body>
+</html>

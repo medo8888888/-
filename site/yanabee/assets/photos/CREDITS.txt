@@ -1,0 +1,6 @@
+Photos are from Pexels (https://www.pexels.com), used under the Pexels License
+(free for commercial and personal use, no attribution required; credit given as a courtesy):
+team-t1 (Pexels 9325736), team-t2 (33770552), team-t3 (15809461), team-t4 (7869041), team-t5 (5029929),
+team-t6 (6837473), team-t7 (6995212), inclusion (7162989), hero-home (5676744), hero-operations (6684506),
+hero-quran (8164397), quran-dark (10880973).
+Photo page URL pattern: https://www.pexels.com/photo/<id>/

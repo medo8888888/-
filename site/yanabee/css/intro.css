@@ -1,0 +1,31 @@
+/* Opening scene — home page, first visit per session (js/intro.js). Always dark: it is a night-time drop of water. */
+.intro{display:none}
+html.intro-on{overflow:hidden}
+html.intro-on .intro{display:block;position:fixed;inset:0;z-index:10000;cursor:progress;
+  background:radial-gradient(120% 90% at 50% 62%,#08414a 0%,#04222b 48%,#020d14 100%);
+  --cx:50%;--cy:54%;--r:-80px;
+  -webkit-mask-image:radial-gradient(circle at var(--cx) var(--cy),transparent calc(var(--r) - 70px),#000 var(--r));
+          mask-image:radial-gradient(circle at var(--cx) var(--cy),transparent calc(var(--r) - 70px),#000 var(--r))}
+.intro-canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.intro-mark,.intro-word{position:absolute;left:50%;translate:-50% 0;pointer-events:none;opacity:0}
+.intro-mark{top:var(--iy,54%);translate:-50% -100%;transform-origin:50% 100%;filter:drop-shadow(0 0 26px rgba(47,211,198,.55))}
+.intro-logo{display:block;width:clamp(88px,15vmin,140px);height:auto}
+.intro-word{top:calc(var(--iy,54%) + clamp(22px,4vmin,40px));font-family:var(--font-h);font-weight:700;font-size:clamp(2.4rem,8.5vmin,4.6rem);line-height:1.2;
+  background:linear-gradient(100deg,#7ff0e3,#8fb4ff 55%,#e3a9ff);-webkit-background-clip:text;background-clip:text;color:transparent;white-space:nowrap}
+.intro.pop .intro-mark{animation:intro-pop .95s cubic-bezier(.2,1.5,.35,1) both}
+.intro.pop .intro-word{animation:intro-word 1s cubic-bezier(.2,.9,.25,1) .28s both}
+.intro.out .intro-mark{animation:intro-out .6s cubic-bezier(.5,0,.8,.4) both}
+.intro.out .intro-word{animation:intro-wout .5s ease both}
+@keyframes intro-pop{from{opacity:0;transform:translateY(46px) scale(.15);filter:blur(10px) drop-shadow(0 0 0 rgba(47,211,198,0))}
+  55%{opacity:1;transform:translateY(-6px) scale(1.14)}to{opacity:1;transform:none}}
+@keyframes intro-word{from{opacity:0;transform:translateY(16px) scale(.94);filter:blur(12px)}to{opacity:1;transform:none;filter:none}}
+@keyframes intro-out{from{opacity:1;transform:none}to{opacity:0;transform:scale(1.7);filter:blur(8px)}}
+@keyframes intro-wout{from{opacity:1}to{opacity:0;transform:translateY(-10px)}}
+/* bright rim of the opening hole (created by intro.js) */
+.intro-rim{position:fixed;inset:0;z-index:10001;pointer-events:none;
+  background:radial-gradient(circle at var(--cx) var(--cy),transparent calc(var(--r) - 10px),rgba(140,255,240,.95) calc(var(--r) - 2px),rgba(80,200,230,.35) calc(var(--r) + 10px),transparent calc(var(--r) + 42px))}
+/* the hero holds its first reveal until the hole opens (intro.js then removes .intro-on, and the normal .rv transitions play) */
+html.intro-on .hero-home .rv,html.intro-on .hero-home .rv.in{opacity:0;transform:translateY(34px) scale(.97)}
+html.intro-on .hero-home .hero-visual{opacity:0;transform:scale(.9)}
+.hero-home .hero-visual{transition:opacity 1.1s var(--ease) .15s,transform 1.4s var(--ease) .15s}
+@media (prefers-reduced-motion:reduce){.intro{display:none!important}html.intro-on{overflow:auto}}

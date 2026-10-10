@@ -1,0 +1,97 @@
+/* ==========================================================================
+   Interactivity layer (js/fx.js, js/home.js, hero streams in js/springs.js).
+   Everything here is an enhancement: without it the pages are complete.
+   ========================================================================== */
+
+/* ---------- water ripple on press ---------- */
+.fx-ripple{position:fixed;z-index:400;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;pointer-events:none;
+  border:2px solid color-mix(in oklab,var(--accent) 80%,transparent);
+  box-shadow:0 0 0 0 color-mix(in oklab,var(--accent) 35%,transparent);animation:fx-ripple .9s var(--ease) forwards}
+@keyframes fx-ripple{from{transform:scale(.4);opacity:.9}to{transform:scale(9);opacity:0;border-width:1px}}
+
+/* ---------- cards: light that follows the pointer ---------- */
+.fx-glow{position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .3s;
+  background:radial-gradient(280px circle at var(--mx,50%) var(--my,50%),color-mix(in oklab,var(--tc,var(--sc,var(--accent))) 17%,transparent),transparent 70%)}
+.fx-on>.fx-glow{opacity:1}
+.fx-on{will-change:transform}
+
+/* ---------- magnetic buttons ---------- */
+.btn,.btn-ai,.chat-fab{transition-property:transform,translate,box-shadow,background-color,color,border-color,opacity}
+
+/* ---------- hero light + parallax ---------- */
+.hero-bg::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:var(--so,0);transition:opacity .5s;
+  background:radial-gradient(460px circle at var(--sx,50%) var(--sy,30%),color-mix(in oklab,var(--accent) 17%,transparent),transparent 70%)}
+.hero .blob{translate:calc(var(--px,0) * -26px) calc(var(--py,0) * -18px);transition:translate .9s var(--ease)}
+.hero .blob.b2{translate:calc(var(--px,0) * 34px) calc(var(--py,0) * 20px)}
+.hero .blob.b3{translate:calc(var(--px,0) * -14px) calc(var(--py,0) * 30px)}
+
+/* ---------- section dots (wide screens) ---------- */
+.fx-dots{display:none}
+@media(min-width:1280px){
+  .fx-dots{display:flex;flex-direction:column;gap:6px;position:fixed;inset-inline-end:18px;top:50%;translate:0 -50%;z-index:80}
+  .fx-dots a{position:relative;display:grid;place-items:center;width:26px;height:26px;text-decoration:none}
+  .fx-dots i{width:9px;height:9px;border-radius:50%;background:var(--line-2);transition:transform .3s var(--ease),background-color .3s,box-shadow .3s}
+  .fx-dots a:hover i,.fx-dots a:focus-visible i{background:var(--brand);transform:scale(1.35)}
+  .fx-dots a.current i{background:var(--grad);background:var(--brand);transform:scale(1.55);box-shadow:0 0 0 5px color-mix(in oklab,var(--accent) 24%,transparent)}
+  .fx-dots a::after{content:attr(data-label);position:absolute;inset-inline-end:34px;top:50%;translate:6px -50%;white-space:nowrap;max-width:300px;overflow:hidden;text-overflow:ellipsis;
+    padding:5px 12px;border-radius:10px;font-size:.85rem;font-weight:600;font-family:var(--font-h);background:var(--surface);color:var(--head);
+    border:1px solid var(--line-2);box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:opacity .2s,translate .25s var(--ease)}
+  .fx-dots a:hover::after,.fx-dots a:focus-visible::after{opacity:1;translate:0 -50%}
+}
+
+/* ---------- select text -> ask ---------- */
+.fx-ask{position:fixed;z-index:250;display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border-radius:999px;font-family:var(--font-h);font-weight:600;font-size:.92rem;
+  background:var(--grad);color:#fff;box-shadow:0 14px 28px -10px rgba(16,143,176,.85);animation:fx-pop .25s var(--ease)}
+[data-theme=dark] .fx-ask{color:#03171c}
+.fx-ask[hidden]{display:none}
+@keyframes fx-pop{from{opacity:0;transform:translateY(6px) scale(.94)}}
+
+/* ---------- Quran verse, word by word ---------- */
+.fx-ready .fx-w{display:inline-block;opacity:0}
+.fx-ready.fx-go .fx-w{animation:fx-word .7s var(--ease) both;animation-delay:calc(var(--wi) * 85ms)}
+@keyframes fx-word{from{opacity:0;transform:translateY(.45em);filter:blur(4px)}to{opacity:1;transform:none;filter:none}}
+
+/* ---------- theme switch: circular reveal from the button ---------- */
+html.vt-theme::view-transition-old(root){animation:none;mix-blend-mode:normal}
+html.vt-theme::view-transition-new(root){animation:fx-reveal .75s var(--ease) both;mix-blend-mode:normal}
+@keyframes fx-reveal{from{clip-path:circle(0 at var(--vt-x,50%) var(--vt-y,0))}to{clip-path:circle(150vmax at var(--vt-x,50%) var(--vt-y,0))}}
+
+/* ---------- [data-goto] ---------- */
+[data-goto]{cursor:pointer}
+.tm-node[data-goto]:hover .tm-node-c{stroke-width:3.4;fill:color-mix(in oklab,var(--tc) 22%,var(--surface))}
+.tm-node[data-goto]:hover .tm-node-h{opacity:.22}
+
+/* ---------- home: hero streams you can press ---------- */
+.stream-tip{position:absolute;z-index:3;pointer-events:none;padding:6px 14px 6px 12px;border-radius:12px;font-family:var(--font-h);font-weight:600;font-size:.88rem;white-space:nowrap;
+  transform:translate(-50%,-135%);color:var(--head);background:var(--surface);border:1px solid var(--line-2);border-inline-start:4px solid var(--tc,var(--brand));
+  box-shadow:var(--shadow);opacity:0;transition:opacity .2s}
+.stream-tip.on{opacity:1}
+.stream-hint{position:absolute;inset-inline:0;bottom:-4px;text-align:center;font-size:.85rem;color:var(--muted);font-family:var(--font-h);pointer-events:none}
+
+/* ---------- home: funding donut + roadmap ---------- */
+.donut{transition:transform .5s var(--ease),background .3s}
+.donut[data-hl="1"]{background:conic-gradient(var(--f1) 0 calc(var(--a)*1%),color-mix(in oklab,var(--f2) 26%,transparent) 0 calc(var(--b)*1%),color-mix(in oklab,var(--f3) 26%,transparent) 0)}
+.donut[data-hl="2"]{background:conic-gradient(color-mix(in oklab,var(--f1) 26%,transparent) 0 calc(var(--a)*1%),var(--f2) 0 calc(var(--b)*1%),color-mix(in oklab,var(--f3) 26%,transparent) 0)}
+.donut[data-hl="3"]{background:conic-gradient(color-mix(in oklab,var(--f1) 26%,transparent) 0 calc(var(--a)*1%),color-mix(in oklab,var(--f2) 26%,transparent) 0 calc(var(--b)*1%),var(--f3) 0)}
+.donut:hover{transform:scale(1.04)}
+.fund-legend li{border-radius:12px;padding:4px 8px;margin-inline:-8px;transition:background-color .25s,translate .3s var(--ease)}
+.fund-legend li.is-hl{background:rgba(255,255,255,.09);translate:-4px 0}
+.phase{transition:translate .4s var(--ease),box-shadow .4s,border-color .4s,opacity .7s var(--ease),transform .7s var(--ease);
+  transition-delay:0s,0s,0s,calc(var(--i) * .12s),calc(var(--i) * .12s)}
+.phase.is-on{translate:0 -6px;border-color:color-mix(in oklab,var(--accent) 55%,var(--line));box-shadow:var(--shadow)}
+.phase.is-on .ph-dot i{box-shadow:0 0 0 7px color-mix(in oklab,var(--accent) 22%,transparent),0 10px 22px -8px rgba(16,143,176,.7)}
+@media(prefers-reduced-motion:no-preference){.phase.is-on .ph-dot i{animation:fx-pulse 1.8s ease-in-out infinite}}
+@keyframes fx-pulse{50%{box-shadow:0 0 0 12px color-mix(in oklab,var(--accent) 8%,transparent),0 10px 22px -8px rgba(16,143,176,.7)}}
+
+/* ---------- operations: funding donut <-> legend ---------- */
+.op-seg{transition:stroke-dasharray 1s var(--ease) var(--dl),stroke-width .25s,opacity .25s}
+.op-seg-l{transition:opacity .5s var(--dl),font-size .25s}
+.op-seg{cursor:pointer}
+.op-chart.has-hl .op-seg:not(.is-hl),.op-chart.has-hl .op-seg-l:not(.is-hl){opacity:.28}
+.op-seg.is-hl{stroke-width:38}
+.op-seg-l.is-hl{font-size:21px}
+.op-legend li{transition:translate .3s var(--ease),background-color .25s,opacity .25s}
+.op-chart.has-hl .op-legend li:not(.is-hl){opacity:.55}
+.op-legend li.is-hl{translate:-5px 0}
+
+@media print{.fx-dots,.fx-ask,.fx-ripple,.stream-tip,.stream-hint,.fx-glow{display:none!important}.fx-ready .fx-w{opacity:1!important;animation:none!important}}

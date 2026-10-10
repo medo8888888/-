@@ -1,0 +1,24 @@
+/* ==========================================================================
+   Water (js/water.js): the live water surface behind the home hero.
+   One canvas, absolutely positioned under everything in the hero. WebGL when
+   available, a light 2D version otherwise. Decorative only.
+   ========================================================================== */
+.water{position:absolute;inset:0;width:100%;height:100%;z-index:-2;pointer-events:none;opacity:0;
+  -webkit-mask-image:linear-gradient(#000 0,#000 62%,rgba(0,0,0,.55) 82%,transparent 100%);
+  mask-image:linear-gradient(#000 0,#000 62%,rgba(0,0,0,.55) 82%,transparent 100%);
+  transition:opacity 1.4s var(--ease)}
+.water[hidden]{display:none}
+html.water-on .water{opacity:1}
+
+/* The flat gradient and the drifting blobs hand over to the water once its first frame is on screen. */
+.hero-home .hero-bg{transition:opacity 1.4s var(--ease),visibility 0s linear 1.4s}
+html.water-on:not(.water-2d) .hero-home .hero-bg{opacity:0;visibility:hidden}
+html.water-on:not(.water-2d) .hero-home .hero-bg .blob{animation:none}
+/* 2D fallback is only rings and glow: keep the gradient underneath it and soften the blobs so they do not double up. */
+html.water-2d .hero-home .hero-bg{z-index:-3}
+html.water-on.water-2d .hero-home .hero-bg .blob{opacity:.34}
+
+@media(prefers-reduced-motion:reduce){
+  .water,.hero-home .hero-bg{transition:none}
+}
+@media print{.water{display:none!important}}
