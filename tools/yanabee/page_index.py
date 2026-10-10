@@ -274,10 +274,13 @@ def initiative():
 
 
 # Opening scene (once per browser session, home page only; see js/intro.js, css/intro.css).
-INTRO_HEAD = ("<script>(function(){try{if(!sessionStorage.getItem('yb-intro')&&!matchMedia('(prefers-reduced-motion: reduce)').matches"
-              "&&!location.hash){document.documentElement.classList.add('intro-on')}}catch(e){}})();</script>")
+# `?intro` in the URL replays it (and is the only way to see it under browser automation, so the test suites
+# that drive the home page are not held up by it). The 6 s timer is a safety net if intro.js never runs.
+INTRO_HEAD = ("<script>(function(){try{var d=document.documentElement,q=location.search.indexOf('intro')>-1;"
+              "if(!matchMedia('(prefers-reduced-motion: reduce)').matches&&(q||(!navigator.webdriver&&!sessionStorage.getItem('yb-intro')&&!location.hash))){"
+              "d.classList.add('intro-on');setTimeout(function(){d.classList.remove('intro-on')},6000)}}catch(e){}})();</script>")
 INTRO = f'''<div class="intro" id="intro" aria-hidden="true"><canvas class="intro-canvas"></canvas>
-  <div class="intro-mark">{logo(84, 'intro', 'intro-logo')}</div></div>
+  <div class="intro-mark">{logo(84, 'intro', 'intro-logo')}</div><div class="intro-word">ينابيع</div></div>
 '''
 
 
