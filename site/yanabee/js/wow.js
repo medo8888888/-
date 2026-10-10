@@ -608,15 +608,6 @@
       S.press *= Math.pow(0.9, k);
       for (let i = 0; i < 3; i++) S.col[i] += (S.colT[i] - S.col[i]) * ez;
 
-      // trail: droplets detach when the pointer moves fast
-      if (S.a > 0.3 && !S.hidden && ps > 7) {
-        const n = ps > 36 ? 4 : ps > 16 ? 3 : 2;
-        for (let i = 0; i < n; i++) {
-          spawn(S.x + rand(-5, 5), S.y + rand(-5, 5), pdx / k * 0.12 + rand(-0.9, 0.9), pdy / k * 0.12 + rand(-1.2, 0.2),
-            rand(2.4, 5) + Math.min(ps / 45, 2), rand(800, 1350), 0.13);
-        }
-      }
-
       // ---- draw ----
       const dark = isDark();
       ctx.clearRect(0, 0, W, H);

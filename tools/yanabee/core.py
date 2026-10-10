@@ -161,6 +161,9 @@ def logo(size=40, uid='a', cls='logo'):
 </svg>'''
 
 
+# the stock "sparkles" glyph reads as generic AI decoration: every use shows the brand droplet instead
+ICONS['sparkles'] = ICONS['droplet']
+
 # ------------------------------------------------------------- structure ---
 # file, nav label (UI chrome), icon
 PAGES = [

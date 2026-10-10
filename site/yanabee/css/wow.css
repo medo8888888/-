@@ -106,3 +106,13 @@ html.wow-par-on .hero .blob.b3{translate:calc(var(--px,0) * -14px) calc(var(--py
   .wow-split .w{clip-path:none}
   .wow-split .wi,.wow-split .wow-u{opacity:1!important;transform:none!important;filter:none!important;transition:none!important}
 }
+
+/* clarity pass: headline words take one solid colour instead of a gradient fill */
+.grad-text,.tm-h1-a,.ln-h1-a,.q-h1-main,.op-ring-c b,.stat b,.ss-rep-title,
+.story.is-live .frag[data-act="2"] .w.em,.story.is-live .frag[data-act="3"] .w.em{
+  background:none!important;-webkit-background-clip:border-box!important;background-clip:border-box!important;
+  -webkit-text-fill-color:currentColor!important;color:var(--brand)!important}
+.q-h1-main{color:var(--q-em)!important}
+[data-theme=dark] .q-h1-main{color:var(--q-em-2)!important}
+.story.is-live .frag[data-act="2"] .w.em,.story.is-live .frag[data-act="3"] .w.em{color:var(--accent)!important}
+.intro-word{background:none!important;-webkit-text-fill-color:currentColor!important;color:#c8fff7!important}

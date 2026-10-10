@@ -474,7 +474,7 @@
     }
     // lane guides (act 3)
     const lA = G.g1 * (1 - G.g2);
-    if (lA > 0.01) {
+    if (false && lA > 0.01) { // lane guides removed: less to look at
       ctx.lineWidth = 1.2; ctx.lineCap = 'round';
       for (let k = 0; k < TEAMS; k++) {
         const x0 = L.laneX[k], x1 = L.laneX[k] + (L.laneX[k] - L.cx) * 0.16;
@@ -623,9 +623,9 @@
   // one-shot rings when the arch and the word complete
   let archDone = false, wordDone = false;
   const milestones = now => {
-    if (G.g2 > 0.98 && !archDone) { archDone = true; ripples.push({ x: L.dropX, y: L.dropY, t: now, d: 1900, R: L.A * 0.9, sq: 0.3 }); }
+    if (G.g2 > 0.98 && !archDone) { archDone = true; }
     if (G.g2 < 0.5) archDone = false;
-    if (G.g3 > 0.98 && !wordDone) { wordDone = true; ripples.push({ x: L.dropX, y: L.wordY, t: now, d: 2200, R: L.A * 1.05, sq: 0.22, c: accentC }); ripples.push({ x: L.dropX, y: L.wordY, t: now + 260, d: 2200, R: L.A * 0.8, sq: 0.22, c: skyC }); }
+    if (G.g3 > 0.98 && !wordDone) { wordDone = true; }
     if (G.g3 < 0.5) wordDone = false;
   };
 

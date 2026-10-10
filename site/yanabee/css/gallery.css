@@ -213,3 +213,8 @@
   .tgal{display:none!important}
   .tgal + .team-grid{display:grid!important}
 }
+
+/* simplification pass: fewer layers behind the words — no outlined numerals, double frame or bubbles; calmer photo */
+.tg-num,.tg-arch2,.tgal-bubbles{display:none!important}
+.tg-tint{opacity:.1}
+[data-theme=dark] .tg-mask .ph{filter:none}

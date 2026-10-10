@@ -36,9 +36,9 @@
     depthSwell: 22,       // same for the ambient swell (kept low so the swell bends light but does not make blobs)
     swellSlope: 0.11,     // slope amplitude of each swell wave (refraction / sheen of the calm water)
     net: { cell: 96, cell2: 58, width: 0.075, speed: 0.45 }, // caustic network: cell size px, line width, drift speed
-    chroma: 0.035,         // colour split of the caustics (0 = none)
-    normalGain: 1.5,      // slope -> normal tilt (specular / rim strength)
-    swellSheen: 0.45,     // how much of the ambient swell shows in the shading
+    chroma: 0.0,         // colour split of the caustics (0 = none)
+    normalGain: 1.15,      // slope -> normal tilt (specular / rim strength)
+    swellSheen: 0.3,     // how much of the ambient swell shows in the shading
     refract: 36,          // px, shift of the floor pattern per unit of slope
     calm: 0.6,            // 0..1 damping of ripples over the hero copy
     calmFeather: 190,     // px, soft edge of the calm zone around the hero copy
@@ -377,7 +377,7 @@ void main(){
 #endif
   float n1 = 1.0 - smoothstep(0.0, nw1, ed1);
   float n2 = 1.0 - smoothstep(0.0, nw2, ed2);
-  float net = n1 * n1 + 0.55 * n2 * n2;
+  float net = (n1 * n1 + 0.55 * n2 * n2) * 0.16; // calmer: the cell network is only a hint
 
   vec3 col;
   if (uDark > 0.5) {
@@ -396,7 +396,7 @@ void main(){
     vec3 cc = mix(acc, vec3(1.0), 0.28);
     cc = mix(cc, tint * 1.25 + 0.1, clamp(tw * 1.6, 0.0, 0.9));
     col = base;
-    col += (lines * 0.45 + net * 0.5) * cc * cg * (0.55 + 0.9 * mott);
+    col += (lines * 0.45 + net * 0.32) * cc * cg * (0.55 + 0.9 * mott);
     col += tint * crest * (0.34 + 0.7 * rim) * (1.0 - 0.5 * calm);
     col += mix(vec3(1.0), tint + 0.25, 0.6) * spec * 0.6 * (1.0 - 0.75 * calm);
     col += sky * rim * rim * 0.18 * (1.0 - 0.6 * calm);
