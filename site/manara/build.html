@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="ar" dir="rtl" data-lang="ar">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title data-en="MANARA — Build It">منارة — بناء النموذج</title>
+<meta name="description" content="دليل بناء منارة: ثلاثة مستويات من الحاسوب وحده إلى كشك كامل، قطع بأسعار تقريبية، توصيل مفصّل، شيفرة ESP32 وبايثون، ومراقب حيّ يعمل بلا عتاد.">
+<meta name="theme-color" content="#0a0e15">
+<meta name="color-scheme" content="light dark">
+<script>(function(){var d=document.documentElement,t,l;try{t=localStorage.getItem('manara-theme');l=localStorage.getItem('manara-lang')}catch(e){}var q=/[?&]lang=(ar|en)/.exec(location.search);if(q)l=q[1];if(t!=='light'&&t!=='dark')t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';if(l!=='en')l='ar';d.dataset.theme=t;d.dataset.lang=l;d.lang=l;d.dir=l==='ar'?'rtl':'ltr';d.classList.add('js');setTimeout(function(){if(!window.__manaraReady)d.classList.remove('js')},2500)})();</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/build.css">
+<script src="js/core.js" defer></script>
+<script src="js/build.js" defer></script>
+</head>
+<body data-page="build.html">
+<a class="skip" href="#main">تخطَّ إلى المحتوى</a>
+<header class="nav" data-nav></header>
+<main id="main">
+
+  <!-- ============================================================ hero -->
+  <section class="page-hero build-hero">
+    <div class="wrap wide">
+      <span class="eyebrow" data-icon="wrench"><span data-l="ar">بناء النموذج · من الحاسوب إلى الكشك</span><span data-l="en">BUILD · from laptop to booth</span></span>
+      <h1><span data-l="ar">ابنِ منارة بيديك</span><span data-l="en">Build MANARA yourself</span></h1>
+      <p class="lead"><span data-l="ar">من حاسوبك وحده إلى كشك كامل: قطع بأسعار تقريبية، وتوصيل مفصّل، وشيفرة تعمل، واختبار عند كل خطوة.</span><span data-l="en">From a laptop alone to a full booth: parts with price ranges, exact wiring, working code, and a test at every step.</span></p>
+      <div class="chips hero-chips">
+        <span class="tag warn" data-icon="alert"><span data-l="ar">شيفرة اللوحات لم تُجرَّب على عتاد حقيقي بعد — اختبرها أنت</span><span data-l="en">Firmware not yet run on real hardware — you test it</span></span>
+        <span class="tag cool"><span data-l="ar">جرّب المراقِب الآن بلا أي عتاد</span><span data-l="en">Try the monitor now with no hardware</span></span>
+        <span class="tag safe"><span data-l="ar">يعمل دون إنترنت</span><span data-l="en">Works offline</span></span>
+      </div>
+      <div class="btns hero-btns">
+        <a class="btn btn-primary" href="#monitor" data-icon="signal"><span data-l="ar">جرّب مراقب اللوحة</span><span data-l="en">Try the board monitor</span></a>
+        <a class="btn btn-ghost" href="#kit" data-icon="download"><span data-l="ar">حمّل الحقيبة البرمجية</span><span data-l="en">Download the code kit</span></a>
+      </div>
+    </div>
+  </section>
+
+  <nav class="subnav" aria-label="" id="subnav">
+    <div class="wrap wide"><div class="subnav-row scroll-x" id="subnav-row"></div></div>
+  </nav>
+
+  <!-- ============================================================ 1. overview -->
+  <section class="sec" id="overview">
+    <div class="wrap wide">
+      <div class="sec-head">
+        <span class="eyebrow" data-icon="layers"><span data-l="ar">الصورة الكبيرة</span><span data-l="en">The big picture</span></span>
+        <h2 class="sec-title"><span data-l="ar">الفكرة كلها في مخطط واحد</span><span data-l="en">The whole idea in one picture</span></h2>
+        <p class="sec-lead"><span data-l="ar">حارس يرى ويقرّر في مكانه، ودرون (مفهوم) تُشغّله جهة مرخّصة يعطي نظرة ثانية من الخارج، وهواتف توقظ كل إنسان بلغته، وعدّ لمن خرج، وتسليم لفرق الطوارئ. القطعة الصلبة التي تبنيها هي الحارس؛ والباقي برمجيات تعمل في المتصفح.</span><span data-l="en">A sentinel that sees and decides on the spot, a drone (concept) flown by a licensed agency that adds a second view from outside, phones that wake each person in their own language, a headcount of who got out, and a hand-off to responders. The hardware you build is the sentinel; the rest runs in the browser.</span></p>
+      </div>
+      <figure class="ov-fig rv">
+        <div class="ov-scroll" id="overview-host" role="group" aria-labelledby="ov-cap"></div>
+        <figcaption id="ov-cap"><span data-l="ar">الأرقام تعني الترتيب. الدائرة الملوّنة (T1 وT2 وT3) تقول في أي مستوى بناء تصبح الحلقة قطعةً حقيقية (المستويات أدناه).</span><span data-l="en">Numbers are the order. The coloured dot says at which build tier a link becomes a physical thing (tiers below).</span></figcaption>
+      </figure>
+      <div class="grid g3 ov-notes" data-stagger>
+        <div class="card rv"><span class="ico" style="--sc:var(--accent)"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></span>
+          <h3><span data-l="ar">الدليل قبل الذعر</span><span data-l="en">Proof before panic</span></h3>
+          <p><span data-l="ar">مفتاحان مستقلان على اللوحة، ثم موافقة إنسان قبل أي إنذار عام. حسّاس واحد لا يتجاوز «اشتباه».</span><span data-l="en">Two independent keys on the board, then a human approves before any public alert. One sensor alone never goes beyond SUSPECT.</span></p></div>
+        <div class="card rv"><span class="ico" style="--sc:var(--brand)"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg></span>
+          <h3><span data-l="ar">الإنذار المحلي لا ينتظر</span><span data-l="en">The local alarm never waits</span></h3>
+          <p><span data-l="ar">الصفّارة والحلقة ولافتات الخروج تعمل بالطاقة وحدها، دون متصفح ودون إنترنت ودون درون ودون أحد.</span><span data-l="en">The buzzer, ring and exit signs work on power alone: no browser, no internet, no drone, no person.</span></p></div>
+        <div class="card rv"><span class="ico" style="--sc:var(--safe)"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg></span>
+          <h3><span data-l="ar">كل رقم له مصدر أو وسمُ محاكاة</span><span data-l="en">Every number has a source or a SIM label</span></h3>
+          <p><span data-l="ar">أسعار القطع تقديرات، وقراءات الغاز ملّيفولت لا ppm، والمحاكاة موسومة SIM. ما لم يُجرَّب نقوله صراحةً.</span><span data-l="en">Part prices are estimates, gas readings are millivolts not ppm, and the simulation is labelled SIM. What is untested, we say so.</span></p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 2. live board monitor -->
+  <section class="sec alt" id="monitor">
+    <div class="wrap wide">
+      <div class="sec-head">
+        <span class="eyebrow" data-icon="signal"><span data-l="ar">مباشر</span><span data-l="en">Live</span></span>
+        <h2 class="sec-title"><span data-l="ar">مراقب اللوحة: وصّل لوحتك أو شغّل المحاكاة</span><span data-l="en">Board monitor: connect your board or run the simulation</span></h2>
+        <p class="sec-lead"><span data-l="ar">هذه اللوحة تقرأ بروتوكول التسلسلي v1 سطرًا سطرًا. تبدأ على <b>محاكاة (SIM)</b> لترى كل شيء قبل شراء أي قطعة. وحين تكون لوحة حقيقية على منفذ USB اضغط «وصل اللوحة» (متصفح Chrome أو Edge على الحاسوب).</span><span data-l="en">This panel reads serial protocol v1 line by line. It starts on a <b>simulation (SIM)</b> so you can see everything before buying a part. When a real board is on USB, press “Connect board” (Chrome or Edge on a computer).</span></p>
+      </div>
+
+      <div class="mon" id="mon">
+        <div class="mon-bar panel">
+          <div class="mon-src">
+            <span class="tag warn" id="src-tag">SIM</span>
+            <span class="small" id="src-text"></span>
+          </div>
+          <div class="btns">
+            <button class="btn btn-cool btn-sm" id="btn-connect" type="button" data-icon="signal"><span data-l="ar">وصّل اللوحة (Web Serial)</span><span data-l="en">Connect board (Web Serial)</span></button>
+            <label class="switch"><input type="checkbox" id="sw-sim" checked><span><span data-l="ar">محاكاة اللوحة</span><span data-l="en">Simulate board</span></span></label>
+          </div>
+        </div>
+        <p class="note warn" id="serial-warn" hidden><span data-l="ar">متصفحك لا يدعم Web Serial (يعمل في Chrome وEdge على الحاسوب، ولا يعمل في Safari أو Firefox أو معظم الهواتف). استخدم المحاكاة هنا، أو افتح الصفحة في Chrome/Edge لتوصيل لوحة حقيقية.</span><span data-l="en">Your browser does not support Web Serial (it works in Chrome and Edge on a computer, not in Safari, Firefox or most phones). Use the simulation here, or open this page in Chrome/Edge to connect a real board.</span></p>
+        <div id="conn-list" class="conn-list" aria-live="polite"></div>
+
+        <div class="scen panel" id="scen-panel">
+          <div class="panel-h"><span><span data-l="ar">ماذا تريد أن يحدث على الطاولة؟ (محاكاة)</span><span data-l="en">What happens on the table? (simulation)</span></span><span class="tag warn">SIM</span></div>
+          <div class="chips" id="scen" role="group" aria-label=""></div>
+          <div class="scen-row">
+            <div class="chips" id="locks" role="group" aria-label=""></div>
+            <div class="btns"><button class="btn btn-ghost btn-sm" id="btn-checkin" type="button" data-icon="users"><span data-l="ar">محاكاة تسجيل «أنا بأمان»</span><span data-l="en">Simulate an “I’m safe” check-in</span></button></div>
+          </div>
+        </div>
+
+        <div class="mon-grid">
+          <section class="panel thermal-card" aria-labelledby="th-title">
+            <div class="panel-h"><span id="th-title"><span data-l="ar">الصورة الحرارية 32×24</span><span data-l="en">Thermal image 32×24</span> <span class="tag warn sim-tag">SIM</span></span></div>
+            <canvas id="th-canvas" width="384" height="288" role="img" aria-label=""></canvas>
+            <div class="th-legend"><span class="num">15 °C</span><i class="th-bar" aria-hidden="true"></i><span class="num">70 °C</span></div>
+            <p class="num small th-stats" id="th-stats">–</p>
+            <p class="small muted" id="th-note"></p>
+          </section>
+
+          <section class="panel state-card" aria-labelledby="st-title">
+            <div class="panel-h"><span id="st-title"><span data-l="ar">قرار اللوحة (محلي)</span><span data-l="en">What the board decided (local)</span></span></div>
+            <div class="verdict" id="verdict" data-state="none"><span class="dot"></span><b id="verdict-text">–</b></div>
+            <ol class="ladder" id="ladder" aria-label="">
+              <li data-k="1"><span class="k">1</span><span><span data-l="ar">مفتاح الحسّاسات الأول</span><span data-l="en">Key 1: first sensor</span></span></li>
+              <li data-k="2"><span class="k">2</span><span><span data-l="ar">مفتاح مستقل ثانٍ</span><span data-l="en">Key 2: independent sensor</span></span></li>
+              <li data-k="3"><span class="k">3</span><span><span data-l="ar">موافقة إنسان</span><span data-l="en">Human approval</span></span></li>
+            </ol>
+            <div class="btns"><button class="btn btn-primary btn-sm" id="btn-approve" type="button" disabled data-icon="check"><span data-l="ar">اعتماد الإنذار العام (مفتاح الإنسان)</span><span data-l="en">Approve public alert (human key)</span></button></div>
+            <p class="small muted"><span data-l="ar">الإنذار المحلي (الحلقة والصفّارة واللافتات) يعمل قبل الاعتماد وبدونه. الاعتماد هو ما يطلق الإنذار العام في غرفة العمليات.</span><span data-l="en">The local alarm (ring, siren, signs) works before and without approval. Approval is what starts the public alert in Mission Control.</span></p>
+            <div class="flags" id="flags"></div>
+          </section>
+
+          <section class="panel read-card" aria-labelledby="rd-title">
+            <div class="panel-h"><span id="rd-title"><span data-l="ar">القراءات</span><span data-l="en">Readings</span> <span class="tag warn sim-tag">SIM</span></span><span class="small muted" id="rd-age">–</span></div>
+            <div class="kpis" id="kpis"></div>
+            <div class="sparks" id="sparks"></div>
+          </section>
+
+          <section class="panel board-card" aria-labelledby="bd-title">
+            <div class="panel-h"><span id="bd-title"><span data-l="ar">اللوحة الافتراضية: ما تُظهره الأجهزة</span><span data-l="en">Virtual board: what the outputs show</span></span></div>
+            <div class="board-inner"><div><div id="vboard" class="vboard" role="img" aria-label=""></div></div>
+            <div><div class="cmd-row">
+              <span class="small muted"><span data-l="ar">اختبر أمر <code>signs</code> (يُرسَل إلى اللوحة الحقيقية إن وُصلت):</span><span data-l="en">Test the <code>signs</code> command (sent to the real board when connected):</span></span>
+              <div class="chips" id="cmds" role="group" aria-label=""></div>
+            </div>
+            <pre class="code" id="cmd-line" aria-live="polite">–</pre></div></div>
+            <p class="small muted"><span data-l="ar">قاعدة السلامة: المتصفح يستطيع <b>تصعيد</b> الحلقة والصفّارة لكنه لا يُسكت إنذارًا محليًّا، ولا يُظهر «اذهب» على مخرج مفتاحه «مقفل».</span><span data-l="en">Safety rule: the browser can <b>escalate</b> the ring and siren but can never silence a local alarm, and never shows “go” on an exit whose switch says locked.</span></p>
+          </section>
+
+          <section class="panel count-card" aria-labelledby="ci-title">
+            <div class="panel-h"><span id="ci-title"><span data-l="ar">العدّ: تسجيلات نقطة «آمن»</span><span data-l="en">Headcount: MANARA-SAFE check-ins</span></span><span class="tag warn sim-tag">SIM</span></div>
+            <div class="ci-big"><div class="kpi safe"><b id="ci-safe">0</b><span><span data-l="ar">بأمان</span><span data-l="en">Safe</span></span></div><div class="kpi danger"><b id="ci-help">0</b><span><span data-l="ar">يحتاجون مساعدة</span><span data-l="en">Need help</span></span></div></div>
+            <p class="small" id="ci-rooms">–</p>
+            <p class="small muted"><span data-l="ar">أسطر <code>checkin</code> تأتي من لوحة «آمن» الثانية (غرفة ولغة وحالة، بلا أسماء).</span><span data-l="en"><code>checkin</code> lines come from the second board, MANARA-SAFE (room, language, status, no names).</span></p>
+          </section>
+
+          <section class="panel log-card" aria-labelledby="lg-title">
+            <div class="panel-h"><span id="lg-title"><span data-l="ar">السجل الخام (بروتوكول v1)</span><span data-l="en">Raw log (protocol v1)</span></span><span class="num small" id="lg-counts">–</span></div>
+            <div class="log" id="log" tabindex="0" role="log" aria-label="" aria-live="off"></div>
+            <div class="btns log-btns">
+              <button class="btn btn-ghost btn-sm" id="btn-pause" type="button" aria-pressed="false" data-icon="pause"><span data-l="ar">إيقاف مؤقت</span><span data-l="en">Pause log</span></button>
+              <button class="btn btn-ghost btn-sm" id="btn-clear" type="button" data-icon="reset"><span data-l="ar">مسح</span><span data-l="en">Clear</span></button>
+              <button class="btn btn-ghost btn-sm" id="btn-dl-log" type="button" data-icon="download"><span data-l="ar">حمّل السجل (.ndjson)</span><span data-l="en">Download log (.ndjson)</span></button>
+            </div>
+          </section>
+        </div>
+        <p class="sr-only" id="live-say" role="status" aria-live="polite"></p>
+      </div>
+
+      <details class="card rules rv" id="rules">
+        <summary><span data-l="ar">كيف تقرّر اللوحة وحدها؟ (قواعد الإنذار المحلي)</span><span data-l="en">How does the board decide on its own? (local alarm rules)</span></summary>
+        <div class="table-wrap"><table class="table rtable">
+          <thead><tr><th><span data-l="ar">الخطر</span><span data-l="en">Hazard</span></th><th><span data-l="ar">المفتاح الأول</span><span data-l="en">Key 1</span></th><th><span data-l="ar">المفتاح الثاني</span><span data-l="en">Key 2</span></th><th><span data-l="ar">النتيجة</span><span data-l="en">Result</span></th></tr></thead>
+          <tbody id="rules-body"></tbody></table></div>
+        <p class="small muted"><span data-l="ar">هذه قواعد «يضبطها الطالب» (student-set): عتبات الحرارة 57°م و8.3°م/دقيقة من تصنيف كاشف حرارة مُدرَج (المصدر: Honeywell 5809، S58)، وحدّ WBGT القطري 32.1°م (ILO، S19) قياسٌ لا تقدير. غيّرها في أعلى الشيفرة ثم دافع عن اختيارك.</span><span data-l="en">These are <b>student-set</b> rules: the 57 °C and 8.3 °C/min thresholds come from a listed heat detector's rating (Honeywell 5809, S58), and Qatar's 32.1 °C WBGT line (ILO, S19) is a measured value, not an estimate. Change them at the top of the code, then defend your choice.</span></p>
+      </details>
+    </div>
+  </section>
+
+  <!-- ============================================================ 3. tiers -->
+  <section class="sec" id="tiers">
+    <div class="wrap wide">
+      <div class="sec-head">
+        <span class="eyebrow" data-icon="layers"><span data-l="ar">ثلاثة مستويات</span><span data-l="en">Three tiers</span></span>
+        <h2 class="sec-title"><span data-l="ar">ابدأ بالصغير، وكبِّر حين تثق بما بنيت</span><span data-l="en">Start small, grow when you trust what you built</span></h2>
+        <p class="sec-lead"><span data-l="ar">كل مستوى يعمل وحده ويُعرَض أمام اللجنة. اختر مستواك، فتتغيّر قوائم القطع والتوصيل والخطوات أدناه معه.</span><span data-l="en">Every tier works alone and can be shown to the judges. Pick yours and the parts, wiring and steps below follow.</span></p>
+      </div>
+      <div class="tier-grid" id="tier-cards" role="group" aria-label=""></div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 4. parts -->
+  <section class="sec alt" id="parts">
+    <div class="wrap wide">
+      <div class="sec-head">
+        <span class="eyebrow" data-icon="box"><span data-l="ar">قائمة القطع</span><span data-l="en">Parts list</span></span>
+        <h2 class="sec-title"><span data-l="ar">ماذا تشتري، وكم يكلّف تقريبًا</span><span data-l="en">What to buy, and roughly what it costs</span></h2>
+        <p class="sec-lead"><span data-l="ar">الأسعار بالدولار الأمريكي <b>تقديرات</b> للمساعدة على التخطيط. وُسمت بـ «رُصد» حين رأينا قائمة بيع حديثة (تشرين الأول/أكتوبر 2026). الشحن والجمارك إلى قطر غير مشمولين، وتختلف الأسعار بين المتاجر.</span><span data-l="en">Prices are US-dollar <b>estimates</b> to help planning. A part is marked “seen” when we found a current listing (October 2026). Shipping and customs to Qatar are not included and shops differ.</span></p>
+      </div>
+      <div class="tier-pick" id="tier-pick-parts"></div>
+      <div class="kpis totals" id="parts-totals" aria-live="polite"></div>
+      <div class="table-wrap rv"><table class="table rtable" id="parts-table">
+        <thead><tr><th><span data-l="ar">القطعة</span><span data-l="en">Part</span></th><th><span data-l="ar">العدد</span><span data-l="en">Qty</span></th><th><span data-l="ar">السعر التقريبي (US$)</span><span data-l="en">Estimated price (US$)</span></th><th><span data-l="ar">لماذا نحتاجها</span><span data-l="en">What it is for</span></th><th><span data-l="ar">ملاحظة</span><span data-l="en">Note</span></th></tr></thead>
+        <tbody id="parts-body"></tbody>
+        <tfoot id="parts-foot"></tfoot>
+      </table></div>
+      <p class="small muted parts-foot-note"><span data-l="ar">الأسعار المرصودة من: Adafruit (MLX90640، US$ 74.95 للقطعة، المتجر الرسمي)، وThe Pi Hut (SHT31 £13.40، حلقة WS2812 £4.60، PMS5003 £24.50)، وWaveshare (SG90 US$ 1.69)، وOlimex (MPU6050 €7.95)، ومتجر أمريكي (ESP32 US$ 5.68–11.99). الباقي تقدير بلا مصدر.</span><span data-l="en">Prices seen at: Adafruit (MLX90640, US$ 74.95 each, official store), The Pi Hut (SHT31 £13.40, WS2812 ring £4.60, PMS5003 £24.50), Waveshare (SG90 US$ 1.69), Olimex (MPU6050 €7.95) and a US marketplace (ESP32 US$ 5.68–11.99). The rest are unsourced estimates.</span></p>
+    </div>
+  </section>
+
+  <!-- ============================================================ 5. wiring -->
+  <section class="sec" id="wiring">
+    <div class="wrap wide">
+      <div class="sec-head">
+        <span class="eyebrow" data-icon="code"><span data-l="ar">التوصيل</span><span data-l="en">Wiring</span></span>
+        <h2 class="sec-title"><span data-l="ar">خريطة الأطراف: لوحة ESP32 DevKit</span><span data-l="en">Pin map: ESP32 DevKit board</span></h2>
+        <p class="sec-lead"><span data-l="ar">هذه الأرقام هي نفسها في كتلة <code>CONFIG</code> أعلى شيفرة الحارس. غيّر الرقم في الشيفرة إن غيّرت السلك.</span><span data-l="en">These numbers are the same as the <code>CONFIG</code> block at the top of the sentinel code. If you move a wire, change the number in the code.</span></p>
+      </div>
+      <div class="wire-grid">
+        <div class="pin-fig rv">
+          <div id="pin-diagram" class="pin-diagram" role="img" aria-label=""></div>
+          <p class="small muted"><span data-l="ar">الرسم لوحة DevKit ذات 30 طرفًا بتصميم DOIT. <b>ترتيب الأطراف يختلف بين اللوحات</b>: طابِق أسماء GPIO المطبوعة على لوحتك لا مواضع الأرجل.</span><span data-l="en">The drawing is a 30-pin DOIT-style DevKit. <b>Pin order differs between boards</b>: match the GPIO names printed on your board, not the leg positions.</span></p>
+        </div>
+        <div class="wire-notes">
+          <div class="note warn rv"><b><span data-l="ar">3.3 فولت و5 فولت</span><span data-l="en">3.3 V and 5 V</span></b>
+            <span data-l="ar"><br>أطراف ESP32 تتحمّل 3.3 فولت فقط. خرج MQ-2 وMQ-7 (AO) وصدى HC-SR04 إشارات بجهد يصل إلى 5 فولت، فمرّرها عبر <b>مقسّم جهد</b> (10 كيلو + 20 كيلو للـ MQ، و1 كيلو + 2 كيلو للصدى). سخّانات MQ تحتاج 5 فولت وتسخن كثيرًا: ضع SHT31 بعيدًا عنها 5 سم على الأقل.</span>
+            <span data-l="en"><br>ESP32 pins tolerate 3.3 V only. The MQ-2 / MQ-7 outputs (AO) and the HC-SR04 echo can swing up to 5 V, so pass them through a <b>voltage divider</b> (10 k + 20 k for the MQ, 1 k + 2 k for the echo). MQ heaters need 5 V and get hot: keep the SHT31 at least 5 cm away.</span></div>
+          <div class="note rv"><b><span data-l="ar">ADC1 وADC2 وWi-Fi</span><span data-l="en">ADC1, ADC2 and Wi-Fi</span></b>
+            <span data-l="ar"><br>على ESP32 الكلاسيكي لا تُقرأ أطراف ADC2 (GPIO 0 و2 و4 و12–15 و25–27) أثناء تشغيل Wi-Fi: تقول وثائق Espressif <bdi dir="ltr">“ADC2 is also used by Wi-Fi”</bdi>. لذلك وضعنا الحسّاسات التناظرية على ADC1 (GPIO 32–39). لوحة الحارس لا تستخدم Wi-Fi، ولوحة «آمن» تستخدمه ولا تقرأ شيئًا تناظريًّا.</span>
+            <span data-l="en"><br>On the classic ESP32, ADC2 pins (GPIO 0, 2, 4, 12–15, 25–27) cannot be read while Wi-Fi runs: Espressif's docs say “ADC2 is also used by Wi-Fi”. So the analog sensors sit on ADC1 (GPIO 32–39). The sentinel does not use Wi-Fi; the MANARA-SAFE board does and reads nothing analog. <a href="https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/peripherals/adc/adc_oneshot.html" rel="noopener" target="_blank">Source: Espressif ESP-IDF docs</a>.</span></div>
+          <div class="note rv"><b><span data-l="ar">أطراف تجنّبها</span><span data-l="en">Pins to avoid</span></b>
+            <span data-l="ar"><br>GPIO 6–11 للذاكرة الداخلية: لا تستعملها أبدًا. GPIO 34–39 للإدخال فقط وبلا مقاومة رفع داخلية. GPIO 0 و2 و12 و15 تؤثر في الإقلاع. GPIO 1 و3 للمنفذ التسلسلي.</span>
+            <span data-l="en"><br>GPIO 6–11 are wired to the flash: never use them. GPIO 34–39 are input-only with no internal pull-up. GPIO 0, 2, 12 and 15 affect boot. GPIO 1 and 3 are the USB serial.</span></div>
+          <div class="note warn rv"><b><span data-l="ar">شريط WS2812</span><span data-l="en">WS2812 strip</span></b>
+            <span data-l="ar"><br>إشارة 3.3 فولت إلى شريط 5 فولت أقلّ من المواصفة وكثيرًا ما تعمل مع سلك قصير؛ الحل النظيف مبدّل مستوى (مثل 74AHCT125). ضع مقاومة 330 أوم على سلك البيانات ومكثّفًا 1000 ميكروفاراد على التغذية، واترك السطوع منخفضًا (60 من 255) لأن 24 بكسل بأبيض كامل قد تسحب أكثر من 1 أمبير.</span>
+            <span data-l="en"><br>A 3.3 V signal into a 5 V strip is out of spec and often works with a short wire; the clean fix is a level shifter (for example a 74AHCT125). Put a 330 Ω resistor in the data line and a 1000 µF capacitor across the supply, and keep the brightness low (60 of 255): 24 pixels at full white can draw more than 1 A.</span></div>
+        </div>
+      </div>
+      <div class="tier-pick" id="tier-pick-wiring"></div>
+      <div class="table-wrap rv"><table class="table rtable" id="pin-table">
+        <thead><tr><th><span data-l="ar">القطعة</span><span data-l="en">Part</span></th><th><span data-l="ar">إشارة القطعة</span><span data-l="en">Part signal</span></th><th><span data-l="ar">طرف ESP32</span><span data-l="en">ESP32 pin</span></th><th><span data-l="ar">ملاحظة التوصيل</span><span data-l="en">Wiring note</span></th><th><span data-l="ar">المستوى</span><span data-l="en">Tier</span></th></tr></thead>
+        <tbody id="pin-body"></tbody></table></div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 6. bring-up -->
+  <section class="sec alt" id="bringup">
+    <div class="wrap wide">
+      <div class="sec-head">
+        <span class="eyebrow" data-icon="check"><span data-l="ar">خطوات التشغيل</span><span data-l="en">Bring-up</span></span>
+        <h2 class="sec-title"><span data-l="ar">خطوة بخطوة، وعند كل خطوة اختبار تنجح فيه أو تتوقف</span><span data-l="en">One step at a time, with a test you must pass before moving on</span></h2>
+        <p class="sec-lead"><span data-l="ar">لا تُوصِّل كل شيء دفعة واحدة. أضف قطعة، واختبرها، ثم انتقل. علامات الإنجاز تُحفظ في متصفحك فقط.</span><span data-l="en">Do not wire everything at once. Add one part, test it, then move on. Your ticks are saved in this browser only.</span></p>
+      </div>
+      <div class="tier-pick" id="tier-pick-steps"></div>
+      <div class="progress-row"><div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="steps-bar" aria-label=""><i id="steps-fill"></i></div><b class="num" id="steps-count">0/0</b></div>
+      <ol class="steps" id="steps-host"></ol>
+    </div>
+  </section>
+
+  <!-- ============================================================ 7. calibration -->
+  <section class="sec" id="calibrate">
+    <div class="wrap wide">
+      <div class="sec-head">
+        <span class="eyebrow" data-icon="clock"><span data-l="ar">المعايرة والإحماء</span><span data-l="en">Calibration and warm-up</span></span>
+        <h2 class="sec-title"><span data-l="ar">الحسّاسات الرخيصة تحتاج وقتًا — خصّصه قبل وصول اللجنة</span><span data-l="en">Cheap sensors need time — give it to them before the judges arrive</span></h2>
+        <p class="sec-lead"><span data-l="ar">أوراق بيانات حسّاسات MQ تطلب «48 ساعة أو أكثر» من التسخين الأولي. في الكشك نكتفي بنحو 3 دقائق قبل كل عرض، فتكون القراءات <b>إرشادية</b> فقط. اكتب ذلك على لوحة الكشك: «قراءات إرشادية: حسّاسات رخيصة لم تُعايَر بغاز مرجعي».</span><span data-l="en">The MQ sensor datasheets ask for “48 hours or more” of first preheat. At the booth we settle for about 3 minutes before each demo, so readings are <b>indicative</b> only. Put that on the booth sign: “Readings indicative: cheap sensors, not calibrated with a reference gas”.</span></p>
+      </div>
+      <div class="timer-grid" id="timers-host"></div>
+      <div class="grid g2 calib-grid">
+        <div class="card rv">
+          <h3><span data-l="ar">إجراء المعايرة (بالترتيب)</span><span data-l="en">Calibration procedure (in order)</span></h3>
+          <ol class="plain-list">
+            <li><span data-l="ar"><b>الكاميرا الحرارية:</b> اتركها تعمل نحو 4 دقائق في الغرفة نفسها. استعمل كوبًا خزفيًّا (المعدن اللامع يعكس الحرارة فيبدو أبرد). قارن قراءة الكوب بميزان حرارة.</span><span data-l="en"><b>Thermal camera:</b> let it run about 4 minutes in the room it will stay in. Use a ceramic mug (shiny metal reflects and reads cooler). Compare the mug with a thermometer.</span></li>
+            <li><span data-l="ar"><b>SHT31:</b> قارنه بميزان حرارة مرجعي. ابتعد به عن سخّانات MQ ومنظّم الجهد. دقّته النموذجية ±0.2°م و±1.5% رطوبة (ورقة Sensirion، S66).</span><span data-l="en"><b>SHT31:</b> compare it with a reference thermometer. Keep it away from the MQ heaters and the voltage regulator. Typical accuracy ±0.2 °C and ±1.5 %RH (Sensirion datasheet, S66).</span></li>
+            <li><span data-l="ar"><b>MQ-2 وMQ-7:</b> بعد الإحماء تسجّل اللوحة هواءً نظيفًا ثم تحسب المتوسط والانحراف المعياري σ. لا ترشّ معقّمًا في الغرفة أثناء تلك الدقائق. الإنذار يبدأ عند +3σ.</span><span data-l="en"><b>MQ-2 and MQ-7:</b> after warm-up the board records clean air and computes the mean and standard deviation σ. Do not spray sanitiser in the room during those minutes. Warnings start at +3σ.</span></li>
+            <li><span data-l="ar"><b>مستوى الماء:</b> قِس المسافة من وجه HC-SR04 إلى قاع الكوب الفارغ واكتبها في <code>WATER_MOUNT_CM</code>. الشيفرة تصحّح سرعة الصوت بحرارة SHT31 (سرعة الصوت ≈ 331.3 + 0.606·T م/ث).</span><span data-l="en"><b>Water level:</b> measure from the HC-SR04 face to the bottom of the empty cup and put it in <code>WATER_MOUNT_CM</code>. The code corrects the speed of sound with the SHT31 temperature (speed ≈ 331.3 + 0.606·T m/s).</span></li>
+            <li><span data-l="ar"><b>السقوط (اختياري):</b> لا يوجد معيار منشور لعتبة السقوط. اترك المستشعر على فراش واسقطه مرات عدة، ودوّن أعلى تسارع (g)، ثم اضبط <code>FALL_IMPACT_G</code> فوق حركة المشي العادية وتحت قيم السقوط.</span><span data-l="en"><b>Fall (optional):</b> there is no published fall threshold. Drop the sensor onto a mattress several times, record the peak acceleration (g), then set <code>FALL_IMPACT_G</code> above ordinary walking and below the fall values.</span></li>
+          </ol>
+        </div>
+        <div class="card rv">
+          <h3><span data-l="ar">ما الذي يجب أن تقوله اللافتة على الطاولة</span><span data-l="en">What the sign on the table must say</span></h3>
+          <ul class="plain-list">
+            <li><span data-l="ar">«قراءات إرشادية: حسّاسات رخيصة، لم تُعايَر بغاز مرجعي، وتتأثر بالرطوبة والحرارة.»</span><span data-l="en">“Readings indicative: cheap sensors, not calibrated with a reference gas, affected by humidity and temperature.”</span></li>
+            <li><span data-l="ar">«الكاشف رؤية حاسوبية بقواعد وليس ذكاءً اصطناعيًّا؛ ونتيجته على صور ثابتة محجوزة 66.7%.»</span><span data-l="en">“The detector is rule-based computer vision, not AI; its held-out result on still images is 66.7 %.”</span></li>
+            <li><span data-l="ar">«قيمة WBGT تقدير من الحرارة والرطوبة وليست قياسًا.»</span><span data-l="en">“WBGT is an estimate from temperature and humidity, not a measurement.”</span></li>
+            <li><span data-l="ar">«المحاكاة موسومة SIM: فحصٌ لآلية العمل وليست دليلًا على الأثر.»</span><span data-l="en">“Simulations are labelled SIM: a mechanism check, not proof of impact.”</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 8. safety -->
+  <section class="sec alt" id="safety">
+    <div class="wrap wide">
+      <div class="sec-head">
+        <span class="eyebrow" data-icon="shield"><span data-l="ar">سلامة الكشك</span><span data-l="en">Booth safety</span></span>
+        <h2 class="sec-title"><span data-l="ar">لا لهب ولا غاز قابل للاشتعال على الطاولة — أبدًا</span><span data-l="en">No open flame and no flammable gas at the booth — ever</span></h2>
+        <p class="sec-lead"><span data-l="ar">نُظهر خطرًا حقيقيًّا بـ «بديل آمن» يخدع الحسّاس دون أن يؤذي أحدًا. اقرأ تعليمات قاعة المعرض واسأل المنظّمين عمّا يُسمح به.</span><span data-l="en">We show a real hazard with a safe stand-in that fools the sensor without hurting anyone. Read the exhibition hall's rules and ask the organisers what is allowed.</span></p>
+      </div>
+      <div class="grid g2 safety-grid">
+        <div class="card rv" style="--sc:var(--danger)"><span class="ico"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg></span>
+          <h3><span data-l="ar">ممنوع على الطاولة</span><span data-l="en">Never on the table</span></h3>
+          <ul class="plain-list">
+            <li><span data-l="ar">أي لهب: ولّاعة، شمعة، عود ثقاب، بخّاخ، آلة دخان، أو غاز قابل للاشتعال (ولا حتى «قليل منه»).</span><span data-l="en">Any flame: lighter, candle, match, aerosol, smoke machine, or flammable gas (not even “a little”).</span></li>
+            <li><span data-l="ar">غبار أو دقيق منثور لمحاكاة العاصفة الغبارية: الغبار الناعم يؤذي الرئتين. العاصفة الغبارية عندنا محاكاة SIM.</span><span data-l="en">Flour or powder thrown in the air for a dust storm: fine dust hurts lungs. Our dust storm is a simulation (SIM).</span></li>
+            <li><span data-l="ar">بطارية ليثيوم عارية قرب سخّانات MQ. استعمل بنك طاقة USB محميًّا.</span><span data-l="en">A bare lithium battery near the MQ heaters. Use a protected USB power bank.</span></li>
+            <li><span data-l="ar">تجربة على أشخاص (استبيان فهم الرسائل) دون موافقة أخلاقية من المدرسة وموافقة مستنيرة.</span><span data-l="en">Tests on people (a message-comprehension test) without the school's ethics approval and informed consent.</span></li>
+          </ul>
+        </div>
+        <div class="card rv" style="--sc:var(--safe)"><span class="ico"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg></span>
+          <h3><span data-l="ar">قواعد الكشك الآمن</span><span data-l="en">Safe-booth rules</span></h3>
+          <ul class="plain-list">
+            <li><span data-l="ar">ثبّت الأسلاك بشريط لاصق، ولا تترك كبلًا على الأرض، وضع صينية تحت كوب الماء بعيدًا عن الإلكترونيات.</span><span data-l="en">Tape the cables down, leave none on the floor, and put a tray under the cup of water, away from the electronics.</span></li>
+            <li><span data-l="ar">الكوب الساخن والمعقّم على طرفين متباعدين من الطاولة: الكوب عند الكاميرا الحرارية، والمسحة عند حسّاس MQ.</span><span data-l="en">The hot mug and the sanitiser go at opposite ends of the table: the mug at the thermal camera, the swab at the MQ sensor.</span></li>
+            <li><span data-l="ar">الحلقة واللافتات تومض بمعدل لا يزيد على مرة في الثانية؛ والصفّارة تتوقف بعد 30 ثانية لكل إنذار. أي وميض قوي في الصفحات اختياري ومعه تحذير لمن لديه حساسية ضوئية (WCAG 2.3.1، S57).</span><span data-l="en">The ring and signs blink no faster than once a second, and the buzzer stops after 30 seconds per alarm. Any strong flashing in the web pages is opt-in with a photosensitivity warning (WCAG 2.3.1, S57).</span></li>
+            <li><span data-l="ar">لا تقلّد نغمة الإنذار الوطنية ولا تشغّلها: وزارة الداخلية حذّرت من تداولها (S36). لنا نغمتنا ونكتب «تمرين EXERCISE».</span><span data-l="en">Never copy or play the national alert tone: the Ministry of Interior warned against circulating it (S36). We use our own sound and write “EXERCISE”.</span></li>
+          </ul>
+        </div>
+      </div>
+      <h3 class="sub-h"><span data-l="ar">البدائل الآمنة لكل خطر</span><span data-l="en">A safe stand-in for each hazard</span></h3>
+      <div class="table-wrap rv"><table class="table rtable">
+        <thead><tr><th><span data-l="ar">الخطر</span><span data-l="en">Hazard</span></th><th><span data-l="ar">البديل على الطاولة</span><span data-l="en">Stand-in on the table</span></th><th><span data-l="ar">كيف ترى اللوحة ذلك</span><span data-l="en">How the board sees it</span></th><th><span data-l="ar">صدق العرض</span><span data-l="en">Honest note</span></th></tr></thead>
+        <tbody id="standins-body"></tbody></table></div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 9. legal -->
+  <section class="sec" id="legal">
+    <div class="wrap wide">
+      <div class="sec-head">
+        <span class="eyebrow" data-icon="drone"><span data-l="ar">القانون والسلامة</span><span data-l="en">Legal and safety</span></span>
+        <h2 class="sec-title"><span data-l="ar">الدرون مفهوم تُشغّله جهة مرخّصة — وليس لعبة طالب</span><span data-l="en">The drone is a concept for a licensed agency — not a student toy</span></h2>
+      </div>
+      <div class="grid g2 legal-grid">
+        <div class="card rv"><span class="ico" style="--sc:var(--info)"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="5" r="3"/><circle cx="19" cy="5" r="3"/><circle cx="5" cy="19" r="3"/><circle cx="19" cy="19" r="3"/><rect x="9.5" y="9.5" width="5" height="5" rx="1.5"/></svg></span>
+          <h3><span data-l="ar">قانون الطائرات المسيّرة في قطر</span><span data-l="en">Qatar's drone law</span></h3>
+          <p><span data-l="ar">«القانون رقم (10) لسنة 2026 بشأن الطائرات دون طيار (الدرون)»: تنظّمه هيئة الطيران المدني القطرية (QCAA)، وتُسجَّل كل الطائرات، ويحتاج الأفراد والشركات والجهات الحكومية إلى تراخيص أو تصاريح، وبعض المخالفات عقوبتها السجن حتى سبع سنوات وغرامة حتى 300,000 ريال. اللوائح التنفيذية كانت لم تصدر بعد.</span><span data-l="en">“Law No. (10) of 2026 on Unmanned Aircraft (Drones)”: the Qatar Civil Aviation Authority (QCAA) regulates; all drones must be registered; individuals, companies and government entities need licences or permits; some offences carry up to seven years in prison and a fine of up to QAR 300,000. Executive regulations were still to be announced.</span></p>
+          <p class="small muted"><span data-l="ar">المصدر: The Peninsula، 30 تموز/يوليو 2026؛ Marhaba، 20 تموز/يوليو 2026 (S34).</span><span data-l="en">Source: The Peninsula, 30 July 2026; Marhaba, 20 July 2026 (S34).</span></p>
+          <p class="note warn"><span data-l="ar"><b>تحقّق بنفسك من قواعد هيئة الطيران المدني قبل أي تحليق</b>، حتى داخل المدرسة، واسأل معلّمك. هذه الصفحة ليست استشارة قانونية.</span><span data-l="en"><b>Check the QCAA rules yourself before any flight</b>, even inside school, and ask your teacher. This page is not legal advice.</span></p>
+        </div>
+        <div class="card rv"><span class="ico" style="--sc:var(--accent)"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
+          <h3><span data-l="ar">قاعدة منارة للدرون</span><span data-l="en">MANARA's drone rule</span></h3>
+          <ul class="plain-list">
+            <li><span data-l="ar">الدرون <b>مفهوم</b> لجهة مرخّصة مثل الدفاع المدني. الحارس الثابت يعمل بدونه.</span><span data-l="en">The drone is a <b>concept</b> for an authorised agency such as Civil Defence. The fixed sentinel works without it.</span></li>
+            <li><span data-l="ar">لا شيفرة في هذه الحقيبة تقود درونًا. سكربت بايثون يشغّل الكاشف على كاميرا الحاسوب فقط.</span><span data-l="en">No code in this kit flies a drone. The Python script runs the detector on a laptop camera only.</span></li>
+            <li><span data-l="ar">لا تحليق طلابي فوق الناس أو المباني، ولا حمولة. أي مقطع فيديو يأتي من مشغّل مرخّص بتصريح مسبق.</span><span data-l="en">No student flight over people or buildings, and no payload. Any video clip comes from a licensed operator with a permit checked in advance.</span></li>
+            <li><span data-l="ar">نحترم من سبقنا: «الصقر» لدى الدفاع المدني السعودي (S13)، ودرونات الدفاع المدني القطري في ميليبول 2024 (S39)، و«شاهين» في دبي و«سهيل» في أبوظبي، ومشروع طلاب قطر لكشف H₂S في ISEF 2025 (S43). <b>الصقور تكافح النار، والمنارة تُخرج الجميع بأمان.</b></span><span data-l="en">We respect those before us: Saudi Civil Defense's “Falcon” (S13), Qatar Civil Defence drones at Milipol 2024 (S39), Dubai's “Shaheen” and Abu Dhabi's “Suhail”, and the Qatari students' H₂S project at ISEF 2025 (S43). <b>The falcons fight the fire; the lighthouse gets everyone out.</b></span></li>
+          </ul>
+        </div>
+        <div class="card rv"><span class="ico" style="--sc:var(--warn)"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="17" height="10" rx="2"/><path d="M22 11v2"/></svg></span>
+          <h3><span data-l="ar">بطاريات الليثيوم (LiPo)</span><span data-l="en">Lithium batteries (LiPo)</span></h3>
+          <ul class="plain-list">
+            <li><span data-l="ar">الأسلم: بنك طاقة USB بحماية مدمجة. لا نحتاج LiPo عارية في هذا المشروع.</span><span data-l="en">Safest: a USB power bank with built-in protection. This project does not need a bare LiPo.</span></li>
+            <li><span data-l="ar">إن استعملت LiPo: اشحنها بشاحن مخصّص على سطح غير قابل للاشتعال داخل كيس حماية، ولا تتركها تشحن دون مراقبة، ولا تشحن حزمة منتفخة أو مثقوبة، وخزّنها نصف مشحونة.</span><span data-l="en">If you do use a LiPo: charge it with a dedicated charger on a non-flammable surface in a charging bag, never leave it charging unattended, never charge a swollen or punctured pack, and store it part-charged.</span></li>
+            <li><span data-l="ar">حرارة الخليج تؤثر: راجع نطاق حرارة التشغيل المكتوب على بطاريتك، ولا تتركها في سيارة مغلقة أو تحت الشمس.</span><span data-l="en">Gulf heat matters: check the operating temperature range printed on your battery, and never leave it in a closed car or in the sun.</span></li>
+          </ul>
+          <p class="small muted"><span data-l="ar">إرشادات عامة من مختبرات روبوتات جامعية وجهات تصنيع؛ اتبع دليل مصنّع بطاريتك.</span><span data-l="en">General guidance from university robotics labs and manufacturers; follow your battery maker's own manual.</span></p>
+        </div>
+        <div class="card rv"><span class="ico" style="--sc:var(--safe)"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="4"/><path d="M2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v1"/></svg></span>
+          <h3><span data-l="ar">الخصوصية والمسؤولية</span><span data-l="en">Privacy and responsibility</span></h3>
+          <ul class="plain-list">
+            <li><span data-l="ar">لا أسماء ولا حسابات: نقطة «آمن» تسجّل غرفة ولغة وحالة فقط، وفي الذاكرة دون حفظ.</span><span data-l="en">No names, no accounts: MANARA-SAFE records room, language and status only, in memory, never saved.</span></li>
+            <li><span data-l="ar">الشبكة مفتوحة عمدًا ليسهل الانضمام، فيمكن لأي قريب إرسال تسجيل. اعتبر العدّاد مؤشرًا للمشرفين لا دليلًا على خروج شخص.</span><span data-l="en">The network is open on purpose so it is easy to join, so anyone nearby can send a check-in. Treat the counter as a hint for staff, not proof that a person got out.</span></li>
+            <li><span data-l="ar">منارة <b>ليست معتمدة</b> ولا تحلّ محل إنذار حريق أو كاشف غاز معتمد أو الدفاع المدني. وفي الخطر اتصل بـ <b>999</b>.</span><span data-l="en">MANARA is <b>not certified</b> and never replaces a certified fire alarm, a gas detector or Civil Defence. In danger, call <b>999</b>.</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 10. booth -->
+  <section class="sec alt" id="booth">
+    <div class="wrap wide">
+      <div class="sec-head">
+        <span class="eyebrow" data-icon="users"><span data-l="ar">كشك العرض</span><span data-l="en">The judges' booth</span></span>
+        <h2 class="sec-title"><span data-l="ar">ما الذي تلمسه اللجنة، وماذا تقول في 3 دقائق</span><span data-l="en">What the judges can touch, and what you say in 3 minutes</span></h2>
+        <p class="sec-lead"><span data-l="ar">اللجنة تكافئ ما تلمسه وتفهمه. صمّم الطاولة بحيث يضغط الحكم بنفسه ويرى النتيجة فورًا.</span><span data-l="en">Judges reward what they can touch and understand. Lay the table out so the judge presses things and sees the result at once.</span></p>
+      </div>
+      <div class="booth-grid">
+        <figure class="booth-fig rv"><div id="booth-svg" class="booth-svg" role="img" aria-label=""></div>
+          <figcaption><span data-l="ar">منظر علوي للطاولة. الأرقام تقابل القائمة.</span><span data-l="en">Top view of the table. Numbers match the list.</span></figcaption></figure>
+        <ol class="touch-list" id="touch-list"></ol>
+      </div>
+      <h3 class="sub-h"><span data-l="ar">نص الدقائق الثلاث: خطّافات للحديث</span><span data-l="en">The 3-minute script: hooks to talk to</span></h3>
+      <div class="table-wrap rv"><table class="table rtable">
+        <thead><tr><th><span data-l="ar">الوقت</span><span data-l="en">Time</span></th><th><span data-l="ar">يفعل الحكم</span><span data-l="en">The judge does</span></th><th><span data-l="ar">تقول (جملة واحدة)</span><span data-l="en">You say (one line)</span></th><th><span data-l="ar">الدليل على الشاشة</span><span data-l="en">Proof on screen</span></th></tr></thead>
+        <tbody id="script-body"></tbody></table></div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 11. ownership -->
+  <section class="sec" id="ownership">
+    <div class="wrap wide">
+      <div class="sec-head">
+        <span class="eyebrow" data-icon="star"><span data-l="ar">الملكية والإفصاح</span><span data-l="en">Ownership and disclosure</span></span>
+        <h2 class="sec-title"><span data-l="ar">جدول «اشتريتُ / بنيتُ / ساعدني»</span><span data-l="en">The “bought / built / helped-by” table</span></h2>
+        <p class="sec-lead"><span data-l="ar">اللجان تسأل: «ما الذي عملتَه أنت؟». املأ الجدول بصدق، وانسخه إلى التقرير. <b>الشيفرة المرفقة كُتبت بمساعدة أدوات ذكاء اصطناعي</b>، ولذلك يجب أن تفهم كل سطر وكل معادلة قبل العرض (انظر قائمة «اشرحها» أدناه).</span><span data-l="en">Judges ask: “What did you do yourself?”. Fill the table honestly and copy it into the report. <b>The code supplied here was written with AI tools</b>, so you must understand every line and formula before presenting (see the “explain it” list below).</span></p>
+      </div>
+      <div class="btns own-btns">
+        <button class="btn btn-ghost btn-sm" id="own-copy" type="button" data-icon="code"><span data-l="ar">انسخ كنص</span><span data-l="en">Copy as text</span></button>
+        <button class="btn btn-ghost btn-sm" id="own-csv" type="button" data-icon="download"><span data-l="ar">حمّل CSV</span><span data-l="en">Download CSV</span></button>
+        <button class="btn btn-ghost btn-sm" id="own-reset" type="button" data-icon="reset"><span data-l="ar">أعد الجدول للأصل</span><span data-l="en">Reset the table</span></button>
+        <span class="small muted" id="own-note"></span>
+      </div>
+      <div class="table-wrap rv"><table class="table rtable own-table" id="own-table">
+        <thead><tr><th><span data-l="ar">الجزء</span><span data-l="en">Part of the work</span></th><th><span data-l="ar">من فعله؟</span><span data-l="en">Who did it?</span></th><th><span data-l="ar">دليل أو ملاحظة (صورة، سجل، اسم المرشد)</span><span data-l="en">Evidence or note (photo, log, mentor's name)</span></th></tr></thead>
+        <tbody id="own-body"></tbody></table></div>
+      <h3 class="sub-h"><span data-l="ar">اشرحها: قائمة ما يجب أن تفهمه</span><span data-l="en">Explain it: what you must understand</span></h3>
+      <ul class="explain" id="explain-host"></ul>
+    </div>
+  </section>
+
+  <!-- ============================================================ 12. kit -->
+  <section class="sec alt" id="kit">
+    <div class="wrap wide">
+      <div class="sec-head">
+        <span class="eyebrow" data-icon="download"><span data-l="ar">الحقيبة البرمجية</span><span data-l="en">The code kit</span></span>
+        <h2 class="sec-title"><span data-l="ar">كل الملفات للتحميل</span><span data-l="en">Every file, ready to download</span></h2>
+        <p class="sec-lead"><span data-l="ar">الملفات حقيقية وتُحمَّل من هذا الموقع نفسه (تعمل دون إنترنت). الشيفرة <b>كُتبت وفق واجهات المكتبات الموثّقة ولم تُجرَّب على عتاد حقيقي</b> إلى أن تحمّلها أنت وتنفّذ قائمة الفحص.</span><span data-l="en">These are real files served from this site (they work offline). The code was <b>written to documented library APIs and has not been run on real hardware</b> until you flash it and tick the checklist.</span></p>
+      </div>
+      <div class="note warn kit-warn rv"><span data-l="ar"><b>ما اختُبر وما لم يُختبر.</b> اختُبر على حاسوب: المعادلات (قورنت بدوال الموقع نفسه)، واختبار البقعة الساخنة، ومنطق السقوط، وكاتب JSON، ومحلّل الأوامر، وكاشف بايثون، وتجميع الشيفرتين مقابل ترويسات تحاكي المكتبات (<code>tools/manara/test_kit.py</code>). <b>لم يُختبر</b>: التشغيل على لوحة ESP32 حقيقية، وأداء الحسّاسات، ونقطة «آمن» مع هواتف حقيقية.</span><span data-l="en"><b>What was tested and what was not.</b> Tested on a computer: the formulas (compared with the website's own functions), the hot-spot test, the fall logic, the JSON writer, the command parser, the Python detector, and both sketches compiled against headers that mimic the libraries (<code>tools/manara/test_kit.py</code>). <b>Not tested</b>: running on a real ESP32, the sensors' behaviour, and MANARA-SAFE with real phones.</span></div>
+      <div class="kit-grid" id="kit-host"></div>
+      <div class="grid g2 kit-extra">
+        <div class="card rv">
+          <h3><span data-l="ar">قائمة الفحص بعد الرفع</span><span data-l="en">Test checklist after flashing</span></h3>
+          <p class="small muted"><span data-l="ar">هي نفسها خطوات «التشغيل» أعلاه، وموجزة في ملف README داخل الحقيبة. اطبعها وأنت تجرّب.</span><span data-l="en">It is the same as the bring-up steps above and summarised in the README inside the kit. Print it while you test.</span></p>
+          <div class="btns"><a class="btn btn-ghost btn-sm" href="#bringup" data-icon="check"><span data-l="ar">إلى خطوات التشغيل</span><span data-l="en">Go to bring-up steps</span></a></div>
+        </div>
+        <div class="card rv">
+          <h3><span data-l="ar">جرّب بروتوكول v1 بدون عتاد</span><span data-l="en">Try protocol v1 without hardware</span></h3>
+          <p class="small muted"><span data-l="ar">يولّد المتصفح جلسة محاكاة (SIM) من 60 ثانية بصيغة NDJSON نفسها التي تكتبها اللوحة. استعملها لتجربة محلّلك أو للتقرير.</span><span data-l="en">The browser generates a 60-second simulated session (SIM) in the same NDJSON the board writes. Use it to test your own parser or for the report.</span></p>
+          <div class="btns"><button class="btn btn-cool btn-sm" id="btn-dl-sim" type="button" data-icon="download"><span data-l="ar">حمّل جلسة محاكاة (.ndjson)</span><span data-l="en">Download a simulated session (.ndjson)</span></button></div>
+        </div>
+      </div>
+      <pre class="code rv" id="proto-sample" aria-label=""></pre>
+    </div>
+  </section>
+
+</main>
+<footer class="foot" data-footer></footer>
+</body>
+</html>

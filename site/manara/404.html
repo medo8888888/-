@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ar" dir="rtl" data-lang="ar">
+<head>
+<meta charset="utf-8">
+<script>/* a static host serves this page for ANY missing address, even /manara/a/b/c: resolve the stylesheets, scripts and links from the /manara/ folder instead of the missing path */(function(){try{var p=location.pathname,i=p.lastIndexOf('/manara/');if(i>=0){var base=p.slice(0,i+8);if(p.slice(0,p.lastIndexOf('/')+1)!==base){var b=document.createElement('base');b.href=location.protocol+'//'+location.host+base;document.head.insertBefore(b,document.head.firstChild)}}}catch(e){}})();</script>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title data-en="MANARA — Page not found">منارة — الصفحة غير موجودة</title>
+<meta name="description" content="الصفحة المطلوبة غير موجودة. عُد إلى منارة.">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0a0e15">
+<meta name="color-scheme" content="light dark">
+<script>(function(){var d=document.documentElement,t,l;try{t=localStorage.getItem('manara-theme');l=localStorage.getItem('manara-lang')}catch(e){}var q=/[?&]lang=(ar|en)/.exec(location.search);if(q)l=q[1];if(t!=='light'&&t!=='dark')t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';if(l!=='en')l='ar';d.dataset.theme=t;d.dataset.lang=l;d.lang=l;d.dir=l==='ar'?'rtl':'ltr';d.classList.add('js');setTimeout(function(){if(!window.__manaraReady)d.classList.remove('js')},2500)})();</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/home.css">
+<script src="js/core.js" defer></script>
+</head>
+<body data-page="404.html">
+<a class="skip" href="#main">تخطَّ إلى المحتوى</a>
+<header class="nav" data-nav></header>
+<main id="main">
+  <section class="nf" aria-labelledby="nf-t">
+    <div class="wrap">
+      <span class="nf-logo" data-nf-logo aria-hidden="true"></span>
+      <div class="nf-code num" aria-hidden="true">404</div>
+      <h1 id="nf-t"><span data-l="ar">هذا الطريق لا يؤدي إلى مكان</span><span data-l="en">This road leads nowhere</span></h1>
+      <p><span data-l="ar">الصفحة التي طلبتها غير موجودة أو نُقلت. المنارة ما زالت مضاءة: اختر وجهتك من الأسفل.</span><span data-l="en">The page you asked for does not exist or has moved. The lighthouse is still lit: choose where to go below.</span></p>
+      <div class="btns">
+        <a class="btn btn-primary" href="index.html" data-icon="home"><span data-l="ar">الصفحة الرئيسية</span><span data-l="en">Home page</span></a>
+        <a class="btn btn-ghost" href="mission.html" data-icon="radar"><span data-l="ar">غرفة العمليات</span><span data-l="en">Mission Control</span></a>
+        <a class="btn btn-ghost" href="detect.html" data-icon="eye"><span data-l="ar">مختبر الأدلة</span><span data-l="en">Evidence Lab</span></a>
+        <a class="btn btn-ghost" href="alert.html" data-icon="phone"><span data-l="ar">هواتف السكان</span><span data-l="en">Resident Phones</span></a>
+      </div>
+      <div class="btns">
+        <a class="btn btn-ghost btn-sm" href="build.html" data-icon="wrench"><span data-l="ar">بناء النموذج</span><span data-l="en">Build It</span></a>
+        <a class="btn btn-ghost btn-sm" href="pitch.html" data-icon="slides"><span data-l="ar">العرض التقديمي</span><span data-l="en">Pitch</span></a>
+        <a class="btn btn-ghost btn-sm" href="report.html" data-icon="chart"><span data-l="ar">التقرير</span><span data-l="en">Report</span></a>
+        <a class="btn btn-ghost btn-sm" href="poster.html" data-icon="layers"><span data-l="ar">لوحة العرض</span><span data-l="en">Display board</span></a>
+      </div>
+      <p class="small muted"><span data-l="ar">لا نائمَ يُنسى، ولا أحدَ يُترك خلفنا.</span><span data-l="en">No one left asleep. No one left behind.</span></p>
+    </div>
+  </section>
+</main>
+<footer class="foot" data-footer></footer>
+<script>(function(){function go(){var n=document.querySelector('[data-nf-logo]');if(n&&window.Manara)n.innerHTML=window.Manara.logo(76).replace(/mn-b2/g,'nf-b2').replace(/mn-b/g,'nf-b')}if(window.__manaraReady)go();else window.addEventListener('load',go)})();</script>
+<script>/* core.js still carries the fire-only tagline and footer text (shared file): say the multi-hazard version here until it is updated there (same override as js/home.js) */(function(){function go(){var M=window.Manara;if(!M||!M.TAGLINE)return;var t={ar:'ترى الخطر… توقظ الجميع… وتُضيء طريق النجاة',en:'Sees the danger. Wakes everyone. Lights the safe way out.'};if(M.TAGLINE.en===t.en)return;M.TAGLINE.ar=t.ar;M.TAGLINE.en=t.en;M.strings({'foot.about':{ar:'منصة «آخر مئة متر» لكل أنواع الطوارئ — حريق وغاز وسيول وغبار وحرارة وشخص يحتاج مساعدة: تتحقق قبل أن تُنذر، وتوقظ كل إنسان بلغته وبالصيغة التي تناسبه، وتدلّه على طريق آمن فعلًا، وتُحصي الجميع. مشروع ابتكار طلابي يكمّل الدفاع المدني والإسعاف ولا يحلّ محلّهما.',en:'The last-100-metres platform for every kind of emergency (fire, gas, flood, dust, heat, someone needing help): it proves before it alerts, wakes each person in their own language and format, lights a route that is really safe, and counts everyone. A student innovation project that complements Civil Defence and the ambulance service and replaces neither.'},'foot.made':{ar:'نموذج أولي لمسابقة الابتكار — فرق الطوارئ تواجه الخطر، والمنارة تُوصل كل إنسان إلى الأمان',en:'Innovation-competition prototype — responders fight the hazard; the lighthouse gets every person to safety'}});M.setLang(M.lang())}if(window.__manaraReady)go();else window.addEventListener('load',go)})();</script>
+</body>
+</html>
