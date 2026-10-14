@@ -140,18 +140,9 @@ html.intro-on .hero-home .hero-visual{opacity:0;transition:none}
 .hp-ic .i{width:22px;height:22px}
 .hp-what b{display:block;font:700 1rem/1.4 var(--font-h);color:#fff}
 .hp-what small{display:block;font-size:.86rem;line-height:1.5;color:rgba(255,255,255,.82)}
-.hp-stats{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
-  background:rgba(3,22,28,.58);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid rgba(255,255,255,.16)}
-.hp-stats li{display:flex;flex-direction:column;align-items:center;gap:2px;padding:16px 10px;text-align:center}
-.hp-stats li+li{border-inline-start:1px solid rgba(255,255,255,.14)}
-.hp-stats b{font:700 clamp(1.5rem,3vw,2.1rem)/1.1 var(--font-h);color:#fff}
-.hp-stats span{font-size:.84rem;color:rgba(255,255,255,.8);line-height:1.4}
 @media(max-width:900px){
   .hero.hero-photo{min-height:0;padding-top:calc(var(--nav-h) + 28px)}
   .hp-what li{min-width:0;flex:1 1 100%}
-  .hp-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .hp-stats li:nth-child(3){border-inline-start:0}
-  .hp-stats li:nth-child(n+3){border-top:1px solid rgba(255,255,255,.14)}
 }
 
 /* ---------- photos on the four steps ---------- */
@@ -173,10 +164,32 @@ html.intro-on .hero-home .hero-visual{opacity:0;transition:none}
 .q-copy h2,.q-copy p{color:#fff}
 .q-words b{color:#fff}
 
-/* stats float above the passport chip as a rounded card; calmer, tighter phone layout */
-.hp-stats{margin:0 auto 64px;width:min(calc(100% - 2 * var(--gut,24px)),1100px);border-radius:18px;border:1px solid rgba(255,255,255,.18)}
+/* «ادخل من بابك»: four entry doors float above the passport chip as a rounded glass card; calmer, tighter phone layout */
+.hp-join{margin:0 auto 64px;width:min(calc(100% - 2 * var(--gut,24px)),1100px);padding:14px 14px 14px;border-radius:20px;border:1px solid rgba(255,255,255,.18);
+  background:rgba(3,22,28,.58);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.hp-join-h{margin:0 6px 10px;font:700 .92rem/1.4 var(--font-h);color:rgba(255,255,255,.86)}
+.hp-doors{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.hp-door{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;color:#fff;text-decoration:none;background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.14);transition:background-color .25s,transform .25s var(--ease),border-color .25s}
+.hp-door:hover{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.34);transform:translateY(-2px)}
+.hp-door:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.hp-door .hp-ic{flex:none}
+.hp-door-t{flex:1;min-width:0}
+.hp-door b{display:block;font:700 .98rem/1.4 var(--font-h)}
+.hp-door small{display:block;font-size:.8rem;line-height:1.45;color:rgba(255,255,255,.78)}
+.hp-door>.i{flex:none;width:18px;height:18px;opacity:.8;transition:transform .25s var(--ease)}
+.hp-door:hover>.i{transform:translateX(-4px)}
+@media(max-width:1000px){.hp-doors{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){
+  .hp-join{padding:10px}
+  .hp-join-h{margin-bottom:8px;font-size:.86rem}
+  .hp-doors{gap:8px}
+  .hp-door{flex-direction:column;align-items:flex-start;gap:6px;padding:10px 12px}
+  .hp-door>.i{display:none}
+  .hp-door small{display:none}
+}
 @media(max-width:900px){
-  .hp-stats{margin-bottom:84px}
+  .hp-join{margin-bottom:84px}
   .hp-inner{gap:16px}
   .hero-photo .eyebrow{display:none}
   .hero-photo h1{font-size:clamp(2.4rem,11vw,3.4rem);margin:6px 0 10px}

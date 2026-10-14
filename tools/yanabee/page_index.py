@@ -28,14 +28,15 @@ def hero():
     what_html = ''.join(
         f'<li class="rv"><span class="hp-ic">{ic(icn)}</span><span><b>{t(h)}</b><small>{t(d)}</small></span></li>'
         for icn, h, d in what)
-    stats = (
-        ('7', '7', 'مجالات'),
-        ('1000', '1,000', 'قائد موهوب في العام الثاني'),
-        ('100', '100', 'مبادرة مجتمعية وبيئية في العام الثاني'),
-        ('3', '3', 'مراحل نمو واستدامة'),
+    doors = (
+        ('user', 'أنا طالب أو شاب', 'العب وتعرّف على الفرق السبع', 'learn.html'),
+        ('flag', 'أريد قيادة فريق', 'جرّب تأسيس فريق وإنجاز تحدٍّ', 'lab.html'),
+        ('home', 'ولي أمر أو مدرسة', 'الأمان وحماية الأطفال والشراكة', 'operations.html#s7'),
+        ('handshake', 'شريك أو داعم', 'كيف يُموَّل المشروع وأين يصل', 'operations.html#s6'),
     )
-    stats_html = ''.join(
-        f'<li><b data-to="{n}">{shown}</b><span>{t(lbl)}</span></li>' for n, shown, lbl in stats)
+    doors_html = ''.join(
+        f'<a class="hp-door" href="{href}"><span class="hp-ic">{ic(icn)}</span><span class="hp-door-t"><b>{t(h)}</b><small>{t(d)}</small></span>{ic("arrow-left")}</a>'
+        for icn, h, d, href in doors)
     sub = P.meta['subtitle'].strip('()')
     return f'''
 <section class="hero hero-home hero-photo">
@@ -53,7 +54,10 @@ def hero():
     </div>
     <ul class="hp-what">{what_html}</ul>
   </div>
-  <ul class="hp-stats" aria-label="أرقام المشروع">{stats_html}</ul>
+  <nav class="hp-join" aria-labelledby="hp-join-h">
+    <p class="hp-join-h" id="hp-join-h">ادخل من بابك</p>
+    <div class="hp-doors">{doors_html}</div>
+  </nav>
 </section>'''
 
 
