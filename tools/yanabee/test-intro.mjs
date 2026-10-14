@@ -261,40 +261,6 @@ console.log('hero entrance and calm');
   await ctx.close();
 }
 
-/* ============================== hero streams: navigation hook ============================== */
-console.log('hero streams (YanabeeApp.go / YanabeeWow.go / location.href)');
-{
-  const { ctx, p, errs } = await open('index.html');
-  await p.waitForTimeout(900);
-  const hb = await (await p.$('.hero-visual')).boundingBox();
-  let found = 0;
-  for (let x = hb.x + hb.width * 0.15; x < hb.x + hb.width * 0.9 && !found; x += 12) {
-    await p.mouse.move(x, hb.y + hb.height * 0.52);
-    if (await p.evaluate(() => document.querySelector('.stream-tip').classList.contains('on'))) found = x;
-  }
-  check('a stream can be found by hovering', !!found);
-  if (found) {
-    const cy = hb.y + hb.height * 0.52;
-    await p.evaluate(() => {
-      window.__g = null;
-      window.YanabeeApp = { go: (h, x, y) => { window.__g = ['app', h, typeof x, typeof y]; } };
-      window.YanabeeWow = { go: h => { window.__g = ['wow', h]; } };
-    });
-    await p.mouse.click(found, cy);
-    let g = await p.evaluate(() => window.__g);
-    check('with YanabeeApp present it goes through YanabeeApp.go(href, x, y)', g && g[0] === 'app' && /^teams\.html#t[1-7]$/.test(g[1]) && g[2] === 'number' && g[3] === 'number', JSON.stringify(g));
-    await p.evaluate(() => { window.__g = null; delete window.YanabeeApp; });
-    await p.mouse.click(found, cy);
-    g = await p.evaluate(() => window.__g);
-    check('without YanabeeApp it uses YanabeeWow.go', g && g[0] === 'wow' && /^teams\.html#t[1-7]$/.test(g[1]), JSON.stringify(g));
-    await p.evaluate(() => { delete window.YanabeeWow; });
-    await Promise.all([p.waitForURL(/teams\.html#t[1-7]/, { timeout: 5000 }).catch(() => {}), p.mouse.click(found, cy)]);
-    check('without either it navigates with location.href', /teams\.html#t[1-7]$/.test(p.url()), p.url());
-  }
-  check('no console errors', errs.length === 0, errs.join(' | '));
-  await ctx.close();
-}
-
 await browser.close();
 console.log(`\n${pass} passed, ${fails.length} failed`);
 if (fails.length) { console.log(fails.join('\n')); process.exit(1); }

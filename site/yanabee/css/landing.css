@@ -104,3 +104,90 @@
 html.intro-on .hero-home .hero-copy>.rv,html.intro-on .hero-home .hero-copy>.rv.in{opacity:0;transform:translateY(8px);transition:none}
 html.intro-on .hero-home .hero-visual{opacity:0;transition:none}
 .hero-home .hero-visual{transition:opacity 280ms ease-out}
+
+/* ==========================================================================
+   Photo-led first screen: a real photo that slowly changes teams, a short promise,
+   three plain points and the numbers, so the project is understood without scrolling.
+   ========================================================================== */
+.hero.hero-photo{min-height:min(100svh,880px);display:flex;flex-direction:column;justify-content:flex-end;padding:calc(var(--nav-h) + 36px) 0 0;
+  position:relative;isolation:isolate;overflow:hidden;color:#fff}
+.hp-slides{position:absolute;inset:0;z-index:-4;background:#0b2a30}
+.hp-slide{position:absolute;inset:0;opacity:0}
+.hp-slide:first-child{opacity:1}
+.hp-slide .ph{width:100%;height:100%;object-fit:cover;display:block}
+@media(prefers-reduced-motion:no-preference){
+  .hp-slide{animation:hp-fade 45s linear infinite both;animation-delay:calc(var(--k) * 9s - .9s)}
+  .hp-slide .ph{animation:hp-drift 45s linear infinite both;animation-delay:calc(var(--k) * 9s - .9s)}
+}
+@keyframes hp-fade{0%{opacity:0}4%{opacity:1}20%{opacity:1}24%{opacity:0}100%{opacity:0}}
+@keyframes hp-drift{0%{transform:scale(1.0)}24%{transform:scale(1.07)}100%{transform:scale(1.07)}}
+/* the water is only a faint shimmer over the photo now */
+.hero-photo .water{opacity:.45;mix-blend-mode:soft-light;z-index:-3}
+.hero-photo .hero-bg,.hero-photo .hero-art{display:none}
+.hp-scrim{position:absolute;inset:0;z-index:-2;pointer-events:none;
+  background:linear-gradient(to left,rgba(3,22,28,.86) 0%,rgba(3,22,28,.66) 42%,rgba(3,22,28,.22) 100%),
+             linear-gradient(to top,rgba(3,22,28,.72) 0%,rgba(3,22,28,0) 38%)}
+.hp-inner{display:grid;gap:26px;padding-bottom:26px}
+.hp-copy{max-width:640px}
+.hero-photo .eyebrow{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.28);color:#fff;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.hero-photo h1{color:#fff;margin:16px 0 14px;text-shadow:0 2px 24px rgba(0,0,0,.35)}
+.hero-photo .brand-word{color:#7fe9dc}
+.hero-photo .hero-sub{color:rgba(255,255,255,.94);margin-bottom:24px;max-width:34rem;text-shadow:0 1px 16px rgba(0,0,0,.4)}
+.hero-photo .btn-ghost{color:#fff;border-color:rgba(255,255,255,.6);background:rgba(255,255,255,.08)}
+.hero-photo .btn-ghost:hover{background:rgba(255,255,255,.18)}
+.hp-what{display:flex;flex-wrap:wrap;gap:12px;list-style:none;margin:0;padding:0}
+.hp-what li{display:flex;align-items:center;gap:12px;padding:12px 18px 12px 20px;border-radius:16px;background:rgba(255,255,255,.12);
+  border:1px solid rgba(255,255,255,.22);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);min-width:15rem}
+.hp-ic{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:rgba(127,233,220,.2);color:#9ff3e8;flex:none}
+.hp-ic .i{width:22px;height:22px}
+.hp-what b{display:block;font:700 1rem/1.4 var(--font-h);color:#fff}
+.hp-what small{display:block;font-size:.86rem;line-height:1.5;color:rgba(255,255,255,.82)}
+.hp-stats{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+  background:rgba(3,22,28,.58);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid rgba(255,255,255,.16)}
+.hp-stats li{display:flex;flex-direction:column;align-items:center;gap:2px;padding:16px 10px;text-align:center}
+.hp-stats li+li{border-inline-start:1px solid rgba(255,255,255,.14)}
+.hp-stats b{font:700 clamp(1.5rem,3vw,2.1rem)/1.1 var(--font-h);color:#fff}
+.hp-stats span{font-size:.84rem;color:rgba(255,255,255,.8);line-height:1.4}
+@media(max-width:900px){
+  .hero.hero-photo{min-height:0;padding-top:calc(var(--nav-h) + 28px)}
+  .hp-what li{min-width:0;flex:1 1 100%}
+  .hp-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .hp-stats li:nth-child(3){border-inline-start:0}
+  .hp-stats li:nth-child(n+3){border-top:1px solid rgba(255,255,255,.14)}
+}
+
+/* ---------- photos on the four steps ---------- */
+.how-step{padding:0;overflow:hidden}
+.how-photo{position:relative;aspect-ratio:16/10;overflow:hidden;background:var(--surface-2)}
+.how-photo .ph{width:100%;height:100%;object-fit:cover;display:block}
+.how-photo .how-n{inset-block-start:12px;inset-inline-start:12px;inset-inline-end:auto;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;
+  background:var(--brand);color:var(--on-brand,#fff);font:700 1rem/1 var(--font-h)}
+.how-body{padding:16px 20px 22px}
+.how-body .how-ic{width:40px;height:40px;margin-bottom:10px}
+.how-body .how-ic .i{width:21px;height:21px}
+
+/* ---------- Quran card on a photo ---------- */
+.q-card{position:relative;overflow:hidden;isolation:isolate;border:0;background:#0b2a30;color:#fff}
+.q-bg{position:absolute;inset:0;z-index:-2}
+.q-bg .ph{width:100%;height:100%;object-fit:cover;display:block}
+.q-card::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(to left,rgba(3,28,22,.88),rgba(3,28,22,.55))}
+.q-card .kicker{background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.3)}
+.q-copy h2,.q-copy p{color:#fff}
+.q-words b{color:#fff}
+
+/* stats float above the passport chip as a rounded card; calmer, tighter phone layout */
+.hp-stats{margin:0 auto 64px;width:min(calc(100% - 2 * var(--gut,24px)),1100px);border-radius:18px;border:1px solid rgba(255,255,255,.18)}
+@media(max-width:900px){
+  .hp-stats{margin-bottom:84px}
+  .hp-inner{gap:16px}
+  .hero-photo .eyebrow{display:none}
+  .hero-photo h1{font-size:clamp(2.4rem,11vw,3.4rem);margin:6px 0 10px}
+  .hero-photo .hero-sub{font-size:1.05rem;margin-bottom:16px}
+  .hero-photo .btns{flex-wrap:nowrap;gap:10px}
+  .hero-photo .btns .btn{flex:1 1 0;justify-content:center;padding:12px 12px;font-size:.95rem;min-height:46px}
+  .hp-what{gap:8px}
+  .hp-what li{padding:9px 14px;gap:10px}
+  .hp-ic{width:34px;height:34px;border-radius:10px}
+  .hp-ic .i{width:19px;height:19px}
+  .hp-what small{font-size:.8rem}
+}

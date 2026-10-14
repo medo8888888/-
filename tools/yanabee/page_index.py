@@ -6,13 +6,10 @@ or names are introduced. The document's own wording stays one tap away: the team
 document's text, the detail pages carry it verbatim, and the last block of this page folds the vision, mission,
 goal, growth phases and impact index exactly as written (so nothing in the document is lost).
 """
-import html as _html
-import json
-
 import art
 import wow_gallery
 import wow_story
-from core import PLATFORM as P, TEAM_IDS, btn, cta, ic, logo, page, short, strip_colon, t
+from core import PLATFORM as P, btn, cta, ic, logo, page, strip_colon, t
 
 
 def _title_html():
@@ -21,31 +18,44 @@ def _title_html():
 
 
 def hero():
-    dots = ''.join(f'<i style="--c:var(--{tid})"></i>' for tid in TEAM_IDS)
-    streams = json.dumps([{'t': tid, 'name': short(P['s2'][tid].title), 'href': f'teams.html#{tid}'} for tid in TEAM_IDS],
-                         ensure_ascii=False)  # the seven streams of the hero canvas are the seven teams
+    slides = ''.join(
+        f'<div class="hp-slide" style="--k:{k}">{art.photo(name, eager=(k == 0))}</div>'
+        for k, name in enumerate(('hero-home', 'team-t7', 'team-t4', 'team-t3', 'team-t5')))
+    what = (
+        ('users', 'فرق صغيرة', 'خمسة أو سبعة أعضاء في كل فريق'),
+        ('flag', 'تحدٍّ كل أسبوع', 'مهمة ميدانية تخدم جمعية أو حيّاً'),
+        ('compass', 'سبعة مجالات', 'من القرآن والكشافة إلى التقنية والبيئة'),
+    )
+    what_html = ''.join(
+        f'<li class="rv"><span class="hp-ic">{ic(icn)}</span><span><b>{t(h)}</b><small>{t(d)}</small></span></li>'
+        for icn, h, d in what)
+    stats = (
+        ('7', '7', 'مجالات'),
+        ('1000', '1,000', 'قائد موهوب في العام الثاني'),
+        ('100', '100', 'مبادرة مجتمعية وبيئية في العام الثاني'),
+        ('3', '3', 'مراحل نمو واستدامة'),
+    )
+    stats_html = ''.join(
+        f'<li><b data-to="{n}">{shown}</b><span>{t(lbl)}</span></li>' for n, shown, lbl in stats)
+    sub = P.meta['subtitle'].strip('()')
     return f'''
-<section class="hero hero-home">
+<section class="hero hero-home hero-photo">
+  <div class="hp-slides" aria-hidden="true">{slides}</div>
   <canvas class="water" data-water aria-hidden="true"></canvas>
-  <div class="hero-bg" aria-hidden="true"><span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span></div>
-  <div class="hero-art" aria-hidden="true">{art.home_band('hb')}</div>
-  <div class="wrap hero-grid">
-    <div class="hero-copy">
-      <a class="eyebrow team-dots rv" href="teams.html"><span class="dots" aria-hidden="true">{dots}</span>سبعة مجالات لكل اهتمام{ic('arrow-left')}</a>
+  <div class="hp-scrim" aria-hidden="true"></div>
+  <div class="wrap hp-inner">
+    <div class="hero-copy hp-copy">
+      <span class="eyebrow rv">{logo(22, 'hpe', 'eb-logo')}{t(sub)}</span>
       <h1 class="rv">{_title_html()}</h1>
-      <p class="hero-sub rv">منصة وطنية تجمع الأطفال والشباب في فرق صغيرة تتنافس في تحديات حقيقية تخدم الناس، بدل أن يقضوا وقتهم وحدهم أمام الشاشات.</p>
+      <p class="hero-sub rv">نحوّل وقت الأطفال والشباب من العزلة أمام الشاشات إلى عمل جماعي ينفع الناس.</p>
       <div class="btns rv">
         {btn('teams.html', 'اكتشف الفرق السبع', 'users')}
         {btn('learn.html', 'جرّب بنفسك', 'trophy', 'btn-ghost')}
       </div>
     </div>
-    <div class="hero-visual" aria-hidden="true">
-      <canvas class="springs" data-springs data-teams="{_html.escape(streams, quote=True)}"></canvas>
-      <p class="stream-hint">اضغط على أي نبع لتستكشف فريقه</p>
-      <div class="spring-core">{logo(64, 'core', 'core-logo')}</div>
-    </div>
+    <ul class="hp-what">{what_html}</ul>
   </div>
-  <a class="scroll-cue" href="#how" aria-label="انتقل إلى كيف يعمل ينابيع">{ic('chevron-down')}</a>
+  <ul class="hp-stats" aria-label="أرقام المشروع">{stats_html}</ul>
 </section>'''
 
 
@@ -56,6 +66,7 @@ def _head(icon, kicker, title, sub=''):
 
 
 def how():
+    photos = ('hero-home', 'team-t7', 'team-t5', 'team-t3')
     steps = (
         ('users', 'سجّل فريقك', 'خمسة أو سبعة أعضاء يختارون مجالهم من المجالات السبعة ويسجّلون فريقهم في تطبيق «ينابيع».'),
         ('flag', 'تحدٍّ جديد كل أسبوع', 'يصل الفريق تحدٍّ ميداني عبر التطبيق، وكثير منها يلبّي حاجة حقيقية عند جمعية أو مدرسة أو حي.'),
@@ -63,8 +74,8 @@ def how():
         ('trophy', 'نقاط وتقدّم', 'يرصد التطبيق النقاط تلقائياً، فتكون المنافسة عادلة، ويظهر القادة الموهوبون ليتأهلوا لقيادة مبادرات أكبر.'),
     )
     cards = ''.join(
-        f'<li class="how-step rv"><span class="how-n" aria-hidden="true">{i}</span><span class="how-ic">{ic(icn)}</span>'
-        f'<h3>{t(h)}</h3><p>{t(p)}</p></li>'
+        f'<li class="how-step rv"><div class="how-photo" aria-hidden="true">{art.photo(photos[i - 1])}<span class="how-n">{i}</span></div>'
+        f'<div class="how-body"><span class="how-ic">{ic(icn)}</span><h3>{t(h)}</h3><p>{t(p)}</p></div></li>'
         for i, (icn, h, p) in enumerate(steps, 1))
     return f'''
 <section class="sec how" id="how">
@@ -145,6 +156,7 @@ def quran():
 <section class="sec quran-home" id="quran">
   <div class="wrap">
     <div class="q-card rv">
+      <div class="q-bg" aria-hidden="true">{art.photo('hero-quran')}</div>
       <div class="q-copy">
         <span class="kicker">{ic('book-open')}مبادرة داخل ينابيع</span>
         <h2>«حفظ، فهم، تطبيق»</h2>
@@ -223,6 +235,6 @@ def build():
     desc = 'منصة وطنية تجمع الأطفال والشباب في فرق صغيرة تتنافس في تحديات ميدانية تخدم المجتمع، في سبعة مجالات وتحت مظلة وطنية واحدة.'
     page('index.html', 'مشروع «ينابيع»', body, desc,
          css=('css/home.css', 'css/landing.css', 'css/water.css', 'css/story.css', 'css/gallery.css', 'css/intro.css'),
-         js=('js/springs.js', 'js/water.js', 'js/story.js', 'js/gallery.js', 'js/intro.js'),
+         js=('js/water.js', 'js/story.js', 'js/gallery.js', 'js/intro.js'),
          head=INTRO_HEAD)
     return 'index.html'
