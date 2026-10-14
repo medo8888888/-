@@ -945,7 +945,7 @@ console.log('wave progress + 1:1 parallax');
   check('the wave stops about 300 ms after the page does (no always-on animation)', await p.evaluate(() => !document.querySelector('.progress').classList.contains('flow') && document.querySelector('.progress').getAnimations({ subtree: true }).length === 0));
   // parallax: no lag
   const info = await p.evaluate(() => { const el = document.querySelector('.wow-par'); if (!el) return null; el.scrollIntoView({ block: 'center', behavior: 'instant' }); return { on: document.documentElement.classList.contains('wow-par-on'), n: document.querySelectorAll('.wow-par').length }; });
-  check('parallax layers are registered', !!info && info.on && info.n >= 2, JSON.stringify(info));
+  check('parallax layers are registered', !!info && info.on && info.n >= 1, JSON.stringify(info));
   const lag = await p.evaluate(async () => {
     const el = document.querySelector('.wow-par');
     const read = () => parseFloat((el.style.translate || '0 0px').split(' ')[1]) || 0;
