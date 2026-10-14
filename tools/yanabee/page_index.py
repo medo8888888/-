@@ -8,7 +8,6 @@ goal, growth phases and impact index exactly as written (so nothing in the docum
 """
 import art
 import wow_gallery
-import wow_story
 from core import PLATFORM as P, btn, cta, ic, logo, page, strip_colon, t
 
 
@@ -151,6 +150,29 @@ def road():
 
 
 def quran():
+    pillars = (
+        ('book-open', 'حفظ', 'جلسة يومية قصيرة: من آية إلى ثلاث آيات، بلا استعجال. ومن يحفظ أسرع يساعد زميله الأبطأ داخل الفريق.', 't1'),
+        ('lightbulb', 'فهم', 'تلاوة وتجويد وتفسير، ثم يستخرج الفريق من الآيات القيم والأحكام التي يمكن أن تُطبَّق في الحياة.', 'sky'),
+        ('hand-heart', 'تطبيق', 'مهمة سلوكية كل أسبوع، ومبادرات صغيرة تخدم الحي والمدرسة والبيت، ويُحاسَب الفريق على ما فعله لا على ما حفظه فقط.', 't5'),
+    )
+    feats = (
+        ('users', 'فريق قرآني من 6 إلى 10', 'قائد، ومسؤول جودة وسلوك، ومسؤول إعلامي. والقيادة تتداور كل شهر ليجرّبها الجميع.', 't1'),
+        ('heart', 'الرفيق القرآني', 'الطالب المتميّز يرافق زميلاً أقل منه في الحفظ والمراجعة، فيتعلّم الفريق معنى التكافل.', 't7'),
+        ('trophy', 'دوري القيم', 'منافسة شريفة كل أسبوع بين الفرق على نقاط الحفظ والتفسير والمبادرات والتزام الفريق.', 'sun'),
+        ('handshake', 'مبادرات في المجتمع', 'خدمة الجيران، والتكافل، ورحلات مفتوحة تجمع الحلقات في «جيش خيري واحد».', 't5'),
+        ('smartphone', 'تطبيق للمبادرة', 'تسميع ذاتي مع ملخص لكل مقطع، وتذكير بمهمة الأسبوع، وتقارير سريعة لأولياء الأمور، ومعرض رقمي للسور.', 'sky'),
+        ('award', 'تكريم وجوائز', 'درع الفريق المثالي ووسام الرفيق التكافلي، وفي نهاية العام رحلة وتمويل لأفضل مبادرة وشهادة «قائد مجتمعي معتمد».', 't3'),
+        ('gauge', 'قياس الأثر', 'تسعة مؤشرات تتابع الحفظ والتطبيق وتواصل الأسرة والمبادرات، وتقيس أثر المبادرة على الطالب والأسرة والمجتمع.', 't2'),
+        ('coins', 'تمويل مستدام', 'اشتراك رمزي يُعفى منه غير القادر، وشراكات مع أهل الحي والمؤسسات، ودعم حكومي لما يخدم المجتمع.', 't4'),
+    )
+    pill = ''.join(
+        f'<li class="qp-card rv" style="--sc:var(--{c})"><span class="qp-ic">{ic(icn)}</span><h3>{t(h)}</h3><p>{t(b)}</p></li>'
+        for icn, h, b, c in pillars)
+    grid = ''.join(
+        f'<li class="pl-card rv" style="--sc:var(--{c})"><span class="pl-ic">{ic(icn)}</span><h3>{t(h)}</h3><p>{t(b)}</p></li>'
+        for icn, h, b, c in feats)
+    nums = ''.join(f'<li><b>{n}</b><span>{t(l)}</span></li>' for n, l in (
+        ('1–3', 'آيات كل يوم'), ('6–10', 'طلاب في الفريق'), ('11', 'محوراً في الخطة'), ('9', 'مؤشرات للأداء')))
     return f'''
 <section class="sec quran-home" id="quran">
   <div class="wrap">
@@ -164,6 +186,11 @@ def quran():
       </div>
       <div class="q-words" aria-hidden="true"><b>حفظ</b><b>فهم</b><b>تطبيق</b></div>
     </div>
+    <ul class="qp-grid" data-stagger>{pill}</ul>
+    <h3 class="q-sub rv">ماذا في المبادرة؟</h3>
+    <ul class="pl-grid" data-stagger>{grid}</ul>
+    <ul class="q-nums rv" aria-label="المبادرة بالأرقام">{nums}</ul>
+    <p class="more-link rv"><a href="quran.html">{ic('arrow-left')}<span>كل المحاور الأحد عشر: الأهداف والفريق والتطبيق والتكريم والتمويل وقياس الأثر</span></a></p>
   </div>
 </section>'''
 
@@ -228,13 +255,13 @@ INTRO = f'''<div class="intro" id="intro" aria-hidden="true"><canvas class="intr
 
 
 def build():
-    body = (INTRO + hero() + wow_story.story() + how() + teams() + behind() + road() + quran() + try_it() + document()
+    body = (INTRO + hero() + how() + teams() + behind() + road() + quran() + try_it() + document()
             + cta(t(P.meta['title']), 'اسأل المساعد عن أي تفصيل، أو ابحث في الفرق والمحاور والمؤشرات.',
                   f'<button type="button" class="btn btn-primary" data-open-chat>{ic("sparkles")}<span>اسأل مساعد ينابيع</span></button>'
                   f'<button type="button" class="btn btn-ghost" data-open-search>{ic("search")}<span>ابحث في الموقع</span></button>'))
     desc = 'منصة وطنية تجمع الأطفال والشباب في فرق صغيرة تتنافس في تحديات ميدانية تخدم المجتمع، في سبعة مجالات وتحت مظلة وطنية واحدة.'
     page('index.html', 'مشروع «ينابيع»', body, desc,
-         css=('css/home.css', 'css/landing.css', 'css/story.css', 'css/gallery.css', 'css/intro.css'),
-         js=('js/story.js', 'js/gallery.js', 'js/intro.js'),
+         css=('css/home.css', 'css/landing.css', 'css/gallery.css', 'css/intro.css'),
+         js=('js/gallery.js', 'js/intro.js'),
          head=INTRO_HEAD)
     return 'index.html'

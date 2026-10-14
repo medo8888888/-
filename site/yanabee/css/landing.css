@@ -189,3 +189,18 @@ html.intro-on .hero-home .hero-visual{opacity:0;transition:none}
   .hp-ic .i{width:19px;height:19px}
   .hp-what small{font-size:.8rem}
 }
+
+/* ---------- Quran initiative on the home page: banner, three pillars, features, numbers ---------- */
+.qp-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;list-style:none;margin:18px 0 0;padding:0}
+.qp-card{--sc:var(--brand);padding:22px 22px 24px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line);border-block-start:4px solid var(--sc);box-shadow:var(--shadow-sm)}
+.qp-ic{display:grid;place-items:center;width:46px;height:46px;border-radius:50%;background:color-mix(in oklab,var(--sc) 15%,var(--surface));color:var(--sc);margin-bottom:10px}
+.qp-ic .i{width:22px;height:22px}
+.qp-card h3{font-family:var(--font-q);font-size:1.7rem;margin:0 0 6px;color:var(--head);line-height:1.3}
+.qp-card p{margin:0;color:var(--ink-2);line-height:1.9;font-size:.98rem}
+.q-sub{margin:34px 0 14px;font-size:1.25rem;color:var(--head)}
+.q-nums{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;list-style:none;margin:22px 0 0;padding:18px 10px;border-radius:var(--r);background:var(--surface-2);border:1px solid var(--line)}
+.q-nums li{display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center}
+.q-nums b{font-size:clamp(1.5rem,3.4vw,2.2rem);color:var(--brand);line-height:1.2;font-variant-numeric:tabular-nums}
+.q-nums span{color:var(--ink-2);font-size:.92rem}
+@media(max-width:900px){.qp-grid{grid-template-columns:1fr}.q-nums{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:18px}}
+@media(min-width:1100px){.quran-home .pl-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
