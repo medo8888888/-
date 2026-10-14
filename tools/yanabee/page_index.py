@@ -41,7 +41,6 @@ def hero():
     return f'''
 <section class="hero hero-home hero-photo">
   <div class="hp-slides" aria-hidden="true">{slides}</div>
-  <canvas class="water" data-water aria-hidden="true"></canvas>
   <div class="hp-scrim" aria-hidden="true"></div>
   <div class="wrap hp-inner">
     <div class="hero-copy hp-copy">
@@ -201,18 +200,19 @@ def document():
     <details class="doc rv">
       <summary><span class="doc-ic">{ic('file-text')}</span><span><b>من الوثيقة كما كُتبت</b><small>{t(P.meta['title'])} — {t(sub)}</small></span><span class="doc-chev">{ic('chevron-down')}</span></summary>
       <div class="doc-body">
-        <h3>{t(s1.title)}</h3>
-        <h4>{t(v.title)}</h4><p>{t(v.paras[0])}</p>
-        <h4>{t(m.title)}</h4><p>{t(m.paras[0])}</p>
-        <h4>{t(g.title)}</h4><ul>{goals}</ul>
+        <h3 id="s1">{t(s1.title)}</h3>
+        <h4 id="vision">{t(v.title)}</h4><p>{t(v.paras[0])}</p>
+        <h4 id="mission">{t(m.title)}</h4><p>{t(m.paras[0])}</p>
+        <h4 id="goal">{t(g.title)}</h4><ul>{goals}</ul>
         <h3>{t(s5.title)}</h3><p>{t(s5.paras[0])}</p>
-        <h3>{t(s9.title)}</h3>
-        <h4>{t(strip_colon(ph.title))}</h4><ul>{phases}</ul>
-        <h4>{t(strip_colon(im.title))}</h4><ul>{impact}</ul>
+        <h3 id="s9">{t(s9.title)}</h3>
+        <h4 id="phases">{t(strip_colon(ph.title))}</h4><ul>{phases}</ul>
+        <h4 id="impact">{t(strip_colon(im.title))}</h4><ul>{impact}</ul>
       </div>
     </details>
   </div>
-</section>'''
+</section>
+<script>(function(){{var d=document.querySelector('.doc');function o(){{var h=location.hash.slice(1);if(h&&d&&!d.open){{var t=document.getElementById(h);if(t&&d.contains(t)){{d.open=true;t.scrollIntoView()}}}}}}o();addEventListener('hashchange',o)}})();</script>'''
 
 
 # Opening scene (once per browser session, home page only; see js/intro.js, css/intro.css).
@@ -234,7 +234,7 @@ def build():
                   f'<button type="button" class="btn btn-ghost" data-open-search>{ic("search")}<span>ابحث في الموقع</span></button>'))
     desc = 'منصة وطنية تجمع الأطفال والشباب في فرق صغيرة تتنافس في تحديات ميدانية تخدم المجتمع، في سبعة مجالات وتحت مظلة وطنية واحدة.'
     page('index.html', 'مشروع «ينابيع»', body, desc,
-         css=('css/home.css', 'css/landing.css', 'css/water.css', 'css/story.css', 'css/gallery.css', 'css/intro.css'),
-         js=('js/water.js', 'js/story.js', 'js/gallery.js', 'js/intro.js'),
+         css=('css/home.css', 'css/landing.css', 'css/story.css', 'css/gallery.css', 'css/intro.css'),
+         js=('js/story.js', 'js/gallery.js', 'js/intro.js'),
          head=INTRO_HEAD)
     return 'index.html'

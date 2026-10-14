@@ -24,7 +24,6 @@
 <link rel="stylesheet" href="css/art.css">
 <link rel="stylesheet" href="css/home.css">
 <link rel="stylesheet" href="css/landing.css">
-<link rel="stylesheet" href="css/water.css">
 <link rel="stylesheet" href="css/story.css">
 <link rel="stylesheet" href="css/gallery.css">
 <link rel="stylesheet" href="css/intro.css">
@@ -38,7 +37,6 @@
 <script src="js/fx.js" defer></script>
 <script src="js/play.js" defer></script>
 <script src="js/wow.js" defer></script>
-<script src="js/water.js" defer></script>
 <script src="js/story.js" defer></script>
 <script src="js/gallery.js" defer></script>
 <script src="js/intro.js" defer></script>
@@ -86,7 +84,6 @@
 
 <section class="hero hero-home hero-photo">
   <div class="hp-slides" aria-hidden="true"><div class="hp-slide" style="--k:0"><img class="ph " src="assets/photos/hero-home.jpg" alt="" width="1200" height="800" fetchpriority="high" decoding="async" style="object-position:50% 45%"></div><div class="hp-slide" style="--k:1"><img class="ph " src="assets/photos/team-t7.jpg" alt="" width="1200" height="800" loading="lazy" decoding="async" style="object-position:45% 50%"></div><div class="hp-slide" style="--k:2"><img class="ph " src="assets/photos/team-t4.jpg" alt="" width="1200" height="800" loading="lazy" decoding="async" style="object-position:50% 45%"></div><div class="hp-slide" style="--k:3"><img class="ph " src="assets/photos/team-t3.jpg" alt="" width="1200" height="857" loading="lazy" decoding="async" style="object-position:58% 40%"></div><div class="hp-slide" style="--k:4"><img class="ph " src="assets/photos/team-t5.jpg" alt="" width="1200" height="1800" loading="lazy" decoding="async" style="object-position:50% 58%"></div></div>
-  <canvas class="water" data-water aria-hidden="true"></canvas>
   <div class="hp-scrim" aria-hidden="true"></div>
   <div class="wrap hp-inner">
     <div class="hero-copy hp-copy">
@@ -327,18 +324,19 @@
     <details class="doc rv">
       <summary><span class="doc-ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></span><span><b>من الوثيقة كما كُتبت</b><small>مشروع «ينابيع» — المنصة الوطنية الموحدة للعمل الجماعي وتنمية النشء والشباب</small></span><span class="doc-chev"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></summary>
       <div class="doc-body">
-        <h3>أولاً: الرؤية والرسالة والهدف الاستراتيجي</h3>
-        <h4>الرؤية</h4><p>بناء جيل من شباب الوطن متكامل الشخصية، متمسك بالهوية والقيم، يمتلك مهارات المستقبل والعمل الجماعي، ومساهم بفاعلية في التنمية المستدامة والتطور التكنولوجي والاجتماعي للدولة.</p>
-        <h4>الرسالة</h4><p>تحويل طاقات النشء والشباب من الانعزالية والاستهلاك الرقمي الفردي إلى مشاركة مجتمعية مثمرة عبر فرق تخصصية تكاملية تتنافس في مجالات ثقافية، علمية، رياضية، صحية وبيئية، إعلامية، وتكافلية تحت مظلة وطنية موحدة.</p>
-        <h4>الهدف الاستراتيجي</h4><ul><li>بناء مسارات منافسة تعتمد حصرياً على «روح الفريق» واستثمار التقنيات الحديثة كأداة للتحفيز الميداني بدلاً من العزلة.</li><li>اكتشاف القيادات الموهوبة من قادة الفرق والاعتناء بهم: صقل مهاراتهم القيادية والتوجيهية من خلال برامج إعداد قادة متخصصة، وتمكينهم من قيادة مبادرات أكبر ليكونوا نواة لقادة المستقبل في مختلف القطاعات الوطنية.</li></ul>
+        <h3 id="s1">أولاً: الرؤية والرسالة والهدف الاستراتيجي</h3>
+        <h4 id="vision">الرؤية</h4><p>بناء جيل من شباب الوطن متكامل الشخصية، متمسك بالهوية والقيم، يمتلك مهارات المستقبل والعمل الجماعي، ومساهم بفاعلية في التنمية المستدامة والتطور التكنولوجي والاجتماعي للدولة.</p>
+        <h4 id="mission">الرسالة</h4><p>تحويل طاقات النشء والشباب من الانعزالية والاستهلاك الرقمي الفردي إلى مشاركة مجتمعية مثمرة عبر فرق تخصصية تكاملية تتنافس في مجالات ثقافية، علمية، رياضية، صحية وبيئية، إعلامية، وتكافلية تحت مظلة وطنية موحدة.</p>
+        <h4 id="goal">الهدف الاستراتيجي</h4><ul><li>بناء مسارات منافسة تعتمد حصرياً على «روح الفريق» واستثمار التقنيات الحديثة كأداة للتحفيز الميداني بدلاً من العزلة.</li><li>اكتشاف القيادات الموهوبة من قادة الفرق والاعتناء بهم: صقل مهاراتهم القيادية والتوجيهية من خلال برامج إعداد قادة متخصصة، وتمكينهم من قيادة مبادرات أكبر ليكونوا نواة لقادة المستقبل في مختلف القطاعات الوطنية.</li></ul>
         <h3>خامساً: الإدارة التشغيلية وحوكمة اتخاذ القرار</h3><p>تُدار المنظومة وفق «المركزية في التخطيط واللامركزية في التنفيذ»:</p>
-        <h3>تاسعاً: مؤشرات قياس الأداء والأثر والاستدامة</h3>
-        <h4>مراحل نمو واستدامة المشروع</h4><ul><li>التأسيس (العام 1): بناء المنصة الرقمية، إشراك 30% من استيعاب المراكز والمدارس، وإطلاق رخصة المشرف وقائد الفريق.</li><li>النمو (العام 2): توسيع المسابقات على مستوى المحافظات، وتأهيل 1,000 قائد موهوب من قادة الفرق، وتنفيذ 100 مبادرة مجتمعية وبيئية.</li><li>الاستدامة (العام 3+): مأسسة المناهج بالجامعات، تحول الخريجين وقادة الفرق إلى موجهين وقادة إقليميين، واعتماد «وسام ينابيع الوطن» كبرنامج سنوي ثابت بالدولة.</li></ul>
-        <h4>قياس الأثر (<bdi lang="en">Impact Index</bdi>)</h4><ul><li>مؤشرات كمية: عدد الفرق المسجلة، عدد القادة الموهوبين المكتشفين والمؤهلين، عدد ساعات التطوع المنجزة، والمشاريع التكنولوجية والبيئية المنتجة.</li><li>مؤشرات كيفية وسلوكية: بطاقة تقييم دورية (تُعبأ من ولي الأمر والمعلم والمشرف) لقياس: مستوى الانضباط والتعاون، المهارات القيادية المكتسبة لدى رؤساء الفرق، انخفاض ساعات استخدام الهاتف، وزيادة روح المبادرة.</li></ul>
+        <h3 id="s9">تاسعاً: مؤشرات قياس الأداء والأثر والاستدامة</h3>
+        <h4 id="phases">مراحل نمو واستدامة المشروع</h4><ul><li>التأسيس (العام 1): بناء المنصة الرقمية، إشراك 30% من استيعاب المراكز والمدارس، وإطلاق رخصة المشرف وقائد الفريق.</li><li>النمو (العام 2): توسيع المسابقات على مستوى المحافظات، وتأهيل 1,000 قائد موهوب من قادة الفرق، وتنفيذ 100 مبادرة مجتمعية وبيئية.</li><li>الاستدامة (العام 3+): مأسسة المناهج بالجامعات، تحول الخريجين وقادة الفرق إلى موجهين وقادة إقليميين، واعتماد «وسام ينابيع الوطن» كبرنامج سنوي ثابت بالدولة.</li></ul>
+        <h4 id="impact">قياس الأثر (<bdi lang="en">Impact Index</bdi>)</h4><ul><li>مؤشرات كمية: عدد الفرق المسجلة، عدد القادة الموهوبين المكتشفين والمؤهلين، عدد ساعات التطوع المنجزة، والمشاريع التكنولوجية والبيئية المنتجة.</li><li>مؤشرات كيفية وسلوكية: بطاقة تقييم دورية (تُعبأ من ولي الأمر والمعلم والمشرف) لقياس: مستوى الانضباط والتعاون، المهارات القيادية المكتسبة لدى رؤساء الفرق، انخفاض ساعات استخدام الهاتف، وزيادة روح المبادرة.</li></ul>
       </div>
     </details>
   </div>
 </section>
+<script>(function(){var d=document.querySelector('.doc');function o(){var h=location.hash.slice(1);if(h&&d&&!d.open){var t=document.getElementById(h);if(t&&d.contains(t)){d.open=true;t.scrollIntoView()}}}o();addEventListener('hashchange',o)})();</script>
 <section class="cta">
   <div class="wrap">
     <div class="cta-card rv">

@@ -36,7 +36,6 @@ site/yanabee/js/chat.js        «مساعد ينابيع»: Gemini via /api/chat
 site/yanabee/js/<page>.js      page-only behaviour (springs.js = home hero canvas, …)
 site/yanabee/js/wow.js + css/wow.css       sitewide "wow" layer (cursor, page wipe, headline reveals, wave progress, parallax, sound)
 site/yanabee/js/intro.js + css/intro.css   opening scene (home, first visit per session)
-site/yanabee/js/water.js + css/water.css   home hero: live WebGL water surface (2D fallback)
 tools/yanabee/wow_story.py + js/story.js + css/story.css       home: pinned scroll story «الرسالة» performed with particles
 tools/yanabee/wow_gallery.py + js/gallery.js + css/gallery.css home: pinned horizontal gallery of the seven teams (+ inclusion)
 ```
@@ -150,7 +149,6 @@ screens), pauses off-screen, and uses only content that is already in `content/y
 | Piece | Where | What it does | Hooks |
 |---|---|---|---|
 | Opening scene | `index.html` | a drop falls, splashes in the seven team colours, the logo rises, a circular hole opens onto the hero. Once per browser session; `?intro` replays it (and is the only way to see it under automation); skipped on a keypress/press and when the page was reached through a water wipe | `html.intro-on`, `sessionStorage['yb-intro']`, events `yanabee:intro-reveal`, `yanabee:intro-end` |
-| Water hero | `index.html` hero | WebGL1 analytic ripple surface with caustics, calmer behind the copy; reacts to pointer/touch; 2D fallback; software rasterisers get the 2D version (`window.YANABEE_WATER={gl:'force'}` overrides) | event `yanabee:drop` `{x,y,strength}` (client coords), `window.YanabeeWater` |
 | Scroll story | `index.html` after the hero | the mission paragraph (verbatim, cut into 4 fragments) performed by ~1800 particles: loners → seven team clusters → racing streams → one arch → the word «ينابيع». Tall sticky track; static block without JS/reduced motion | `window.YanabeeStory`, tuning in `CFG` (story.js) |
 | Teams gallery | `index.html` teams section | pinned horizontal panels (parallax numerals, arch photos, colour washes, impact tabs, rail); grid below 1000px and in reduced motion | `window.YanabeeGallery`, knobs `K` (gallery.js) |
 | Water-drop cursor | all pages, fine pointer | droplet follower + trail, swells over interactive items, splash on press | `YanabeeWow.cursor.splash(x,y)` |
@@ -159,6 +157,15 @@ screens), pauses off-screen, and uses only content that is already in `content/y
 | Wave progress, parallax | all pages | wavy scroll bar with a droplet head; `[data-par="0.2"]` + auto targets | |
 | Water sound | all pages, **off by default** | WebAudio synth (drop/ripple/whoosh/good/bad), nav toggle «صوت الماء», `localStorage['yanabee-sound']` | event `yanabee:sound` `{type}` (the learn page sends `good`/`bad`) |
 
-Tests: `test-intro`, `test-story`, `test-gallery`, `test-wow`, `test-water` (all `node tools/yanabee/<name>.mjs`; `npm run test:yanabee` runs everything).
+Tests: `test-intro`, `test-story`, `test-gallery`, `test-wow` (all `node tools/yanabee/<name>.mjs`; `npm run test:yanabee` runs everything).
 Headless Chromium in the sandbox renders WebGL in software, so frame timings measured there are pessimistic; nothing was measured on real
 GPUs or on Safari/Firefox.
+
+## The landing page (index.html)
+
+Written in plain words (not pasted from the document): a photo-led first screen (slow cross-fade between team photos, the promise,
+three points, the numbers) that explains the project without scrolling, then the idea in four steps (scroll story), how it works
+(with photos), the seven teams (swipe cards; the sheet keeps the document's wording), what stands behind it, the three stages, the
+Quran initiative, try-it tiles, and a folded «من الوثيقة كما كُتبت» block that carries the vision, mission, goal, growth phases
+and impact index verbatim (so `check_content.py` still finds every document line, and deep links like `index.html#phases` open it).
+Motion is deliberately calm: slow photo fade/zoom, quick UI feedback; no water effect over images.

@@ -54,23 +54,6 @@ console.log('home (index.html)');
   await p.mouse.move(bb.x + bb.width * 0.92, bb.y + bb.height * 0.82);
   await p.waitForTimeout(150);
   check('button leans toward the pointer', await btn.evaluate(el => el.style.translate !== ''), await btn.evaluate(el => el.style.translate));
-  // hero streams: hover shows the team, click opens it
-  const hv = await p.$('.hero-visual');
-  const hb = await hv.boundingBox();
-  let found = null;
-  for (let i = 0; i < 7 && !found; i++) { // sweep to find a stream near the canvas centre column
-    for (let x = hb.x + hb.width * 0.15; x < hb.x + hb.width * 0.9 && !found; x += 12) {
-      await p.mouse.move(x, hb.y + hb.height * 0.52);
-      if (await p.evaluate(() => document.querySelector('.stream-tip').classList.contains('on'))) found = x;
-    }
-    break;
-  }
-  const tipText = await p.evaluate(() => document.querySelector('.stream-tip').textContent);
-  check('hovering a spring shows its team', !!found && tipText.length > 3, tipText);
-  if (found) {
-    await Promise.all([p.waitForURL(/teams\.html#t\d/, { timeout: 4000 }).catch(() => {}), p.mouse.click(found, hb.y + hb.height * 0.52)]);
-    check('pressing a spring opens that team', /teams\.html#t\d/.test(p.url()), p.url());
-  }
   check('no script errors', errs.length === 0, errs.join(' | '));
   await ctx.close();
 }

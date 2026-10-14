@@ -121,8 +121,6 @@ html.intro-on .hero-home .hero-visual{opacity:0;transition:none}
 }
 @keyframes hp-fade{0%{opacity:0}4%{opacity:1}20%{opacity:1}24%{opacity:0}100%{opacity:0}}
 @keyframes hp-drift{0%{transform:scale(1.0)}24%{transform:scale(1.07)}100%{transform:scale(1.07)}}
-/* the water is only a faint shimmer over the photo now */
-.hero-photo .water{opacity:.45;mix-blend-mode:soft-light;z-index:-3}
 .hero-photo .hero-bg,.hero-photo .hero-art{display:none}
 .hp-scrim{position:absolute;inset:0;z-index:-2;pointer-events:none;
   background:linear-gradient(to left,rgba(3,22,28,.86) 0%,rgba(3,22,28,.66) 42%,rgba(3,22,28,.22) 100%),
