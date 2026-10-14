@@ -18,32 +18,31 @@ import re
 
 from core import PLATFORM as P, TEAM_IDS, ic, logo, plain, short, t
 
-# Where the paragraph is cut. Each marker is the first words of the NEXT fragment.
-_JOINTS = ('إلى مشاركة مجتمعية', 'تتنافس في مجالات', 'تحت مظلة وطنية')
+# The four acts in plain words (the landing page explains the project in its own words; the verbatim mission
+# paragraph stays in the document block at the bottom of the page and on the detail pages).
+_FRAGS = (
+    'كثيرٌ من الأطفال والشباب يقضون وقتهم وحدهم أمام الشاشات.',
+    'ينابيع يجمعهم في فرق صغيرة متخصصة يكمّل بعضها بعضاً.',
+    'تتنافس الفرق في سبعة مجالات: القرآن والقيم، والكشافة، والرياضة، والتقنية، والصحة والبيئة، والإعلام، والتكافل.',
+    'وكلها تحت مظلة وطنية واحدة.',
+)
 
-# One short verbatim phrase per act (indicator button labels). Asserted to be inside its fragment.
-_TAGS = ('الانعزالية', 'فرق تخصصية تكاملية', 'تتنافس', 'مظلة وطنية موحدة')
+# One short phrase per act (indicator button labels). Asserted to be inside its fragment.
+_TAGS = ('وحدهم', 'فرق صغيرة', 'تتنافس', 'مظلة وطنية واحدة')
 
-# Words that carry the colour of their act (style only; nothing is added or removed).
+# Words that carry the colour of their act (style only).
 _EMPHASIS = (
-    {'الانعزالية', 'الاستهلاك', 'الرقمي', 'الفردي'},
-    {'مشاركة', 'مجتمعية', 'مثمرة', 'فرق', 'تخصصية', 'تكاملية'},
-    {'تتنافس'},
-    {'مظلة', 'وطنية', 'موحدة'},
+    {'وحدهم', 'الشاشات.'},
+    {'فرق', 'صغيرة', 'متخصصة'},
+    {'تتنافس', 'سبعة'},
+    {'مظلة', 'وطنية', 'واحدة.'},
 )
 
 
 def fragments():
-    """The mission paragraph as four consecutive fragments; their join is asserted to equal it."""
-    para = P['s1']['mission'].paras[0]
-    cuts = [para.index(j) for j in _JOINTS]
-    assert cuts == sorted(cuts) and len(set(cuts)) == 3, 'mission joints out of order'
-    bounds = [0] + cuts + [len(para)]
-    frags = [para[a:b].strip() for a, b in zip(bounds, bounds[1:])]
-    assert ' '.join(frags) == para, 'story fragments drifted from the mission paragraph'
-    for tag, frag in zip(_TAGS, frags):
+    for tag, frag in zip(_TAGS, _FRAGS):
         assert tag in frag, f'act phrase {tag!r} not in its fragment'
-    return para, frags
+    return ' '.join(_FRAGS), list(_FRAGS)
 
 
 def _text(frag, emph):
@@ -51,7 +50,7 @@ def _text(frag, emph):
     out = []
     for w in frag.split(' '):
         word = t(w)
-        out.append(f'<span class="em">{word}</span>' if re.sub(r'[،.:؛]', '', w) in emph else word)
+        out.append(f'<span class="em">{word}</span>' if w in emph else word)
     return ' '.join(out)
 
 
@@ -101,7 +100,6 @@ _ARTS = (_art_alone, _art_teams, _art_lanes, _art_arch)
 
 
 def story():
-    mission = P['s1']['mission']
     _, frags = fragments()
     word = re.search(r'"([^"]+)"', P.meta['title']).group(1)  # «ينابيع» from the project title
 
@@ -117,7 +115,7 @@ def story():
     return f'''
 <section class="story" aria-labelledby="story-h" data-story data-word="{plain(word)}">
   <div class="wrap">
-    <header class="story-head"><h2 class="kicker" id="story-h">{ic('route')}{t(mission.title)}</h2></header>
+    <header class="story-head"><h2 class="kicker" id="story-h">{ic('route')}فكرة ينابيع في أربع خطوات</h2></header>
     <div class="story-grid">
       <div class="story-steps">
         {steps}

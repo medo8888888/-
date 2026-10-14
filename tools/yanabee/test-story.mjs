@@ -1,6 +1,6 @@
 // Browser test of the home page's scrollytelling (module "story": the mission as four text steps + a sticky particle companion).
 //   node tools/yanabee/test-story.mjs
-// Real Chromium over file://. Covers: the four steps are the mission paragraph verbatim, in order, as selectable text; no pin
+// Real Chromium over file://. Covers: the four steps are the idea in plain words, in order, as selectable text; no pin
 // anywhere (nothing sticky/fixed taller than 70% of the viewport, the companion <= 62svh desktop / 44vh phone, the section about
 // four steps tall); the page scrolls 1:1 under real wheel and touch input and nothing prevents it; the step at the reading line
 // decides the particle act (time based, interruptible); the step indicator; labels, arch and the word fit; pausing off-screen;
@@ -21,7 +21,10 @@ const norm = s => s.replace(/[«»"]/g, '"').replace(/\s+/g, ' ').trim();
 
 // the mission paragraph, straight from the source document
 const src = fs.readFileSync(path.join(ROOT, 'content/yanabee/platform.txt'), 'utf8').split('\n');
-const mission = src[src.findIndex(l => /^##\s*mission\b/.test(l)) + 1].trim();
+void src;
+// the landing page tells the idea in its own words: the four acts are defined in tools/yanabee/wow_story.py (_FRAGS)
+const py = fs.readFileSync(path.join(ROOT, 'tools/yanabee/wow_story.py'), 'utf8');
+const mission = [...py.slice(py.indexOf('_FRAGS = ('), py.indexOf('# One short phrase')).matchAll(/^\s+'([^']+)',$/gm)].map(m => m[1]).join(' ');
 const storyJs = fs.readFileSync(path.join(ROOT, 'site/yanabee/js/story.js'), 'utf8');
 const storyCss = fs.readFileSync(path.join(ROOT, 'site/yanabee/css/story.css'), 'utf8');
 
@@ -90,7 +93,7 @@ console.log('markup: the mission, verbatim, in four ordinary text steps');
   check('each step text is a real <p>', await p.$$eval('.story .step > .step-text', e => e.length === 4 && e.every(x => x.tagName === 'P')));
   check('the mission text appears once in the section (last fragment found exactly once)', await p.$eval('.story', (s, last) => (s.textContent.replace(/\s+/g, ' ').split(last).length - 1) === 1, steps[3].replace(/\.$/, '')));
   const kick = await p.$eval('.story h2.kicker', e => e.textContent.trim());
-  check('kicker is the mission title «الرسالة»', kick === 'الرسالة', kick);
+  check('kicker names the idea', kick === 'فكرة ينابيع في أربع خطوات', kick);
   check('section has no id; no other section[id] was added (fx.js third section dot stays #model)', await p.evaluate(() => {
     const s = document.querySelector('[data-story]');
     const ids = [...document.querySelectorAll('main section[id]')].filter(x => x.querySelector('h2')).map(x => x.id);

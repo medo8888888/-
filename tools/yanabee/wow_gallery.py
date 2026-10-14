@@ -19,6 +19,17 @@ Every content word comes from content/yanabee/platform.txt through t(); only the
 import art
 from core import PLATFORM as P, TEAMS, TEAM_IDS, ic, plain, short, split_kicker, strip_colon, svg, t, paren
 
+# One plain line per team for the card face (the landing page explains in its own words); the detail sheet keeps
+# the document's wording for «طبيعة العمل» and the three impact lines.
+BRIEFS = {
+    't1': 'يدرسون القرآن ويحوّلونه إلى مبادرات في الأخلاق والسلوك داخل الشارع والمدرسة والبيت.',
+    't2': 'معسكرات وانضباط ميداني يعلّم الاعتماد على النفس وخدمة البيئة والمشاركة في الإغاثة.',
+    't3': 'ألعاب جماعية لا تُكسب إلا بالتنسيق والخطة المشتركة، فتبني اللياقة وضبط النفس.',
+    't4': 'شباب يحوّلون شغفهم بالبرمجة إلى تطبيقات وحلول تخدم مشكلات مجتمعهم.',
+    't5': 'مشاريع في الميدان: تدوير وتشجير وترشيد للطاقة وقوافل صحية للحفاظ على البيئة.',
+    't6': 'يصنعون محتوى هادفاً يعزز الهوية ويقف في وجه الشائعات والمعلومات المغلوطة.',
+    't7': 'يربطون حاجة الجمعيات والأسر المتعففة بحملات إغاثة ومساعدات ميدانية.',
+}
 IMPACT_ICON = ('user', 'home', 'users')  # الفرد / الأسرة / المجتمع
 CHEV_NEXT = svg('<path d="m15 18-6-6 6-6"/>')   # points left: "next" in RTL
 CHEV_PREV = svg('<path d="m9 18 6-6-6-6"/>')    # points right: "previous" in RTL
@@ -75,7 +86,7 @@ def gallery():
           <div class="tg-body">
             <h3 class="tg-title" id="g-{tid}-h">{t(who)}</h3>
             {f'<p class="tg-sub">{t(sub)}</p>' if sub else ''}
-            <p class="tg-brief" id="g-{tid}-b">{t(work.body)}</p>
+            <p class="tg-brief" id="g-{tid}-b">{t(BRIEFS[tid])}</p>
             <span class="tg-go" aria-hidden="true"><span>التفاصيل</span>{ic('arrow-left')}</span>
           </div>
         </a>

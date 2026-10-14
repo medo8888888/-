@@ -1,43 +1,29 @@
-"""Home page: hero (springs canvas), s1 vision/mission/goal, the seven teams,
-the operating model, s9 growth phases + impact index, the Quran initiative."""
+"""Home (the landing page): simple, in plain words, and it shows everything Yanabee does.
+
+The owner asked for a landing page that explains the project in its own words rather than pasting the book.
+So every block below is written here (Arabic, plain) from a reading of the two documents; no new facts, numbers
+or names are introduced. The document's own wording stays one tap away: the team cards open a sheet with the
+document's text, the detail pages carry it verbatim, and the last block of this page folds the vision, mission,
+goal, growth phases and impact index exactly as written (so nothing in the document is lost).
+"""
 import html as _html
 import json
-import re
 
 import art
 import wow_gallery
 import wow_story
-from core import (PAGE_LABEL, PLATFORM as P, QURAN as Q, TEAMS, TEAM_IDS, btn, cta, ic, logo, page, paren,
-                  plain, short, split_kicker, strip_colon, t)
+from core import PLATFORM as P, TEAM_IDS, btn, cta, ic, logo, page, short, strip_colon, t
 
 
 def _title_html():
     h = t(P.meta['title'])  # 'مشروع «ينابيع»'
-    return h.replace('«ينابيع»', '<span class="grad-text">«ينابيع»</span>')
-
-
-def _item(node, label):
-    for it in node.items:
-        if strip_colon(it.label) == label:
-            return it
-    raise KeyError(label)
+    return h.replace('«ينابيع»', '<span class="brand-word">«ينابيع»</span>')
 
 
 def hero():
-    sub = P.meta['subtitle'].strip('()')
     dots = ''.join(f'<i style="--c:var(--{tid})"></i>' for tid in TEAM_IDS)
     streams = json.dumps([{'t': tid, 'name': short(P['s2'][tid].title), 'href': f'teams.html#{tid}'} for tid in TEAM_IDS],
                          ensure_ascii=False)  # the seven streams of the hero canvas are the seven teams
-    s2_main = split_kicker(P['s2'].title)[1]
-    teams_label = s2_main.split(' وأثرها')[0]  # 'الفرق السبع التخصصية'
-    g = P['s9']['phases'].items[1]  # النمو (العام 2): … 1,000 قائد موهوب … 100 مبادرة …
-    m = re.match(r'^(.+?) \((.+?)\)$', g.label)
-    phase_tag = f'{t(m.group(1))} · {t(m.group(2))}' if m else t(g.label)
-    stats = f'''
-      <div class="hero-stats rv" data-stagger>
-        <div class="hs"><small>{phase_tag}</small><b data-to="1000">1,000</b><span>{t('قائد موهوب من قادة الفرق')}</span></div>
-        <div class="hs"><small>{phase_tag}</small><b data-to="100">100</b><span>{t('مبادرة مجتمعية وبيئية')}</span></div>
-      </div>'''
     return f'''
 <section class="hero hero-home">
   <canvas class="water" data-water aria-hidden="true"></canvas>
@@ -45,14 +31,13 @@ def hero():
   <div class="hero-art" aria-hidden="true">{art.home_band('hb')}</div>
   <div class="wrap hero-grid">
     <div class="hero-copy">
-      <a class="eyebrow team-dots rv" href="teams.html"><span class="dots" aria-hidden="true">{dots}</span>{t(teams_label)}{ic('arrow-left')}</a>
+      <a class="eyebrow team-dots rv" href="teams.html"><span class="dots" aria-hidden="true">{dots}</span>سبعة مجالات لكل اهتمام{ic('arrow-left')}</a>
       <h1 class="rv">{_title_html()}</h1>
-      <p class="hero-sub rv">{t(sub)}</p>
+      <p class="hero-sub rv">منصة وطنية تجمع الأطفال والشباب في فرق صغيرة تتنافس في تحديات حقيقية تخدم الناس، بدل أن يقضوا وقتهم وحدهم أمام الشاشات.</p>
       <div class="btns rv">
-        {btn('teams.html', 'استكشف الفرق السبع', 'users')}
-        {btn('quran.html', t(Q.meta['title']), 'book-open', 'btn-ghost')}
+        {btn('teams.html', 'اكتشف الفرق السبع', 'users')}
+        {btn('learn.html', 'جرّب بنفسك', 'trophy', 'btn-ghost')}
       </div>
-      {stats}
     </div>
     <div class="hero-visual" aria-hidden="true">
       <canvas class="springs" data-springs data-teams="{_html.escape(streams, quote=True)}"></canvas>
@@ -60,238 +45,184 @@ def hero():
       <div class="spring-core">{logo(64, 'core', 'core-logo')}</div>
     </div>
   </div>
-  <a class="scroll-cue" href="#s1" aria-label="انتقل إلى الرؤية والرسالة">{ic('chevron-down')}</a>
+  <a class="scroll-cue" href="#how" aria-label="انتقل إلى كيف يعمل ينابيع">{ic('chevron-down')}</a>
 </section>'''
 
 
-def s1():
-    s = P['s1']
-    k, main = split_kicker(s.title)
-    v, m, g = s['vision'], s['mission'], s['goal']
-    goals = ''.join(
-        f'<li class="goal rv"><span class="gnum" aria-hidden="true">{i}</span><div><h4>{t(it.label)}</h4><p>{t(it.body)}</p></div></li>'
-        if it.label else f'<li class="goal rv"><span class="gnum" aria-hidden="true">{i}</span><div><p class="strong">{t(it.body)}</p></div></li>'
-        for i, it in enumerate(g.items, 1))
+def _head(icon, kicker, title, sub=''):
+    s = f'<p class="sec-sub">{t(sub)}</p>' if sub else ''
+    return (f'<header class="sec-head rv"><div><span class="kicker">{ic(icon)}{t(kicker)}</span>'
+            f'<h2>{t(title)}</h2>{s}</div></header>')
+
+
+def how():
+    steps = (
+        ('users', 'سجّل فريقك', 'خمسة أو سبعة أعضاء يختارون مجالهم من المجالات السبعة ويسجّلون فريقهم في تطبيق «ينابيع».'),
+        ('flag', 'تحدٍّ جديد كل أسبوع', 'يصل الفريق تحدٍّ ميداني عبر التطبيق، وكثير منها يلبّي حاجة حقيقية عند جمعية أو مدرسة أو حي.'),
+        ('hand-heart', 'نفّذوه في الميدان', 'يعمل الفريق معاً على الأرض، ويرافقه قائد شاب من الأقران يوجّهه تحت إشراف موجّه إقليمي.'),
+        ('trophy', 'نقاط وتقدّم', 'يرصد التطبيق النقاط تلقائياً، فتكون المنافسة عادلة، ويظهر القادة الموهوبون ليتأهلوا لقيادة مبادرات أكبر.'),
+    )
+    cards = ''.join(
+        f'<li class="how-step rv"><span class="how-n" aria-hidden="true">{i}</span><span class="how-ic">{ic(icn)}</span>'
+        f'<h3>{t(h)}</h3><p>{t(p)}</p></li>'
+        for i, (icn, h, p) in enumerate(steps, 1))
     return f'''
-<section class="sec s1" id="s1">
+<section class="sec how" id="how">
   <div class="wrap">
-    <header class="sec-head rv"><div><span class="kicker">{ic('eye')}{t(k)}</span><h2>{t(main)}</h2></div></header>
-    <div class="bento">
-      <article class="b-vision rv" id="vision">
-        <div class="b-glow" aria-hidden="true"></div>
-        <div class="b-photo" aria-hidden="true">{art.photo('hero-home')}</div>
-        <span class="b-label">{ic('eye')}<h3>{t(v.title)}</h3></span>
-        <p class="vision-text">{t(v.paras[0])}</p>
-        {art.spot('vision', 'sv', dark=True)}
-      </article>
-      <article class="b-mission rv" id="mission">
-        <span class="b-label">{ic('route')}<h3>{t(m.title)}</h3></span>
-        <p>{t(m.paras[0])}</p>
-        {art.spot('mission', 'sm')}
-      </article>
-      <article class="b-goal rv" id="goal">
-        <span class="b-label">{ic('target')}<h3>{t(g.title)}</h3></span>
-        <ol class="goals">{goals}</ol>
-      </article>
-    </div>
+    {_head('route', 'كيف يعمل', 'من التسجيل إلى الأثر، في أربع خطوات')}
+    <ol class="how-grid" data-stagger>{cards}</ol>
   </div>
 </section>'''
 
 
 def teams():
     s2 = P['s2']
-    k, main = split_kicker(s2.title)
-    cards = ''
-    for i, tid in enumerate(TEAM_IDS, 1):
-        node = s2[tid]
-        work = _item(node, 'طبيعة العمل')
-        sub = paren(node.title)
-        cards += f'''
-      <a class="team-card rv" href="teams.html#{tid}" style="--tc:var(--{tid})">
-        <span class="tc-num" aria-hidden="true">{i:02d}</span>
-        <span class="tc-art" aria-hidden="true">{art.photo('team-' + tid)}</span>
-        <span class="tc-ic">{ic(TEAMS[tid])}</span>
-        <h3>{t(short(node.title))}</h3>
-        {f'<p class="tc-sub">{t(sub)}</p>' if sub else ''}
-        <p class="tc-work"><b>{t(work.label)}:</b> {t(work.body)}</p>
-        <span class="tc-more">التفاصيل {ic('arrow-left')}</span>
-      </a>'''
-    s3 = P['s3']
-    k3, main3 = split_kicker(s3.title)
-    cards += f'''
-      <a class="team-card tc-incl rv" href="teams.html#s3">
-        <span class="tc-ic">{ic('accessibility')}</span>
-        <span class="tc-kicker">{t(k3)}</span>
-        <h3>{t(main3)}</h3>
-        <ul class="incl-list">{''.join(f'<li>{t(strip_colon(it.label))}</li>' for it in s3.items)}</ul>
-        <span class="tc-more">التفاصيل {ic('arrow-left')}</span>
-      </a>'''
     return f'''
 <section class="sec band teams-home" id="teams">
   <div class="wrap">
-    <header class="sec-head rv"><div><span class="kicker">{ic('users')}{t(k)}</span><h2>{t(main)}</h2><p class="sec-sub">{t(s2.paras[0])}</p></div></header>
+    {_head('users', 'الفرق', 'سبعة مجالات، وفريق لكل اهتمام', 'اسحب البطاقات يميناً ويساراً، واضغط على أي فريق لترى ما يفعله وأثره عليك وعلى أسرتك وعلى مجتمعك.')}
     {wow_gallery.gallery()}
-    <div class="team-grid" data-stagger>{cards}
+    <noscript><p class="sec-sub">{t(s2.paras[0])}</p></noscript>
+  </div>
+</section>'''
+
+
+def behind():
+    cards = (
+        ('landmark', 'قيادة وطنية، وتنفيذ محلي',
+         'مجلس أعلى يضع السياسات ويفتح الطريق بين المدارس ومراكز الشباب والمساجد والجمعيات. أما العمل فيجري في كل منطقة وبأيدي أهلها.', 'sky'),
+        ('users', 'قادة من الأقران',
+         'يُدرَّب طلاب الجامعة والثانوية ليقودوا من هم أصغر منهم، ومن يتميّز منهم يدخل برنامجاً لإعداد القادة بمنح تدريبية ورعاية خاصة.', 't1'),
+        ('coins', 'تمويل مدروس',
+         'نحو 60% من إعادة توجيه ميزانيات أنشطة قائمة في الوزارات، و30% من شراكات الشركات، و10% من المساهمات الأهلية. والمصروفات الميدانية لا تُسوّى إلا بإثبات إنجاز التحدي.', 'sun'),
+        ('shield', 'للجميع وبأمان',
+         'مسارات لذوي الإعاقة، ووصول إلى القرى والمناطق النائية، ودعم نفسي وتربوي لمن يعاني العزلة. وفي المقابل حماية صارمة لبيانات الأطفال وصورهم، وتأمين صحي، ولا مكان لأي نشاط حزبي.', 't5'),
+        ('handshake', 'يكمّل ولا يزاحم',
+         'يتعاون مع مراكز الشباب والأندية والجمعيات والكشافة بدل أن ينافسها، فتزداد حركتها ويستفيد الجميع.', 't7'),
+        ('megaphone', 'يصل إلى الجميع',
+         'حملة «فريقك سر قوتك» في المدارس والجامعات، ورسائل طمأنة لأولياء الأمور، وتغطية إعلامية تُبرز كيف يتغيّر سلوك الشباب.', 't3'),
+    )
+    items = ''.join(
+        f'<li class="pl-card rv" style="--sc:var(--{c})"><span class="pl-ic">{ic(icn)}</span><h3>{t(h)}</h3><p>{t(p)}</p></li>'
+        for icn, h, p, c in cards)
+    return f'''
+<section class="sec behind" id="behind">
+  <div class="wrap">
+    {_head('layers', 'ما وراءه', 'ما الذي يقف وراء الفرق؟')}
+    <ul class="pl-grid" data-stagger>{items}</ul>
+    <p class="more-link rv"><a href="operations.html">{ic('arrow-left')}<span>التفاصيل: التشغيل والحوكمة والتمويل والمخاطر</span></a></p>
+  </div>
+</section>'''
+
+
+def road():
+    phases = (
+        ('السنة الأولى', 'نبني المنصة الرقمية', 'نبدأ مع 30% من استيعاب المراكز والمدارس، ونطلق رخصة المشرف وقائد الفريق.', ''),
+        ('السنة الثانية', 'نتوسّع في المحافظات', 'تنتشر المسابقات، ونؤهّل 1,000 قائد موهوب، وننفّذ 100 مبادرة مجتمعية وبيئية.',
+         '<div class="road-nums"><span><b data-to="1000">1,000</b> قائد موهوب</span><span><b data-to="100">100</b> مبادرة</span></div>'),
+        ('من السنة الثالثة', 'نثبّت التجربة', 'تدخل المناهج إلى الجامعات، ويصبح الخريجون وقادة الفرق موجّهين وقادة إقليميين، ويتحول «وسام ينابيع الوطن» إلى برنامج سنوي ثابت.', ''),
+    )
+    items = ''.join(
+        f'<li class="road-step rv" style="--i:{i}"><span class="road-dot" aria-hidden="true"><i></i></span>'
+        f'<small>{t(when)}</small><h3>{t(h)}</h3><p>{t(p)}</p>{extra}</li>'
+        for i, (when, h, p, extra) in enumerate(phases, 1))
+    return f'''
+<section class="sec band road" id="road">
+  <div class="wrap">
+    {_head('chart', 'إلى أين', 'ثلاث مراحل نحو برنامج وطني دائم')}
+    <ol class="road-grid" data-stagger>{items}</ol>
+    <div class="measure rv">
+      <span class="measure-ic">{ic('gauge')}</span>
+      <p><b>كيف نعرف أن الأثر حقيقي؟</b> نعدّ الفرق المسجّلة والقادة المؤهَّلين وساعات التطوع والمشاريع المنجزة،
+      ونسأل ولي الأمر والمعلم والمشرف عن الانضباط والتعاون وروح المبادرة وانخفاض ساعات استخدام الهاتف.</p>
     </div>
   </div>
 </section>'''
 
 
-def model():
-    s5, s6 = P['s5'], P['s6']
-    k5, main5 = split_kicker(s5.title)
-    k6, main6 = split_kicker(s6.title)
-    principle = s5.paras[0]
-    pillars = ''.join(
-        f'<a class="pillar rv" href="operations.html#s5"><span class="pl-ic">{ic(icn)}</span><b>{t(strip_colon(it.label))}</b></a>'
-        for it, icn in zip(s5.items, ('landmark', 'smartphone', 'users')))
-    fund = s6.items[0]
-    shares = []
-    for c in fund.children:
-        mm = re.match(r'^(\d+)%', c.label or c.text)
-        shares.append(int(mm.group(1)) if mm else 0)
-    legend = ''.join(
-        f'<li style="--fc:var(--f{i})"><b>{t(c.label)}</b><span>{t(c.body)}</span></li>'
-        for i, c in enumerate(fund.children, 1))
-    a, b = shares[0], shares[0] + shares[1]
+def quran():
     return f'''
-<section class="sec model" id="model">
+<section class="sec quran-home" id="quran">
   <div class="wrap">
-    <div class="model-card rv">
-      <div class="model-bg" aria-hidden="true"></div>
-      <div class="model-main">
-        <span class="kicker on-dark">{ic('network')}{t(k5)}</span>
-        <h2 class="model-h">{t(main5)}</h2>
-        <p class="principle">{t(principle)}</p>
-        <div class="pillars" data-stagger>{''.join([pillars])}</div>
-        {btn('operations.html', PAGE_LABEL['operations.html'], 'shield', 'btn-ghost on-dark')}
+    <div class="q-card rv">
+      <div class="q-copy">
+        <span class="kicker">{ic('book-open')}مبادرة داخل ينابيع</span>
+        <h2>«حفظ، فهم، تطبيق»</h2>
+        <p>مبادرة خاصة بفرق القرآن الكريم: يحفظ الفريق، ثم يفهم المعنى، ثم يحوّل ما تعلّمه إلى سلوك يراه الناس في الشارع والمدرسة والبيت.</p>
+        <div class="btns">{btn('quran.html', 'اكتشف المبادرة', 'arrow-left', 'btn-primary btn-emerald')}</div>
       </div>
-      <div class="model-fund">
-        <span class="kicker on-dark fund-k">{ic('coins')}{t(k6)} · {t(main6)}</span>
-        <h3>{t(strip_colon(fund.label))}</h3>
-        <a class="donut" href="operations.html#s6" data-shares="{','.join(str(x) for x in shares)}" style="--a:{a};--b:{b}" aria-label="{plain(strip_colon(fund.label))}: {' / '.join(f'{x}%' for x in shares)}">
-          <span class="donut-hole"><b>{shares[0]}%</b></span>
-        </a>
-        <ul class="fund-legend">{legend}</ul>
-      </div>
+      <div class="q-words" aria-hidden="true"><b>حفظ</b><b>فهم</b><b>تطبيق</b></div>
     </div>
   </div>
 </section>'''
 
 
-def s9():
-    s = P['s9']
-    k, main = split_kicker(s.title)
-    ph, im = s['phases'], s['impact']
-    steps = ''
-    for i, it in enumerate(ph.items, 1):
-        mm = re.match(r'^(.+?) \((.+?)\)$', it.label)
-        name, year = (mm.group(1), mm.group(2)) if mm else (it.label, '')
-        body = t(it.body)
-        for num in ('30%', '1,000', '100'):  # highlight numbers that are literally in the text
-            body = re.sub(rf'(?<![\d,]){re.escape(num)}(?![\d,%])' if num != '30%' else re.escape(num),
-                          f'<mark>{num}</mark>', body, count=1)
-        steps += f'''
-        <li class="phase rv" style="--i:{i}">
-          <span class="ph-dot" aria-hidden="true"><i></i></span>
-          <h4>{t(name)}</h4>
-          <span class="ph-year">{t(year)}</span>
-          <p>{body}</p>
-        </li>'''
-    q, ql = im.items
-    q_chips = ''.join(f'<li>{t(x)}</li>' for x in re.split(r'،\s*', q.body))
-    pre, _, rest = ql.body.partition('لقياس:')
-    ql_chips = ''.join(f'<li>{t(x)}</li>' for x in re.split(r'،\s*', rest.strip()))
+def try_it():
     return f'''
-<section class="sec s9" id="s9">
+<section class="sec try" id="try">
   <div class="wrap">
-    <header class="sec-head rv"><div><span class="kicker">{ic('chart')}{t(k)}</span><h2>{t(main)}</h2></div></header>
-    <div class="phases-wrap" id="phases">
-      <h3 class="sub-h rv">{ic('route')}<span>{t(strip_colon(ph.title))}</span></h3>
-      {art.spot('growth', 'sg')}
-      <div class="phases-track">
-        <div class="river" aria-hidden="true"><svg viewBox="0 0 1000 80" preserveAspectRatio="none"><path d="M0 40 C 120 24, 230 56, 340 40 S 560 24, 670 40 S 880 56, 1000 40"/></svg></div>
-        <ol class="phases">{steps}
-        </ol>
-      </div>
-    </div>
-    <div class="impact" id="impact">
-      <h3 class="sub-h rv">{ic('gauge')}<span>{t(strip_colon(im.title))}</span></h3>
-      {art.spot('kpi', 'sk')}
-      <div class="impact-grid">
-        <article class="card imp rv" style="--sc:var(--sky)">
-          <div class="ic">{ic('chart')}</div>
-          <h4>{t(strip_colon(q.label))}</h4>
-          <ul class="imp-chips">{q_chips}</ul>
-        </article>
-        <article class="card imp rv" style="--sc:var(--sun)">
-          <div class="ic">{ic('user-check')}</div>
-          <h4>{t(strip_colon(ql.label))}</h4>
-          <p>{t(pre.strip())} {t('لقياس:')}</p>
-          <ul class="imp-chips">{ql_chips}</ul>
-        </article>
-      </div>
+    {_head('lightbulb', 'جرّب', 'افهمه باللعب')}
+    <div class="try-grid" data-stagger>
+      <a class="try-card rv" href="learn.html" style="--sc:var(--sun)"><span class="try-ic">{ic('trophy')}</span><h3>تعلّم والعب</h3>
+        <p>اختبارات وألعاب ذاكرة وبطاقات تعرّفك على الفرق والمحاور، وجواز تجمع فيه الينابيع السبعة.</p><span class="try-go">ابدأ{ic('arrow-left')}</span></a>
+      <a class="try-card rv" href="lab.html" style="--sc:var(--sky)"><span class="try-ic">{ic('compass')}</span><h3>مختبر ينابيع</h3>
+        <p>نموذج تجريبي: أسّس فريقاً وأنجز تحديات أسبوعية، أو أدِر موسماً كاملاً كمشرف إقليمي.</p><span class="try-go">ادخل المختبر{ic('arrow-left')}</span></a>
+      <button type="button" class="try-card rv" data-open-chat style="--sc:var(--accent)"><span class="try-ic">{ic('message')}</span><h3>اسأل المساعد</h3>
+        <p>اسأل عن أي تفصيل، وسيجيبك مما ورد في وثائق المشروع.</p><span class="try-go">اسأل{ic('arrow-left')}</span></button>
     </div>
   </div>
 </section>'''
 
 
-def initiative():
-    closing = Q['intro'].paras[-1]
-    words = [('حفظ', 'a1', 'book'), ('فهم', 'a2', 'lightbulb'), ('تطبيق', 'a4', 'hand-heart')]
-    tiles = ''.join(
-        f'<a class="w-tile" href="quran.html#{aid}"><span class="w-ic">{ic(icn)}</span><b>{w}</b><small>{t(split_kicker(Q[aid].title)[1])}</small></a>'
-        for w, aid, icn in words)
-    kpis = Q['a11']['kpis'].items[:3]
-    rings = ''
-    for i, it in enumerate(kpis, 1):
-        mm = re.search(r'(\d+)%', it.body)
-        if not mm:
-            continue
-        name = re.match(r'^KPI \d+ \((.+)\)$', it.label)
-        rings += (f'<li><a class="mini-kpi" href="quran.html#kpi{i}"><span class="ring" data-ring style="--v:{mm.group(1)};--rs:64px;--rw:7px">'
-                  f'<span aria-hidden="true">{mm.group(1)}%</span></span><span class="mk-text"><b>{t(name.group(1) if name else it.label)}</b>'
-                  f'<small>{t(it.body)}</small></span></a></li>')
+def document():
+    """The document's own wording, folded: the vision/mission/goal and the growth phases and impact index, verbatim."""
+    s1, s5, s9 = P['s1'], P['s5'], P['s9']
+    v, m, g = s1['vision'], s1['mission'], s1['goal']
+    goals = ''.join(f'<li>{t(it.text)}</li>' for it in g.items)
+    ph, im = s9['phases'], s9['impact']
+    phases = ''.join(f'<li>{t(it.text)}</li>' for it in ph.items)
+    impact = ''.join(f'<li>{t(it.text)}</li>' for it in im.items)
+    sub = P.meta['subtitle'].strip('()')
     return f'''
-<section class="sec initiative" id="initiative">
+<section class="sec doc-sec" id="doc">
   <div class="wrap">
-    <div class="init-card rv">
-      <div class="init-pattern" aria-hidden="true"></div>
-      <div class="init-copy">
-        <span class="kicker">{ic('book-open')}{t(Q.meta['subtitle'])}</span>
-        <h2>{t(Q.meta['title'])}</h2>
-        <p>{t(closing)}</p>
-        <div class="w-tiles">{tiles}</div>
-        <div class="btns">{btn('quran.html', 'استكشف المبادرة', 'arrow-left', 'btn-primary btn-emerald')}</div>
+    <details class="doc rv">
+      <summary><span class="doc-ic">{ic('file-text')}</span><span><b>من الوثيقة كما كُتبت</b><small>{t(P.meta['title'])} — {t(sub)}</small></span><span class="doc-chev">{ic('chevron-down')}</span></summary>
+      <div class="doc-body">
+        <h3>{t(s1.title)}</h3>
+        <h4>{t(v.title)}</h4><p>{t(v.paras[0])}</p>
+        <h4>{t(m.title)}</h4><p>{t(m.paras[0])}</p>
+        <h4>{t(g.title)}</h4><ul>{goals}</ul>
+        <h3>{t(s5.title)}</h3><p>{t(s5.paras[0])}</p>
+        <h3>{t(s9.title)}</h3>
+        <h4>{t(strip_colon(ph.title))}</h4><ul>{phases}</ul>
+        <h4>{t(strip_colon(im.title))}</h4><ul>{impact}</ul>
       </div>
-      <div class="init-side">
-        <figure class="verse-fig"><figcaption>{t(Q['intro'].paras[1])}</figcaption><p class="verse-mini">{t(Q['intro'].quotes[0])}</p></figure>
-        <ul class="mini-kpis">{rings}</ul>
-      </div>
-    </div>
+    </details>
   </div>
 </section>'''
 
 
 # Opening scene (once per browser session, home page only; see js/intro.js, css/intro.css).
 # `?intro` in the URL replays it (and is the only way to see it under browser automation, so the test suites
-# that drive the home page are not held up by it). The 6 s timer is a safety net if intro.js never runs.
-INTRO_HEAD = ("<script>(function(){try{var d=document.documentElement,q=location.search.indexOf('intro')>-1;"
-              "if(d.classList.contains('wipe-in')&&!q){sessionStorage.setItem('yb-intro','1')}else if(!matchMedia('(prefers-reduced-motion: reduce)').matches&&(q||(!navigator.webdriver&&!sessionStorage.getItem('yb-intro')&&!location.hash))){"
-              "d.classList.add('intro-on');setTimeout(function(){d.classList.remove('intro-on')},6000)}}catch(e){}})();</script>")
+# that drive the home page are not held up by it). It is skipped when you arrive from another page of the site.
+INTRO_HEAD = ("<script>(function(){try{var d=document.documentElement,q=location.search.indexOf('intro')>-1,"
+              "s=!q&&location.origin!=='null'&&document.referrer.indexOf(location.origin+'/')===0;"
+              "if(s){sessionStorage.setItem('yb-intro','1')}else if(!matchMedia('(prefers-reduced-motion: reduce)').matches&&(q||(!navigator.webdriver&&!sessionStorage.getItem('yb-intro')&&!location.hash))){"
+              "d.classList.add('intro-on');setTimeout(function(){d.classList.remove('intro-on')},2600)}}catch(e){}})();</script>")
 INTRO = f'''<div class="intro" id="intro" aria-hidden="true"><canvas class="intro-canvas"></canvas>
   <div class="intro-mark">{logo(84, 'intro', 'intro-logo')}</div><div class="intro-word">ينابيع</div></div>
 '''
 
 
 def build():
-    body = (INTRO + hero() + wow_story.story() + s1() + teams() + model() + s9() + initiative()
-            + cta(t(P.meta['title']), 'اسأل المساعد عن أي تفصيل في وثائق المشروع، أو ابحث في الفرق والمحاور والمؤشرات.',
+    body = (INTRO + hero() + wow_story.story() + how() + teams() + behind() + road() + quran() + try_it() + document()
+            + cta(t(P.meta['title']), 'اسأل المساعد عن أي تفصيل، أو ابحث في الفرق والمحاور والمؤشرات.',
                   f'<button type="button" class="btn btn-primary" data-open-chat>{ic("sparkles")}<span>اسأل مساعد ينابيع</span></button>'
                   f'<button type="button" class="btn btn-ghost" data-open-search>{ic("search")}<span>ابحث في الموقع</span></button>'))
-    desc = P['s1']['vision'].paras[0]
+    desc = 'منصة وطنية تجمع الأطفال والشباب في فرق صغيرة تتنافس في تحديات ميدانية تخدم المجتمع، في سبعة مجالات وتحت مظلة وطنية واحدة.'
     page('index.html', 'مشروع «ينابيع»', body, desc,
-         css=('css/home.css', 'css/water.css', 'css/story.css', 'css/gallery.css', 'css/intro.css'),
-         js=('js/springs.js', 'js/home.js', 'js/water.js', 'js/story.js', 'js/gallery.js', 'js/intro.js'),
+         css=('css/home.css', 'css/landing.css', 'css/water.css', 'css/story.css', 'css/gallery.css', 'css/intro.css'),
+         js=('js/springs.js', 'js/water.js', 'js/story.js', 'js/gallery.js', 'js/intro.js'),
          head=INTRO_HEAD)
     return 'index.html'

@@ -1,7 +1,7 @@
-// Opening scene (home, first visit per session; `?intro` replays it).
-// A drop of light falls, splashes into the seven team colours, the logo rises from the water, then a
-// circular hole opens onto the hero. Any press / key skips ahead. Decorative; the page underneath is
-// complete and readable the whole time (the scene is aria-hidden).
+// Launch-screen splash (home, first visit per session; `?intro` replays it).
+// A drop of light falls into the water, one ripple spreads, the logo springs in, and the overlay fades away to the app
+// underneath: about 1.3 s in all. It never locks scrolling (the overlay ignores pointer input and the page below is
+// complete and usable the whole time), and any press / key / wheel / touch removes it at once. Decorative: aria-hidden.
 (() => {
   const root = document.documentElement;
   const el = document.getElementById('intro');
@@ -13,11 +13,21 @@
   }
   try { sessionStorage.setItem('yb-intro', '1'); } catch (e) { /* private mode: it simply plays again */ }
 
-  const PAL = ['#46d39c', '#f0a95a', '#ff8d75', '#91a8ff', '#9bd66b', '#cb9cf3', '#f388b2'];
+  const PAL = ['#46d39c', '#f0a95a', '#ff8d75', '#91a8ff', '#9bd66b', '#cb9cf3', '#f388b2']; // the seven team colours
   const ACC = '#2fd3c6';
-  const FALL0 = 280, IMPACT = 1080, REVEAL = 2500, END = 3550; // ms
+  // timeline (ms from the script start): the drop falls 0-340, the ripple spreads 300-820, the logo springs in 430-900,
+  // the overlay fades out 950-1230 while the hero below starts its entrance, and the overlay is gone at 1280
+  const IMPACT = 340, POP = 430, REVEAL = 950, END = 1280;
+  // The overlay is painted by CSS before this deferred script runs: the clock starts at that first paint (up to 300 ms of a late
+  // start is skipped, so the splash is gone about 1.3 s after the first paint even when scripts arrive late).
+  let late = 0;
+  try {
+    const fp = performance.getEntriesByType('paint').filter(e => e.name === 'first-paint')[0];
+    if (fp) late = Math.max(0, Math.min(300, performance.now() - fp.startTime));
+  } catch (e) { /* no paint timing: start now */ }
   let W = 0, H = 0, dpr = 1, iy = 0;
-  let t0 = 0, last = 0, raf = 0, ended = false, popped = false, revealed = false, rim = null, skipAt = -1;
+  let t0 = performance.now() - late, last = t0, raf = 0, ended = false, landed = false, popped = false, revealed = false;
+  const bits = [];
   const hexA = (hex, a) => {
     const n = parseInt(hex.slice(1), 16);
     return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`;
@@ -31,29 +41,21 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     iy = Math.round(H * 0.54);
     el.style.setProperty('--iy', iy + 'px');
-    el.style.setProperty('--cx', '50%');
-    el.style.setProperty('--cy', (iy - Math.min(W, H) * 0.07) + 'px');
   };
   size();
   addEventListener('resize', size);
 
-  // ambience: dim bubbles drifting upward
-  const bubbles = Array.from({ length: Math.round(Math.min(70, W / 18)) }, () => ({
-    x: Math.random() * W, y: Math.random() * H, r: rnd(0.8, 2.6), v: rnd(6, 22), a: rnd(0.12, 0.4), w: rnd(0, 6.28),
-  }));
-  const splash = [];
-  const rings = [];
-  const spawnSplash = () => {
-    for (let i = 0; i < 120; i++) {
-      const a = -Math.PI * rnd(0.1, 0.9), s = rnd(160, 760) * (0.4 + Math.random() * 0.8);
-      splash.push({ x: W / 2 + rnd(-8, 8), y: iy, vx: Math.cos(a) * s * 0.9, vy: Math.sin(a) * s, r: rnd(1.3, 4.2), c: PAL[i % 7], life: rnd(0.9, 1.7), age: 0 });
-    }
-    [0, 120, 250, 400].forEach((d, k) => rings.push({ x: W / 2, y: iy, t: IMPACT + d, c: k ? PAL[(k * 2) % 7] : ACC, big: true }));
+  // a few tiny droplets in the seven team colours leap from the landing point (one per team, not a particle storm)
+  const spawn = () => {
+    PAL.forEach((c, i) => {
+      const a = -Math.PI * (0.18 + 0.64 * (i / 6)) + rnd(-0.08, 0.08), s = rnd(240, 470);
+      bits.push({ x: W / 2 + rnd(-6, 6), y: iy, vx: Math.cos(a) * s, vy: Math.sin(a) * s, r: rnd(2, 3.6), c, life: rnd(0.45, 0.62), age: 0 });
+    });
   };
 
-  const drawDrop = (t) => {
-    const u = Math.min(1, (t - FALL0) / (IMPACT - FALL0));
-    if (u <= 0 || u >= 1) return;
+  const drawDrop = t => {
+    const u = Math.min(1, t / IMPACT);
+    if (u >= 1) return;
     const y = -40 + (iy + 40) * u * u, h = 30 + 46 * u, r = 11;
     const g = ctx.createLinearGradient(0, y - h * 2.4, 0, y);
     g.addColorStop(0, 'rgba(47,211,198,0)'); g.addColorStop(1, 'rgba(120,240,230,.55)');
@@ -71,52 +73,47 @@
     ctx.fill();
   };
 
-  const frame = (now) => {
+  // the overlay fades out (opacity only) and the hero underneath starts its quick entrance: dropping .intro-on releases it
+  const reveal = () => {
+    if (revealed) return;
+    revealed = true;
+    el.classList.add('out');
+    root.classList.remove('intro-on');
+    window.dispatchEvent(new CustomEvent('yanabee:intro-reveal'));
+    // one ripple on the water surface under the hero (water.js listens)
+    setTimeout(() => window.dispatchEvent(new CustomEvent('yanabee:drop', { detail: { x: W / 2, y: iy, strength: 0.8 } })), 90);
+  };
+
+  const frame = now => {
     if (ended) return;
-    if (!t0) { t0 = now; last = now; }
-    let t = now - t0;
-    if (skipAt >= 0 && t < REVEAL) { t0 -= (REVEAL - t) - 0; t = REVEAL; skipAt = -1; if (!popped) { popped = true; el.classList.add('pop'); } }
-    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    const t = Math.max(0, now - t0); // a frame timestamp can predate the script's own clock read
+    const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = now;
     ctx.clearRect(0, 0, W, H);
-
-    // bubbles
     ctx.globalCompositeOperation = 'lighter';
-    bubbles.forEach(b => {
-      b.y -= b.v * dt; b.w += dt;
-      if (b.y < -6) { b.y = H + 6; b.x = Math.random() * W; }
-      ctx.fillStyle = `rgba(150,240,235,${b.a})`;
-      ctx.beginPath(); ctx.arc(b.x + Math.sin(b.w) * 6, b.y, b.r, 0, 6.2832); ctx.fill();
-    });
 
-    // fall
-    if (t >= FALL0 && t < IMPACT) drawDrop(t);
-    if (t >= IMPACT && !splash.length && !rings.length) spawnSplash();
-    if (t >= IMPACT + 60 && !popped) { popped = true; el.classList.add('pop'); }
+    if (t < IMPACT) drawDrop(t);
+    if (t >= IMPACT && !landed) { landed = true; spawn(); }
+    if (t >= POP && !popped) { popped = true; el.classList.add('pop'); }
 
-    // soft light on the water where it landed
-    if (t >= IMPACT) {
-      const p = Math.min(1, (t - IMPACT) / 1500);
+    if (t >= IMPACT) { // soft light on the water where it landed
+      const p = Math.min(1, (t - IMPACT) / 700);
       const g = ctx.createRadialGradient(W / 2, iy, 0, W / 2, iy, Math.min(W, 760) * 0.55);
-      g.addColorStop(0, `rgba(47,211,198,${0.34 * (1 - p * 0.5)})`); g.addColorStop(1, 'rgba(47,211,198,0)');
+      g.addColorStop(0, `rgba(47,211,198,${0.34 * (1 - p * 0.6)})`); g.addColorStop(1, 'rgba(47,211,198,0)');
       ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(W / 2, iy, Math.min(W, 760) * 0.55, Math.min(W, 760) * 0.12, 0, 0, 6.2832); ctx.fill();
     }
 
-    // rings (perspective-squashed ellipses)
-    for (let i = rings.length - 1; i >= 0; i--) {
-      const r = rings[i], p = (t - r.t) / (r.big ? 1500 : 900);
-      if (p < 0) continue;
-      if (p >= 1) { rings.splice(i, 1); continue; }
-      const rx = (r.big ? 24 + p * Math.min(W * 0.46, 520) : 4 + p * 46);
-      ctx.strokeStyle = hexA(r.c, Math.pow(1 - p, 1.5) * (r.big ? 0.85 : 0.6));
-      ctx.lineWidth = Math.max(0.6, (r.big ? 2.6 : 1.4) * (1 - p * 0.6));
-      ctx.beginPath(); ctx.ellipse(r.x, r.y, rx, rx * 0.2, 0, 0, 6.2832); ctx.stroke();
+    const rp = (t - (IMPACT - 40)) / 520; // the one ripple (a perspective-squashed ellipse)
+    if (rp > 0 && rp < 1) {
+      const rx = 24 + rp * Math.min(W * 0.42, 480);
+      ctx.strokeStyle = hexA(ACC, Math.pow(1 - rp, 1.5) * 0.85);
+      ctx.lineWidth = Math.max(0.6, 2.6 * (1 - rp * 0.6));
+      ctx.beginPath(); ctx.ellipse(W / 2, iy, rx, rx * 0.2, 0, 0, 6.2832); ctx.stroke();
     }
 
-    // splash droplets
-    for (let i = splash.length - 1; i >= 0; i--) {
-      const s = splash[i];
+    for (let i = bits.length - 1; i >= 0; i--) {
+      const s = bits[i];
       s.age += dt; s.vy += 1700 * dt; s.x += s.vx * dt; s.y += s.vy * dt;
-      if (s.y > iy + 2 && s.vy > 0) { if (rings.length < 40 && Math.random() < 0.35) rings.push({ x: s.x, y: iy, t, c: s.c, big: false }); splash.splice(i, 1); continue; }
+      if ((s.y > iy + 2 && s.vy > 0) || s.age > s.life) { bits.splice(i, 1); continue; }
       const a = Math.max(0, 1 - s.age / s.life);
       ctx.fillStyle = hexA(s.c, a);
       ctx.beginPath(); ctx.arc(s.x, s.y, s.r * (0.6 + a * 0.6), 0, 6.2832); ctx.fill();
@@ -125,27 +122,7 @@
     }
     ctx.globalCompositeOperation = 'source-over';
 
-    // reveal: a hole opens from the logo
-    if (t >= REVEAL) {
-      if (!revealed) {
-        revealed = true;
-        el.classList.add('out');
-        rim = document.createElement('div'); rim.className = 'intro-rim'; document.body.appendChild(rim);
-        const cy = el.style.getPropertyValue('--cy');
-        rim.style.setProperty('--cx', '50%'); rim.style.setProperty('--cy', cy);
-        // let the hero begin its own entrance a beat after the hole starts to open
-        setTimeout(() => { root.classList.remove('intro-on'); window.dispatchEvent(new CustomEvent('yanabee:intro-reveal')); }, 260);
-        // ripples on the water surface under the hole (water.js listens)
-        const cyPx = parseFloat(cy) || iy;
-        [[0, 0, 1], [140, -0.12, 0.7], [260, 0.14, 0.6], [380, -0.22, 0.5], [500, 0.24, 0.5]].forEach(([d, k, s]) =>
-          setTimeout(() => window.dispatchEvent(new CustomEvent('yanabee:drop', { detail: { x: W / 2 + k * W * 0.4, y: cyPx + Math.abs(k) * 40, strength: s } })), d));
-      }
-      const p = Math.min(1, (t - REVEAL) / (END - REVEAL - 300));
-      const e = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
-      const R = e * Math.hypot(W, H) * 0.62 + 40;
-      el.style.setProperty('--r', R + 'px');
-      if (rim) { rim.style.setProperty('--r', R + 'px'); rim.style.opacity = String(Math.max(0, 1 - p * 1.05)); }
-    }
+    if (t >= REVEAL) reveal();
     if (t >= END) return finish();
     raf = requestAnimationFrame(frame);
   };
@@ -154,18 +131,18 @@
     if (ended) return;
     ended = true;
     cancelAnimationFrame(raf);
+    clearTimeout(guard);
     removeEventListener('resize', size);
     ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(ev => removeEventListener(ev, skip));
-    root.classList.remove('intro-on');
-    window.dispatchEvent(new CustomEvent('yanabee:intro-reveal'));
-    if (rim) rim.remove();
+    reveal();
     el.remove();
     window.dispatchEvent(new CustomEvent('yanabee:intro-end'));
   };
-  const skip = (e) => {
+  const skip = e => {
     if (e.type === 'keydown' && (e.metaKey || e.ctrlKey || e.altKey)) return;
-    if (!revealed) skipAt = 1;
+    finish();
   };
   ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(ev => addEventListener(ev, skip, { passive: true }));
+  const guard = setTimeout(finish, END + 500); // safety net if animation frames are starved
   raf = requestAnimationFrame(frame);
 })();

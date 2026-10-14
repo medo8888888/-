@@ -1,0 +1,96 @@
+/* ==========================================================================
+   Landing page sections (index.html): how it works, what is behind it, roadmap,
+   Quran initiative, try-it tiles and the folded document text.
+   Plain blocks, real UI (cards, lists), one accent each. Tokens only.
+   ========================================================================== */
+
+.brand-word{color:var(--brand)}
+[data-theme=dark] .brand-word{color:var(--accent)}
+
+.more-link{margin-top:22px}
+.more-link a{display:inline-flex;align-items:center;gap:8px;font-weight:600;color:var(--brand);text-decoration:none;font-family:var(--font-h)}
+.more-link a:hover{text-decoration:underline}
+.more-link .i{width:18px;height:18px}
+
+/* ---------- how it works ---------- */
+.how-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;list-style:none;margin:0;padding:0}
+.how-step{position:relative;padding:22px 20px 22px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow-sm)}
+.how-n{position:absolute;inset-block-start:14px;inset-inline-end:16px;font:700 1.9rem/1 var(--font-h);color:color-mix(in oklab,var(--brand) 26%,transparent)}
+.how-ic{display:grid;place-items:center;width:46px;height:46px;border-radius:14px;background:color-mix(in oklab,var(--brand) 14%,var(--surface));color:var(--brand);margin-bottom:14px}
+.how-ic .i{width:24px;height:24px}
+.how-step h3{font-size:1.1rem;margin:0 0 8px;color:var(--head)}
+.how-step p{margin:0;color:var(--ink-2);line-height:1.8;font-size:.97rem}
+
+/* ---------- what is behind it ---------- */
+.pl-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;list-style:none;margin:0;padding:0}
+.pl-card{--sc:var(--brand);padding:22px 22px 24px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line);
+  border-block-start:3px solid var(--sc)}
+.pl-ic{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:color-mix(in oklab,var(--sc) 15%,var(--surface));color:var(--sc);margin-bottom:12px}
+.pl-ic .i{width:22px;height:22px}
+.pl-card h3{font-size:1.08rem;margin:0 0 8px;color:var(--head)}
+.pl-card p{margin:0;color:var(--ink-2);line-height:1.85;font-size:.96rem}
+
+/* ---------- roadmap ---------- */
+.road-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;list-style:none;margin:0 0 26px;padding:0;position:relative}
+.road-step{position:relative;padding:22px 22px 24px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line)}
+.road-dot{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:color-mix(in oklab,var(--brand) 20%,var(--surface));margin-bottom:12px}
+.road-dot i{width:9px;height:9px;border-radius:50%;background:var(--brand)}
+.road-step small{display:block;font:600 .82rem/1.4 var(--font-h);color:var(--muted);margin-bottom:2px}
+.road-step h3{font-size:1.15rem;margin:0 0 8px;color:var(--head)}
+.road-step p{margin:0;color:var(--ink-2);line-height:1.85;font-size:.97rem}
+.road-nums{display:flex;flex-wrap:wrap;gap:10px 22px;margin-top:14px}
+.road-nums span{font-size:.92rem;color:var(--muted)}
+.road-nums b{font:700 1.7rem/1.1 var(--font-h);color:var(--head);margin-inline-end:4px}
+.measure{display:flex;gap:14px;align-items:flex-start;padding:18px 20px;border-radius:var(--r);background:color-mix(in oklab,var(--sky) 10%,var(--surface));border:1px solid var(--line)}
+.measure-ic{flex:none;display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:color-mix(in oklab,var(--sky) 20%,var(--surface));color:var(--head)}
+.measure p{margin:0;color:var(--ink-2);line-height:1.85}
+.measure b{color:var(--head)}
+
+/* ---------- Quran initiative ---------- */
+.q-card{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,.7fr);gap:24px;align-items:center;padding:30px;border-radius:var(--r-lg);
+  background:color-mix(in oklab,var(--t1) 12%,var(--surface));border:1px solid color-mix(in oklab,var(--t1) 30%,var(--line))}
+.q-copy h2{font-family:var(--font-q);font-size:clamp(1.8rem,4vw,2.6rem);margin:8px 0 10px;color:var(--head)}
+.q-copy p{margin:0 0 18px;color:var(--ink-2);line-height:1.9;max-width:34rem}
+.q-words{display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+.q-words b{font-family:var(--font-q);font-size:clamp(1.6rem,3.6vw,2.4rem);font-weight:700;color:var(--t1);line-height:1.3}
+.q-words b:nth-child(2){opacity:.75}.q-words b:nth-child(3){opacity:.5}
+
+/* ---------- try it ---------- */
+.try-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.try-card{--sc:var(--brand);display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:start;padding:22px;border-radius:var(--r);
+  background:var(--surface);border:1px solid var(--line);color:inherit;text-decoration:none;font:inherit;cursor:pointer;
+  transition:border-color .18s,box-shadow .18s}
+.try-card:hover{border-color:var(--sc);box-shadow:var(--shadow-sm)}
+.try-ic{display:grid;place-items:center;width:46px;height:46px;border-radius:14px;background:color-mix(in oklab,var(--sc) 18%,var(--surface));color:var(--head);margin-bottom:6px}
+.try-ic .i{width:24px;height:24px}
+.try-card h3{margin:0;font-size:1.15rem;color:var(--head)}
+.try-card p{margin:0;color:var(--ink-2);line-height:1.8;font-size:.96rem}
+.try-go{margin-top:auto;padding-top:10px;display:inline-flex;align-items:center;gap:6px;font:600 .95rem/1 var(--font-h);color:var(--brand)}
+.try-go .i{width:16px;height:16px}
+
+/* ---------- the document, folded ---------- */
+.doc-sec{padding-block:8px 36px}
+.doc{border-radius:var(--r);background:var(--surface);border:1px solid var(--line)}
+.doc summary{display:flex;align-items:center;gap:14px;padding:16px 20px;cursor:pointer;list-style:none}
+.doc summary::-webkit-details-marker{display:none}
+.doc-ic{display:grid;place-items:center;width:42px;height:42px;border-radius:12px;background:color-mix(in oklab,var(--brand) 12%,var(--surface));color:var(--brand);flex:none}
+.doc summary b{display:block;color:var(--head);font-family:var(--font-h)}
+.doc summary small{display:block;color:var(--muted);font-size:.85rem;margin-top:2px}
+.doc-chev{margin-inline-start:auto;color:var(--muted);transition:transform .2s}
+.doc[open] .doc-chev{transform:rotate(180deg)}
+.doc-body{padding:4px 22px 22px;color:var(--ink-2);line-height:1.95;border-top:1px solid var(--line)}
+.doc-body h3{font-size:1.15rem;color:var(--head);margin:20px 0 4px}
+.doc-body h4{font-size:1rem;color:var(--brand);margin:14px 0 4px}
+.doc-body p,.doc-body ul{margin:0}
+.doc-body ul{padding-inline-start:1.3em}
+
+@media(max-width:1000px){
+  .how-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .pl-grid,.try-grid,.road-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .road-grid .road-step:last-child{grid-column:1/-1}
+}
+@media(max-width:640px){
+  .how-grid,.pl-grid,.try-grid,.road-grid{grid-template-columns:1fr}
+  .q-card{grid-template-columns:1fr;padding:22px}
+  .q-words{flex-direction:row;gap:14px;align-items:baseline}
+}
