@@ -97,7 +97,7 @@ console.log('markup');
       scroller: root.querySelector('ul.tgal-scroller') ? root.querySelector('ul.tgal-scroller').children.length : -1,
       ids: [...document.querySelectorAll('.tg-item')].map(e => e.id),
       hrefs: [...document.querySelectorAll('.tg-card')].map(a => a.getAttribute('href')),
-      titles: [...document.querySelectorAll('.tg-title')].map(e => e.textContent.replace(/\s+/g, ' ').trim()),
+      titles: [...document.querySelectorAll('.tg-card .tg-title')].map(e => e.textContent.replace(/\s+/g, ' ').trim()),
       dots: [...document.querySelectorAll('.tg-dot')].map(b => b.getAttribute('aria-label')),
       tabs: document.querySelectorAll('.tg-card [role=tab]').length,
       detailHidden: [...document.querySelectorAll('.tg-detail')].every(d => d.hidden && getComputedStyle(d).display === 'none'),
@@ -283,7 +283,7 @@ console.log('distance effect: scale / fade, no layout shift');
   });
   check('centred card is full size and fully opaque', near(e.scale[3], 1, 0.005) && near(e.op[3], 1, 0.01), `${e.scale[3]} / ${e.op[3]}`);
   check('neighbours are ~94% size and ~72% opaque', near(e.scale[2], 0.94, 0.012) && near(e.scale[4], 0.94, 0.012) && near(e.op[2], 0.72, 0.03) && near(e.op[4], 0.72, 0.03), `${e.scale[2].toFixed(3)} ${e.op[2].toFixed(3)}`);
-  check('the effect is clamped further out', near(e.scale[0], 0.94, 0.012) && near(e.op[0], 0.72, 0.03) && near(e.scale[7], 0.94, 0.012), `${e.scale[0]} ${e.op[0]}`);
+  check('further out the cards are clamped to 94% and hidden: only the two neighbours stay', near(e.scale[0], 0.94, 0.012) && e.op[0] < 0.02 && near(e.scale[7], 0.94, 0.012) && e.op[7] < 0.02, `${e.scale[0]} ${e.op[0]}`);
   check('layout never changes (all cards keep one size)', new Set(e.w).size === 1 && new Set(e.h).size === 1, `${[...new Set(e.w)]} ${[...new Set(e.h)]}`);
   // mid-scroll value: half a pitch away is half way
   const mid = await p.evaluate(async () => {
@@ -368,7 +368,19 @@ console.log('mouse drag: grab, snap on release, click vs drag');
   const nb = await cardCentre(p, 3);
   await p.mouse.click(nb.x, nb.y);
   await p.waitForTimeout(450);
-  check('clicking a peeking neighbour opens that card', await sheetOpen(p) && await p.evaluate(() => document.getElementById('tsheet-title').textContent.trim() === document.querySelectorAll('.tg-title')[3].textContent.trim()));
+  check('clicking a peeking neighbour opens that card', await sheetOpen(p) && await p.evaluate(() => document.getElementById('tsheet-title').textContent.trim() === document.querySelectorAll('.tg-card .tg-title')[3].textContent.trim()));
+  // ghost neighbours: the first / last card get a faded, inert copy of the card that wraps round on the empty side
+  const gh = async () => p.evaluate(() => [...document.querySelectorAll('.tg-ghost')].map(g => ({ c: g.className, o: +getComputedStyle(g).opacity, hid: g.getAttribute('aria-hidden'), links: g.querySelectorAll('a,button,[tabindex]').length, ids: g.querySelectorAll('[id]').length })));
+  await goTo(p, 0); await p.waitForTimeout(700);
+  let g = await gh();
+  check('ghost neighbours: two, aria-hidden, no links/ids', g.length === 2 && g.every(x => x.hid === 'true' && x.links === 0 && x.ids === 0), JSON.stringify(g));
+  check('first card: the ghost before it is shown, the other is not', g[0].o > 0.6 && g[1].o < 0.05, JSON.stringify(g.map(x => x.o)));
+  await goTo(p, 3); await p.waitForTimeout(700);
+  g = await gh();
+  check('a middle card shows no ghost', g.every(x => x.o < 0.05), JSON.stringify(g.map(x => x.o)));
+  await goTo(p, 7); await p.waitForTimeout(700);
+  g = await gh();
+  check('last card: the ghost after it is shown, the other is not', g[1].o > 0.6 && g[0].o < 0.05, JSON.stringify(g.map(x => x.o)));
   await p.click('.tsheet-x');
   await p.waitForTimeout(450);
   // keyboard: the button that becomes disabled hands its focus to the other one
@@ -427,7 +439,7 @@ for (const theme of ['dark', 'light']) {
       labels: [...d.querySelectorAll('.tg-d-l')].map(e => e.textContent.replace(/:\s*$/, '').trim()),
       bodies: [...d.querySelectorAll('.tg-d-b')].map(e => e.textContent.replace(/\s+/g, ' ').trim()),
       link: d.querySelector('.tg-d-more').getAttribute('href'),
-      title: document.querySelectorAll('.tg-title')[2].textContent.replace(/\s+/g, ' ').trim(),
+      title: document.querySelectorAll('.tg-card .tg-title')[2].textContent.replace(/\s+/g, ' ').trim(),
     };
   });
   check(`${theme}: closed state: no scroll lock, sheet absent or hidden`, await p.evaluate(() => !document.documentElement.classList.contains('tsheet-open') && getComputedStyle(document.documentElement).overflow !== 'hidden') && await hiddenNow(p));

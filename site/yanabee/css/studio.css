@@ -11,6 +11,7 @@
 .sd [hidden]{display:none!important}
 .sd button:disabled,.sd [aria-disabled=true]{cursor:not-allowed}
 .sd button:disabled{opacity:.5}
+.sd .is-locked,.sd .btn[aria-disabled=true]:not(.sd-settle){opacity:.55;cursor:pointer}
 .sd svg.flip{transform:scaleX(-1)}
 
 /* ---------- intro ---------- */
@@ -94,7 +95,7 @@
 @media (min-width:700px){.sd-steps{grid-template-columns:repeat(6,1fr)}}
 .sd-step-b{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:64px;padding:8px 6px;border-radius:18px;text-align:center;font-family:var(--font-h);font-weight:600;font-size:.82rem;line-height:1.35;
   color:var(--ink-2);background:var(--surface);border:1px solid var(--line-2);transition:background-color .25s,border-color .25s,transform .25s var(--ease),box-shadow .25s}
-.sd-step-b:hover:not(:disabled){border-color:var(--brand);transform:translateY(-2px)}
+.sd-step-b:hover:not(:disabled):not(.is-locked){border-color:var(--brand);transform:translateY(-2px)}
 .sd-step-b[aria-current=step]{background:var(--grad);color:#fff;border-color:transparent;box-shadow:0 12px 24px -12px rgba(16,143,176,.85)}
 [data-theme=dark] .sd-step-b[aria-current=step]{color:#03171c}
 .sd-step-n{position:absolute;top:4px;inset-inline-start:8px;font-size:.7rem;opacity:.7}

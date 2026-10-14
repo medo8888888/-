@@ -26,6 +26,25 @@
   const prevB = $('[data-prev]'), nextB = $('[data-next]');
   const tpl = $('template[data-sheet-tpl]');
 
+  // Ghost neighbours: the first card has nothing before it and the last nothing after it, which leaves the centred card with
+  // an empty side. A faded, inert copy of the card that would wrap round sits there instead (clicking it jumps to that card).
+  // Not .tg-item / .tg-card, so the real list, its count and its links are untouched.
+  const mkGhost = (src, cls, to) => {
+    const g = doc.createElement('div');
+    g.className = 'tg-ghost ' + cls + (src.classList.contains('tg-incl') ? ' tg-incl' : '');
+    g.setAttribute('aria-hidden', 'true');
+    g.style.setProperty('--tc', src.style.getPropertyValue('--tc'));
+    const inner = doc.createElement('div');
+    inner.className = 'tg-ghost-in';
+    ['.tg-media', '.tg-body'].forEach(q => { const n = $(q, src); if (n) inner.appendChild(n.cloneNode(true)); });
+    $$('[id]', inner).forEach(n => n.removeAttribute('id'));
+    g.appendChild(inner);
+    g.addEventListener('click', () => { goTo(to); buzz('tick', 6); });
+    return g;
+  };
+  items[0].appendChild(mkGhost(items[N - 1], 'tg-ghost-a', N - 1));
+  items[N - 1].appendChild(mkGhost(items[0], 'tg-ghost-b', 0));
+
   const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
   const mqR = matchMedia('(prefers-reduced-motion: reduce)');
   const reduced = () => mqR.matches;
@@ -64,6 +83,7 @@
   };
   const setIdx = i => {
     idx = i;
+    scroller.dataset.at = i === 0 ? 'start' : i === N - 1 ? 'end' : '';
     dots.forEach((d, k) => { if (k === i) d.setAttribute('aria-current', 'true'); else d.removeAttribute('aria-current'); });
     const had = doc.activeElement === prevB || doc.activeElement === nextB ? doc.activeElement : null; // read before disabling: the browser moves focus away from a disabled button
     if (prevB) prevB.disabled = i <= 0;
@@ -79,8 +99,8 @@
     const sr = scroller.getBoundingClientRect(), c = sr.left + sr.width / 2;
     const rs = items.map(li => li.getBoundingClientRect()); // read everything first, then write
     items.forEach((li, i) => {
-      const r = rs[i], a = Math.min(1, Math.abs(r.left + r.width / 2 - c) / pitch);
-      const s = (1 - 0.06 * a).toFixed(3), o = (1 - 0.28 * a).toFixed(3);
+      const r = rs[i], d = Math.abs(r.left + r.width / 2 - c) / pitch, a = Math.min(1, d);
+      const s = (1 - 0.06 * a).toFixed(3), o = (d <= 1 ? 1 - 0.28 * d : 0.72 * clamp((1.7 - d) / 0.7, 0, 1)).toFixed(3); // centre + one card each side
       if (li._s !== s) { li._s = s; li.style.transform = `scale(${s})`; }
       if (li._o !== o) { li._o = o; li.style.opacity = o; }
     });
