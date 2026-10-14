@@ -94,3 +94,13 @@
   .q-card{grid-template-columns:1fr;padding:22px}
   .q-words{flex-direction:row;gap:14px;align-items:baseline}
 }
+
+/* ---------- hero entrance: a quick stagger (4 items, 55 ms apart, 220 ms each, opacity + 8 px) once the splash is gone ---------- */
+.js .hero-home .hero-copy>.rv{transform:translateY(8px);transition:opacity 220ms ease-out,transform 220ms cubic-bezier(.22,.8,.24,1),
+  translate 150ms ease-out,border-color 150ms;transition-delay:calc(var(--hi,0) * 55ms)}
+.js .hero-home .hero-copy>.rv.in{transform:none}
+@media(prefers-reduced-motion:reduce){.js .hero-home .hero-copy>.rv{transform:none}}
+.hero-home .hero-copy>:nth-child(2){--hi:1}.hero-home .hero-copy>:nth-child(3){--hi:2}.hero-home .hero-copy>:nth-child(4){--hi:3}
+html.intro-on .hero-home .hero-copy>.rv,html.intro-on .hero-home .hero-copy>.rv.in{opacity:0;transform:translateY(8px);transition:none}
+html.intro-on .hero-home .hero-visual{opacity:0;transition:none}
+.hero-home .hero-visual{transition:opacity 280ms ease-out}

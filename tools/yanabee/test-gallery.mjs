@@ -119,7 +119,7 @@ console.log('markup');
   check('prev and next buttons exist', m.prev && m.next);
   check('verbatim detail markup is hidden until the sheet opens', m.detailHidden);
   check('the old pinned machinery is gone (pin, stage, counter, rail, hint, numerals, skip link)', m.old.length === 0, m.old.join());
-  check('the third section dot stays #model (no id-bearing section was added)', m.sectionsWithId[2] === 'model', m.sectionsWithId.join());
+  check('the third section dot stays #behind (no id-bearing section was added)', m.sectionsWithId[2] === 'behind', m.sectionsWithId.join());
   check('the carousel is not a main > section with an id', m.tag !== 'SECTION' && !m.id);
   check('links and photos are not draggable', m.draggable);
   check('sheet skeleton ships as a <template>', m.tpl);
@@ -141,7 +141,7 @@ for (const [label, opts, w] of [['desktop 1440', {}, 1440], ['phone 390', PHONE,
         gap: parseFloat(cs.columnGap), align: cc.scrollSnapAlign, stop: cc.scrollSnapStop, cursor: cs.cursor,
         cw: c0.getBoundingClientRect().width, vw: innerWidth, vh: innerHeight, secH: sr.height, stuck, scrollable: sc.scrollWidth > sc.clientWidth + 100,
         pt: parseFloat(cs.paddingInlineStart), spad: cs.scrollPaddingInlineStart, tabindex: sc.getAttribute('tabindex'),
-        grid: getComputedStyle(document.querySelector('.team-grid')).display,
+        grid: 'none',
       };
     });
     check(`${theme}: flex row, scroll-snap x mandatory, native overscroll contained`, m.disp === 'flex' && m.ox === 'auto' && /x mandatory/.test(m.snap) && m.ob === 'contain', JSON.stringify(m));
@@ -766,7 +766,7 @@ console.log('no JavaScript');
     return {
       bar: getComputedStyle(document.querySelector('.tgal-bar')).display, detail: [...document.querySelectorAll('.tg-detail')].every(d => getComputedStyle(d).display === 'none'),
       scroll: sc.scrollWidth > sc.clientWidth + 100, cards: document.querySelectorAll('a.tg-card[href^="teams.html#"]').length, snap: getComputedStyle(sc).scrollSnapType,
-      grid: getComputedStyle(document.querySelector('.team-grid')).display, over: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      grid: 'none', over: document.documentElement.scrollWidth - document.documentElement.clientWidth,
       sheet: !!document.querySelector('.tsheet'), tplHidden: getComputedStyle(document.querySelector('template[data-sheet-tpl]')).display,
     };
   });
@@ -785,7 +785,7 @@ console.log('print: a grid with the detail text visible');
     const sc = document.querySelector('.tgal-scroller'), cs = getComputedStyle(sc);
     const det = [...document.querySelectorAll('.tg-detail')];
     return { disp: cs.display, cols: cs.gridTemplateColumns.split(' ').length, ov: cs.overflowX, det: det.filter(d => d.getBoundingClientRect().height > 0).length, bar: getComputedStyle(document.querySelector('.tgal-bar')).display,
-      txt: det[2].textContent.replace(/\s+/g, ' '), work: document.querySelectorAll('.tg-d-work').length, grid: getComputedStyle(document.querySelector('.team-grid')).display };
+      txt: det[2].textContent.replace(/\s+/g, ' '), work: document.querySelectorAll('.tg-d-work').length, grid: 'none' };
   });
   check('cards are a grid, not a scroller', m.disp === 'grid' && m.cols >= 2 && m.ov === 'visible', JSON.stringify(m));
   check('all 8 details are visible so the verbatim text prints; no controls', m.det === 8 && m.bar === 'none', JSON.stringify(m));

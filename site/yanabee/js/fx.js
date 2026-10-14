@@ -33,7 +33,7 @@
 
   /* ---------------- tilt + light on cards, magnetic buttons, hero light ---------------- */
   if (fine && !reduce) {
-    const TILT = '.card,.team-card,.tm-team,.tm-inc,.b-mission,.b-goal,.phase,.w-tile,.mini-kpi,.pillar,'
+    const TILT = '.card,.pl-card,.team-card,.tm-team,.tm-inc,.b-mission,.b-goal,.phase,.w-tile,.mini-kpi,.pillar,'
       + '.q-kpi,.q-goal,.q-feat,.q-card,.q-role,.q-org-node,.op-risk,.op-fgov,.op-chart,.op-principle,.model-fund';
     const MAGNET = '.btn,.btn-ai,.chat-fab,.fx-ask';
     const FAST = 'transform .12s ease-out, translate .35s cubic-bezier(.22,.8,.24,1), box-shadow .35s, border-color .35s, background-color .35s';

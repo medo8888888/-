@@ -94,10 +94,10 @@ console.log('markup: the mission, verbatim, in four ordinary text steps');
   check('the mission text appears once in the section (last fragment found exactly once)', await p.$eval('.story', (s, last) => (s.textContent.replace(/\s+/g, ' ').split(last).length - 1) === 1, steps[3].replace(/\.$/, '')));
   const kick = await p.$eval('.story h2.kicker', e => e.textContent.trim());
   check('kicker names the idea', kick === 'فكرة ينابيع في أربع خطوات', kick);
-  check('section has no id; no other section[id] was added (fx.js third section dot stays #model)', await p.evaluate(() => {
+  check('section has no id; no other section[id] was added (fx.js third section dot stays #behind)', await p.evaluate(() => {
     const s = document.querySelector('[data-story]');
     const ids = [...document.querySelectorAll('main section[id]')].filter(x => x.querySelector('h2')).map(x => x.id);
-    return !s.id && !s.matches('main > section[id]') && ![...document.querySelectorAll('main section[id]')].some(x => x.contains(s) || s.contains(x)) && ids[2] === 'model';
+    return !s.id && !s.matches('main > section[id]') && ![...document.querySelectorAll('main section[id]')].some(x => x.contains(s) || s.contains(x)) && ids[2] === 'behind';
   }));
   check('steps are not hidden from assistive tech and not user-select:none', await p.$$eval('.story .step', els => els.every(e => !e.closest('[aria-hidden="true"]') && getComputedStyle(e.querySelector('.step-text')).userSelect !== 'none')));
   check('decoration is hidden from assistive tech (canvas, labels, droplet)', await p.$$eval('.story-canvas, .story-tags, .story-core, .story-bg', els => els.length === 4 && els.every(e => e.getAttribute('aria-hidden') === 'true')));
