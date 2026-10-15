@@ -168,6 +168,69 @@ No runtime network dependency.
 **Nationwide claims to avoid:** no invented national statistics, no claim of integration with
 any real agency system, no claim that real units are tracked, no real incident data.
 
+## The control room, the drones that alert it, and the rescue robot — user requirement
+
+User requirement (verbatim): "what doe sthe contol room see and there is more featutres you
+can do i want the actulla and landing page the dornes will alert us and there will be robot".
+
+**1. Drones alert the control room.** A fleet of **civil-defence-operated, docked drones**
+(concept; stations/hospital roofs from the real facility data; QCAA rules apply; the drone
+drops nothing except an authority-operated AED in SOS) patrols assigned sectors and is
+**launched by sentinel triggers or by a citizen "need help"**. When a drone sees something it
+raises a **DRONE ALERT** to the control room: hazard guess, GPS position, heading, altitude,
+a **camera frame (RGB) and a thermal frame**, thermal max/hotspot, the evidence keys
+(rule-based computer vision + thermal), wind, battery, link quality. Drones fly **in a
+straight line** (not on roads) with a cruise speed derated by heat/wind/battery (labelled
+assumptions), so a drone usually reaches the scene **before ground units** — the control
+room gets **"first eyes on scene" minutes** (SIM) and can verify before committing units.
+Autonomy rule: a drone may launch to *verify* on its own; a *public alert* and *ground
+dispatch* still need the human key (Approve) — except the local siren, which never waits.
+
+**2. What the control room sees** (a real operations console, not a map demo):
+- **Alert queue** (priority-sorted, source badges: drone / sentinel / citizen / operator,
+  age timer, hazard icon, confidence, state SUSPECT→CONFIRMED→APPROVED).
+- **Live drone feed wall:** RGB / thermal / fused view with detection overlays (fire/smoke
+  regions, hotspot crosshair, people boxes on thermal), telemetry HUD (altitude, speed,
+  battery, wind, heading), snapshot + record-clip buttons, two-way **voice announce** to the
+  drone speaker in the right languages, friendly-light signature toggle. (Demo feed = a
+  procedurally generated aerial scene analysed by the real `ManaraFire` code, clearly labelled
+  SIM; a real webcam/video file can be plugged in as a source.)
+- **Fleet board:** every drone and robot with state (docked / launching / en route / on
+  station / returning / charging / fault), battery, ETA, heat derating, assigned incident.
+- **National map** (existing) + drone trails and coverage circles; **dispatch** (existing);
+  **robot panel** (below); **hand-off card**; **comms log** (who said/sent what, when);
+  **shift handover summary**; **KPI strip** incl. first-eyes time, time-to-approve,
+  time-to-first-alert-sent, % residents accounted.
+- **Wall mode** for a projector: map + feed wall + queue, large type; **operator roles**
+  (viewer / operator / incident commander) for the human-key logic (approve requires
+  operator; robot deployment requires incident commander) — simulated, no real auth.
+
+**3. The rescue robot (concept + simulated prototype).** A small **ground rescue robot**
+(tracked or wheeled), carried by the fire/rescue unit or pre-positioned at a building. It goes
+**where people should not go first**: smoke- or gas-filled corridors, rooms with unaccounted
+residents. Capabilities (all simulated here; hardware plan in build.html): RGB + thermal
+camera, CO/gas sensor, microphone + speaker (two-way voice: "I am a Civil Defence robot —
+follow the green light"), LED friendly-light + route beacons, a small pouch (smoke hood /
+water / first-aid card), obstacle avoidance, a map of the building from the twin. Behaviour
+(simulated in the building view): after **incident-commander approval** it deploys at the
+entrance, **searches rooms in priority order** (unaccounted + needs-help first), uses thermal
++ audio to **find people**, **speaks guidance in their language/format**, **marks a safe
+route with beacons**, reports each find (room, person need, condition guess) to the control
+room and crew, and **reports blocked/locked doors** (it does not break doors; it tells the
+guard/firefighters). It **assists; firefighters decide**. Honest limits to show: stairs
+(wheeled models cannot climb; tracked can with limits), battery and heat/smoke limits,
+Wi-Fi/mesh range, false positives of thermal people-detection in Gulf heat, noise.
+
+**4. Landing page.** The landing page leads with this story: *the drone sees and alerts →
+the control room verifies (proof before panic) and approves → the nearest-fastest units
+roll → the robot goes in and finds people → everyone is guided out and counted*. It embeds
+a live mini control-room scene, the drone feed, the robot search animation and the Qatar map.
+
+**Honesty:** drones and robot are a **concept with a simulated prototype**; the browser
+demo is a simulation (SIM); any hardware claim must match docs/MANARA-HAZARDS.md and the
+build guide; no claim that real drones/robots were flown, tested in fire, or approved by
+any authority; QCAA/Civil Defence approvals are required for real operation.
+
 ## Depth vs breadth (what to build for real)
 
 - **Deep (real sensors + live booth demo):** fire & smoke (hot mug on the twin board +
