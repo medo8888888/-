@@ -52,6 +52,7 @@ SUITES=(
   "detect|node $T/test-detect.mjs|browser"
   "mission|node $T/test-mission.mjs|browser"
   "control|node $T/test-control-room.mjs|browser"
+  "control-panels|node $T/test-control-panels.mjs|browser"
   "alert|node $T/test-alert.mjs|browser"
   "robot|node $T/test-robot-page.mjs|browser"
   "home|node $T/test-home.mjs|browser"
