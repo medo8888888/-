@@ -1,6 +1,7 @@
 Photos are from Pexels (https://www.pexels.com), used under the Pexels License
 (free for commercial and personal use, no attribution required; credit given as a courtesy):
-team-t1 (Pexels 34355095), team-t2 (21553449), team-t3 (12981604), team-t4 (9127614), team-t5 (36210259),
-team-t6 (34171707), team-t7 (36463780), inclusion (6248986), hero-home (36853513), hero-operations (7984732),
+team-t1 (Pexels 36275903, Malaysia), team-t2 (21553449, Saudi Arabia), team-t3 (9063749, Pakistan), team-t4 (34178201, Egypt),
+team-t5 (20210245, Bangladesh), team-t6 (38975791, Iraq), team-t7 (34133846, Bangladesh), inclusion (31413332, Libya),
+hero-home (36853513, Indonesia), hero-operations (7984732, Gulf),
 hero-quran (8164397), quran-dark (10880973).
 Photo page URL pattern: https://www.pexels.com/photo/<id>/
