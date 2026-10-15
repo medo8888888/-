@@ -762,7 +762,11 @@ N.busDroneAlert(nat, 'DA-1') → { type: 'drone-alert', scope: 'national', id, a
 N.busDroneStatus(nat [, droneId]) → { type: 'drone-status', scope: 'national', id, clock,
                                  drones: [{ id, callsign, name, state, stateText, lon, lat, altM, headingDeg, speedMps, batteryPct, etaSec, incident, alert, link,
                                             derate: {tempC, speedLostPct, enduranceLostPct}, fault }], counts, sim: true }
+// Control Room → other tabs (js/control-feeds.js, published once per voice announcement through a drone speaker; the phones ignore it; the comms tab logs it)
+{ type: 'drone-announce', scope: 'national', drone: 'D-…' /* drone id */, callsign: 'DR-…' /* the feed's callsign */, key: 'nat.drone.say.…' /* message key */, lang: 'ar'|'en',
+  text: {ar, en}, alert: 'DA-…'|null /* alert id the drone is on */, incident: 'I-…'|null, clock: 'hh:mm:ss' /* simulated clock */, sim: true, exercise: true }
 ```
+`drone-announce` is sent by the operator action `ControlRoom` → `announceVia` (engine side: `ManaraNational.announce(nat, droneId, key, lang)`, which also writes a `drone-announce` comms entry and event); it is allowed only while the drone is on station or verifying, and a language other than `ar`/`en` falls back to English and says so in the comms log. Like every control-room bus message it carries `sim: true` and `exercise: true` (added by `busSend`), and `Manara.link.send()` adds `ts`, `from` and `_k`. The text is read-only data for the receiver: show it with `textContent`.
 Events added to `snapshot().events`: `alert-raised · drone-launched · drone-on-station · drone-verified · alert-confirmed · alert-dismissed · alert-escalated · drone-patrol-detect · drone-returning · drone-relaunch · drone-fault ·
 drone-low-battery · drone-recalled · drone-announce · aed-drop · false-alarm-dispatch · false-alarm-on-scene` (each with an `{ar, en}` text).
 
