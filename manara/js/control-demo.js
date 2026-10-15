@@ -305,14 +305,14 @@
     render(true); CR.live(B('الخطوة ', 'Step ') + N(i + 1) + ': ' + B(s.t[0], s.t[1]) + '. ' + s.text().join(' '));
   }
   function next() {
-    if (!D.running) return; var s = DEMO[D.step]; if (!s || s.last) return;
-    try { s.finish(); } catch (e) { try { console.error(e); } catch (e2) { /* ignore */ } }
-    go(D.step + 1);
+    if (!D.running || D.advancing) return; var s = DEMO[D.step]; if (!s || s.last) return;
+    D.advancing = true;                                                                  // finish() fast-forwards the clock, which ticks the UI: no second Next may start inside it
+    try { try { s.finish(); } catch (e) { try { console.error(e); } catch (e2) { /* ignore */ } } go(D.step + 1); } finally { D.advancing = false; }
   }
   function pauseToggle() { D.paused = !D.paused; CR.api.setPlaying(!D.paused && !(DEMO[D.step] && DEMO[D.step].pause)); if (D.paused) D.stepPausedAt = CR.now(); else if (D.stepPausedAt) { D.stepAt += CR.now() - D.stepPausedAt; D.stepPausedAt = 0; } render(true); CR.live(D.paused ? B('أُوقف العرض مؤقتًا', 'The story is paused') : B('استؤنف العرض', 'The story resumed')); }
   // runs on every UI tick: the step ends when its condition holds and its minimum time has passed (or its maximum time ran out)
   function tick() {
-    if (!D.running || D.paused || D.lock || D.entering) return; var s = DEMO[D.step]; if (!s) return;
+    if (!D.running || D.paused || D.lock || D.entering || D.advancing) return; var s = DEMO[D.step]; if (!s) return;
     var now = CR.now(), el0 = (now - D.stepAt) / D.pace; D.done = s.done();
     if (ui.bar && s.max) ui.bar.style.setProperty('--w', Math.min(100, el0 / s.max * 100) + '%'); else if (ui.bar) ui.bar.style.setProperty('--w', '100%');
     render(false);
