@@ -61,6 +61,7 @@
     smoke: '<path d="M7 18a4 4 0 0 1-.6-8A6 6 0 0 1 18 9a4.5 4.5 0 0 1-.5 9z"/>',
     code: '<path d="M8 6l-6 6 6 6M16 6l6 6-6 6"/>',
     chart: '<path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/>',
+    chevron: '<path d="M6 9l6 6 6-6"/>',
     help: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7M12 17h.01"/>',
     star: '<path d="M12 3l2.8 5.8 6.2.9-4.5 4.4 1 6.2L12 17.4 6.5 20.3l1-6.2L3 9.7l6.2-.9z"/>',
     layers: '<path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/>',
@@ -101,6 +102,7 @@
     'nav.pitch': { ar: 'العرض التقديمي', en: 'Pitch' },
     'nav.report': { ar: 'التقرير العلمي', en: 'Report' },
     'nav.poster': { ar: 'لوحة العرض', en: 'Display Board' },
+    'nav.more': { ar: 'المزيد', en: 'More' },
     'ui.menu': { ar: 'القائمة', en: 'Menu' },
     'ui.close': { ar: 'إغلاق', en: 'Close' },
     'ui.theme': { ar: 'تبديل الوضع الليلي/النهاري', en: 'Toggle dark/light mode' },
@@ -191,10 +193,17 @@
   ];
   var EXTRA = [['poster.html', 'nav.poster', 'layers']];
   function current() { return (document.body && document.body.getAttribute('data-page')) || 'index.html'; }
-  function links(cls) {
-    return PAGES.map(function (p) {
-      return '<a href="' + p[0] + '"' + (p[0] === current() ? ' aria-current="page"' : '') + (cls ? ' class="' + cls + '"' : '') + '>' + icon(p[2]) + '<span>' + s(p[1]) + '</span></a>';
-    }).join('');
+  function linkOf(p, cls) {
+    return '<a href="' + p[0] + '"' + (p[0] === current() ? ' aria-current="page"' : '') + (cls ? ' class="' + cls + '"' : '') + '>' + icon(p[2]) + '<span>' + s(p[1]) + '</span></a>';
+  }
+  function links(cls) { return PAGES.map(function (p) { return linkOf(p, cls); }).join(''); }
+  var MORE = ['build.html', 'pitch.html', 'report.html'];             // the top bar keeps the six working pages; the rest sit under "More" so ten pages never clip (the phone menu lists them all)
+  function barLinks() {
+    var rest = PAGES.filter(function (p) { return MORE.indexOf(p[0]) < 0; }), more = PAGES.filter(function (p) { return MORE.indexOf(p[0]) >= 0; });
+    var inMore = more.some(function (p) { return p[0] === current(); });
+    return rest.map(function (p) { return linkOf(p); }).join('') +
+      '<div class="nav-more"><button class="nav-more-btn" type="button" aria-expanded="false" aria-haspopup="true" aria-controls="manara-more"' + (inMore ? ' data-current="true"' : '') + '><span>' + s('nav.more') + '</span>' + icon('chevron') + '</button>' +
+      '<div class="nav-more-pop" id="manara-more" hidden>' + more.map(function (p) { return linkOf(p); }).join('') + '</div></div>';
   }
   function footLinks(files) {                                         // footer columns are picked by file name, so adding a page never shifts them
     var all = PAGES.concat(EXTRA);
@@ -210,7 +219,7 @@
       var wasOpen = !!$('.menu.open');
       nav.innerHTML =
         '<div class="nav-bar">' + brand() +
-        '<nav class="nav-links" aria-label="' + s('ui.menu') + '">' + links() + '</nav>' +
+        '<nav class="nav-links" aria-label="' + s('ui.menu') + '">' + barLinks() + '</nav>' +
         '<div class="nav-tools">' +
         '<button class="icon-btn lang-btn" type="button" data-lang-toggle aria-label="' + s('ui.lang') + '" title="' + s('ui.lang') + '">' + (lang() === 'ar' ? 'EN' : 'ع') + '</button>' +
         '<button class="icon-btn theme-toggle" type="button" aria-label="' + s('ui.theme') + '" title="' + s('ui.theme') + '"></button>' +
@@ -226,6 +235,17 @@
       mb.addEventListener('click', function () { setMenu(!menu.classList.contains('open')); });
       $$('a', menu).forEach(function (a) { a.addEventListener('click', function () { setMenu(false); }); });
       if (wasOpen) setMenu(true);
+      var mo = $('.nav-more', nav), mob = $('.nav-more-btn', nav), mop = $('.nav-more-pop', nav);
+      if (mo) {                                                        // "More" disclosure: Esc / outside click / focus leaving close it
+        var setMore = function (open, back) {
+          mop.hidden = !open; mob.setAttribute('aria-expanded', open ? 'true' : 'false');
+          if (!open && back) mob.focus();
+        };
+        mob.addEventListener('click', function () { setMore(mop.hidden); });
+        mo.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !mop.hidden) { e.preventDefault(); setMore(false, true); } });
+        mo.addEventListener('focusout', function (e) { if (!mop.hidden && e.relatedTarget && !mo.contains(e.relatedTarget)) setMore(false); });
+        document.addEventListener('click', function (e) { if (!mop.hidden && !mo.contains(e.target)) setMore(false); });
+      }
       $('[data-lang-toggle]', nav).addEventListener('click', toggleLang);
       $('.theme-toggle', nav).addEventListener('click', toggleTheme);
     }

@@ -189,7 +189,7 @@
     lab(T.clock, 'aria-label', 'الوقت المحاكى في قطر (آسيا/قطر، UTC+3، بلا توقيت صيفي)', 'Simulated time in Qatar (Asia/Qatar, UTC+3, no daylight saving)'); lab(T.clock, 'title', 'الوقت المحاكى في قطر (آسيا/قطر، UTC+3، بلا توقيت صيفي)', 'Simulated time in Qatar (Asia/Qatar, UTC+3, no daylight saving)');
     // transport
     T.play = h('button', { type: 'button', class: 'cr-tbtn cr-play', onclick: function () { CR.api.setPlaying(!S.playing); } });
-    T.play.appendChild(icon('pause')); T.playIc = T.play.firstChild; T.play.appendChild(h('span', { class: 'cr-tx cr-play-t' }, ''));
+    T.play.appendChild(icon('pause')); T.playIc = T.play.firstChild; T.play.appendChild(h('span', { class: 'cr-tx' }, ''));
     T.speed = seg({ label: ['سرعة المحاكاة', 'Simulation speed'], cls: 'cr-speed', items: SPEEDS.map(function (v) { return { id: v, text: '×' + v, tip: ['سرعة ×' + v, 'Speed ×' + v] }; }), get: function () { return S.speed; }, set: function (v) { CR.api.setSpeed(v); } });
     T.seek = h('select', { class: 'cr-sel cr-seek', onchange: function () { var v = T.seek.value; T.seek.value = ''; seekBy(v); } });
     lab(T.seek, 'aria-label', 'تقديم سريع للساعة المحاكاة', 'Fast-forward the simulated clock'); T.seekOpts = {};
@@ -212,11 +212,11 @@
     T.help = topBtn('help', 'مساعدة وإرشادات', 'Help and legend', function () { UI.openHelp(); }, { 'data-x': 'help' }); T.help.classList.add('cr-hide-wall');
     T.keys = topBtn('keyboard', 'اختصارات لوحة المفاتيح', 'Keyboard shortcuts', function () { UI.openShortcuts(); }); T.keys.classList.add('cr-hide-wall');
     T.lang = h('button', { type: 'button', class: 'cr-tbtn cr-langb', onclick: function () { win.Manara.toggleLang(); } }); T.langT = h('span', { class: 'cr-lang-t', text: '' }); T.lang.appendChild(T.langT);
-    T.theme = h('button', { type: 'button', class: 'cr-tbtn cr-themeb', onclick: function () { win.Manara.theme.toggle(); } }); T.themeIc = null;
+    T.theme = h('button', { type: 'button', class: 'cr-tbtn', onclick: function () { win.Manara.theme.toggle(); } }); T.themeIc = null;
     T.more = h('button', { type: 'button', class: 'cr-tbtn cr-more', id: 'cr-more', 'aria-expanded': 'false', 'aria-controls': 'cr-tools', onclick: function () { moreSet(!$('#cr-tools').classList.contains('open')); } }, icon('menu'), h('span', { class: 'cr-tx' }, bi('المزيد', 'More')));
     lab(T.more, 'title', 'المزيد من الأدوات', 'More tools');
     T.tools = h('div', { class: 'cr-tools', id: 'cr-tools' },
-      h('div', { class: 'cr-fld cr-fld-speed cr-hide-wall' }, h('span', { class: 'cr-fld-l cr-fld-lx' }, bi('السرعة', 'Speed')), T.speed), h('div', { class: 'cr-fld cr-fld-seek cr-hide-wall' }, h('span', { class: 'cr-fld-l cr-fld-lx' }, bi('تقديم سريع', 'Fast-forward')), T.seek),
+      h('div', { class: 'cr-fld cr-hide-wall' }, h('span', { class: 'cr-fld-l cr-fld-lx' }, bi('السرعة', 'Speed')), T.speed), h('div', { class: 'cr-fld cr-hide-wall' }, h('span', { class: 'cr-fld-l cr-fld-lx' }, bi('تقديم سريع', 'Fast-forward')), T.seek),
       T.roleWrap, h('div', { class: 'cr-popwrap cr-hide-wall' }, T.scnBtn, T.scnPanel), T.sound, T.wallBtn, T.help, T.keys, T.lang, T.theme);
     top.append(T.title, T.clock, T.play, T.more, T.tools);
     syncTop();

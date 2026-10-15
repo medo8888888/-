@@ -52,6 +52,7 @@ SUITES=(
   "detect|node $T/test-detect.mjs|browser"
   "mission|node $T/test-mission.mjs|browser"
   "control|node $T/test-control-room.mjs|browser"
+  "control-feeds|node $T/test-control-feeds.mjs|browser"
   "control-panels|node $T/test-control-panels.mjs|browser"
   "alert|node $T/test-alert.mjs|browser"
   "robot|node $T/test-robot-page.mjs|browser"
@@ -80,7 +81,7 @@ want() {  # name -> 0 if it should run
   local n="$1"
   if [ -n "$ONLY" ]; then case ",$ONLY," in *",$n,"*) ;; *) return 1 ;; esac; fi
   case ",$SKIP," in *",$n,"*) return 1 ;; esac
-  if [ $FAST -eq 1 ]; then case "$n" in poster|home|pitch|alert|detect|mission|control|robot|ui-flow) return 1 ;; esac; fi
+  if [ $FAST -eq 1 ]; then case "$n" in poster|home|pitch|alert|detect|mission|control|control-feeds|robot|ui-flow) return 1 ;; esac; fi
   return 0
 }
 

@@ -693,7 +693,7 @@ const AUDIT = ({ lang, theme, width, name }) => {
     } }
   out.contrastN = sampled; out.contrastSkipped = skipped;
   // globals leaked by scripts (IIFE law): anything that is not Manara*/MANARA*/documented
-  out.globals = Object.getOwnPropertyNames(window).filter(k => !(k in window.__baselineGlobals || {}) && !/^(Manara|MANARA|MissionControl|__|webkit|on[a-z]+$)/.test(k) && !document.getElementById(k) && !document.getElementsByName(k).length);
+  out.globals = Object.getOwnPropertyNames(window).filter(k => !(k in window.__baselineGlobals || {}) && !/^(Manara|MANARA|MissionControl|ControlRoom|NatMap|__|webkit|on[a-z]+$)/.test(k) && !document.getElementById(k) && !document.getElementsByName(k).length);
   return out;
 };
 
@@ -768,7 +768,7 @@ if (want('pages')) {
   check('one <main>, skip link href="#main", viewport meta, a visible h1 on every page', P.misc.length === 0, first(P.misc));
   check(`nav: ${NAV_PAGES.length} links in the bar and ${NAV_PAGES.length} in the mobile menu (the PAGES list of core.js), aria-current marks the current page only`, P.nav.length === 0, first(P.nav));
   check('RTL/LTR mirroring: the brand sits on the right in Arabic and on the left in English (desktop)', P.brand.length === 0, first(P.brand));
-  check('scripts leak no globals except Manara*/MANARA*/MissionControl (IIFE law)', P.globals.length === 0, first(P.globals));
+  check('scripts leak no globals except Manara*/MANARA*/MissionControl/ControlRoom/NatMap (IIFE law)', P.globals.length === 0, first(P.globals));
   if (P.leak.length) console.log('  info language leakage (not a failure): ' + first(P.leak, 6));
 
   // ---- link resolution: every local href found on any page

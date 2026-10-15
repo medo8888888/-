@@ -92,7 +92,7 @@
     // core.js (shared, not ours) still carries the fire-only tagline and footer text. Override them from this page only; the same objects are used by the
     // shell, so a re-render picks them up. Idempotent. Remove once core.js says the same.
     var tg = M.TAGLINE; if (!tg) return;
-    var ar = 'المسيّرة ترى… غرفة التحكم تُثبت… ولا أحدَ يُترك خلفنا', en = 'The drone sees. The control room proves. No one is left behind.';
+    var ar = 'المسيّرة ترى… ولا أحدَ يُترك خلفنا', en = 'The drone sees. No one is left behind.';
     if (tg.ar === ar && tg.en === en) return;
     tg.ar = ar; tg.en = en;
     M.strings({

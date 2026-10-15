@@ -63,6 +63,7 @@ body.control .nav{flex:none}
 .cr-sim{font-size:.64em;padding:0 6px;line-height:1.6;flex:none;font-family:var(--font-m);font-weight:700}
 body.control .toasts{inset-inline:auto 16px;transform:none;inset-block-end:76px;width:min(400px,calc(100vw - 32px));align-items:stretch}
 body.control .toast{font-size:.84rem;padding:8px 12px;line-height:1.45}
+body.control .toasts .toast:nth-last-child(n+4){display:none}
 
 /* ---------- 2. top bar ---------- */
 .cr-top{display:flex;align-items:center;gap:10px;flex:none;min-height:56px;padding:6px 10px;background:var(--cr-pane);border:1px solid var(--cr-edge);border-radius:var(--cr-r);position:relative;z-index:30}
@@ -74,6 +75,8 @@ body.control .toast{font-size:.84rem;padding:8px 12px;line-height:1.45}
 .cr-clock{display:flex;flex-direction:column;line-height:1.2;padding-inline:12px;border-inline:1px solid var(--cr-edge);min-width:0}
 .cr-clock-r{display:flex;align-items:center;gap:8px}
 .cr-clock-t{font-size:1.4em;font-weight:600;color:var(--head);font-family:var(--font-m);white-space:nowrap}
+.cr-logo-w{flex:none}
+.cr-clock-d{color:var(--ink-2)}
 .cr-clock-s{font-size:.74em;color:var(--muted);white-space:nowrap}
 .cr-tools{display:flex;align-items:center;gap:6px;margin-inline-start:auto;min-width:0}
 .cr-fld{display:flex;align-items:center;gap:6px;font-size:.78em;color:var(--ink-2)}
@@ -81,6 +84,8 @@ body.control .toast{font-size:.84rem;padding:8px 12px;line-height:1.45}
 @media (min-width:1240px){.cr-fld-lx{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0,0,0,0)}}
 .cr-sel{min-height:36px;padding:2px 8px;border:1px solid var(--line-2);border-radius:10px;background:var(--surface);color:var(--ink);font-size:.95em;max-width:100%}
 .cr-seek{max-width:120px}
+.cr-role-sel{min-width:128px}
+.cr-scn-b{min-width:44px}
 .cr-tbtn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-width:38px;min-height:38px;padding:4px 9px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);font-weight:600;font-size:.86em;transition:border-color .2s,color .2s,background-color .2s}
 .cr-tbtn:hover{border-color:var(--brand);color:var(--head)}
 .cr-tbtn[aria-pressed=true],.cr-tbtn[aria-expanded=true]{background:color-mix(in oklab,var(--brand) 14%,var(--surface));border-color:var(--brand);color:var(--head)}
@@ -295,7 +300,7 @@ body.control .toast{font-size:.84rem;padding:8px 12px;line-height:1.45}
 .cr[data-state=ready] .cr-boot{display:none}
 
 /* ---------- 6. the demo narration bar ---------- */
-.cr-demo{flex:none;display:flex;flex-direction:column;gap:6px;padding:10px 14px;border-radius:var(--cr-r);background:var(--surface);border:1px solid var(--accent);box-shadow:var(--shadow)}
+.cr-demo{flex:none;display:flex;flex-direction:column;gap:6px;padding:8px 14px;border-radius:var(--cr-r);background:var(--surface);border:1px solid var(--accent);box-shadow:var(--shadow)}
 .cr-demo-h{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .cr-demo-steps{display:flex;gap:6px;align-items:center;list-style:none}
 .cr-demo-steps li{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;border:2px solid var(--line-2);background:var(--surface);color:var(--muted);font:700 .74em var(--font-m)}
@@ -304,7 +309,7 @@ body.control .toast{font-size:.84rem;padding:8px 12px;line-height:1.45}
 .cr-demo-steps li.now{border-color:var(--brand);color:var(--head);box-shadow:0 0 0 4px color-mix(in oklab,var(--brand) 20%,transparent)}
 .cr-demo-n{font-size:.8em;color:var(--muted);white-space:nowrap}
 .cr-demo-t{font-family:var(--font-h);font-weight:700;font-size:1.05em;color:var(--head);flex:1;min-width:0}
-.cr-demo-p{color:var(--ink-2);font-size:.92em;line-height:1.55}
+.cr-demo-p{color:var(--ink-2);font-size:.9em;line-height:1.5}
 .cr-demo-p b{color:var(--head)}
 .cr-demo-why{font-size:.84em;color:var(--ink-2);padding:6px 10px;border-radius:8px;background:color-mix(in oklab,var(--accent) 9%,var(--surface));border:1px solid color-mix(in oklab,var(--accent) 30%,var(--line))}
 .cr-demo-bar{height:4px;background:var(--line);border-radius:2px;overflow:hidden}
@@ -538,3 +543,4 @@ html.cr-wall .cr-foot-d:not([open]) .cr-foot-p{display:none}
 }
 @media print{.cr-top,.cr-tabbar,.cr-hud,.cr-queue,.cr-right,.cr-dlg{display:none!important}}
 @media (max-width:699px){body.control .toasts .toast:nth-last-child(n+3){display:none}}
+@media (max-height:1000px){.cr[data-demo="1"] .cr-timeline{display:none}}

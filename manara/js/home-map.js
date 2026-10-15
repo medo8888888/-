@@ -309,8 +309,8 @@
       st.prev = st.cur || rec; st.cur = rec; st.tickAt = now();
     }
     function startIncident() {
-      run = makeRun(hz); st.phase = 1; st.sim0 = run.nat.t; st.evIdx = run.nat.events.length;
-      snap(); st.prev = st.cur;
+      run = makeRun(hz); st.phase = 1; st.sim0 = run.nat.t; st.evIdx = 0;
+      snap(); st.prev = st.cur; drain('alert-raised');
       var bb = bboxOf(run); map.flyTo({ bbox: bb, pad: 54 }, reduced() ? 0 : 1500);
       var pl = planOf(run), ul = $('#qd-units'); clear(ul);
       pl.units.forEach(function (u) {
@@ -325,7 +325,7 @@
       st.cap = null;
     }
     function latestText(ev) { return L(ev.text); }
-    function drain() {
+    function drain(until) {                                     // apply the engine's new events (until: stop right after the first event of that type)
       var evs = run.nat.events, e, i;
       for (i = st.evIdx; i < evs.length; i++) {
         e = evs[i];
@@ -337,8 +337,9 @@
         else if (e.type === 'unit-en-route') { if (st.step < 4) { setSteps(4); st.step = 4; } st.cap = e; }
         else if (e.type === 'unit-on-scene') { st.cap = e; if (st.doneAt < 0) st.doneAt = run.nat.t; }
         else if (e.type === 'dispatched') { st.cap = e; }
+        if (until && e.type === until) { i++; break; }
       }
-      st.evIdx = evs.length;
+      st.evIdx = i;
     }
     function verdictText() {
       var s = st.cur; if (!s) return ['', ''];

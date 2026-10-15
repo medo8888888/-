@@ -156,6 +156,17 @@
     }
   }
 
+  // a real fire can be MISSED (the drone's two keys are seeded dice): the story does not hide that. If the drone dismissed its own alert, a sentinel alarm from the same place puts the incident back in the queue
+  function recoverAlert() {
+    var a = alertNow(), NN = NNs(), inc = incNow(); if (!a || a.state !== 'DISMISSED' || !inc) return false;
+    var lon = inc.lon, lat = inc.lat; try { NN.cancelIncident(S.nat, D.incId); } catch (e) { /* ignore */ }
+    var c = NN.createIncident(S.nat, { hazard: 'fire', lon: lon, lat: lat, severity: 2, trigger: 'sentinel' });
+    D.incId = c.id; D.alertId = null; D.recovered = true; refresh(); findAlert();
+    ff(function () { var x = findAlert(); return !!x && (x.state !== 'SUSPECT' || !!x.verdict); }, 600, 10);
+    if (CR.selectAlert && alertNow()) CR.selectAlert(D.alertId);
+    return true;
+  }
+
   DEMO = [
     { id: 'patrol', t: ['مسيّرة في دورية ترى دخانًا', 'A drone on patrol sees smoke'], speed: 10, min: 11000, max: 45000,
       enter: function () {
@@ -174,16 +185,17 @@
       enter: function () { var a = findAlert(); if (a) { CR.selectAlert(a.id); if (a.droneId) CR.setSelDrone(a.droneId); } CR.showTab('feed'); },
       text: function () {
         var a = findAlert(); if (!a) return [B('بانتظار الإنذار…', 'Waiting for the alert…')];
+        if (D.recovered) return [B('نظرة المسيّرة الأولى لم تجد دليلًا وأسقطت إنذارها — وهذا يحدث في الواقع: قد يفوت الحريق الحقيقي. لذلك يصل إنذار من حسّاس من المكان نفسه، وتتحقق مسيّرة منه، ويبقى القرار بيدك.', 'The patrol drone’s first look found no evidence and dismissed its own alert — that can happen in real life: a real fire can be missed. So a sentinel alarm arrives from the same place, a drone verifies it, and the decision stays yours.')];
         var ev = a.evidence || {}, v = ev.vision && ev.vision.seen, t = ev.thermal && ev.thermal.seen, cv = ev.vision && isNum(ev.vision.conf) ? Math.round(ev.vision.conf * 100) : null, ct = ev.thermal && isNum(ev.thermal.conf) ? Math.round(ev.thermal.conf * 100) : null;
         if (v && t) return [B('الكاشف (رؤية حاسوبية بقواعد، وليست تعلّمًا آليًا) رأى لهبًا ودخانًا' + (cv != null ? ' بثقة ' + N(cv) + '٪' : '') + '، والكاميرا الحرارية رأت نقطة ساخنة' + (ct != null ? ' بثقة ' + N(ct) + '٪' : '') + '. مفتاحان مستقلان = «مؤكَّد». الإنذار ظهر في الطابور وبثّ المسيّرة أمامك.',
           'The detector (rule-based computer vision, not machine learning) sees flames and smoke' + (cv != null ? ' with ' + N(cv) + ' % confidence' : '') + ', and the thermal camera sees a hotspot' + (ct != null ? ' with ' + N(ct) + ' % confidence' : '') + '. Two independent keys = “confirmed”. The alert is in the queue and the drone’s feed is in front of you.')];
         return [B('ظهر الإنذار في الطابور بمفتاح واحد: «يحتاج إثباتًا». المسيّرة تطير إلى الموقع لتأخذ المفتاح الثاني من الكاميرا الحرارية. لا شيء يُرسَل للناس قبل ذلك.', 'The alert is in the queue with one key: “needs proof”. The drone is flying in to get the second key from the thermal camera. Nothing is sent to the public before that.')];
       },
       done: function () { var a = alertNow(); return !!a && (a.state !== 'SUSPECT' || !!a.verdict); },
-      finish: function () { var a = alertNow(); if (a && a.state === 'SUSPECT' && !a.verdict) ff(function () { var x = alertNow(); return !x || x.state !== 'SUSPECT' || !!x.verdict; }, 600, 10); } },
+      finish: function () { var a = alertNow(); if (a && a.state === 'SUSPECT' && !a.verdict) ff(function () { var x = alertNow(); return !x || x.state !== 'SUSPECT' || !!x.verdict; }, 600, 10); recoverAlert(); } },
     { id: 'approve', t: ['المشغّل يعتمد — المفتاح البشري', 'The operator approves — the human key'], speed: 10, min: 6000, max: 26000, pause: true,
       enter: function () {
-        if (!CR.can('operator')) CR.setRole('operator'); var a = alertNow(); if (a) { CR.selectAlert(a.id); if (CR.ui && CR.ui.hintAction) CR.ui.hintAction(a.id, 'approve'); } CR.showTab(CR.isNarrow() ? 'queue' : 'feed'); D.approvedByStory = false;
+        recoverAlert(); if (!CR.can('operator')) CR.setRole('operator'); var a = alertNow(); if (a) { CR.selectAlert(a.id); if (CR.ui && CR.ui.hintAction) CR.ui.hintAction(a.id, 'approve'); } CR.showTab(CR.isNarrow() ? 'queue' : 'feed'); D.approvedByStory = false;
         CR.api.setPlaying(false);
       },
       text: function () { return [B('دورك: اضغط «وافق» (أو A) على بطاقة الإنذار. لن يصل الناس إنذار عام ولن تتحرك الوحدات قبل مفتاحك. إن لم تضغط خلال لحظات فسيعتمد العرض بدلًا عنك، وسيقول ذلك.', 'Your turn: press Approve (or A) on the alert card. No public alert reaches anyone and no unit rolls before your key. If you do not press it within a few seconds, the story approves for you and says so.')]; },
@@ -312,7 +324,7 @@
 
   function startDemo(o) {
     o = o || {}; stop(true);
-    toOpts(OPTS_DEMO); D.preset = S.preset = 'demo'; D.sched = null; D.pace = o.pace > 0 ? o.pace : 1; D.alertId = null; D.incId = null; D.droneId = null; D.drone = null; D.robotCalled = false; D.announced = false; D.approvedByStory = false; D.sentinelFallback = false;
+    toOpts(OPTS_DEMO); D.preset = S.preset = 'demo'; D.sched = null; D.pace = o.pace > 0 ? o.pace : 1; D.alertId = null; D.incId = null; D.droneId = null; D.drone = null; D.robotCalled = false; D.announced = false; D.approvedByStory = false; D.sentinelFallback = false; D.recovered = false;
     if (!build()) return null;
     D.running = true; D.paused = false; D.done = false; if (CR.ui && CR.ui.setDemo) CR.ui.setDemo(true);
     go(0); return D;
@@ -323,7 +335,7 @@
   var mod = CR.mods.demo = {
     startDemo: startDemo, startBusy: startBusy, quiet: quiet, reset: reset, stop: stop, next: next, plan: BUSY, opts: { demo: OPTS_DEMO, busy: OPTS_BUSY },
     isRunning: function () { return D.running; },
-    state: function () { return { preset: D.preset, running: D.running, step: D.running ? D.step + 1 : 0, steps: DEMO.length, stepId: D.running && DEMO[D.step] ? DEMO[D.step].id : null, alertId: D.alertId, incidentId: D.incId, droneId: D.droneId, paused: D.paused, approvedByStory: D.approvedByStory, sentinelFallback: !!D.sentinelFallback }; }
+    state: function () { return { preset: D.preset, running: D.running, step: D.running ? D.step + 1 : 0, steps: DEMO.length, stepId: D.running && DEMO[D.step] ? DEMO[D.step].id : null, alertId: D.alertId, incidentId: D.incId, droneId: D.droneId, paused: D.paused, approvedByStory: D.approvedByStory, sentinelFallback: !!D.sentinelFallback, recovered: !!D.recovered }; }
   };
   // an engine that was already running when this file loaded gets the opening preset now
   function late() {

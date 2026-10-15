@@ -204,7 +204,17 @@ input[type=range]{width:100%;accent-color:var(--brand)}
 .brand img,.brand svg{width:38px;height:38px}
 .brand b{font-family:var(--font-h);font-size:1.3rem;font-weight:700;line-height:1}
 .brand small{display:block;font-size:.72rem;color:var(--muted);font-weight:500;line-height:1.2;margin-top:3px}
-.nav-links{display:flex;gap:2px;margin-inline-start:auto;overflow:hidden}
+.nav-links{display:flex;gap:2px;margin-inline-start:auto}
+.nav-more{position:relative}
+.nav-more-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border:0;border-radius:10px;background:none;color:var(--ink-2);font:inherit;font-size:.93rem;font-weight:500;white-space:nowrap;cursor:pointer;transition:color .2s,background-color .2s}
+.nav-more-btn .i{width:15px;height:15px;opacity:.8;transition:transform .2s}
+.nav-more-btn[aria-expanded=true] .i{transform:rotate(180deg)}
+.nav-more-btn:hover,.nav-more-btn[aria-expanded=true]{color:var(--brand);background:color-mix(in oklab,var(--brand) 8%,transparent)}
+.nav-more-btn[data-current]{color:var(--brand-t);background:color-mix(in oklab,var(--brand) 12%,transparent)}
+.nav-more-pop{position:absolute;inset-block-start:calc(100% + 8px);inset-inline-end:0;z-index:101;min-width:210px;display:grid;gap:2px;padding:6px;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-lg)}
+.nav-more-pop[hidden]{display:none}
+.nav-more-pop a{padding:10px 12px}
+@media(prefers-reduced-motion:reduce){.nav-more-btn .i{transition:none}}
 .nav-links a{display:inline-flex;align-items:center;gap:7px;padding:8px 12px;border-radius:10px;text-decoration:none;color:var(--ink-2);font-size:.93rem;font-weight:500;white-space:nowrap;transition:color .2s,background-color .2s}
 .nav-links a .i{width:17px;height:17px;opacity:.8}
 .nav-links a:hover{color:var(--brand);background:color-mix(in oklab,var(--brand) 8%,transparent)}
@@ -220,7 +230,7 @@ input[type=range]{width:100%;accent-color:var(--brand)}
 .menu a[aria-current=page]{color:var(--brand-t);background:color-mix(in oklab,var(--brand) 10%,transparent)}
 .menu a .i{color:var(--brand)}
 @media(max-width:1180px){.nav-links a .i{display:none}}
-@media(max-width:1020px){.nav-links{display:none}.menu-btn{display:inline-grid}.nav-tools{margin-inline-start:auto}}
+@media(max-width:1120px){.nav-links{display:none}.menu-btn{display:inline-grid}.nav-tools{margin-inline-start:auto}}
 @media(max-width:420px){.brand small{display:none}}
 
 /* ---------- footer (rendered by core.js into <footer class="foot" data-footer>) ---------- */

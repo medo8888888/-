@@ -222,7 +222,17 @@ input[type=range]{width:100%;accent-color:var(--brand)}
 .brand img,.brand svg{width:38px;height:38px}
 .brand b{font-family:var(--font-h);font-size:1.3rem;font-weight:700;line-height:1}
 .brand small{display:block;font-size:.72rem;color:var(--muted);font-weight:500;line-height:1.2;margin-top:3px}
-.nav-links{display:flex;gap:2px;margin-inline-start:auto;overflow:hidden}
+.nav-links{display:flex;gap:2px;margin-inline-start:auto}
+.nav-more{position:relative}
+.nav-more-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border:0;border-radius:10px;background:none;color:var(--ink-2);font:inherit;font-size:.93rem;font-weight:500;white-space:nowrap;cursor:pointer;transition:color .2s,background-color .2s}
+.nav-more-btn .i{width:15px;height:15px;opacity:.8;transition:transform .2s}
+.nav-more-btn[aria-expanded=true] .i{transform:rotate(180deg)}
+.nav-more-btn:hover,.nav-more-btn[aria-expanded=true]{color:var(--brand);background:color-mix(in oklab,var(--brand) 8%,transparent)}
+.nav-more-btn[data-current]{color:var(--brand-t);background:color-mix(in oklab,var(--brand) 12%,transparent)}
+.nav-more-pop{position:absolute;inset-block-start:calc(100% + 8px);inset-inline-end:0;z-index:101;min-width:210px;display:grid;gap:2px;padding:6px;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-lg)}
+.nav-more-pop[hidden]{display:none}
+.nav-more-pop a{padding:10px 12px}
+@media(prefers-reduced-motion:reduce){.nav-more-btn .i{transition:none}}
 .nav-links a{display:inline-flex;align-items:center;gap:7px;padding:8px 12px;border-radius:10px;text-decoration:none;color:var(--ink-2);font-size:.93rem;font-weight:500;white-space:nowrap;transition:color .2s,background-color .2s}
 .nav-links a .i{width:17px;height:17px;opacity:.8}
 .nav-links a:hover{color:var(--brand);background:color-mix(in oklab,var(--brand) 8%,transparent)}
@@ -238,7 +248,7 @@ input[type=range]{width:100%;accent-color:var(--brand)}
 .menu a[aria-current=page]{color:var(--brand-t);background:color-mix(in oklab,var(--brand) 10%,transparent)}
 .menu a .i{color:var(--brand)}
 @media(max-width:1180px){.nav-links a .i{display:none}}
-@media(max-width:1020px){.nav-links{display:none}.menu-btn{display:inline-grid}.nav-tools{margin-inline-start:auto}}
+@media(max-width:1120px){.nav-links{display:none}.menu-btn{display:inline-grid}.nav-tools{margin-inline-start:auto}}
 @media(max-width:420px){.brand small{display:none}}
 
 /* ---------- footer (rendered by core.js into <footer class="foot" data-footer>) ---------- */
@@ -342,6 +352,7 @@ body.control .nav{flex:none}
 .cr-sim{font-size:.64em;padding:0 6px;line-height:1.6;flex:none;font-family:var(--font-m);font-weight:700}
 body.control .toasts{inset-inline:auto 16px;transform:none;inset-block-end:76px;width:min(400px,calc(100vw - 32px));align-items:stretch}
 body.control .toast{font-size:.84rem;padding:8px 12px;line-height:1.45}
+body.control .toasts .toast:nth-last-child(n+4){display:none}
 
 /* ---------- 2. top bar ---------- */
 .cr-top{display:flex;align-items:center;gap:10px;flex:none;min-height:56px;padding:6px 10px;background:var(--cr-pane);border:1px solid var(--cr-edge);border-radius:var(--cr-r);position:relative;z-index:30}
@@ -353,6 +364,8 @@ body.control .toast{font-size:.84rem;padding:8px 12px;line-height:1.45}
 .cr-clock{display:flex;flex-direction:column;line-height:1.2;padding-inline:12px;border-inline:1px solid var(--cr-edge);min-width:0}
 .cr-clock-r{display:flex;align-items:center;gap:8px}
 .cr-clock-t{font-size:1.4em;font-weight:600;color:var(--head);font-family:var(--font-m);white-space:nowrap}
+.cr-logo-w{flex:none}
+.cr-clock-d{color:var(--ink-2)}
 .cr-clock-s{font-size:.74em;color:var(--muted);white-space:nowrap}
 .cr-tools{display:flex;align-items:center;gap:6px;margin-inline-start:auto;min-width:0}
 .cr-fld{display:flex;align-items:center;gap:6px;font-size:.78em;color:var(--ink-2)}
@@ -360,6 +373,8 @@ body.control .toast{font-size:.84rem;padding:8px 12px;line-height:1.45}
 @media (min-width:1240px){.cr-fld-lx{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0,0,0,0)}}
 .cr-sel{min-height:36px;padding:2px 8px;border:1px solid var(--line-2);border-radius:10px;background:var(--surface);color:var(--ink);font-size:.95em;max-width:100%}
 .cr-seek{max-width:120px}
+.cr-role-sel{min-width:128px}
+.cr-scn-b{min-width:44px}
 .cr-tbtn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-width:38px;min-height:38px;padding:4px 9px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);font-weight:600;font-size:.86em;transition:border-color .2s,color .2s,background-color .2s}
 .cr-tbtn:hover{border-color:var(--brand);color:var(--head)}
 .cr-tbtn[aria-pressed=true],.cr-tbtn[aria-expanded=true]{background:color-mix(in oklab,var(--brand) 14%,var(--surface));border-color:var(--brand);color:var(--head)}
@@ -574,7 +589,7 @@ body.control .toast{font-size:.84rem;padding:8px 12px;line-height:1.45}
 .cr[data-state=ready] .cr-boot{display:none}
 
 /* ---------- 6. the demo narration bar ---------- */
-.cr-demo{flex:none;display:flex;flex-direction:column;gap:6px;padding:10px 14px;border-radius:var(--cr-r);background:var(--surface);border:1px solid var(--accent);box-shadow:var(--shadow)}
+.cr-demo{flex:none;display:flex;flex-direction:column;gap:6px;padding:8px 14px;border-radius:var(--cr-r);background:var(--surface);border:1px solid var(--accent);box-shadow:var(--shadow)}
 .cr-demo-h{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .cr-demo-steps{display:flex;gap:6px;align-items:center;list-style:none}
 .cr-demo-steps li{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;border:2px solid var(--line-2);background:var(--surface);color:var(--muted);font:700 .74em var(--font-m)}
@@ -583,7 +598,7 @@ body.control .toast{font-size:.84rem;padding:8px 12px;line-height:1.45}
 .cr-demo-steps li.now{border-color:var(--brand);color:var(--head);box-shadow:0 0 0 4px color-mix(in oklab,var(--brand) 20%,transparent)}
 .cr-demo-n{font-size:.8em;color:var(--muted);white-space:nowrap}
 .cr-demo-t{font-family:var(--font-h);font-weight:700;font-size:1.05em;color:var(--head);flex:1;min-width:0}
-.cr-demo-p{color:var(--ink-2);font-size:.92em;line-height:1.55}
+.cr-demo-p{color:var(--ink-2);font-size:.9em;line-height:1.5}
 .cr-demo-p b{color:var(--head)}
 .cr-demo-why{font-size:.84em;color:var(--ink-2);padding:6px 10px;border-radius:8px;background:color-mix(in oklab,var(--accent) 9%,var(--surface));border:1px solid color-mix(in oklab,var(--accent) 30%,var(--line))}
 .cr-demo-bar{height:4px;background:var(--line);border-radius:2px;overflow:hidden}
@@ -817,6 +832,7 @@ html.cr-wall .cr-foot-d:not([open]) .cr-foot-p{display:none}
 }
 @media print{.cr-top,.cr-tabbar,.cr-hud,.cr-queue,.cr-right,.cr-dlg{display:none!important}}
 @media (max-width:699px){body.control .toasts .toast:nth-last-child(n+3){display:none}}
+@media (max-height:1000px){.cr[data-demo="1"] .cr-timeline{display:none}}
 
 </style>
 <style data-bundled="css/control-feeds.css">
@@ -1513,6 +1529,7 @@ html[data-lang=ar] .cp{line-height:1.75}
     smoke: '<path d="M7 18a4 4 0 0 1-.6-8A6 6 0 0 1 18 9a4.5 4.5 0 0 1-.5 9z"/>',
     code: '<path d="M8 6l-6 6 6 6M16 6l6 6-6 6"/>',
     chart: '<path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/>',
+    chevron: '<path d="M6 9l6 6 6-6"/>',
     help: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7M12 17h.01"/>',
     star: '<path d="M12 3l2.8 5.8 6.2.9-4.5 4.4 1 6.2L12 17.4 6.5 20.3l1-6.2L3 9.7l6.2-.9z"/>',
     layers: '<path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/>',
@@ -1553,6 +1570,7 @@ html[data-lang=ar] .cp{line-height:1.75}
     'nav.pitch': { ar: 'العرض التقديمي', en: 'Pitch' },
     'nav.report': { ar: 'التقرير العلمي', en: 'Report' },
     'nav.poster': { ar: 'لوحة العرض', en: 'Display Board' },
+    'nav.more': { ar: 'المزيد', en: 'More' },
     'ui.menu': { ar: 'القائمة', en: 'Menu' },
     'ui.close': { ar: 'إغلاق', en: 'Close' },
     'ui.theme': { ar: 'تبديل الوضع الليلي/النهاري', en: 'Toggle dark/light mode' },
@@ -1643,10 +1661,17 @@ html[data-lang=ar] .cp{line-height:1.75}
   ];
   var EXTRA = [['poster.html', 'nav.poster', 'layers']];
   function current() { return (document.body && document.body.getAttribute('data-page')) || 'index.html'; }
-  function links(cls) {
-    return PAGES.map(function (p) {
-      return '<a href="' + p[0] + '"' + (p[0] === current() ? ' aria-current="page"' : '') + (cls ? ' class="' + cls + '"' : '') + '>' + icon(p[2]) + '<span>' + s(p[1]) + '</span></a>';
-    }).join('');
+  function linkOf(p, cls) {
+    return '<a href="' + p[0] + '"' + (p[0] === current() ? ' aria-current="page"' : '') + (cls ? ' class="' + cls + '"' : '') + '>' + icon(p[2]) + '<span>' + s(p[1]) + '</span></a>';
+  }
+  function links(cls) { return PAGES.map(function (p) { return linkOf(p, cls); }).join(''); }
+  var MORE = ['build.html', 'pitch.html', 'report.html'];             // the top bar keeps the six working pages; the rest sit under "More" so ten pages never clip (the phone menu lists them all)
+  function barLinks() {
+    var rest = PAGES.filter(function (p) { return MORE.indexOf(p[0]) < 0; }), more = PAGES.filter(function (p) { return MORE.indexOf(p[0]) >= 0; });
+    var inMore = more.some(function (p) { return p[0] === current(); });
+    return rest.map(function (p) { return linkOf(p); }).join('') +
+      '<div class="nav-more"><button class="nav-more-btn" type="button" aria-expanded="false" aria-haspopup="true" aria-controls="manara-more"' + (inMore ? ' data-current="true"' : '') + '><span>' + s('nav.more') + '</span>' + icon('chevron') + '</button>' +
+      '<div class="nav-more-pop" id="manara-more" hidden>' + more.map(function (p) { return linkOf(p); }).join('') + '</div></div>';
   }
   function footLinks(files) {                                         // footer columns are picked by file name, so adding a page never shifts them
     var all = PAGES.concat(EXTRA);
@@ -1662,7 +1687,7 @@ html[data-lang=ar] .cp{line-height:1.75}
       var wasOpen = !!$('.menu.open');
       nav.innerHTML =
         '<div class="nav-bar">' + brand() +
-        '<nav class="nav-links" aria-label="' + s('ui.menu') + '">' + links() + '</nav>' +
+        '<nav class="nav-links" aria-label="' + s('ui.menu') + '">' + barLinks() + '</nav>' +
         '<div class="nav-tools">' +
         '<button class="icon-btn lang-btn" type="button" data-lang-toggle aria-label="' + s('ui.lang') + '" title="' + s('ui.lang') + '">' + (lang() === 'ar' ? 'EN' : 'ع') + '</button>' +
         '<button class="icon-btn theme-toggle" type="button" aria-label="' + s('ui.theme') + '" title="' + s('ui.theme') + '"></button>' +
@@ -1678,6 +1703,17 @@ html[data-lang=ar] .cp{line-height:1.75}
       mb.addEventListener('click', function () { setMenu(!menu.classList.contains('open')); });
       $$('a', menu).forEach(function (a) { a.addEventListener('click', function () { setMenu(false); }); });
       if (wasOpen) setMenu(true);
+      var mo = $('.nav-more', nav), mob = $('.nav-more-btn', nav), mop = $('.nav-more-pop', nav);
+      if (mo) {                                                        // "More" disclosure: Esc / outside click / focus leaving close it
+        var setMore = function (open, back) {
+          mop.hidden = !open; mob.setAttribute('aria-expanded', open ? 'true' : 'false');
+          if (!open && back) mob.focus();
+        };
+        mob.addEventListener('click', function () { setMore(mop.hidden); });
+        mo.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !mop.hidden) { e.preventDefault(); setMore(false, true); } });
+        mo.addEventListener('focusout', function (e) { if (!mop.hidden && e.relatedTarget && !mo.contains(e.relatedTarget)) setMore(false); });
+        document.addEventListener('click', function (e) { if (!mop.hidden && !mo.contains(e.target)) setMore(false); });
+      }
       $('[data-lang-toggle]', nav).addEventListener('click', toggleLang);
       $('.theme-toggle', nav).addEventListener('click', toggleTheme);
     }
@@ -18249,7 +18285,7 @@ P7G1CJ0T7LgThNqCU0U_ExCf3SyFrV8I5TsMGsDmCmBiDb1lBgrB9V8UhFmK-C8C7EhB7DwB0kBrfkgB
     lab(T.clock, 'aria-label', 'الوقت المحاكى في قطر (آسيا/قطر، UTC+3، بلا توقيت صيفي)', 'Simulated time in Qatar (Asia/Qatar, UTC+3, no daylight saving)'); lab(T.clock, 'title', 'الوقت المحاكى في قطر (آسيا/قطر، UTC+3، بلا توقيت صيفي)', 'Simulated time in Qatar (Asia/Qatar, UTC+3, no daylight saving)');
     // transport
     T.play = h('button', { type: 'button', class: 'cr-tbtn cr-play', onclick: function () { CR.api.setPlaying(!S.playing); } });
-    T.play.appendChild(icon('pause')); T.playIc = T.play.firstChild; T.play.appendChild(h('span', { class: 'cr-tx cr-play-t' }, ''));
+    T.play.appendChild(icon('pause')); T.playIc = T.play.firstChild; T.play.appendChild(h('span', { class: 'cr-tx' }, ''));
     T.speed = seg({ label: ['سرعة المحاكاة', 'Simulation speed'], cls: 'cr-speed', items: SPEEDS.map(function (v) { return { id: v, text: '×' + v, tip: ['سرعة ×' + v, 'Speed ×' + v] }; }), get: function () { return S.speed; }, set: function (v) { CR.api.setSpeed(v); } });
     T.seek = h('select', { class: 'cr-sel cr-seek', onchange: function () { var v = T.seek.value; T.seek.value = ''; seekBy(v); } });
     lab(T.seek, 'aria-label', 'تقديم سريع للساعة المحاكاة', 'Fast-forward the simulated clock'); T.seekOpts = {};
@@ -18272,11 +18308,11 @@ P7G1CJ0T7LgThNqCU0U_ExCf3SyFrV8I5TsMGsDmCmBiDb1lBgrB9V8UhFmK-C8C7EhB7DwB0kBrfkgB
     T.help = topBtn('help', 'مساعدة وإرشادات', 'Help and legend', function () { UI.openHelp(); }, { 'data-x': 'help' }); T.help.classList.add('cr-hide-wall');
     T.keys = topBtn('keyboard', 'اختصارات لوحة المفاتيح', 'Keyboard shortcuts', function () { UI.openShortcuts(); }); T.keys.classList.add('cr-hide-wall');
     T.lang = h('button', { type: 'button', class: 'cr-tbtn cr-langb', onclick: function () { win.Manara.toggleLang(); } }); T.langT = h('span', { class: 'cr-lang-t', text: '' }); T.lang.appendChild(T.langT);
-    T.theme = h('button', { type: 'button', class: 'cr-tbtn cr-themeb', onclick: function () { win.Manara.theme.toggle(); } }); T.themeIc = null;
+    T.theme = h('button', { type: 'button', class: 'cr-tbtn', onclick: function () { win.Manara.theme.toggle(); } }); T.themeIc = null;
     T.more = h('button', { type: 'button', class: 'cr-tbtn cr-more', id: 'cr-more', 'aria-expanded': 'false', 'aria-controls': 'cr-tools', onclick: function () { moreSet(!$('#cr-tools').classList.contains('open')); } }, icon('menu'), h('span', { class: 'cr-tx' }, bi('المزيد', 'More')));
     lab(T.more, 'title', 'المزيد من الأدوات', 'More tools');
     T.tools = h('div', { class: 'cr-tools', id: 'cr-tools' },
-      h('div', { class: 'cr-fld cr-fld-speed cr-hide-wall' }, h('span', { class: 'cr-fld-l cr-fld-lx' }, bi('السرعة', 'Speed')), T.speed), h('div', { class: 'cr-fld cr-fld-seek cr-hide-wall' }, h('span', { class: 'cr-fld-l cr-fld-lx' }, bi('تقديم سريع', 'Fast-forward')), T.seek),
+      h('div', { class: 'cr-fld cr-hide-wall' }, h('span', { class: 'cr-fld-l cr-fld-lx' }, bi('السرعة', 'Speed')), T.speed), h('div', { class: 'cr-fld cr-hide-wall' }, h('span', { class: 'cr-fld-l cr-fld-lx' }, bi('تقديم سريع', 'Fast-forward')), T.seek),
       T.roleWrap, h('div', { class: 'cr-popwrap cr-hide-wall' }, T.scnBtn, T.scnPanel), T.sound, T.wallBtn, T.help, T.keys, T.lang, T.theme);
     top.append(T.title, T.clock, T.play, T.more, T.tools);
     syncTop();
@@ -21613,6 +21649,17 @@ P7G1CJ0T7LgThNqCU0U_ExCf3SyFrV8I5TsMGsDmCmBiDb1lBgrB9V8UhFmK-C8C7EhB7DwB0kBrfkgB
     }
   }
 
+  // a real fire can be MISSED (the drone's two keys are seeded dice): the story does not hide that. If the drone dismissed its own alert, a sentinel alarm from the same place puts the incident back in the queue
+  function recoverAlert() {
+    var a = alertNow(), NN = NNs(), inc = incNow(); if (!a || a.state !== 'DISMISSED' || !inc) return false;
+    var lon = inc.lon, lat = inc.lat; try { NN.cancelIncident(S.nat, D.incId); } catch (e) { /* ignore */ }
+    var c = NN.createIncident(S.nat, { hazard: 'fire', lon: lon, lat: lat, severity: 2, trigger: 'sentinel' });
+    D.incId = c.id; D.alertId = null; D.recovered = true; refresh(); findAlert();
+    ff(function () { var x = findAlert(); return !!x && (x.state !== 'SUSPECT' || !!x.verdict); }, 600, 10);
+    if (CR.selectAlert && alertNow()) CR.selectAlert(D.alertId);
+    return true;
+  }
+
   DEMO = [
     { id: 'patrol', t: ['مسيّرة في دورية ترى دخانًا', 'A drone on patrol sees smoke'], speed: 10, min: 11000, max: 45000,
       enter: function () {
@@ -21631,16 +21678,17 @@ P7G1CJ0T7LgThNqCU0U_ExCf3SyFrV8I5TsMGsDmCmBiDb1lBgrB9V8UhFmK-C8C7EhB7DwB0kBrfkgB
       enter: function () { var a = findAlert(); if (a) { CR.selectAlert(a.id); if (a.droneId) CR.setSelDrone(a.droneId); } CR.showTab('feed'); },
       text: function () {
         var a = findAlert(); if (!a) return [B('بانتظار الإنذار…', 'Waiting for the alert…')];
+        if (D.recovered) return [B('نظرة المسيّرة الأولى لم تجد دليلًا وأسقطت إنذارها — وهذا يحدث في الواقع: قد يفوت الحريق الحقيقي. لذلك يصل إنذار من حسّاس من المكان نفسه، وتتحقق مسيّرة منه، ويبقى القرار بيدك.', 'The patrol drone’s first look found no evidence and dismissed its own alert — that can happen in real life: a real fire can be missed. So a sentinel alarm arrives from the same place, a drone verifies it, and the decision stays yours.')];
         var ev = a.evidence || {}, v = ev.vision && ev.vision.seen, t = ev.thermal && ev.thermal.seen, cv = ev.vision && isNum(ev.vision.conf) ? Math.round(ev.vision.conf * 100) : null, ct = ev.thermal && isNum(ev.thermal.conf) ? Math.round(ev.thermal.conf * 100) : null;
         if (v && t) return [B('الكاشف (رؤية حاسوبية بقواعد، وليست تعلّمًا آليًا) رأى لهبًا ودخانًا' + (cv != null ? ' بثقة ' + N(cv) + '٪' : '') + '، والكاميرا الحرارية رأت نقطة ساخنة' + (ct != null ? ' بثقة ' + N(ct) + '٪' : '') + '. مفتاحان مستقلان = «مؤكَّد». الإنذار ظهر في الطابور وبثّ المسيّرة أمامك.',
           'The detector (rule-based computer vision, not machine learning) sees flames and smoke' + (cv != null ? ' with ' + N(cv) + ' % confidence' : '') + ', and the thermal camera sees a hotspot' + (ct != null ? ' with ' + N(ct) + ' % confidence' : '') + '. Two independent keys = “confirmed”. The alert is in the queue and the drone’s feed is in front of you.')];
         return [B('ظهر الإنذار في الطابور بمفتاح واحد: «يحتاج إثباتًا». المسيّرة تطير إلى الموقع لتأخذ المفتاح الثاني من الكاميرا الحرارية. لا شيء يُرسَل للناس قبل ذلك.', 'The alert is in the queue with one key: “needs proof”. The drone is flying in to get the second key from the thermal camera. Nothing is sent to the public before that.')];
       },
       done: function () { var a = alertNow(); return !!a && (a.state !== 'SUSPECT' || !!a.verdict); },
-      finish: function () { var a = alertNow(); if (a && a.state === 'SUSPECT' && !a.verdict) ff(function () { var x = alertNow(); return !x || x.state !== 'SUSPECT' || !!x.verdict; }, 600, 10); } },
+      finish: function () { var a = alertNow(); if (a && a.state === 'SUSPECT' && !a.verdict) ff(function () { var x = alertNow(); return !x || x.state !== 'SUSPECT' || !!x.verdict; }, 600, 10); recoverAlert(); } },
     { id: 'approve', t: ['المشغّل يعتمد — المفتاح البشري', 'The operator approves — the human key'], speed: 10, min: 6000, max: 26000, pause: true,
       enter: function () {
-        if (!CR.can('operator')) CR.setRole('operator'); var a = alertNow(); if (a) { CR.selectAlert(a.id); if (CR.ui && CR.ui.hintAction) CR.ui.hintAction(a.id, 'approve'); } CR.showTab(CR.isNarrow() ? 'queue' : 'feed'); D.approvedByStory = false;
+        recoverAlert(); if (!CR.can('operator')) CR.setRole('operator'); var a = alertNow(); if (a) { CR.selectAlert(a.id); if (CR.ui && CR.ui.hintAction) CR.ui.hintAction(a.id, 'approve'); } CR.showTab(CR.isNarrow() ? 'queue' : 'feed'); D.approvedByStory = false;
         CR.api.setPlaying(false);
       },
       text: function () { return [B('دورك: اضغط «وافق» (أو A) على بطاقة الإنذار. لن يصل الناس إنذار عام ولن تتحرك الوحدات قبل مفتاحك. إن لم تضغط خلال لحظات فسيعتمد العرض بدلًا عنك، وسيقول ذلك.', 'Your turn: press Approve (or A) on the alert card. No public alert reaches anyone and no unit rolls before your key. If you do not press it within a few seconds, the story approves for you and says so.')]; },
@@ -21769,7 +21817,7 @@ P7G1CJ0T7LgThNqCU0U_ExCf3SyFrV8I5TsMGsDmCmBiDb1lBgrB9V8UhFmK-C8C7EhB7DwB0kBrfkgB
 
   function startDemo(o) {
     o = o || {}; stop(true);
-    toOpts(OPTS_DEMO); D.preset = S.preset = 'demo'; D.sched = null; D.pace = o.pace > 0 ? o.pace : 1; D.alertId = null; D.incId = null; D.droneId = null; D.drone = null; D.robotCalled = false; D.announced = false; D.approvedByStory = false; D.sentinelFallback = false;
+    toOpts(OPTS_DEMO); D.preset = S.preset = 'demo'; D.sched = null; D.pace = o.pace > 0 ? o.pace : 1; D.alertId = null; D.incId = null; D.droneId = null; D.drone = null; D.robotCalled = false; D.announced = false; D.approvedByStory = false; D.sentinelFallback = false; D.recovered = false;
     if (!build()) return null;
     D.running = true; D.paused = false; D.done = false; if (CR.ui && CR.ui.setDemo) CR.ui.setDemo(true);
     go(0); return D;
@@ -21780,7 +21828,7 @@ P7G1CJ0T7LgThNqCU0U_ExCf3SyFrV8I5TsMGsDmCmBiDb1lBgrB9V8UhFmK-C8C7EhB7DwB0kBrfkgB
   var mod = CR.mods.demo = {
     startDemo: startDemo, startBusy: startBusy, quiet: quiet, reset: reset, stop: stop, next: next, plan: BUSY, opts: { demo: OPTS_DEMO, busy: OPTS_BUSY },
     isRunning: function () { return D.running; },
-    state: function () { return { preset: D.preset, running: D.running, step: D.running ? D.step + 1 : 0, steps: DEMO.length, stepId: D.running && DEMO[D.step] ? DEMO[D.step].id : null, alertId: D.alertId, incidentId: D.incId, droneId: D.droneId, paused: D.paused, approvedByStory: D.approvedByStory, sentinelFallback: !!D.sentinelFallback }; }
+    state: function () { return { preset: D.preset, running: D.running, step: D.running ? D.step + 1 : 0, steps: DEMO.length, stepId: D.running && DEMO[D.step] ? DEMO[D.step].id : null, alertId: D.alertId, incidentId: D.incId, droneId: D.droneId, paused: D.paused, approvedByStory: D.approvedByStory, sentinelFallback: !!D.sentinelFallback, recovered: !!D.recovered }; }
   };
   // an engine that was already running when this file loaded gets the opening preset now
   function late() {

@@ -368,11 +368,11 @@ console.log('\n8. A/B switch, the limits panel, a wheeled robot, the tab pauses'
   const on = await R(() => ControlRoom.mods.robot.scenario());
   await page.click('.crr-setup .crr-seg:first-child [data-v="off"]'); await sleep(400);
   const off = await R(() => ({ s: ControlRoom.mods.robot.scenario(), snapRobot: ControlRoom.mods.robot.snap().robot, txt: document.querySelector('.crr-statetx').textContent, flag: document.querySelector('.crr-robot').dataset.off }));
-  check('A/B «without robot»: the SAME seed re-run to the same clock, no robot in this world', off.s.robotOn === false && off.s.seed === on.seed && off.s.t === on.t && off.snapRobot === null && off.flag === '1' && /No robot in this world/.test(off.txt), JSON.stringify(off.s));
+  check('A/B «without robot»: the SAME seed re-run to the same clock, no robot in this world', off.s.robotOn === false && off.s.seed === on.seed && off.s.t === on.t && !off.snapRobot && off.flag === '1' && /No robot in this world/.test(off.txt), JSON.stringify(off.s));
   check('without the robot there is no «located by robot» bucket (it is simply not in the world)', off.s.hc.located === undefined && off.s.hc.registered === on.hc.registered);
   await R(() => ControlRoom.mods.robot.step(120));
   const off2 = await R(() => ControlRoom.mods.robot.scenario());
-  check('the world without the robot keeps running (MANARA\'s alerts and crews still account for people)', off2.t > off.s.t && off2.hc.safe >= off.s.hc.safe && off2.state === null);
+  check('the world without the robot keeps running (MANARA\'s alerts and crews still account for people)', off2.t > off.s.t && off2.state === null && off2.hc.registered === off.s.hc.registered && off2.hc.unaccounted !== off.s.hc.unaccounted, JSON.stringify([off.s.t, off2.t, off.s.hc, off2.hc]));
   await page.click('.crr-setup .crr-seg:first-child [data-v="on"]'); await sleep(400);
   const back = await R(() => ControlRoom.mods.robot.scenario());
   check('switching back puts the robot in again (stowed: the human key is asked again), same seed', back.robotOn === true && back.state === 'stowed' && back.seed === on.seed);

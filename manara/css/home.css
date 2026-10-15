@@ -88,7 +88,8 @@
 .cam-pip canvas{position:absolute;inset:0;width:100%;height:100%}
 .cam-pip-l{position:absolute;inset-block-end:3px;inset-inline-start:5px;font-family:var(--font-m);font-size:.6rem;color:var(--head);text-shadow:0 1px 2px black}
 .cam[data-pip="1"] .cam-pip{opacity:1;transform:none}
-.cam-keys{position:absolute;z-index:4;inset-block-end:14px;inset-inline-start:14px;display:grid;gap:6px}
+.cam-keys{position:absolute;z-index:4;inset-block-end:14px;inset-inline-start:14px;display:grid;gap:6px;opacity:0;transition:opacity .35s}
+.cam[data-pip="1"] .cam-keys{opacity:1}
 .cam-key{display:inline-flex;align-items:center;gap:8px;padding:5px 10px;border-radius:10px;font-size:.74rem;line-height:1.25;color:var(--ink-2);background:color-mix(in oklab,var(--bg) 78%,transparent);border:1px solid var(--line-2);opacity:.38;transition:opacity .3s,border-color .3s}
 .cam-key .ck{width:14px;height:14px;border-radius:50%;border:2px solid var(--muted);flex:none;position:relative}
 .cam-key .ck-t{display:grid}
@@ -297,7 +298,7 @@ html[dir=rtl] .step::after{transform:translateY(-50%) scaleX(-1)}
 .hz h3 .i{color:var(--sc);width:22px;height:22px}
 .hz-shot{position:relative;aspect-ratio:16/10;border-radius:12px;overflow:hidden;background:var(--bg-2);border:1px solid var(--line)}
 .hz-shot canvas{position:absolute;inset:0;width:100%;height:100%}
-.hz-badge{position:absolute;inset-block-start:8px;inset-inline-start:8px;z-index:2}
+.hz-badge{position:absolute;inset-block-start:8px;inset-inline-start:8px;z-index:2;background:color-mix(in oklab,var(--bg) 82%,transparent)}
 .hz-seg{display:flex;flex-wrap:wrap;gap:6px}
 .hz-seg .chip{min-height:44px;padding-inline:14px;justify-content:center}
 .hz-res{min-height:2.9em;font-size:.84rem;line-height:1.5;color:var(--ink-2);font-family:var(--font-m)}
@@ -443,11 +444,8 @@ html[data-lang=ar] .hz-res{font-family:var(--font)}
   .cam-steps li{padding:6px 6px;gap:5px;font-size:.78rem}
   .cam-steps .cs-n{width:18px;height:18px;font-size:.66rem}
   .cam-tele{display:none}
-  .cam-key{padding:3px 8px}
-  .cam-key .ck-t small{display:none}
+  .cam-keys,.cam-alert{display:none}
   .cam-pip{width:30%}
-  .cam-alert{inset-block-start:46px;padding:7px 10px;gap:8px}
-  .cam-alert small{display:none}
   .units{grid-template-columns:minmax(0,1fr)}
   .hz-dl{grid-template-columns:minmax(0,1fr);gap:2px}
   .hz-dl dd{margin-block-end:6px}
