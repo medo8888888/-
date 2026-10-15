@@ -106,13 +106,16 @@ if (want('lint')) {
     // reaching a sink fails here and must be reviewed: bus / uploaded / user-typed text must go through textContent.
     const BASE_OK = new Set(['Manara.icon', 'Manara.logo', 'M.icon', 'M.logo', 'icon', 'logo']);
     const FILE_OK = {
-      'js/core.js': ['brand', 's', 'links', 'lang', 'dark', 'open', 'PAGES.slice', 'map', 'function', 'p', 'return', 'join', 'PAGES', 'EXTRA', 'L', 'NAME', 'el.getAttribute'],  // nav/footer from authored STR + NAME + icon names in data-icon
+      'js/core.js': ['brand', 's', 'links', 'barLinks', 'footLinks', 'lang', 'dark', 'open', 'PAGES.slice', 'map', 'function', 'p', 'return', 'join', 'PAGES', 'EXTRA', 'L', 'NAME', 'el.getAttribute'],  // nav/footer from authored STR + NAME + icon names in data-icon
       'js/detect.js': ['tpl', 'stageTemplate', 'fool', 'p', 'P', 'st.playing', 'L', 'T2', 'A.paused', 'hz.icon', 'HELD_REF.ok', 'HELD_REF.n', 'HELD_REF.acc', 'HELD_REF.fireFound', 'HELD_REF.falseFire', 'HELD_REF.smokeFound'],  // authored {{ar|en}} templates + benchmark constants
       'js/home.js': ['html', 'h.icon', 'STAGE_ICONS', 'i', 'st.playing', 'st.hz.night', 'iconInner', 'kd.icon', 'spec', 'mn', 'b2', 'g', 'b', 'unitIcon', 'kind', 'PLUS_SVG', 'S.layer'],   // setStaticHTML(node, html): only M.icon()/M.logo() of authored tables (HZ, STAGE_ICONS, kd, FMT) and regex literals; reviewed at every call site (unitIcon(kind) = M.icon/PLUS_SVG of the authored UNIT_K table; S.layer only selects between literal icon names)
       'js/mission.js': ['name', 'cls', 'NS_SVG', 'XICON'],
       // robot.js (robot.html): two sinks, both reviewed. ic(): `Manara.icon(name, cls)`, a static SVG string that core.js builds from its ICONS table (an unknown name falls back to the "help" icon); icon(): the authored XICON table of
       // path strings inside an <svg xmlns=NS_SVG> wrapper, reached only for a name that is a key of XICON. Every caller passes an authored literal or an authored table field (TABS, seg items, btn()), never bus / user / uploaded text.
       'js/robot.js': ['name', 'cls', 'NS_SVG', 'XICON'],
+      // control.js (control.html): the same two reviewed sinks as robot.js, in icon(): the authored XICON table of path strings inside an <svg xmlns=SVGNS> wrapper (a name that is a key of XICON), else `Manara.icon(name, cls)` (core.js's static ICONS table).
+      // Callers pass authored literals or fields of authored tables (HZ, SRC, TABS, button definitions), never bus / user / uploaded text. control-ui.js, control-demo.js and the three tab modules have NO sinks (text goes through CR.h text nodes).
+      'js/control.js': ['SVGNS', 'XICON', 'name', 'cls', 'win.Manara.icon'], 'js/control-ui.js': [], 'js/control-demo.js': [], 'js/control-feeds.js': [], 'js/control-robot.js': [], 'js/control-panels.js': [],
       'js/pitch.js': ['ICON', 'name', 'svgIcon', 'cls'],
       'js/build.js': ['ic'],
       'js/report.js': [],

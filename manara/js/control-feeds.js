@@ -19,6 +19,10 @@
  *   ROLES     the buttons call the Control Room actions (CR.announceVia, CR.recallDrone, CR.launchDrone): the simulated role gate answers visibly (toast, voice, log) when the role is too low; a lock mark shows it in advance.
  *   BUS       an announcement is also published as { type:'drone-announce', scope:'national', drone, callsign, key, lang, text:{ar,en}, alert, incident, clock, sim:true } (logged in the comms tab; the phones ignore it).
  *
+ * MOTION    (all of it transform / opacity / canvas, nothing heavier; every flash is slower than 3 Hz; prefers-reduced-motion = static frames; nothing runs while the tab is inactive or the page is hidden, because frame() is not called)
+ *             a tile SWEEPS IN with a scan line and lock-on corner brackets when its drone is assigned, the detector boxes EASE to their new place and the fire / hotspot boxes PULSE (1.4 Hz), the telemetry HUD TICKS (the numbers
+ *             run to their new value), the signal bars and the battery gauge animate, a new detection flashes an ALERT frame (3 flashes at 1.7 Hz), new evidence frames slide in.
+ *
  * CONTRACT  CR.registerTab({ id:'feed', build(el), update(), frame(ts), active(on) }); CR.mods.feeds = the test / automation API at the bottom of this file.   Classic script, no fetch, no libraries, never innerHTML.
  * ===================================================================================================================== */
 (function () {
@@ -54,7 +58,7 @@
    * 2. STATE
    * ==================================================================================== */
   var F = { root: null, ui: {}, active: null, built: false, lastFrame: 0, paintAt: 0, layout: 'auto', view: 'rgb', focusId: null, pinId: null, feeds: [], byId: {}, shown: [], dirty: true, sel: null, selKey: '', say: SAY[2], sayLog: [], busy: {}, ev: {}, io: null, ro: null, lastStepMs: 12,
-    steps: 0, lastStepAt: 0, frames: 0, tabAt: 0, snapKey: '', cams: 0, lastSnapshot: null, rec: null, evBuild: 0, liveSince: 0 };
+    steps: 0, lastStepAt: 0, frames: 0, tabAt: 0, enters: 0, flashes: 0, animTs: 0, snapKey: '', cams: 0, lastSnapshot: null, rec: null, evBuild: 0, liveSince: 0 };
   var L = { src: 'none', name: '', status: 'idle', err: '', stream: null, video: null, img: null, url: null, det: null, res: null, still: null, since: 0, frames: 0, sample: null, samples: null, samplesLoading: false, camOffAt: 0, f: null };
   try { var lay = CR.storeGet('cr-feeds-layout'); if (lay === 'auto' || lay === '1' || lay === '2' || lay === '4') F.layout = lay; var vw = CR.storeGet('cr-feeds-view'); if (vw === 'rgb' || vw === 'thermal' || vw === 'fused') F.view = vw; } catch (e) { /* storage blocked */ }
 
@@ -188,7 +192,8 @@
     if (reduced) f.clock += n * 0.1 + 3;
     paintPixels(f, rgb, th);
     f.res = res; f.hyp = hyp; var vd = verdictOf(res, hyp), was = f.verdict; f.verdict = vd.v; f.conf = vd.conf; f.guess = vd.guess;
-    drawOv(f);
+    setTargets(f); drawOv(f);
+    if (vd.v !== 'clear' && (was === 'clear' || (vd.v === 'fire' && was !== 'fire'))) alertFlash(f);
     if (f.alert && vd.v !== 'clear' && (was === 'clear' || (vd.v === 'fire' && was !== 'fire'))) captureEvidence(f, vd.v === 'fire' ? 'detected' : 'flagged');
     if (vd.v === 'fire' && was !== 'fire') CR.live(B('البثّ ', 'Feed ') + f.row.callsign + B(': الكاشف يرى حريقاً (بقواعد)', ': the detector sees fire (rule-based)'));
     if (F.rec && F.rec.id === f.id) recFrame(f);
@@ -199,8 +204,8 @@
   function boxLabel(b) { var l = DS.LABEL[b.kind]; return (l ? nm(l) : b.kind) + (b.label && /°C/.test(b.label) ? ' ' + b.label.replace(/^.*?(-?[\d.]+ °C)$/, '$1') : ''); }
   function drawBoxes(x, ov, w, hh, o) {
     o = o || {};
-    var boxes = ov.boxes || [], polys = ov.polygons || [], ch = ov.crosshair, i, j, b, c, fs = clamp(w / 30, 10, 13);
-    x.save(); x.lineWidth = Math.max(1.5, w / 220); x.lineJoin = 'round'; x.font = '700 ' + fs + 'px ' + CR.font(); x.textBaseline = 'top'; x.direction = 'ltr';
+    var boxes = ov.boxes || [], polys = ov.polygons || [], ch = ov.crosshair, i, j, b, c, fs = clamp(w / 30, 10, 13), pu = o.pulse || 0, lw = Math.max(1.5, w / 220);
+    x.save(); x.lineWidth = lw; x.lineJoin = 'round'; x.font = '700 ' + fs + 'px ' + CR.font(); x.textBaseline = 'top'; x.direction = 'ltr';
     for (i = 0; i < polys.length; i++) {
       var pg = polys[i]; if (!pg.points || pg.points.length < 3) continue;
       x.strokeStyle = KIND_COLOR[pg.kind] || '#fff'; x.globalAlpha = 0.85; x.beginPath(); x.moveTo(pg.points[0][0] * w, pg.points[0][1] * hh);
@@ -208,7 +213,9 @@
       x.closePath(); x.stroke(); x.globalAlpha = 1;
     }
     for (i = 0; i < boxes.length; i++) {
-      b = boxes[i]; c = KIND_COLOR[b.kind] || '#fff'; x.strokeStyle = c; x.setLineDash(b.source === 'thermal' ? [5, 3] : []); x.strokeRect(b.x * w, b.y * hh, b.w * w, b.h * hh); x.setLineDash([]);
+      b = boxes[i]; c = KIND_COLOR[b.kind] || '#fff'; x.strokeStyle = c; x.setLineDash(b.source === 'thermal' ? [5, 3] : []);
+      var hot = pu && (b.kind === 'fire' || b.kind === 'hotspot' || b.kind === 'hot-object'); if (hot) { x.lineWidth = lw * (1 + 0.7 * pu); x.globalAlpha = 0.7 + 0.3 * pu; }       // a fire box breathes
+      x.strokeRect(b.x * w, b.y * hh, b.w * w, b.h * hh); x.setLineDash([]); if (hot) { x.lineWidth = lw; x.globalAlpha = 1; }
       if (b.kind !== 'person' || boxes.length < 6) {
         var tx = boxLabel(b), tw = x.measureText(tx).width + 8, lx = clamp(b.x * w, 2, w - tw - 2), ly = b.y * hh - fs - 6; if (ly < 2) ly = Math.min(hh - fs - 4, (b.y + b.h) * hh + 2);
         x.fillStyle = 'rgba(8,12,18,.78)'; x.fillRect(lx, ly, tw, fs + 4); x.fillStyle = c; x.textAlign = 'left'; x.fillText(tx, lx + 4, ly + 2);
@@ -217,16 +224,74 @@
     if (ch) {
       var cx = ch.x * w, cy = ch.y * hh, r = Math.max(9, w / 26);
       x.strokeStyle = '#ffffff'; x.beginPath(); x.moveTo(cx - r, cy); x.lineTo(cx - r / 3, cy); x.moveTo(cx + r / 3, cy); x.lineTo(cx + r, cy); x.moveTo(cx, cy - r); x.lineTo(cx, cy - r / 3); x.moveTo(cx, cy + r / 3); x.lineTo(cx, cy + r); x.stroke();
-      x.beginPath(); x.arc(cx, cy, r * 0.62, 0, 6.2832); x.stroke(); var tt = ch.tC + ' °C', tw2 = x.measureText(tt).width + 8; x.fillStyle = 'rgba(8,12,18,.78)'; x.fillRect(cx + r + 1, cy - r / 2 - 2, tw2, fs + 4); x.fillStyle = '#fff'; x.textAlign = 'left'; x.fillText(tt, cx + r + 5, cy - r / 2);
+      x.beginPath(); x.arc(cx, cy, r * 0.62 * (1 + 0.2 * pu), 0, 6.2832); x.stroke(); var tt = ch.tC + ' °C', tw2 = x.measureText(tt).width + 8; x.fillStyle = 'rgba(8,12,18,.78)'; x.fillRect(cx + r + 1, cy - r / 2 - 2, tw2, fs + 4); x.fillStyle = '#fff'; x.textAlign = 'left'; x.fillText(tt, cx + r + 5, cy - r / 2);
     }
     x.restore();
   }
-  function drawOv(f) {
+  function drawOv(f, pulse) {
     var c = f.cell; if (!c || !c.ov) return;
     var dpr = Math.min(2, win.devicePixelRatio || 1), w = Math.max(40, f.ovW), hh = Math.max(30, f.ovH), pw = Math.round(w * dpr), ph = Math.round(hh * dpr);
     if (c.ov.width !== pw || c.ov.height !== ph) { c.ov.width = pw; c.ov.height = ph; }
     var x = c.ovx || (c.ovx = c.ov.getContext('2d')); x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, w, hh);
-    if (f.res && f.res.overlays) drawBoxes(x, f.res.overlays, w, hh);
+    if (!f.res || !f.res.overlays) return;
+    var ov = f.res.overlays;
+    if (!CR.reduced() && f.abx) ov = { polygons: ov.polygons, crosshair: f.ach || ov.crosshair, boxes: f.abx.map(function (b) { return { kind: b.kind, source: b.source, label: b.label, x: b.c.x, y: b.c.y, w: b.c.w, h: b.c.h }; }) };
+    drawBoxes(x, ov, w, hh, { pulse: CR.reduced() ? 0 : (pulse == null ? 0.5 : pulse) });
+  }
+  // the detector's new boxes become TARGETS: every drawn box eases to its target (a new box grows from its centre) — the analysis runs a few times a second, the eye sees a smooth motion
+  function setTargets(f) {
+    var ov = f.res && f.res.overlays, tg = ov ? ov.boxes : [], old = f.abx || [], used = {}, next = [];
+    tg.forEach(function (b) {
+      var best = -1, bd = 0.25;
+      old.forEach(function (o, i) { if (used[i] || o.kind !== b.kind || o.source !== b.source) return; var d = Math.hypot(o.t.x + o.t.w / 2 - (b.x + b.w / 2), o.t.y + o.t.h / 2 - (b.y + b.h / 2)); if (d < bd) { bd = d; best = i; } });
+      var nb = { kind: b.kind, source: b.source, label: b.label, t: { x: b.x, y: b.y, w: b.w, h: b.h } };
+      if (best >= 0) { used[best] = 1; nb.c = { x: old[best].c.x, y: old[best].c.y, w: old[best].c.w, h: old[best].c.h }; }
+      else nb.c = CR.reduced() ? { x: b.x, y: b.y, w: b.w, h: b.h } : { x: b.x + b.w / 2, y: b.y + b.h / 2, w: 0, h: 0 };
+      next.push(nb);
+    });
+    f.abx = next;
+    var ch = ov ? ov.crosshair : null;
+    if (!ch) f.ach = null; else if (!f.ach || CR.reduced()) f.ach = { x: ch.x, y: ch.y, tC: ch.tC, kind: ch.kind, tx: ch.x, ty: ch.y }; else { f.ach.tx = ch.x; f.ach.ty = ch.y; f.ach.tC = ch.tC; }
+  }
+  var TKF = { alt: function (v) { return N(v) + ' ' + B('م', 'm'); }, spd: function (v) { return N(v, 0) + ' ' + B('م/ث', 'm/s'); }, bat: function (v) { return ltr(N(v) + '%'); }, link: function (v) { return ltr(N(v) + '%'); } };
+  function tkSet(f, key, tgt, angle) {                    // a HUD number: the displayed value runs to the target (a ticker); under reduced motion it jumps
+    var t = f.tk || (f.tk = {}), k = t[key] || (t[key] = { cur: tgt, tgt: tgt, shown: null, angle: !!angle });
+    k.tgt = tgt; if (CR.reduced()) k.cur = tgt; tkShow(f, key);
+  }
+  function tkShow(f, key) {
+    var k = f.tk[key], el = f.cell && f.cell.t[key] ? f.cell.t[key].v : null; if (!el) return;
+    var v = k.angle ? ((Math.round(k.cur) % 360) + 360) % 360 : Math.round(k.cur);
+    if (k.shown === v) return; k.shown = v;
+    if (k.angle) { var cp = NN ? NN.compass(v) : null; setT(el, ltr(N(v, 0) + '° ' + (cp ? cp.key : ''))); } else setT(el, TKF[key](v));
+  }
+  function tkEase(f, dt) {
+    var kk = 1 - Math.exp(-dt * 4.5);
+    Object.keys(f.tk || {}).forEach(function (key) {
+      var k = f.tk[key], d = k.tgt - k.cur; if (k.angle) d = ((d + 540) % 360) - 180;
+      if (Math.abs(d) < 0.04) { if (k.cur !== k.tgt) { k.cur = k.tgt; tkShow(f, key); } return; }
+      k.cur += d * kk; tkShow(f, key);
+    });
+  }
+  function animate(ts) {                                  // one animation frame of the wall: boxes ease and pulse, HUD numbers tick (only the tiles that are on screen)
+    var dt = F.animTs ? clamp((ts - F.animTs) / 1000, 0, 0.1) : 0; F.animTs = ts;
+    if (CR.reduced()) return;
+    var pulse = 0.5 + 0.5 * Math.sin(ts / 1000 * 8.8), k = 1 - Math.exp(-dt * 14);
+    F.shown.forEach(function (f) {
+      if (!f.cell || f.vis === false) return;
+      (f.abx || []).forEach(function (b) { b.c.x += (b.t.x - b.c.x) * k; b.c.y += (b.t.y - b.c.y) * k; b.c.w += (b.t.w - b.c.w) * k; b.c.h += (b.t.h - b.c.h) * k; });
+      if (f.ach) { f.ach.x += (f.ach.tx - f.ach.x) * k; f.ach.y += (f.ach.ty - f.ach.y) * k; }
+      tkEase(f, dt);
+      if (f.res && ((f.abx && f.abx.length) || f.ach)) drawOv(f, pulse);
+    });
+  }
+  // the tile sweeps in with a scan line and lock-on corners; a new detection flashes the ALERT frame (3 flashes at 1.7 Hz, never faster than 3 Hz). Both are CSS animations on opacity / transform, skipped under reduced motion.
+  function enterTile(f) {
+    var c = f.cell; if (!c || CR.reduced()) return;
+    F.enters++; c.el.removeAttribute('data-enter'); void c.el.offsetWidth; c.el.setAttribute('data-enter', '1'); clearTimeout(c.enterT); c.enterT = setTimeout(function () { c.el.removeAttribute('data-enter'); }, 1500);
+  }
+  function alertFlash(f) {
+    var c = f.cell; if (!c || CR.reduced()) return;
+    F.flashes++; c.el.removeAttribute('data-flash'); void c.el.offsetWidth; c.el.setAttribute('data-flash', '1'); clearTimeout(c.flashT); c.flashT = setTimeout(function () { c.el.removeAttribute('data-flash'); }, 2000);
   }
 
   /* ---- the evidence strip: frames at the moment of detection ---- */
@@ -350,9 +415,9 @@
       var r = L.det.push({ data: frame.data, width: w, height: hh }, Math.round(ts));
       res = { state: r.state, kind: r.state, confidence: r.confidence, fireRatio: r.frame.fireRatio, flicker: r.flicker, growth: r.growth, reasons: r.reasons, regions: r.frame.regions, still: false };
     }
-    L.frames++; L.res = res; f.res = { overlays: { boxes: res.regions.map(function (g) { return { kind: g.kind, x: g.x / w, y: g.y / hh, w: g.w / w, h: g.h / hh, label: '' }; }), polygons: [], crosshair: null } };
+    L.frames++; L.res = res; var wasL = f.verdict; f.res = { overlays: { boxes: res.regions.map(function (g) { return { kind: g.kind, x: g.x / w, y: g.y / hh, w: g.w / w, h: g.h / hh, label: '' }; }), polygons: [], crosshair: null } };
     var was = f.verdict; f.verdict = res.state === 'clear' ? 'clear' : res.state; f.conf = res.confidence; f.guess = '';
-    drawOv(f);
+    setTargets(f); drawOv(f); if (f.verdict !== 'clear' && was === 'clear') alertFlash(f);
     if (was !== f.verdict && f.verdict === 'fire') CR.live(B('الكاميرا الحقيقية: الكاشف يرى حريقاً (بقواعد، ليس ذكاءً اصطناعياً)', 'Real camera: the detector sees fire (rule-based, not AI)'));
     if (F.rec && F.rec.id === 'live') recFrame(f);
     f.steps++; F.steps++; F.lastStepAt = now(); f.lastStep = F.lastStepAt; f.stepMs = f.stepMs * 0.8 + (F.lastStepAt - t0) * 0.2;
@@ -429,29 +494,32 @@
     return { el: el, v: v, bar: bar };
   }
   function setKey(k, on, text, conf) { setT(k.v, text); k.bar.style.setProperty('--v', Math.round(clamp(conf || 0, 0, 1) * 100) + '%'); setA(k.el, 'data-on', on ? '1' : '0'); }
-  function hudItem(arL, enL) { var v = h('b'); return { el: h('span', { class: 'crf-hi' }, h('i', null, bi(arL, enL)), v), v: v }; }
+  function hudItem(arL, enL, extra) { var v = h('b'); return { el: h('span', { class: 'crf-hi' }, h('i', null, bi(arL, enL)), extra || null, v), v: v }; }
   function buildCell(f) {
     var c = { f: f }, live = f.kind === 'live';
     c.call = h('b', { class: 'crf-call', translate: 'no' }); c.stx = h('span', { class: 'crf-stx' });
     c.atag = h('button', { type: 'button', class: 'tag crf-atag', hidden: true, onclick: function () { if (f.alert) CR.selectAlert(f.alert.id, { fly: false }); } });
     var tagEl = live ? h('span', { class: 'tag danger crf-real' }, bi('حقيقية', 'REAL')) : CR.simTag();
-    c.head = h('header', { class: 'crf-ch' }, icon(live ? 'camera' : 'drone'), c.call, c.stx, h('span', { class: 'crf-sp' }), c.atag);
+    c.head = h('header', { class: 'crf-ch' }, h('i', { class: 'crf-dot', 'aria-hidden': 'true' }), icon(live ? 'camera' : 'drone'), c.call, c.stx, h('span', { class: 'crf-sp' }), c.atag);
     c.cv = h('canvas', { class: 'crf-cv', width: SIZE_W, height: SIZE_H, role: 'img' }); c.cx = c.cv.getContext('2d');
     c.ov = h('canvas', { class: 'crf-ov', 'aria-hidden': 'true' });
     c.chip = h('span', { class: 'crf-vchip', 'data-v': 'clear' }); c.chipTx = h('b'); c.chip.appendChild(c.chipTx);
     c.view = h('span', { class: 'crf-vview' });
     c.pick = h('button', { type: 'button', class: 'crf-pick', 'aria-pressed': 'false', onclick: function () { focusFeed(f.id); } }); lab(c.pick, 'aria-label', 'تكبير هذا البث أو العودة إلى الجدار', 'Enlarge this feed or go back to the wall');
-    c.t = { alt: hudItem('ارتفاع', 'ALT'), spd: hudItem('سرعة', 'SPD'), bat: hudItem('بطارية', 'BAT'), hdg: hudItem('اتجاه', 'HDG'), link: hudItem('اتصال', 'LINK'), time: hudItem('الوقت', 'TIME') };
+    c.gauge = h('span', { class: 'crf-batt', 'aria-hidden': 'true' }, h('i')); c.bars = h('span', { class: 'crf-sig', 'data-n': '4', 'aria-hidden': 'true' }, h('i'), h('i'), h('i'), h('i'));
+    c.t = { alt: hudItem('ارتفاع', 'ALT'), spd: hudItem('سرعة', 'SPD'), bat: hudItem('بطارية', 'BAT', c.gauge), hdg: hudItem('اتجاه', 'HDG'), link: hudItem('اتصال', 'LINK', c.bars), time: hudItem('الوقت', 'TIME') };
     c.hud = h('div', { class: 'crf-hud' }, live ? [h('span', { class: 'crf-hi' }, h('i', null, bi('المصدر', 'SRC')), c.t.alt.v), c.t.time.el] : [c.t.alt.el, c.t.spd.el, c.t.bat.el, c.t.hdg.el, c.t.link.el, c.t.time.el]);
     c.ribbon = live ? h('div', { class: 'crf-ribbon' }, bi('كاميرا حقيقية — غير محاكاة', 'REAL CAMERA — not simulated')) : null;
     c.snapB = CR.iconBtn('camera', 'التقاط صورة PNG', 'Take a PNG snapshot', function () { snapshotFeed(f.id); }, 'crf-ib');
     c.focB = CR.iconBtn('expand', 'تكبير البث', 'Enlarge the feed', function () { focusFeed(f.id); }, 'crf-ib');
-    c.vid = h('div', { class: 'crf-vid' }, c.cv, c.ov, c.pick, h('div', { class: 'crf-vtop' }, c.chip, h('span', { class: 'crf-sp' }), c.view, tagEl, c.snapB, c.focB), c.ribbon, c.hud);
+    c.scan = h('div', { class: 'crf-scan', 'aria-hidden': 'true' }); c.lockOn = h('div', { class: 'crf-lockon', 'aria-hidden': 'true' }, h('i'), h('i'), h('i'), h('i'));
+    c.flash = h('div', { class: 'crf-flash', 'aria-hidden': 'true' }); c.alertLbl = h('span', { class: 'crf-alertlbl', 'aria-hidden': 'true' }, bi('تنبيه', 'ALERT'));
+    c.vid = h('div', { class: 'crf-vid' }, c.cv, c.ov, c.scan, c.lockOn, c.flash, c.pick, h('div', { class: 'crf-vtop' }, c.chip, h('span', { class: 'crf-sp' }), c.view, tagEl, c.snapB, c.focB), c.alertLbl, c.ribbon, c.hud);
     c.k1 = keyRow('مفتاح اللون', 'Colour key'); c.k2 = keyRow('المفتاح الحراري', 'Thermal key');
     c.foot = h('footer', { class: 'crf-cf' }, h('div', { class: 'crf-keys' }, c.k1.el, c.k2.el));
     c.el = h('section', { class: 'crf-cell', 'data-kind': f.kind, 'data-state': 'clear', 'data-sel': '0', 'data-focus': '0' }, c.head, c.vid, c.foot);
     if (F.io) F.io.observe(c.el); if (F.ro) F.ro.observe(c.vid);
-    c.el._feed = f; c.vid._feed = f; f.cell = c;
+    c.el._feed = f; c.vid._feed = f; f.cell = c; enterTile(f);
     return c;
   }
   function chipFor(f) {
@@ -510,7 +578,9 @@
       setT(c.call, r.callsign); setT(c.stx, nm(r.stateText) + (r.etaSec != null && (r.state === 'en-route' || r.state === 'launching' || r.state === 'returning') ? ' · ' + CR.mmss(r.etaSec) : ''));
       c.atag.hidden = !a; if (a) { setT(c.atag, a.id); setA(c.atag, 'data-hz', a.hazard); lab(c.atag, 'title', 'اختر الإنذار ' + a.id, 'Select alert ' + a.id); }
       var cp = NN && dr ? NN.compass(dr.hd) : null;
-      setT(c.t.alt.v, N(r.altM) + ' ' + B('م', 'm')); setT(c.t.spd.v, N(r.speedMps, 0) + ' ' + B('م/ث', 'm/s')); setT(c.t.bat.v, ltr(N(r.batteryPct) + '%')); setT(c.t.hdg.v, ltr(N(dr ? dr.hd : r.headingDeg, 0) + '° ' + (cp ? cp.key : ''))); setT(c.t.link.v, ltr(N(Math.round((r.link || 0) * 100)) + '%')); setT(c.t.time.v, s ? s.clock : '');
+      tkSet(f, 'alt', r.altM); tkSet(f, 'spd', r.speedMps); tkSet(f, 'bat', r.batteryPct); tkSet(f, 'hdg', dr ? dr.hd : r.headingDeg, true); tkSet(f, 'link', Math.round((r.link || 0) * 100)); setT(c.t.time.v, s ? s.clock : '');
+      c.gauge.style.setProperty('--lv', String(clamp(r.batteryPct / 100, 0, 1))); setA(c.bars, 'data-n', String(Math.max(0, Math.round((r.link || 0) * 4))));
+      if (f.hadAlert === undefined) f.hadAlert = a ? a.id : null; else if (a && f.hadAlert !== a.id) { f.hadAlert = a.id; enterTile(f); } else if (!a) f.hadAlert = null;      // a drone has just been assigned to an alert: the tile locks on again
       setA(c.t.bat.el, 'data-low', r.batteryPct < 25 ? '1' : '0'); setA(c.t.link.el, 'data-low', (r.link || 0) < 0.5 ? '1' : '0');
       var ev = f.res ? f.res.evidence : null;
       if (ev) {
@@ -643,9 +713,10 @@
     var sig = (al ? al.id : '-') + ':' + (e ? e.v : 0) + ':' + CR.lang();
     k.evEmpty.hidden = !!(e && e.items.length);
     if (k.ev._sig === sig) return; k.ev._sig = sig;
-    var items = e ? e.items : [];
+    var items = e ? e.items : []; k.ev._seen = k.ev._seen || {};
     k.ev.replaceChildren.apply(k.ev, items.map(function (it) {
-      var fig = h('figure', { class: 'crf-evi', role: 'listitem', 'data-kind': it.kind }, it.cv, h('figcaption', null, h('b', { class: 'num', text: it.clock }), h('span', { text: ' ' + it.cap }), h('small', { text: it.sub + (it.by ? ' · ' + it.by : '') })));
+      var isNew = !k.ev._seen[it.id] && !CR.reduced(); k.ev._seen[it.id] = 1;
+      var fig = h('figure', { class: 'crf-evi', role: 'listitem', 'data-kind': it.kind, 'data-new': isNew ? '1' : null }, it.cv, h('figcaption', null, h('b', { class: 'num', text: it.clock }), h('span', { text: ' ' + it.cap }), h('small', { text: it.sub + (it.by ? ' · ' + it.by : '') })));
       it.cv.setAttribute('role', 'img'); it.cv.setAttribute('aria-label', it.cap + ' ' + it.clock);
       return fig;
     }));
@@ -752,6 +823,7 @@
     if (due && DS) {
       try { if (due.kind === 'live') stepLive(due, ts); else stepFeed(due, ts); } catch (e) { due.lastStep = now() + 3000; try { console.error(e); } catch (e2) { /* ignore */ } }
     }
+    animate(ts);
     if (L.camOffAt && now() > L.camOffAt && L.src === 'camera') { liveStop(); update(true); }
   }
   function update(force) {
@@ -788,6 +860,12 @@
     useCamera: liveCamera, useFile: liveFile, useSample: liveSample, stopLive: liveStop, liveState: function () { return { src: L.src, name: L.name, status: L.status, err: L.err, frames: L.frames, res: L.res, still: L.still }; },
     stats: function () { return { steps: F.steps, lastStepAt: F.lastStepAt, frames: F.frames, lastFrame: F.lastFrame, active: isOn(), stepMs: Math.round(F.lastStepMs * 10) / 10, feeds: F.feeds.length, shown: F.shown.length }; },
     stepAll: function () { F.shown.forEach(function (f) { if (f.cell) { if (f.kind === 'live') stepLive(f, now()); else stepFeed(f, now()); } }); update(true); },
+    motion: function () {
+      var f0 = F.shown.filter(function (f) { return f.cell; })[0], c = f0 && f0.cell;
+      return { reduced: CR.reduced(), enters: F.enters, flashes: F.flashes, boxes: F.shown.reduce(function (n, f) { return n + (f.abx ? f.abx.length : 0); }, 0), tk: f0 && f0.tk ? JSON.parse(JSON.stringify(f0.tk)) : null,
+        css: c ? { scan: getComputedStyle(c.scan).animationName, dot: getComputedStyle(c.head.querySelector('.crf-dot')).animationName, flash: getComputedStyle(c.flash).animationName, enter: c.el.getAttribute('data-enter'), flashAttr: c.el.getAttribute('data-flash'), sig: c.bars.getAttribute('data-n'), batt: c.gauge.style.getPropertyValue('--lv') } : null };
+    },
+    enter: function (id) { enterTile(F.byId[id]); }, flash: function (id) { alertFlash(F.byId[id]); },
     paint: function () { update(true); }, held: HELD, verdictOf: verdictOf
   };
 })();

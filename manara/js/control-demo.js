@@ -48,7 +48,7 @@
   function stop(silent) {
     if (D.running && !silent) CR.live(B('انتهى العرض', 'The story ended'));
     D.running = false; D.paused = false; D.step = 0; D.sched = D.preset === 'busy' ? D.sched : null;
-    if (CR.ui) { if (CR.ui.hintAction) CR.ui.hintAction(null); if (CR.ui.setDemo) CR.ui.setDemo(false); }
+    if (CR.ui) { if (CR.ui.hintAction) CR.ui.hintAction(null); if (CR.ui.setDemo) CR.ui.setDemo(false); if (CR.ui.spotlight) CR.ui.spotlight(null); }
     if (el) { el.hidden = true; el.replaceChildren(); ui = {}; }
   }
   function quiet() {
@@ -168,7 +168,7 @@
   }
 
   DEMO = [
-    { id: 'patrol', t: ['مسيّرة في دورية ترى دخانًا', 'A drone on patrol sees smoke'], speed: 10, min: 11000, max: 45000,
+    { id: 'patrol', t: ['مسيّرة في دورية ترى دخانًا', 'A drone on patrol sees smoke'], speed: 10, spot: ['#cr-stage'], min: 11000, max: 45000,
       enter: function () {
         CR.setRole('operator'); CR.api.step(360); spawn(); S.view = 'map'; CR.showTab('map');
         var dr = D.droneId ? S.drones[D.droneId] : null, inc = incNow();
@@ -181,7 +181,7 @@
           : [B('المسيّرة ', 'Drone ') + (dr ? dr.callsign : '') + B(' تدور في قطاعها قرب ', ' is flying its patrol loop near ') + pl + B('. هناك حريق بدأ للتو ولم يبلّغ عنه أحد: لا حسّاس ولا مواطن بعد. العين الأولى هي المسيّرة.', '. A fire has just started and nobody has reported it: no sensor and no citizen yet. The first eyes are the drone’s.')];
       },
       done: function () { return !!findAlert(); }, finish: function () { ensureAlert(); } },
-    { id: 'keys', t: ['مفتاحان: الكاشف + الحراري', 'Two keys: detector + thermal'], speed: 10, min: 14000, max: 50000,
+    { id: 'keys', t: ['مفتاحان: الكاشف + الحراري', 'Two keys: detector + thermal'], speed: 10, spot: ['#cr-queue', '#cr-right'], min: 14000, max: 50000,
       enter: function () { var a = findAlert(); if (a) { CR.selectAlert(a.id); if (a.droneId) CR.setSelDrone(a.droneId); } CR.showTab('feed'); },
       text: function () {
         var a = findAlert(); if (!a) return [B('بانتظار الإنذار…', 'Waiting for the alert…')];
@@ -193,7 +193,7 @@
       },
       done: function () { var a = alertNow(); return !!a && (a.state !== 'SUSPECT' || !!a.verdict); },
       finish: function () { var a = alertNow(); if (a && a.state === 'SUSPECT' && !a.verdict) ff(function () { var x = alertNow(); return !x || x.state !== 'SUSPECT' || !!x.verdict; }, 600, 10); recoverAlert(); } },
-    { id: 'approve', t: ['المشغّل يعتمد — المفتاح البشري', 'The operator approves — the human key'], speed: 10, min: 6000, max: 26000, pause: true,
+    { id: 'approve', t: ['المشغّل يعتمد — المفتاح البشري', 'The operator approves — the human key'], speed: 10, spot: ['#cr-queue'], min: 6000, max: 26000, pause: true,
       enter: function () {
         recoverAlert(); if (!CR.can('operator')) CR.setRole('operator'); var a = alertNow(); if (a) { CR.selectAlert(a.id); if (CR.ui && CR.ui.hintAction) CR.ui.hintAction(a.id, 'approve'); } CR.showTab(CR.isNarrow() ? 'queue' : 'feed'); D.approvedByStory = false;
         CR.api.setPlaying(false);
@@ -202,24 +202,24 @@
       done: function () { var a = alertNow(); return !!a && (CR.STATE_RANK[a.state] >= 2 || CR.isFinal(a)); },
       timeout: function () { approveForYou(); },
       finish: function () { approveForYou(); if (CR.ui && CR.ui.hintAction) CR.ui.hintAction(null); CR.api.setPlaying(!D.paused); } },
-    { id: 'dispatch', t: ['إرسال الأسرع بحسب الازدحام', 'The fastest-by-traffic units are dispatched'], speed: 30, min: 15000, max: 50000,
+    { id: 'dispatch', t: ['إرسال الأسرع بحسب الازدحام', 'The fastest-by-traffic units are dispatched'], speed: 30, spot: ['#cr-right', '#cr-stage'], min: 15000, max: 50000,
       enter: function () { CR.showTab('dispatch'); var a = alertNow(); if (a) { fly(a, 900); } if (CR.ui && CR.ui.hintAction) CR.ui.hintAction(null); },
       text: function () { return [B('اختارت منارة الوحدة الأسرع وصولًا بحسب الازدحام الآن، وليست الأقرب بخط مستقيم. ', 'MANARA picks the unit that arrives fastest given the traffic right now, not the nearest in a straight line. ') + unitsLine()]; },
       why: function () { return whyBox(); },
       done: function () { var i = incNow(); return !!i && !!i.plan && i.plan.units.some(function (u) { return u.state === 'en-route' || u.state === 'on-scene'; }); },
       finish: function () { ensureDispatched(); } },
-    { id: 'guide', t: ['المسيّرة ترشد والصافرة والهواتف تُنذَر', 'The drone guides; the siren and the phones are alerted'], speed: 30, min: 15000, max: 40000,
+    { id: 'guide', t: ['المسيّرة ترشد والصافرة والهواتف تُنذَر', 'The drone guides; the siren and the phones are alerted'], speed: 30, spot: ['#cr-right'], min: 15000, max: 40000,
       enter: function () {
         CR.showTab('comms'); announce();
       },
       text: function () { return [B('تبقى المسيّرة فوق الموقع وتبثّ تعليمات بصوتها (محاكاة)، وتُرسَل ' + N(S.bus.alert) + ' تنبيهات عامة إلى الهواتف القريبة (افتح «هواتف السكان» في نافذة أخرى لتراها). صافرة الموقع المحلية لا تنتظر أحدًا. لا يصل الناس إنذار عام إلا بعد مفتاحك.',
         'The drone stays over the scene and speaks instructions (SIM), and ' + N(S.bus.alert) + ' public alert message(s) go to the nearby phones (open “Resident Phones” in another window to see them). The local siren never waits for anyone. People get a public alert only after your key.')]; },
       done: function () { return true; }, finish: function () { announce(); } },
-    { id: 'robot', t: ['الروبوت يبحث داخل المبنى', 'The robot searches the building'], speed: 30, min: 22000, max: 60000,
+    { id: 'robot', t: ['الروبوت يبحث داخل المبنى', 'The robot searches the building'], speed: 30, spot: ['#cr-right'], min: 22000, max: 60000,
       enter: function () { CR.showTab('robot'); startRobot(); },
       text: function () { return [B('بعد موافقة قائد الحادث ينزل روبوت الإنقاذ إلى المبنى حيث لا ينبغي أن يدخل الناس أولًا: يبحث في الغرف بحسب الأولوية، ويجد الأشخاص بالحرارة والصوت، ويرشدهم بلغتهم، ويبلّغ رجال الإطفاء. هو يساعد، والإطفائيون يقررون. (مفهوم + نموذج أولي محاكى)', 'After the incident commander approves, the rescue robot goes into the building where people should not go first: it searches rooms in priority order, finds people by heat and sound, guides them in their own language and reports to the firefighters. It assists; the firefighters decide. (Concept + simulated prototype)')]; },
       done: function () { return true; }, finish: function () { startRobot(); } },
-    { id: 'handover', t: ['ملخّص التسليم', 'The handover summary'], speed: 10, min: 0, max: 0, last: true,
+    { id: 'handover', t: ['ملخّص التسليم', 'The handover summary'], speed: 10, spot: ['#cr-right'], min: 0, max: 0, last: true,
       enter: function () { CR.showTab('handover'); },
       text: function () {
         var a = alertNow(), ap = S.decisions.filter(function (d) { return d.type === 'approve' && d.alert === D.alertId; })[0], ts = a && a.tState || {}, inc = incNow(), eta = inc && isNum(inc.firstEtaSec) ? inc.firstEtaSec : null;
@@ -300,7 +300,7 @@
     var s = DEMO[i]; if (!s) return;
     D.step = i; D.stepAt = CR.now(); D.dwell = 0; D.lastText = ''; D.done = false; D.timedOut = false; D.entering = true;
     try { s.enter(); } catch (e) { try { console.error(e); } catch (e2) { /* ignore */ } }
-    D.entering = false; D.stepAt = CR.now();
+    D.entering = false; D.stepAt = CR.now(); if (CR.ui && CR.ui.spotlight) CR.ui.spotlight(s.spot || null);                // a soft glow on the panel this step is about
     if (s.speed && !s.pause) setSpeed(s.speed); if (s.pause) { CR.api.setSpeed(s.speed || 10); }
     render(true); CR.live(B('الخطوة ', 'Step ') + N(i + 1) + ': ' + B(s.t[0], s.t[1]) + '. ' + s.text().join(' '));
   }

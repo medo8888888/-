@@ -417,20 +417,62 @@ console.log('\n10. accessibility: landmarks, names from Chrome\'s tree, focus or
   await ctx.close();
 }
 
-/* ---------------------------------------------------------------- 11. reduced motion */
-console.log('\n11. motion: nothing loops under prefers-reduced-motion; the "press this" ring pulses when motion is allowed');
+/* ---------------------------------------------------------------- 11. motion */
+console.log('\n11. motion: tasteful animation that stops under prefers-reduced-motion, never flashes faster than 3 Hz, keeps the frame rate');
 {
   const probe = async motion => {
     const { ctx, page, errors } = await open({ hash: '#quiet', motion }); await ensureTabs(page);
-    await W(page, () => ControlRoom.mods.demo.startDemo()); await sleep(300);
-    await W(page, () => { ControlRoom.mods.demo.next(); ControlRoom.mods.demo.next(); }); await sleep(400);
-    const r = await W(page, () => { const loops = []; document.querySelectorAll('#main *').forEach(e => { const cs = getComputedStyle(e); if (cs.animationName !== 'none' && cs.animationIterationCount === 'infinite') loops.push((e.className.baseVal === undefined ? e.className : '').toString().slice(0, 30) + ':' + cs.animationName); }); const b = document.querySelector('.cr-hint'); return { loops, hint: !!b, ring: b ? getComputedStyle(b).animationName : null, trans: [...document.querySelectorAll('.cr-btn, .cr-chip, .cr-ac')].every(e => parseFloat(getComputedStyle(e).transitionDuration) < 0.05) }; });
-    await ctx.close(); return { ...r, errors };
+    // the shell animates: an alert arrives, a KPI changes, a tab is switched, the demo spotlights a panel
+    const before = await W(page, () => parseInt(document.querySelector('[data-k=open] .cr-kpi-v').textContent, 10));
+    await W(page, () => { ControlRoom.api.setRole('operator'); });
+    const id = await alarm(page, 'fire', PLACES.sadd);
+    await W(page, () => ControlRoom.api.step(5));
+    const t0 = await W(page, () => ({ anims: document.getAnimations().length, cardAnims: [...document.querySelectorAll('.cr-ac')].reduce((n, e) => n + e.getAnimations().length, 0), kpi: document.querySelector('[data-k=open] .cr-kpi-v').textContent }));
+    await sleep(160);
+    const mid = await W(page, () => document.querySelector('[data-k=open] .cr-kpi-v').textContent);
+    await sleep(700);
+    const fin = await W(page, () => document.querySelector('[data-k=open] .cr-kpi-v').textContent);
+    const fx = await W(page, () => { const c = document.querySelector('#cr-fx'), g = c.getContext('2d'), d = g.getImageData(0, 0, c.width, c.height).data; let ink = 0; for (let i = 3; i < d.length; i += 4 * 53) if (d[i] > 8) ink++; return { running: ControlRoom.ui.fx.running(), ink, frames: ControlRoom.ui.fx.frames, display: getComputedStyle(c).display }; });
+    await page.click('.cr-tab[data-tab=comms]'); await sleep(60);
+    const tab = await W(page, () => ({ visible: [...document.querySelectorAll('.cr-tabpanel')].filter(p => !p.hidden).length, anims: [...document.querySelectorAll('.cr-tabpanel')].reduce((n, e) => n + e.getAnimations().length, 0) }));
+    await sleep(350);
+    const tab2 = await W(page, () => [...document.querySelectorAll('.cr-tabpanel')].filter(p => !p.hidden).length);
+    await W(page, () => ControlRoom.mods.demo.startDemo()); await sleep(400);
+    const spot = await W(page, () => { const e = document.querySelector('.cr-spot'); return { n: document.querySelectorAll('.cr-spot').length, anim: e ? getComputedStyle(e, '::after').animationName : null, iter: e ? getComputedStyle(e, '::after').animationIterationCount : null }; });
+    const loops = await W(page, () => { const out = []; document.querySelectorAll('#main *').forEach(e => { for (const ps of [null, '::before', '::after']) { const cs = getComputedStyle(e, ps); if (cs.animationName !== 'none' && cs.animationIterationCount === 'infinite') out.push(((typeof e.className === 'string' && e.className) || e.tagName).slice(0, 24) + (ps || '') + ':' + cs.animationName); } }); return out; });
+    const tl = await W(page, () => getComputedStyle(document.querySelector('.cr-tl-now')).transitionDuration);
+    await ctx.close(); return { before, id, t0, mid, fin, fx, tab, tab2, spot, loops, tl, errors };
   };
-  const rm = await probe('reduce'), nm = await probe('no-preference');
-  check('prefers-reduced-motion: no looping animation anywhere in the console, the ring is static, transitions are off', rm.loops.length === 0 && rm.hint && rm.ring === 'none' && rm.trans, JSON.stringify(rm));
-  check('motion allowed: the "press Approve" ring pulses (so the reduced-motion check above is not vacuous)', nm.hint && nm.ring === 'cr-ring' && nm.loops.some(l => /cr-ring/.test(l)), JSON.stringify(nm));
-  check('no console errors in either run', rm.errors.length === 0 && nm.errors.length === 0, first([...rm.errors, ...nm.errors], 2));
+  const rm = await probe('reduce'), mo = await probe('no-preference');
+  check('reduced motion: nothing loops anywhere in the console (also not in ::before / ::after), the spotlight is a static ring', rm.loops.length === 0 && rm.spot.n >= 1 && rm.spot.anim === 'none', JSON.stringify([rm.loops, rm.spot]));
+  check('reduced motion: a new alert card appears with no animation and the KPI changes at once (no count-up)', rm.t0.cardAnims === 0 && rm.t0.anims === 0 && rm.t0.kpi === rm.fin && rm.mid === rm.fin, JSON.stringify([rm.t0, rm.mid, rm.fin]));
+  check('reduced motion: the overlay loop (rings, trails, sweep, routes) never starts and the canvas stays empty', rm.fx.running === false && rm.fx.ink === 0 && rm.fx.frames === 0, JSON.stringify(rm.fx));
+  check('reduced motion: switching a tab is instant (one panel, no animation) and the playhead does not glide', rm.tab.visible === 1 && rm.tab.anims === 0 && parseFloat(rm.tl) === 0, JSON.stringify([rm.tab, rm.tl]));
+  check('motion allowed: a new alert card slides in with its amber flash (Web Animations on the card)', mo.t0.cardAnims >= 2, JSON.stringify(mo.t0));
+  check('motion allowed: the KPI counts up (the value is between the old and the new one 160 ms in, then settles)', mo.t0.kpi !== mo.fin || +mo.mid > +mo.t0.kpi || mo.mid === mo.fin, JSON.stringify([mo.before, mo.t0.kpi, mo.mid, mo.fin]));
+  check('motion allowed: the overlay loop runs and draws (pulsing severity rings for the open alert)', mo.fx.running === true && mo.fx.frames > 5 && mo.fx.ink > 0, JSON.stringify(mo.fx));
+  check('motion allowed: a tab switch cross-fades (the leaving and the new panel overlap for a moment, then one is left)', mo.tab.visible === 2 && mo.tab.anims >= 2 && mo.tab2 === 1, JSON.stringify([mo.tab, mo.tab2]));
+  check('motion allowed: the demo spotlights the panel it talks about with one slow pulse (an infinite animation, so the reduced-motion check is not vacuous)', mo.spot.n >= 1 && mo.spot.anim === 'cr-spot' && mo.spot.iter === 'infinite' && /^0\.3\d*s$/.test(mo.tl), JSON.stringify([mo.spot, mo.tl]));
+  check('no console errors in either motion run', rm.errors.length === 0 && mo.errors.length === 0, first([...rm.errors, ...mo.errors], 2));
+  // no flashing faster than 3 Hz: every looping CSS animation lasts >= 1.2 s (the spinner is a rotation, not a flash), every canvas pulse >= 1.4 s
+  const css = read('css/control.css'), ui = read('js/control-ui.js');
+  const loopDur = [...css.matchAll(/animation:\s*([a-z-]+)\s+([\d.]+)(m?s)[^;}]*infinite/g)].map(m => ({ name: m[1], s: m[3] === 'ms' ? +m[2] / 1000 : +m[2] }));
+  check('every looping CSS animation lasts at least 1.2 s (the spinner rotation excepted): no flashing above 3 Hz', loopDur.length >= 2 && loopDur.filter(a => a.name !== 'cr-spin').every(a => a.s >= 1.2), JSON.stringify(loopDur));
+  const periods = [...(/SEV_PERIOD = \{([^}]*)\}/.exec(ui) || [, ''])[1].matchAll(/:\s*([\d.]+)/g)].map(m => +m[1]);
+  check('the severity rings on the map pulse no faster than once per 1.4 s (under 0.72 Hz)', periods.length === 4 && Math.min(...periods) >= 1.4, periods.join());
+  check('all motion is gated on prefers-reduced-motion in the scripts (CR.reduced()) and on page visibility', (ui.match(/CR\.reduced\(\)/g) || []).length >= 6 && /doc\.hidden/.test(ui) && /visibilitychange/.test(ui));
+  // frame rate of the busy shift with all motion on (headless software rendering is the slow case)
+  {
+    const { ctx, page, errors } = await open({ hash: '', motion: 'no-preference', settle: 600 }); await ensureTabs(page);
+    await W(page, () => ControlRoom.api.step(500));
+    await W(page, () => { const a = ControlRoom.api.alerts().filter(a => !ControlRoom.isFinal(a))[0]; ControlRoom.selectAlert(a.id); });
+    await sleep(5000);
+    const f = await W(page, () => ({ fps: ControlRoom.api.fps(), fx: ControlRoom.ui.fx.running(), air: ControlRoom.api.snap().drones.filter(d => d.state !== 'docked' && d.state !== 'charging').length, open: ControlRoom.api.alerts().filter(a => !ControlRoom.isFinal(a)).length }));
+    console.log('  info: busy shift with motion: ' + JSON.stringify(f.fps) + ', ' + f.open + ' open alerts, ' + f.air + ' airborne drones');
+    check('the busy shift with every animation on stays at or above 30 fps (mean frame time <= 33 ms) with the overlay loop running', f.fx && f.fps && f.fps.fps >= 30 && f.open >= 4, JSON.stringify(f));
+    check('no console errors in the frame-rate run', errors.length === 0, first(errors, 2));
+    await ctx.close();
+  }
 }
 
 /* ---------------------------------------------------------------- 12. contrast */
@@ -501,7 +543,8 @@ console.log('\n13. source rules: no innerHTML sinks, no modules / fetch, no lett
   const html = read('control.html');
   check('control.html links control.css, control-feeds.css, control-panels.css and loads control-ui.js and control-demo.js (deferred, classic)', ['css/control.css', 'css/control-feeds.css', 'css/control-panels.css'].every(f => html.includes(`href="${f}"`)) && ['js/control-ui.js', 'js/control-demo.js'].every(f => new RegExp(`<script src="${f.replace('.', '\\.')}" defer>`).test(html)));
   // every cr-* class used by the shell is styled (a typo in a class name would otherwise go unnoticed)
-  const used = new Set([...ui.matchAll(/'([^']*)'/g)].flatMap(m => m[1].split(/\s+/)).filter(c => /^cr-[a-z0-9-]+$/.test(c)).concat([...demo.matchAll(/'([^']*)'/g)].flatMap(m => m[1].split(/\s+/)).filter(c => /^cr-[a-z0-9-]+$/.test(c))));
+  const classesOf = src => [...src.matchAll(/class:\s*'([^']*)'/g)].flatMap(m => m[1].split(/\s+/)).filter(c => /^cr-[a-z0-9]+(-[a-z0-9]+)*$/.test(c));
+  const used = new Set([...classesOf(ui), ...classesOf(demo)]);
   const unstyled = [...used].filter(c => !new RegExp('[.\\[=]' + c.replace(/-/g, '\\-') + '(?![a-z0-9-])').test(css));
   check(`every cr-* class the shell creates is styled in control.css (${used.size} classes)`, unstyled.length === 0, first(unstyled, 8));
 }

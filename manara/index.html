@@ -53,9 +53,10 @@
         <span class="tag warn cam-sim">SIM</span>
         <span class="cam-tele num" dir="ltr" id="cam-tele" aria-hidden="true">ALT 80 m · 18 m/s · BAT 86%</span>
       </div>
-      <div class="cam-view" id="cam-view">
+      <div class="cam-view" id="cam-view" data-view="cam">
         <canvas id="cam-rgb" class="cam-rgb" width="576" height="360" role="img" aria-label="مشهد جوي محاكى لحريق ودخان في حيّ عمراني، وعليه مربعات الكشف" data-aria-ar="مشهد جوي محاكى لحريق ودخان في حيّ عمراني، وعليه مربعات الكشف" data-aria-en="Simulated aerial view of fire and smoke in an urban block, with the detection boxes on it">Simulated aerial view</canvas>
         <canvas id="cam-ovl" class="cam-ovl" aria-hidden="true"></canvas>
+        <svg id="cam-story" class="cam-story" viewBox="0 0 160 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false"></svg>
         <span class="cam-state" id="cam-state" data-s="watch" aria-hidden="true"></span>
         <span class="cam-clock num" id="cam-clock" dir="ltr" aria-hidden="true">00:00</span>
         <div class="cam-pip" aria-hidden="true"><canvas id="cam-th" width="192" height="120"></canvas><span class="cam-pip-l">THERMAL</span></div>
@@ -69,19 +70,21 @@
         </div>
         <i class="cam-c tl" aria-hidden="true"></i><i class="cam-c tr" aria-hidden="true"></i><i class="cam-c bl" aria-hidden="true"></i><i class="cam-c br" aria-hidden="true"></i>
       </div>
-      <ol class="cam-steps" id="cam-steps" data-aria-ar="مراحل المشهد" data-aria-en="Scene stages" aria-label="مراحل المشهد">
-        <li data-k="patrol"><span class="cs-n num">1</span><b><span data-l="ar">دورية</span><span data-l="en">Patrol</span></b></li>
-        <li data-k="sees"><span class="cs-n num">2</span><b><span data-l="ar">ترى</span><span data-l="en">Sees</span></b></li>
-        <li data-k="proves"><span class="cs-n num">3</span><b><span data-l="ar">تتحقق</span><span data-l="en">Proves</span></b></li>
-        <li data-k="alerts"><span class="cs-n num">4</span><b><span data-l="ar">تُنبّه</span><span data-l="en">Alerts</span></b></li>
+      <ol class="cam-steps" id="cam-steps" data-aria-ar="مراحل القصة" data-aria-en="Story stages" aria-label="مراحل القصة">
+        <li data-k="sense"><span class="cs-n num">1</span><b><span data-l="ar">ترى</span><span data-l="en">Sense</span></b></li>
+        <li data-k="prove"><span class="cs-n num">2</span><b><span data-l="ar">تتحقق</span><span data-l="en">Prove</span></b></li>
+        <li data-k="reach"><span class="cs-n num">3</span><b><span data-l="ar">يصل الأسرع</span><span data-l="en">Reach</span></b></li>
+        <li data-k="guide"><span class="cs-n num">4</span><b><span data-l="ar">تُرشد</span><span data-l="en">Guide</span></b></li>
+        <li data-k="count"><span class="cs-n num">5</span><b><span data-l="ar">تعدّ</span><span data-l="en">Count</span></b></li>
+        <li data-k="hand"><span class="cs-n num">6</span><b><span data-l="ar">تُسلّم</span><span data-l="en">Hand off</span></b></li>
       </ol>
       <div class="cam-ctl">
         <button class="icon-btn" type="button" id="cam-play" aria-pressed="true"  aria-label="إيقاف المشهد مؤقتًا"></button>
         <button class="icon-btn" type="button" id="cam-restart" data-aria-ar="أعد المشهد من البداية" data-aria-en="Restart the scene" aria-label="أعد المشهد من البداية" data-icon="reset"></button>
-        <p class="cam-cap" id="cam-cap" aria-live="off"></p>
+        <div class="cam-capw" id="cam-capw"><p class="cam-cap" id="cam-cap" aria-live="off"></p></div>
       </div>
       <p class="cam-note"><span data-l="ar">مشهد جوي يُولَّد بالشيفرة (SIM) وليس لقطة حقيقية؛ أمّا الكاشف فقواعد رؤية حاسوبية حقيقية (ليست ذكاءً اصطناعيًا) تعمل الآن في صفحتك. لم تحلّق مسيّرة حقيقية، ولا إنذار عامًّا قبل مفتاحين وموافقة إنسان.</span><span data-l="en">An aerial scene generated in code (SIM), not real footage; the detector is real rule-based computer vision (not AI) running in this page right now. No real drone has flown, and no public alert leaves before two keys and a human Approve.</span></p>
-      <p class="sr-only"><span data-l="ar">وصف نصي للمشهد: مسيّرة تدور فوق حيّ عمراني، ثم يظهر دخان ولهب. الكاشف المبني على قواعد الرؤية الحاسوبية يعطي «اشتباهًا»، ثم تؤكد الكاميرا الحرارية بؤرة ساخنة، فيتوفر مفتاحان مستقلان، وتُرسل المسيّرة إنذارًا إلى غرفة التحكم الذي ينتظر موافقة إنسان. صافرة الموقع المحلية لا تنتظر.</span><span data-l="en">Text description: a drone patrols above an urban block, then smoke and flames appear. The rule-based computer-vision detector reports SUSPECT, then the thermal camera confirms a hot spot, so two independent keys are in; the drone sends an alert to the control room, which waits for a human Approve. The local siren never waits.</span></p>
+      <p class="sr-only"><span data-l="ar">وصف نصي للقصة (تتكرر في حلقة): مسيّرة تدور فوق حيّ عمراني، ثم يظهر دخان ولهب. الكاشف المبني على قواعد الرؤية الحاسوبية يعطي «اشتباهًا»، ثم تؤكد الكاميرا الحرارية بؤرة ساخنة، فيتوفر مفتاحان مستقلان، وتُرسل المسيّرة إنذارًا إلى غرفة التحكم الذي ينتظر موافقة إنسان؛ وصافرة الموقع المحلية لا تنتظر. بعد الموافقة تُرسم على خريطة تخطيطية مسارات الوحدات الأسرع وصولًا فتتحرك نحو الحادث؛ ثم تضيء المسيّرة مسارًا إلى المخرج فيخرج الناس ويُعدّون؛ ثم يدخل الروبوت ويجد شخصين لا يستطيعان الخروج، فيكتمل العدّ وتُسلَّم البطاقة لقائد الإنقاذ.</span><span data-l="en">Text description (it loops): a drone patrols above an urban block, then smoke and flames appear. The rule-based computer-vision detector reports SUSPECT, then the thermal camera confirms a hot spot, so two independent keys are in; the drone sends an alert to the control room, which waits for a human Approve; the local siren never waits. After Approve, routes of the fastest-arriving units are drawn on a schematic map and the units move to the incident; then the drone lights a path to the exit, people walk out and are counted; then the robot enters and finds two people who cannot get out, the count completes and the card goes to the rescue lead.</span></p>
     </div>
 
     <div class="hero-body">
@@ -146,7 +149,7 @@
       <p class="small muted" id="gap-cap"><span data-l="ar">ثلاثة مصادر مختلفة لا حادثة واحدة، نضعها معًا لنشرح الفكرة فقط: لا نقول إن أي حريق بعينه استغرق هذه الأزمنة. الجزء المخطّط: مدى الأرقام المنشورة. شريط المسيّرة نتيجة محاكاة (SIM) بافتراضات ظاهرة، وليس قياسًا لمسيّرة حقيقية.</span><span data-l="en">Three different sources, not one event; we show them together only to explain the idea. We do not say any particular fire took these times. Hatched part: the published ranges. The drone bar is a simulation result (SIM) with visible assumptions, not a measurement of a real drone.</span></p>
     </figure>
 
-    <div class="grid g3 why-kpis">
+    <div class="grid g3 why-kpis" data-stagger>
       <div class="kpi rv"><b class="num" dir="ltr">49%</b><span><span data-l="ar">من وفيات الحرائق السكنية (الولايات المتحدة، 2017–2019) وقعت بين 11 ليلًا و7 صباحًا — بحث دولي (USFA، S7). لهذا يهمّنا النائم.</span><span data-l="en">of US residential fire deaths (2017–2019) happened 11 p.m.–7 a.m. — international research (USFA, S7). This is why the sleeper matters.</span></span></div>
       <div class="kpi rv"><b class="num" dir="ltr">1,636 / 2,473</b><span><span data-l="ar">حرائق عام 2023 في الإمارات وقعت في البيوت (الدفاع المدني الإماراتي عبر ذا ناشيونال، S11): في الخليج تقع الحرائق حيث ينام الناس.</span><span data-l="en">UAE fires in 2023 that were in homes (UAE civil defence via The National, S11): in the Gulf fires happen where people sleep.</span></span></div>
       <div class="kpi rv"><b class="num" dir="ltr">67%</b><span><span data-l="ar">من الحالات الحقيقية في السويد وصلت فيها مسيّرة جهاز الصدمات قبل الإسعاف، بوسيط 3 دقائق و14 ثانية أبكر — بحث دولي (S15). المسيّرات تصل أولًا.</span><span data-l="en">of real cases in Sweden where a drone-delivered AED arrived before the ambulance, a median 3 min 14 s earlier — international research (S15). Drones arrive first.</span></span></div>
@@ -163,7 +166,8 @@
       <p class="sec-lead"><span data-l="ar">السلسلة نفسها تعمل لكل خطر؛ الذي يتغيّر هو «كتيّب» الخطر. كل خطوة تقودك إلى صفحتها الحقيقية في المشروع، وفيها ما يمكنك تجربته بنفسك.</span><span data-l="en">The same chain runs for every hazard; only the hazard's playbook changes. Each step takes you to its real page in the project, with something you can try yourself.</span></p>
     </div>
 
-    <ol class="flow" id="flow">
+    <div class="flow-rail rv" id="flow-rail" aria-hidden="true"><i class="fr-fill"></i><b class="fr-d"></b><b class="fr-d"></b><b class="fr-d"></b><b class="fr-d"></b><b class="fr-d"></b><b class="fr-d"></b></div>
+    <ol class="flow" id="flow" data-stagger>
       <li class="step rv" data-step="1" style="--sc:var(--accent)">
         <span class="step-n num" aria-hidden="true">1</span>
         <span class="step-ico" data-icon="drone" aria-hidden="true"></span>
@@ -263,6 +267,7 @@
           <div class="con-map" id="con-map">
             <canvas id="con-canvas" width="640" height="420" role="img" data-aria-ar="خريطة الدوحة الحقيقية (OpenStreetMap) عليها الحادث ومسار المسيّرة ومسارات الوحدات الموصى بها" data-aria-en="The real map of Doha (OpenStreetMap) with the incident, the drone's path and the recommended unit routes" aria-label="خريطة الدوحة الحقيقية (OpenStreetMap) عليها الحادث ومسار المسيّرة ومسارات الوحدات الموصى بها">Map</canvas>
             <canvas id="con-ovl" class="con-ovl" aria-hidden="true"></canvas>
+            <i class="con-radar" aria-hidden="true"></i>
             <p class="map-loading" id="con-loading" role="status"><span data-l="ar">نجهّز الخريطة الحقيقية…</span><span data-l="en">Preparing the real map…</span></p>
           </div>
           <div class="con-stages" id="con-stages" aria-hidden="true">
@@ -310,7 +315,7 @@
     </div>
 
     <div class="room-foot rv">
-      <ul class="room-points">
+      <ul class="room-points" data-stagger>
         <li><b data-icon="check"><span data-l="ar">الموافقة للإنسان</span><span data-l="en">Approve is human</span></b><span><span data-l="ar">المسيّرة قد تُقلع وحدها لتتحقق؛ الإنذار العام وإرسال الوحدات لا يخرجان قبل «موافق».</span><span data-l="en">A drone may launch on its own to verify; the public alert and the dispatch never leave before Approve.</span></span></li>
         <li><b data-icon="eye"><span data-l="ar">كل بثّ يقول مصدره</span><span data-l="en">Every feed says what it is</span></b><span><span data-l="ar">عاديّ أو حراري أو مدمج، وكل مربّع كشف يحمل مفتاحه وثقته، وكل شيء محاكى موسوم SIM.</span><span data-l="en">RGB, thermal or fused; every detection box carries its key and confidence; everything simulated is marked SIM.</span></span></li>
         <li><b data-icon="users"><span data-l="ar">أدوار</span><span data-l="en">Roles</span></b><span><span data-l="ar">مشاهد، ومشغّل (يوافق)، وقائد حادث (يوافق على الروبوت): محاكاة بلا مصادقة حقيقية.</span><span data-l="en">viewer, operator (approves), incident commander (approves the robot): simulated, no real authentication.</span></span></li>
@@ -330,7 +335,7 @@
           <h2 class="sec-title" id="robot-t"><span data-l="ar">يدخل حيث لا ينبغي أن يدخل الناس أولًا</span><span data-l="en">It goes in where people should not go first</span></h2>
           <p class="sec-lead"><span data-l="ar">المسيّرة تُخرج مَن يستطيع المشي. فماذا عمّن ينام في غرفة ملأها الدخان، أو على كرسي متحرك في الطابق الثالث، أو لا يردّ؟ هنا يأتي روبوت الإنقاذ: <b>مفهوم بنموذج أولي محاكى</b>، لم يُبنَ ولم يُجرَّب.</span><span data-l="en">The drone guides those who can walk. What about someone asleep in a smoke-filled room, in a wheelchair on the third floor, or not answering? That is the rescue robot: <b>a concept with a simulated prototype</b>, not built and not tested.</span></p>
         </div>
-        <ul class="rob-list rv">
+        <ul class="rob-list rv" data-stagger>
           <li data-icon="target"><span><b><span data-l="ar">يبحث بالأولوية:</span><span data-l="en">Searches by priority:</span></b> <span data-l="ar">غرف غير المُحصَين ومَن يحتاج مساعدة أولًا، ثم الباقي.</span><span data-l="en">rooms of the unaccounted and those who need help first, then the rest.</span></span></li>
           <li data-icon="thermo"><span><b><span data-l="ar">يجد الناس بالحرارة والصوت:</span><span data-l="en">Finds people by heat and sound:</span></b> <span data-l="ar">كاميرا حرارية وأخرى عادية بمصباحها وميكروفون.</span><span data-l="en">a thermal camera, an RGB camera with its own lamp, and a microphone.</span></span></li>
           <li data-icon="speaker"><span><b><span data-l="ar">يُحدّث ويرشد:</span><span data-l="en">Talks and guides:</span></b> <span data-l="ar">«أنا روبوت الدفاع المدني، اتبع الضوء الأخضر» بلغة الشخص وصيغته، ويترك منارات لمسار آمن.</span><span data-l="en">“I am a Civil Defence robot, follow the green light” in the person's language and format, and drops beacons for a safe route.</span></span></li>
@@ -370,7 +375,7 @@
       <p class="sec-lead"><span data-l="ar">لكل خطر كتيّب: ماذا ترى المسيّرة، وما المفتاح الثاني، وما الإجراء الواقي. هذه صور جوية تُولَّد الآن بالشيفرة (SIM) ويحلّلها الكاشف نفسه. بدّل بين العادي والحراري لترى ما تراه كل كاميرا وما لا تراه.</span><span data-l="en">Each hazard has a playbook: what the drone sees, what the second key is, what the protective action is. These aerial frames are generated in code now (SIM) and analysed by the same detector. Switch between RGB and thermal to see what each camera sees and what it cannot.</span></p>
     </div>
 
-    <div class="grid g3 hz-grid" id="hz-grid">
+    <div class="grid g3 hz-grid" id="hz-grid" data-stagger>
 
       <article class="card hz rv" data-hz="fire" style="--sc:var(--danger)">
         <div class="hz-shot"><canvas class="hz-cv" width="320" height="200" role="img" aria-label="" data-aria-ar="حريق ودخان في حيّ عمراني، كما تراه المسيّرة (محاكاة)" data-aria-en="Fire and smoke in an urban block as the drone sees it (simulation)"></canvas><span class="hz-badge tag warn">SIM</span></div>
@@ -543,7 +548,7 @@
       <button class="chip" type="button" data-f="sim" aria-pressed="false"><span class="dot" style="--sc:var(--warn)"></span>SIM</button>
     </div>
 
-    <div class="nums" id="nums">
+    <div class="nums" id="nums" data-stagger>
       <article class="num-card rv" data-k="measured">
         <header><span class="tag safe">MEASURED</span><span class="nc-src small muted"><span data-l="ar">اختبارنا الآلي</span><span data-l="en">our automated tests</span></span></header>
         <b class="num-big num" dir="ltr" data-tc="total">1,348</b>
@@ -685,7 +690,7 @@
     </div>
     <div class="card rv judge-path">
       <h3 data-icon="clock"><span data-l="ar">ثلاث دقائق للمحكّم</span><span data-l="en">Three minutes for a judge</span></h3>
-      <ol class="path">
+      <ol class="path" data-stagger>
         <li><span data-l="ar">شاهد المسيّرة ترى وتُنبّه، في أعلى هذه الصفحة.</span><span data-l="en">Watch the drone see and alert, at the top of this page.</span></li>
         <li><a href="control.html#demo"><span data-l="ar">غرفة التحكم:</span><span data-l="en">Control Room:</span></a> <span data-l="ar">اضغط «موافق» كما يفعل المشغّل.</span><span data-l="en">press Approve as the operator does.</span></li>
         <li><a href="detect.html#fool"><span data-l="ar">مختبر الأدلة:</span><span data-l="en">Evidence Lab:</span></a> <span data-l="ar">حاوِل خداع الكاشف.</span><span data-l="en">try to fool the detector.</span></li>

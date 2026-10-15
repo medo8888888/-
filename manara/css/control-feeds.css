@@ -65,7 +65,7 @@
 .crf-vchip[data-v="clear"] { border-inline-start-color: #3ddc84; }
 .crf-vview { border-inline-start: 0; font-family: var(--font-m); font-weight: 600; font-size: .68rem; opacity: .9; }
 .crf-hud { position: absolute; inset-inline: 0; inset-block-end: 0; z-index: 2; display: flex; flex-wrap: wrap; gap: 1px 10px; padding: 14px 8px 4px; background: linear-gradient(transparent, var(--f-hud) 55%); color: #e8eef7; font: 600 .68rem var(--font-m); pointer-events: none; }
-.crf-hi i { font-style: normal; opacity: .7; margin-inline-end: 4px; font-family: var(--font-h); font-weight: 500; }
+.crf-hi > i { font-style: normal; opacity: .7; margin-inline-end: 4px; font-family: var(--font-h); font-weight: 500; }
 .crf-hi[data-low="1"] b { color: #ffb020; }
 .crf-ribbon { position: absolute; inset-block-start: 34px; inset-inline-start: 6px; z-index: 2; background: #b3261e; color: #fff; border-radius: 6px; padding: 1px 9px; font: 700 .7rem var(--font-h); pointer-events: none; }
 .crf-cell[data-rec="1"] .crf-vid::after { content: ""; position: absolute; inset-block-start: 10px; inset-inline-end: 10px; inline-size: 10px; block-size: 10px; border-radius: 50%; background: #ff3b30; z-index: 4; animation: crf-rec 1s steps(2) infinite; }
@@ -148,6 +148,47 @@
 .crf-lres { font-weight: 600; color: var(--f-head); }
 .crf-lres:empty { display: none; }
 .crf-lnote b { color: var(--f-danger); }
+
+/* ---- motion: transform / opacity only; every flash is slower than 3 Hz; all of it is off under prefers-reduced-motion (see the end of this file) ---- */
+.crf-dot { flex: none; inline-size: 8px; block-size: 8px; border-radius: 50%; background: var(--f-safe); animation: crf-live 1.6s ease-in-out infinite; }
+.crf-cell[data-state="fire"] .crf-dot { background: var(--f-danger); animation-duration: 1.2s; }
+.crf-cell[data-state="suspect"] .crf-dot, .crf-cell[data-state="smoke"] .crf-dot { background: var(--f-warn); }
+.crf-cell[data-kind="live"] .crf-dot { background: var(--f-danger); }
+@keyframes crf-live { 50% { opacity: .3; transform: scale(.7); } }
+.crf-scan { position: absolute; inset-inline: 0; inset-block-start: 0; block-size: 22%; z-index: 2; pointer-events: none; opacity: 0; transform: translateY(-100%);
+  background: linear-gradient(to bottom, transparent, color-mix(in oklab, var(--f-accent) 50%, transparent) 92%, var(--f-accent)); }
+.crf-cell[data-enter="1"] .crf-scan { animation: crf-sweep 1.15s cubic-bezier(.4, 0, .2, 1) 1 both; }
+@keyframes crf-sweep { 0% { opacity: 0; transform: translateY(-100%); } 12% { opacity: 1; } 88% { opacity: 1; } 100% { opacity: 0; transform: translateY(460%); } }
+.crf-lockon { position: absolute; inset: 12% 14%; z-index: 2; pointer-events: none; opacity: 0; }
+.crf-lockon i { position: absolute; inline-size: 18px; block-size: 18px; border: 2px solid var(--f-accent); }
+.crf-lockon i:nth-child(1) { inset-block-start: 0; inset-inline-start: 0; border-inline-end: 0; border-block-end: 0; }
+.crf-lockon i:nth-child(2) { inset-block-start: 0; inset-inline-end: 0; border-inline-start: 0; border-block-end: 0; }
+.crf-lockon i:nth-child(3) { inset-block-end: 0; inset-inline-start: 0; border-inline-end: 0; border-block-start: 0; }
+.crf-lockon i:nth-child(4) { inset-block-end: 0; inset-inline-end: 0; border-inline-start: 0; border-block-start: 0; }
+.crf-cell[data-enter="1"] .crf-lockon { animation: crf-lock 1.3s cubic-bezier(.2, .8, .2, 1) 1 both; }
+@keyframes crf-lock { 0% { opacity: 0; transform: scale(1.45); } 30% { opacity: 1; transform: scale(1); } 78% { opacity: 1; } 100% { opacity: 0; transform: scale(.98); } }
+.crf-cell[data-enter="1"] { animation: crf-in .5s ease-out 1 both; }
+@keyframes crf-in { from { opacity: 0; transform: translateY(8px) scale(.985); } to { opacity: 1; transform: none; } }
+.crf-flash { position: absolute; inset: 0; z-index: 3; pointer-events: none; opacity: 0; border: 3px solid var(--f-danger); box-shadow: inset 0 0 26px color-mix(in oklab, var(--f-danger) 55%, transparent); }
+.crf-cell[data-flash="1"] .crf-flash { animation: crf-alert .6s ease-out 3 both; }                 /* three flashes, 1.7 Hz */
+@keyframes crf-alert { 0% { opacity: .95; } 100% { opacity: 0; } }
+.crf-alertlbl { position: absolute; inset-block-start: 34px; inset-inline: 0; margin-inline: auto; inline-size: max-content; z-index: 4; pointer-events: none; opacity: 0; background: var(--f-danger); color: #fff; font: 800 .74rem var(--font-h); padding: 1px 14px; border-radius: 6px; }
+.crf-cell[data-flash="1"] .crf-alertlbl { animation: crf-albl 2s ease-out 1 both; }
+@keyframes crf-albl { 0% { opacity: 0; transform: translateY(-6px); } 12% { opacity: 1; transform: none; } 80% { opacity: 1; } 100% { opacity: 0; } }
+.crf-hud b { font-variant-numeric: tabular-nums; }
+.crf-batt { position: relative; display: inline-block; inline-size: 18px; block-size: 8px; border: 1px solid currentColor; border-radius: 2px; margin-inline-end: 6px; vertical-align: -1px; }
+.crf-batt::after { content: ""; position: absolute; inset-inline-end: -4px; inset-block: 2px; inline-size: 2px; background: currentColor; border-radius: 1px; }
+.crf-hi .crf-batt i { position: absolute; inset: 1px; margin: 0; opacity: 1; background: #3ddc84; transform: scaleX(var(--lv, 1)); transform-origin: left center; transition: transform .8s ease, background-color .4s; }
+html[dir="rtl"] .crf-hi .crf-batt i { transform-origin: right center; }
+.crf-hi[data-low="1"] .crf-batt i { background: #ffb020; animation: crf-low 1s ease-in-out infinite; }
+@keyframes crf-low { 50% { opacity: .35; } }
+.crf-sig { display: inline-flex; align-items: flex-end; gap: 1.5px; block-size: 9px; margin-inline-end: 6px; vertical-align: -1px; }
+.crf-hi .crf-sig i { inline-size: 3px; margin: 0; background: currentColor; border-radius: 1px; opacity: .22; transform-origin: bottom; transition: opacity .35s, transform .35s; }
+.crf-sig i:nth-child(1) { block-size: 3px; } .crf-sig i:nth-child(2) { block-size: 5px; } .crf-sig i:nth-child(3) { block-size: 7px; } .crf-sig i:nth-child(4) { block-size: 9px; }
+.crf-hi .crf-sig[data-n="1"] i:nth-child(-n+1), .crf-hi .crf-sig[data-n="2"] i:nth-child(-n+2), .crf-hi .crf-sig[data-n="3"] i:nth-child(-n+3), .crf-hi .crf-sig[data-n="4"] i { opacity: 1; }
+.crf-hi[data-low="1"] .crf-sig i { background: #ffb020; }
+.crf-evi[data-new="1"] { animation: crf-evin .55s ease-out 1 both; }
+@keyframes crf-evin { from { opacity: 0; transform: translateY(10px) scale(.95); } to { opacity: 1; transform: none; } }
 
 .crf button:focus-visible, .crf select:focus-visible, .crf summary:focus-visible { outline: 3px solid var(--f-accent); outline-offset: 2px; }
 @media (pointer: coarse) { .crf-segb, .crf-chipb, .crf-saychip { min-block-size: 44px; } .crf-ib.icon-btn { inline-size: 40px; block-size: 40px; } }

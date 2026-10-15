@@ -19,6 +19,11 @@
  *   HONEST    the A/B switch «with robot / without robot» re-runs the SAME world (same seed, same fire, same people); the measured result over seeds 1–8 (computed here, on demand): overall locate time barely changes, the
  *             robot found the wheelchair user first in 5 of 8 seeds and the crews got there first in 3 of 8.  The limits panel: a wheeled robot cannot climb stairs, a hot room (34 °C) leaves the thermal camera no contrast.
  *
+ * MOTION    (canvas / transform / opacity only; every pulse is slower than 3 Hz; prefers-reduced-motion = static frames; nothing runs while the tab is inactive, the page is hidden or the simulation is paused)
+ *             the robot GLIDES between rooms along its path (position and heading eased between simulation ticks) with a sensor cone that SWEEPS and a radar ring, smoke and gas SPREAD as soft drifting particles and the
+ *             displayed smoke / fire fade in and out instead of jumping, flames and embers flicker, people PULSE when found (ripples) and when they need help, the guidance route is DRAWN on with flowing dashes, the
+ *             headcount COUNTS UP, the active state chip pulses and a new find slides in.
+ *
  * CONTRACT  CR.registerTab({ id:'robot', build(el), update(), frame(ts), active(on) }); CR.mods.robot.badge() → the map's «robot» pointer; CR.mods.robot = the test / automation API at the bottom.   Classic script, no fetch, no
  * libraries, never innerHTML.  The building simulation runs only while this tab is open (frame() is not called otherwise).
  * ===================================================================================================================== */
@@ -65,7 +70,7 @@
    * 2. STATE
    * ==================================================================================== */
   var R = { root: null, ui: {}, built: false, active: null, scs: {}, order: [], cur: null, demo: null, playing: true, speed: 5, lastTs: 0, acc: 0, paintAt: 0, canvasAt: 0, dirtyCanvas: true, dirtyUI: true, fl: 0, flSel: 'auto', truth: false, ctx: null, w: 320, h: 220, dpr: 1,
-    ab: { running: false, res: null, done: 0, total: 0 }, sentAt: 0, sendSig: '', hits: [], variant: 'tracked', busy: false, creating: false };
+    ab: { running: false, res: null, done: 0, total: 0 }, tws: [], lastDraw: 0, lastTw: 0, sentAt: 0, sendSig: '', hits: [], variant: 'tracked', busy: false, creating: false };
 
   /* ====================================================================================
    * 3. THE BUILDING (from ManaraSim.worldInfo(): the floor plans are drawn from the same graph the robot searches)
@@ -106,7 +111,7 @@
   }
   function resetRun(sc, robotOn, toT) {
     sc.robotOn = !!robotOn; sc.sim = newSim(sc, robotOn); sc.struct = sc.sim.hazard === 'fire' && sc.sim.hz && isNum(sc.sim.hz.struct) ? sc.sim.hz.struct : 0; sc.g = geomOf(sc.struct);
-    sc.trail = {}; sc.pose = {}; sc.evSeen = 0; sc.log = []; sc.sent = {}; sc.ended = false; sc.lastSay = null; sc.located = {}; sc.hcAt = -9; sc.speechSeen = 0; sc.lastState = null; sc.fl = null;
+    sc.trail = {}; sc.pose = {}; sc.evSeen = 0; sc.log = []; sc.sent = {}; sc.ended = false; sc.lastSay = null; sc.located = {}; sc.hcAt = -9; sc.speechSeen = 0; sc.lastState = null; sc.fl = null; sc.fx = { t: 0, parts: [], vis: {}, routes: {} }; sc.seenFinds = {};
     if (toT && toT > sc.sim.t) { var left = toT - sc.sim.t; while (left > 0 && !sc.sim.done) { var n = Math.min(left, 25); Sim.step(sc.sim, n); left -= n; } }
     afterTick(sc, true);
   }
@@ -302,25 +307,58 @@
     if (p.aware >= 1 && (snap.alert || p.aware >= 2)) return 'alerted';
     return 'calm';
   }
+  /* ---- motion helpers ---- */
+  var TAU = 6.2832;
+  function visEase(fx, key, ni, target, dt, rm) {            // the displayed field value eases to the simulated one: the spread of smoke and fire fades in instead of jumping at every tick
+    var v = fx.vis[key] || (fx.vis[key] = new Float32Array(256).fill(-1));
+    if (v[ni] < 0 || rm) v[ni] = target; else if (dt) v[ni] += (target - v[ni]) * (1 - Math.exp(-dt * 2.4));
+    return v[ni];
+  }
+  function rnd(a, b) { return a + Math.random() * (b - a); }
+  function spawnParts(fx, bx, fl, smoke, burn, gas, gasMax, dt) {     // soft smoke / gas puffs and flame embers (cell units); the cap keeps the cost flat
+    var ps = fx.parts; if (ps.length > 120) return;
+    if (smoke > 0.12 && Math.random() < dt * 3.2 * smoke) ps.push({ k: 's', fl: fl, x: rnd(bx.x0, bx.x0 + bx.w), y: rnd(bx.y0, bx.y0 + bx.h), vx: rnd(-0.18, 0.18), vy: rnd(-0.12, 0.12), r0: 0.18, r1: rnd(0.55, 0.95), life: rnd(2.2, 3.8), age: 0, a: clamp(smoke, 0.2, 0.8) * 0.5 });
+    if (burn === 1 && Math.random() < dt * 9) ps.push({ k: 'e', fl: fl, x: rnd(bx.x0 + bx.w * 0.25, bx.x0 + bx.w * 0.75), y: rnd(bx.y0 + bx.h * 0.4, bx.y0 + bx.h * 0.8), vx: rnd(-0.35, 0.35), vy: rnd(-0.9, -0.35), r0: 0.07, r1: 0.02, life: rnd(0.7, 1.4), age: 0, a: 1 });
+    if (gas > 5 && Math.random() < dt * 2.2 * clamp(gas / gasMax, 0, 1)) ps.push({ k: 'g', fl: fl, x: rnd(bx.x0, bx.x0 + bx.w), y: rnd(bx.y0, bx.y0 + bx.h), vx: rnd(-0.12, 0.12), vy: rnd(-0.1, 0.1), r0: 0.15, r1: rnd(0.5, 0.8), life: rnd(2, 3.4), age: 0, a: 0.45 });
+  }
+  function stepParts(fx, dt) {
+    var ps = fx.parts, i, p;
+    for (i = ps.length - 1; i >= 0; i--) { p = ps[i]; p.age += dt; if (p.age >= p.life) { ps.splice(i, 1); continue; } p.x += p.vx * dt; p.y += p.vy * dt; p.vx += (Math.random() - 0.5) * 0.7 * dt; p.vy += (Math.random() - 0.5) * 0.7 * dt; }
+  }
+  function drawParts(x, fx, fl, PX, PY, k, dark) {
+    var ps = fx.parts, i, p, q, r, al, px, py, g, col = mixc(C('ink'), C('bg'), dark ? 0.1 : 0.3), wc = C('warn');
+    for (i = 0; i < ps.length; i++) {
+      p = ps[i]; if (p.fl !== fl) continue; q = p.age / p.life; px = PX(p.x); py = PY(p.y);
+      if (p.k === 'e') { x.fillStyle = rgba(mixc(C('fire-1'), C('fire-2'), q), (1 - q) * 0.95); x.beginPath(); x.arc(px, py, Math.max(1, (p.r0 * (1 - q) + 0.02) * k), 0, TAU); x.fill(); continue; }
+      r = Math.max(2, (p.r0 + (p.r1 - p.r0) * q) * k); al = p.a * Math.sin(Math.min(1, q) * Math.PI);
+      g = x.createRadialGradient(px, py, 0, px, py, r); g.addColorStop(0, rgba(p.k === 'g' ? wc : col, al)); g.addColorStop(1, rgba(p.k === 'g' ? wc : col, 0)); x.fillStyle = g; x.beginPath(); x.arc(px, py, r, 0, TAU); x.fill();
+    }
+  }
   function dot(x, a, b, rad, st, o) {
-    var col = C(PERSON[st][0]); o = o || {};
+    var col = C(PERSON[st][0]), T = 0; o = o || {}; T = o.t || 0;
     x.save(); if (o.ghost) x.globalAlpha = 0.55;
-    if (st === 'help') { x.beginPath(); x.arc(a, b, rad * 2.1, 0, 6.2832); x.fillStyle = rgba(C('danger'), 0.26); x.fill(); }
-    x.beginPath(); x.arc(a, b, rad, 0, 6.2832); x.fillStyle = rgba(col); x.fill(); x.lineWidth = Math.max(1, rad * 0.3); x.strokeStyle = rgba(C('surface'), 0.95); x.stroke();
-    if (st === 'located') { x.beginPath(); x.arc(a, b, rad + 2.6, 0, 6.2832); x.lineWidth = 1.7; x.strokeStyle = rgba(C('accent')); x.stroke(); }
+    if (st === 'help') { var hp = T ? 0.5 + 0.5 * Math.sin(T * 7.5) : 0.5; x.beginPath(); x.arc(a, b, rad * (2.0 + 0.35 * hp), 0, TAU); x.fillStyle = rgba(C('danger'), 0.16 + 0.2 * hp); x.fill(); }          // a call for help breathes (1.2 Hz)
+    x.beginPath(); x.arc(a, b, rad, 0, TAU); x.fillStyle = rgba(col); x.fill(); x.lineWidth = Math.max(1, rad * 0.3); x.strokeStyle = rgba(C('surface'), 0.95); x.stroke();
+    if (st === 'located') {
+      x.beginPath(); x.arc(a, b, rad + 2.6, 0, TAU); x.lineWidth = 1.7; x.strokeStyle = rgba(C('accent')); x.stroke();
+      if (T) { var nR = o.fresh ? 3 : 1, qi, qq; for (qi = 0; qi < nR; qi++) { qq = (T * 0.9 + qi / nR) % 1; x.beginPath(); x.arc(a, b, rad + 2.6 + qq * rad * (o.fresh ? 3.2 : 2.2), 0, TAU); x.lineWidth = 1.6; x.strokeStyle = rgba(C('accent'), (o.fresh ? 0.7 : 0.4) * (1 - qq)); x.stroke(); } }   // found: ripples (0.9 Hz), strong for the first seconds
+    }
     if (o.persona === 'wheelchair') { x.beginPath(); x.arc(a, b + rad * 0.55, rad * 1.55, 0.35, Math.PI - 0.35); x.lineWidth = Math.max(1.6, rad * 0.35); x.strokeStyle = rgba(C('head')); x.stroke(); }
-    if (o.asleep) { x.font = '700 ' + Math.max(9, rad * 1.7) + 'px ' + CR.font(); x.textAlign = 'center'; x.textBaseline = 'middle'; halo(x, 'z', a + rad * 1.7, b - rad * 1.5, rgba(C('head')), rgba(C('surface'), 0.9), 3); }
+    if (o.asleep) { x.font = '700 ' + Math.max(9, rad * 1.7) + 'px ' + CR.font(); x.textAlign = 'center'; x.textBaseline = 'middle'; halo(x, 'z', a + rad * 1.7, b - rad * 1.5 - (T ? 1.5 * Math.sin(T * 3) : 0), rgba(C('head')), rgba(C('surface'), 0.9), 3); }
     x.restore();
   }
-  function robotG(x, a, b, s, r, hd, rng) {
-    var col = C(STATE_TOK[r.state] || 'accent'), act = r.state === 'searching' || r.state === 'guiding' || r.state === 'holding' || r.state === 'returning';
+  function robotG(x, a, b, s, r, hd, rng, T) {
+    var col = C(STATE_TOK[r.state] || 'accent'), act = r.state === 'searching' || r.state === 'guiding' || r.state === 'holding' || r.state === 'returning', sw = T && act ? Math.sin(T * 2.8) * 0.5 : 0;     // the sensor cone sweeps (0.45 Hz)
     x.save(); x.translate(a, b);
-    if (act) { x.save(); x.rotate(hd * Math.PI / 180); var gr = x.createRadialGradient(0, 0, 2, 0, 0, rng); gr.addColorStop(0, rgba(C('accent'), 0.34)); gr.addColorStop(1, rgba(C('accent'), 0)); x.beginPath(); x.moveTo(0, 0); x.arc(0, 0, rng, -Math.PI / 2 - 0.62, -Math.PI / 2 + 0.62); x.closePath(); x.fillStyle = gr; x.fill(); x.restore(); }
-    x.beginPath(); x.arc(0, 0, s * 1.08, 0, 6.2832); x.fillStyle = rgba(C('surface'), 0.94); x.fill(); x.lineWidth = 2.4; x.strokeStyle = rgba(col); x.stroke();
+    if (act) {
+      x.save(); x.rotate(hd * Math.PI / 180 + sw); var gr = x.createRadialGradient(0, 0, 2, 0, 0, rng); gr.addColorStop(0, rgba(C('accent'), 0.34)); gr.addColorStop(1, rgba(C('accent'), 0)); x.beginPath(); x.moveTo(0, 0); x.arc(0, 0, rng, -Math.PI / 2 - 0.62, -Math.PI / 2 + 0.62); x.closePath(); x.fillStyle = gr; x.fill(); x.restore();
+      if (T) { var q = (T % 1.8) / 1.8; x.beginPath(); x.arc(0, 0, s * 1.1 + q * rng * 0.75, 0, TAU); x.lineWidth = 1.5; x.strokeStyle = rgba(C('accent'), 0.38 * (1 - q)); x.stroke(); }      // a radar ring every 1.8 s
+    }
+    x.beginPath(); x.arc(0, 0, s * 1.08, 0, TAU); x.fillStyle = rgba(C('surface'), 0.94); x.fill(); x.lineWidth = 2.4; x.strokeStyle = rgba(col); x.stroke();
     x.rotate(hd * Math.PI / 180); var wl = s * 0.62, ww = s * 0.84;
-    x.fillStyle = rgba(C('ink-2')); if (r.variant === 'tracked') { rrect(x, -ww / 2 - s * 0.14, -wl, s * 0.28, wl * 2, s * 0.1); x.fill(); rrect(x, ww / 2 - s * 0.14, -wl, s * 0.28, wl * 2, s * 0.1); x.fill(); } else { [[-1, -0.5], [1, -0.5], [-1, 0.5], [1, 0.5]].forEach(function (q) { x.beginPath(); x.arc(q[0] * ww * 0.5, q[1] * wl, s * 0.17, 0, 6.2832); x.fill(); }); }
+    x.fillStyle = rgba(C('ink-2')); if (r.variant === 'tracked') { rrect(x, -ww / 2 - s * 0.14, -wl, s * 0.28, wl * 2, s * 0.1); x.fill(); rrect(x, ww / 2 - s * 0.14, -wl, s * 0.28, wl * 2, s * 0.1); x.fill(); } else { [[-1, -0.5], [1, -0.5], [-1, 0.5], [1, 0.5]].forEach(function (q2) { x.beginPath(); x.arc(q2[0] * ww * 0.5, q2[1] * wl, s * 0.17, 0, TAU); x.fill(); }); }
     x.fillStyle = rgba(col); rrect(x, -ww / 2 + s * 0.05, -wl * 0.8, ww - s * 0.1, wl * 1.6, s * 0.12); x.fill();
-    x.fillStyle = rgba(C('surface')); x.beginPath(); x.arc(0, -wl * 0.42, s * 0.2, 0, 6.2832); x.fill(); x.fillStyle = rgba(C('head')); x.beginPath(); x.arc(0, -wl * 0.42, s * 0.09, 0, 6.2832); x.fill();
+    x.fillStyle = rgba(C('surface')); x.beginPath(); x.arc(0, -wl * 0.42, s * 0.2, 0, TAU); x.fill(); x.fillStyle = rgba(C('head')); x.beginPath(); x.arc(0, -wl * 0.42, s * 0.09, 0, TAU); x.fill();
     x.restore();
   }
   function poseDraw(sc, r) {
@@ -329,7 +367,7 @@
     if (p.pfl !== p.cfl || a >= 1) return { x: p.cx, y: p.cy, fl: p.cfl, hd: p.hd };
     var d = ((p.hd - p.phd + 540) % 360) - 180; return { x: lerp(p.px, p.cx, a), y: lerp(p.py, p.cy, a), fl: p.cfl, hd: p.phd + d * a };
   }
-  function drawPlan() {
+  function drawPlan(dtA) {                                 // dtA = animation seconds since the last frame (0 when paused, hidden or reduced): the plan is a pure function of the state plus that clock
     var sc = R.cur, x = R.ctx; if (!sc || !sc.sim || !x || !R.ui.cv) return;
     var W = R.w, H = R.h, dpr = R.dpr, sim = sc.sim, snap = sc.snap, g = sc.g, Sx = g.S, fl = clamp(R.fl, 0, g.floorList[g.floorList.length - 1]), roof = fl >= Sx.floors, dark = CR.C('bg')[0] < 90;
     x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, W, H); x.fillStyle = rgba(C('bg-2')); x.fillRect(0, 0, W, H);
@@ -337,7 +375,8 @@
     var PX = function (a) { return ox + (1.4 + a - Sx.x0) * k; }, PY = function (b) { return oy + (1.5 + b - Sx.y0) * k; };
     var st = sim.stt && sim.stt[g.si] ? sim.stt[g.si] : null, obst = sim.rb && sim.rb.obst ? sim.rb.obst : {}, robots = snap.robot ? snap.robot.robots : [], hcR = sc.hc && sc.hc.rooms ? sc.hc.rooms : {}, i;
     var covN = {}, roomSt = {}; robots.forEach(function (r) { if (r.coverage) { r.coverage.nodes.forEach(function (n) { if (!covN[n.id] || n.cov > covN[n.id]) covN[n.id] = n.cov; }); Object.keys(r.coverage.rooms).forEach(function (rm) { var v = r.coverage.rooms[rm]; if (!roomSt[rm] || v === 'searched' || roomSt[rm] === 'open') roomSt[rm] = v; }); } });
-    var gasHaz = sim.hazard === 'gas', gasMax = (snap.hazardState && snap.hazardState.danger) || 2100, moving = !CR.reduced();
+    var gasHaz = sim.hazard === 'gas', gasMax = (snap.hazardState && snap.hazardState.danger) || 2100, rm = CR.reduced(), fx = sc.fx, T = rm ? 0 : fx.t;
+    dtA = rm ? 0 : (dtA || 0); if (dtA) stepParts(fx, dtA); else if (rm) fx.parts.length = 0;
     R.hits = [];
     x.textBaseline = 'middle'; x.direction = 'ltr';
     // title strip
@@ -355,20 +394,23 @@
     // nodes
     g.nodes.forEach(function (n, ni) {
       if (n.fl !== fl) return; var bx = nodeBox(g, n); if (!bx) return;
-      var x0 = PX(bx.x0), y0 = PY(bx.y0), w = bx.w * k, hh = bx.h * k, cx = x0 + w / 2, cy = y0 + hh / 2, burn = st ? st.burn[ni] : 0, smoke = st ? st.smoke[ni] : 0, gas = st && gasHaz ? st.gas[ni] : 0, kind = bx.kind;
+      var x0 = PX(bx.x0), y0 = PY(bx.y0), w = bx.w * k, hh = bx.h * k, cx = x0 + w / 2, cy = y0 + hh / 2, burn = st ? st.burn[ni] : 0, rSmoke = st ? st.smoke[ni] : 0, rGas = st && gasHaz ? st.gas[ni] : 0, kind = bx.kind;
+      var smoke = visEase(fx, 's', ni, rSmoke, dtA, rm), gas = visEase(fx, 'g', ni, rGas, dtA, rm), bf = visEase(fx, 'b', ni, burn === 1 ? 1 : 0, dtA, rm), bt = visEase(fx, 't', ni, burn >= 2 ? 1 : 0, dtA, rm);
+      if (dtA) spawnParts(fx, bx, fl, rSmoke, burn, rGas, gasMax, dtA);
       x.save(); rrect(x, x0, y0, w, hh, Math.max(2, 0.12 * k));
       var base = kind === 'corr' ? C('surface-3') : kind === 'stair' ? mixc(C('surface-3'), C('accent'), 0.12) : kind === 'refuge' ? mixc(C('surface'), C('safe'), 0.2) : kind === 'lobby' ? mixc(C('surface'), C('info'), 0.12) : C('surface');
       x.fillStyle = rgba(base); x.fill();
       if (covN[n.id] > 0.02) { x.fillStyle = rgba(C('accent'), clamp(covN[n.id], 0, 1) * (dark ? 0.34 : 0.28)); x.fill(); }
       if (smoke > 0.01) { x.fillStyle = rgba(mixc(C('ink'), C('bg'), dark ? 0.1 : 0.3), clamp(smoke * 1.15, 0, 0.72)); x.fill(); }
       if (gas > 5) { x.fillStyle = rgba(C('warn'), clamp(gas / gasMax, 0, 0.7)); x.fill(); }
-      if (burn === 1) { var fk = moving ? 0.82 + 0.18 * Math.sin(now() / 140 + ni) : 1; x.fillStyle = rgba(mixc(C('fire-2'), C('fire-3'), 0.4), 0.78 * fk); x.fill(); } else if (burn >= 2) { x.fillStyle = rgba(C('ink'), 0.4); x.fill(); }
+      if (bf > 0.02) { var fk = rm ? 1 : 0.82 + 0.18 * Math.sin(T * 9 + ni); x.fillStyle = rgba(mixc(C('fire-2'), C('fire-3'), 0.4), 0.78 * fk * bf); x.fill(); }
+      if (bt > 0.02) { x.fillStyle = rgba(C('ink'), 0.4 * bt); x.fill(); }
       var rc = n.room ? hcR[n.room] : null, bcol = C('line-2'), bw = 1.2;
       if (rc && rc.total) { if (rc.help > 0) { bcol = C('danger'); bw = 2.4; } else if (rc.safe + (rc.safeAway || 0) >= rc.total) { bcol = C('safe'); bw = 2.2; } else if (rc.located > 0) { bcol = C('accent'); bw = 2.2; } }
       x.lineWidth = bw; x.strokeStyle = rgba(bcol); x.stroke();
       if (kind === 'stair') { x.beginPath(); for (var yy = 0.2; yy < 1.5; yy += 0.28) { x.moveTo(x0 + 0.1 * k, y0 + yy * k); x.lineTo(x0 + w - 0.1 * k, y0 + yy * k); } x.lineWidth = 1; x.strokeStyle = rgba(C('line-2'), 0.9); x.stroke(); }
       x.restore();
-      if (burn === 1) { x.save(); x.translate(cx, cy + 0.12 * k); flame(x, clamp(0.55 * k, 8, 24)); x.fillStyle = rgba(C('fire-1'), 0.95); x.fill(); x.restore(); }
+      if (bf > 0.02) { x.save(); x.translate(cx, cy + 0.12 * k); x.globalAlpha = bf; flame(x, clamp(0.55 * k, 8, 24) * (rm ? 1 : 1 + 0.09 * Math.sin(T * 9 + ni * 1.7))); x.fillStyle = rgba(C('fire-1'), 0.95); x.fill(); x.restore(); }
       x.textAlign = 'center';
       if (kind === 'room' || kind === 'special') { x.font = '700 ' + clamp(0.4 * k, 9, 14) + 'px ' + CR.font(); x.fillStyle = rgba(C('ink-2')); var cn0 = g.doorWith[n.id] ? g.nodes[g.byId[g.doorWith[n.id]]] : null, lowL = cn0 && cn0.y < n.y - 0.2; x.fillText(kind === 'special' ? LL(n.label).replace(/^الصف |^Class /, '') : n.room, cx, lowL ? y0 + hh - 0.3 * k - 2 : y0 + 0.3 * k + 2); }
       else if (kind === 'stair') { x.font = '700 ' + clamp(0.5 * k, 10, 16) + 'px ' + CR.font(); x.fillStyle = rgba(C('ink-2')); x.fillText(LL(n.label).replace(/^الدرج |^Stair |^West |^East |^الغربي|^الشرقي/g, '').trim().slice(0, 2) || '↕', cx, cy); }
@@ -397,6 +439,7 @@
         x.restore();
       }
     });
+    if (!rm && fx.parts.length) { x.save(); rrect(x, PX(Sx.x0), PY(Sx.y0), Sx.w * k, Sx.h * k, 0.2 * k); x.clip(); drawParts(x, fx, fl, PX, PY, k, dark); x.restore(); }
     // exits
     var exSt = {}; snap.exits.forEach(function (e) { if (e.struct === Sx.id) exSt[e.id] = e; });
     Sx.exits.forEach(function (ex) {
@@ -409,17 +452,29 @@
       if (es.state === 'LOCKED') lockG(x, ax + br * 0.85, ay - br * 0.85, br * 0.9, rgba(C('danger')));
       x.restore();
     });
-    // the way a find was told to go
+    // the way a find was told to go: the route is DRAWN on (1.4 s) and then its dashes flow towards the exit
     if (snap.robot) snap.robot.finds.forEach(function (f) {
       if (!f.route || f.route.length < 2 || f.action === 'queued' || f.action === 'hold' || f.action === 'stay') return;
-      x.save(); x.lineWidth = Math.max(2, 0.09 * k); x.lineJoin = 'round'; x.lineCap = 'round'; x.strokeStyle = rgba(C('safe'), 0.85); x.setLineDash([6, 4]); x.beginPath(); var pen = false;
-      f.route.forEach(function (id) { var nn = g.nodes[g.byId[id]]; if (!nn) return; if (nn.fl === fl) { if (pen) x.lineTo(PX(nn.x), PY(nn.y)); else { x.moveTo(PX(nn.x), PY(nn.y)); pen = true; } } else pen = false; });
+      var pts = [], segs = [], tot = 0, ii;
+      f.route.forEach(function (id) { var nn = g.nodes[g.byId[id]]; if (nn) pts.push({ x: PX(nn.x), y: PY(nn.y), fl: nn.fl }); });
+      for (ii = 1; ii < pts.length; ii++) if (pts[ii].fl === fl && pts[ii - 1].fl === fl) { var len = Math.hypot(pts[ii].x - pts[ii - 1].x, pts[ii].y - pts[ii - 1].y); segs.push({ a: pts[ii - 1], b: pts[ii], len: len }); tot += len; }
+      if (!tot) return;
+      var rt = fx.routes[f.id] || (fx.routes[f.id] = { reveal: rm ? 1 : 0 }); if (rm) rt.reveal = 1; else if (dtA) rt.reveal = Math.min(1, rt.reveal + dtA / 1.4);
+      var lim = tot * rt.reveal, acc = 0, last = null, head = null;
+      x.save(); x.lineWidth = Math.max(2, 0.09 * k); x.lineJoin = 'round'; x.lineCap = 'round'; x.strokeStyle = rgba(C('safe'), 0.85); x.setLineDash([6, 4]); x.lineDashOffset = rm ? 0 : -((T * 22) % 10); x.beginPath();
+      for (ii = 0; ii < segs.length && acc < lim; ii++) { var sg = segs[ii], take = Math.min(sg.len, lim - acc), tt = take / sg.len; if (last !== sg.a) x.moveTo(sg.a.x, sg.a.y); head = { x: sg.a.x + (sg.b.x - sg.a.x) * tt, y: sg.a.y + (sg.b.y - sg.a.y) * tt }; x.lineTo(head.x, head.y); acc += sg.len; last = sg.b; }
       x.stroke(); x.restore();
+      if (head && rt.reveal < 1) { x.save(); x.beginPath(); x.arc(head.x, head.y, Math.max(3, 0.14 * k), 0, TAU); x.fillStyle = rgba(C('safe')); x.fill(); x.lineWidth = 2; x.strokeStyle = rgba(C('surface')); x.stroke(); x.restore(); }
     });
     // trail, planned path, beacons
     robots.forEach(function (r) {
       var tr = sc.trail[r.id] || [];
-      if (tr.length > 1) { x.save(); x.lineJoin = 'round'; x.lineCap = 'round'; x.lineWidth = Math.max(1.6, 0.07 * k); x.strokeStyle = rgba(C('accent'), 0.5); x.beginPath(); var pn = false; tr.forEach(function (q) { if (q.fl !== fl) { pn = false; return; } if (pn) x.lineTo(PX(q.x), PY(q.y)); else { x.moveTo(PX(q.x), PY(q.y)); pn = true; } }); x.stroke(); x.restore(); }
+      if (tr.length > 1) {                                  // the trail: the newest part is the brightest
+        x.save(); x.lineJoin = 'round'; x.lineCap = 'round'; x.lineWidth = Math.max(1.6, 0.07 * k);
+        var nT = tr.length, ch = Math.max(2, Math.ceil(nT / 4)), c0, c1, cq;
+        for (c0 = 0; c0 < nT - 1; c0 += ch) { c1 = Math.min(nT - 1, c0 + ch); x.strokeStyle = rgba(C('accent'), 0.16 + 0.42 * c1 / nT); x.beginPath(); var pn = false; for (cq = c0; cq <= c1; cq++) { var q = tr[cq]; if (q.fl !== fl) { pn = false; continue; } if (pn) x.lineTo(PX(q.x), PY(q.y)); else { x.moveTo(PX(q.x), PY(q.y)); pn = true; } } x.stroke(); }
+        x.restore();
+      }
       var rr = rawRobot(sc);
       if (rr && rr.path && rr.path.length && r.state !== 'stowed' && r.state !== 'fault') {
         x.save(); x.lineWidth = Math.max(1.5, 0.06 * k); x.setLineDash([3, 5]); x.strokeStyle = rgba(C('brand'), 0.9); x.beginPath(); var pen2 = false, pts = [], pz = poseDraw(sc, r); pts.push({ x: pz.x, y: pz.y, fl: pz.fl });
@@ -432,15 +487,15 @@
     var pr = clamp(0.17 * k, 3, 7);
     inFl.forEach(function (p) {
       var a = PX(p.x), b = PY(p.y);
-      if (R.truth) { var ts = truthState(p, snap); dot(x, a, b, p.hero ? pr + 1 : pr, ts, { ghost: true, persona: p.persona, asleep: p.asleep && ts === 'asleep' }); return; }
+      if (R.truth) { var ts = truthState(p, snap); dot(x, a, b, p.hero ? pr + 1 : pr, ts, { ghost: true, persona: p.persona, asleep: p.asleep && ts === 'asleep', t: T }); return; }
       var s2 = pstate(p, sc); if (!s2 || s2 === 'hidden') return;
       var f = sc.located[p.key] ? (snap.robot ? snap.robot.finds.filter(function (q) { return q.key === p.key; })[0] : null) : null;
-      dot(x, a, b, pr, s2, { persona: f ? f.persona : null, asleep: f && f.condition && f.condition.key === 'asleep' });
+      dot(x, a, b, pr, s2, { persona: f ? f.persona : null, asleep: f && f.condition && f.condition.key === 'asleep', t: T, fresh: !!(sc.located[p.key] && isNum(sc.located[p.key].foundAt) && sim.t - sc.located[p.key].foundAt < 8) });
     });
     // the robot
     robots.forEach(function (r) {
       var pz = poseDraw(sc, r); if (pz.fl !== fl) return; var rs = clamp(0.42 * k, 10, 22), rng = clamp((param(sc, 'robotRangeM') || 8) / 5 * k, 18, 120), rr = rawRobot(sc);
-      robotG(x, PX(pz.x), PY(pz.y), rs, r, pz.hd, rng);
+      robotG(x, PX(pz.x), PY(pz.y), rs, r, pz.hd, rng, T);
       x.font = '700 ' + clamp(rs * 0.6, 9, 12) + 'px ' + CR.font(); x.textAlign = 'center'; halo(x, r.id, PX(pz.x), PY(pz.y) + rs * 1.6, rgba(C('head')), rgba(C('surface'), 0.95), 3.5);
       if (rr && rr.investigate) { x.font = '700 ' + clamp(0.5 * k, 12, 18) + 'px ' + CR.font(); halo(x, '?', PX(pz.x) + rs * 1.2, PY(pz.y) - rs * 0.9, rgba(C('warn')), rgba(C('surface'), 0.95), 4); }
     });
@@ -510,7 +565,8 @@
     [['safe', 'safe', 'بأمان', 'Safe'], ['safeAway', 'safe2', 'بأمان (خارج المبنى)', 'Safe (away)'], ['located', 'accent', 'عُثر عليهم بالروبوت', 'Located by robot'], ['help', 'danger', 'يحتاجون مساعدة', 'Need help'], ['unaccounted', 'muted', 'غير محسوبين', 'Unaccounted']].forEach(function (q) { var s = h('i', { 'data-k': q[0], 'data-tok': q[1] }); U.hcSeg[q[0]] = s; U.hcBar.appendChild(s); });
     U.hcList = h('ul', { class: 'crr-hclist small' }); U.hcNum = {};
     [['safe', 'safe', 'بأمان', 'Safe'], ['located', 'accent', 'عُثر عليهم بالروبوت', 'Located by robot'], ['help', 'danger', 'يحتاجون مساعدة', 'Need help'], ['unaccounted', 'muted', 'غير محسوبين', 'Unaccounted']].forEach(function (q) { var v = h('b', { class: 'num' }); U.hcNum[q[0]] = v; U.hcList.appendChild(h('li', null, h('i', { class: 'crr-sw', 'data-tok': q[1] }), bi(q[2], q[3]), ' ', v)); });
-    U.hcTx = h('p', { class: 'crr-hctx' }); U.hcNote = h('p', { class: 'small muted' }, bi('«عُثر عليه بالروبوت» خانة مستقلة عن «بأمان»: من وجده الروبوت لم يخرج بعد.', '«Located by robot» is its own bucket, never mixed with «safe»: a person the robot found has not got out yet.'));
+    U.hcA = h('span', { class: 'crr-hc-a' }); U.hcN = h('b', { class: 'num crr-hc-n' }); U.hcB = h('span', { class: 'crr-hc-b' }); U.hcU = h('b', { class: 'num crr-hc-u' });
+    U.hcTx = h('p', { class: 'crr-hctx' }, U.hcA, U.hcN, U.hcB, U.hcU); U.hcNote = h('p', { class: 'small muted' }, bi('«عُثر عليه بالروبوت» خانة مستقلة عن «بأمان»: من وجده الروبوت لم يخرج بعد.', '«Located by robot» is its own bucket, never mixed with «safe»: a person the robot found has not got out yet.'));
     U.hc = h('section', { class: 'crr-sec', 'aria-label': 'People accounted' }, h('h4', null, icon('users'), bi('الناس المحسوبون', 'People accounted')), U.hcTx, U.hcBar, U.hcList, U.hcNote);
     // finds + hand-off
     U.finds = h('ul', { class: 'crr-finds', 'aria-label': 'Finds' }); U.findsEmpty = h('p', { class: 'small muted' }, bi('لم يعثر الروبوت على أحد بعد.', 'The robot has not found anyone yet.'));
@@ -560,6 +616,23 @@
     var w = Math.round(r.width), hh = Math.round(r.height), dpr = Math.min(2, win.devicePixelRatio || 1);
     if (w === R.w && hh === R.h && dpr === R.dpr && U.cv.width === Math.round(w * dpr)) return;
     R.w = w; R.h = hh; R.dpr = dpr; U.cv.width = Math.round(w * dpr); U.cv.height = Math.round(hh * dpr); R.dirtyCanvas = true;
+  }
+
+  /* ---- counters that COUNT UP: the number runs to its target (a tween per element, stepped by frame()); under reduced motion it jumps ---- */
+  function tw(el, target, key) {
+    var t = el._tw || (el._tw = { cur: 0, tgt: 0, shown: null, key: null });
+    if (t.key !== key) { t.key = key; t.cur = 0; t.shown = null; }                 // a new scenario counts up from zero
+    t.tgt = target; el.setAttribute('data-v', String(target)); if (CR.reduced()) t.cur = target;
+    if (R.tws.indexOf(el) < 0) R.tws.push(el);
+    twShow(el);
+  }
+  function twShow(el) { var t = el._tw, v = Math.round(t.cur); if (t.shown !== v) { t.shown = v; setT(el, N(v)); } }
+  function stepTws(dt) {
+    var kk = 1 - Math.exp(-dt * 4.2), i, t, d;
+    for (i = R.tws.length - 1; i >= 0; i--) {
+      t = R.tws[i]._tw; if (!t) { R.tws.splice(i, 1); continue; }                  // a counter that was switched off ('–') leaves the list
+      d = t.tgt - t.cur; if (Math.abs(d) < 0.5) t.cur = t.tgt; else t.cur += d * kk + (d > 0 ? 0.04 : -0.04); twShow(R.tws[i]);
+    }
   }
 
   /* ---- painting the DOM panels (about 4 times a second) ---- */
@@ -619,7 +692,7 @@
     if (!sc) { paintEmpty(); paintLink(null); return; }
     var sim = sc.sim, snap = sc.snap, r = robotOf(sc), tI = sim.tIgnite || 0, on = sc.robotOn, hc = sc.hc || {};
     paintLink(sc); paintFloors(sc);
-    setT(U.clock, tmss(sim.t - tI) + (sim.done ? ' · ' + B('انتهى', 'ended') : '') + ' · ' + (sim.hazard === 'gas' ? B('تسرّب غاز', 'GAS LEAK') : B('حريق', 'FIRE')));
+    setA(U.clock, 'data-run', R.playing && !sim.done ? '1' : '0'); setT(U.clock, tmss(sim.t - tI) + (sim.done ? ' · ' + B('انتهى', 'ended') : '') + ' · ' + (sim.hazard === 'gas' ? B('تسرّب غاز', 'GAS LEAK') : B('حريق', 'FIRE')));
     U.ab._paint(); U.variant._paint(); U.speed._paint(); if (document.activeElement !== U.seed) U.seed.value = String(sc.seed);
     cls(U.truth, 'is-on', R.truth); setA(U.truth, 'aria-pressed', String(R.truth)); U.truthNote.hidden = !R.truth;
     var pl = R.playing && !sim.done; setA(U.bPlay, 'aria-pressed', String(!R.playing)); var pt = U.bPlay.querySelector('.bi'); if (pt) { setT(pt.children[0], R.playing ? 'إيقاف مؤقت' : 'تشغيل'); setT(pt.children[1], R.playing ? 'Pause' : 'Play'); } if (U.bPlay._pl !== R.playing) { U.bPlay._pl = R.playing; U.bPlay.replaceChild(icon(R.playing ? 'pause' : 'play'), U.bPlay.firstChild); }
@@ -641,8 +714,8 @@
     // people accounted
     var reg = hc.registered || 0, parts = { safe: hc.safe || 0, safeAway: hc.safeAway || 0, located: hc.located || 0, help: hc.help || 0, unaccounted: hc.unaccounted || 0 }, acc = parts.safe + parts.safeAway + parts.located + parts.help;
     Object.keys(U.hcSeg).forEach(function (k2) { U.hcSeg[k2].style.setProperty('--w', (reg ? parts[k2] / reg * 100 : 0) + '%'); });
-    setT(U.hcNum.safe, N(parts.safe + parts.safeAway)); setT(U.hcNum.located, on ? N(parts.located) : '–'); setT(U.hcNum.help, N(parts.help)); setT(U.hcNum.unaccounted, N(parts.unaccounted));
-    setT(U.hcTx, B('محسوبون ', 'Accounted ') + N(acc) + B(' من ', ' of ') + N(reg) + ' (' + ltr(N(reg ? Math.round(acc / reg * 100) : 0) + '%') + B(' معروفة حالتهم) · غير محسوبين ', ' with a known status) · unaccounted ') + N(parts.unaccounted));
+    tw(U.hcNum.safe, parts.safe + parts.safeAway, sc.key); if (on) tw(U.hcNum.located, parts.located, sc.key); else { U.hcNum.located._tw = null; setT(U.hcNum.located, '–'); } tw(U.hcNum.help, parts.help, sc.key); tw(U.hcNum.unaccounted, parts.unaccounted, sc.key);
+    setT(U.hcA, B('محسوبون ', 'Accounted ')); tw(U.hcN, acc, sc.key); setT(U.hcB, B(' من ', ' of ') + N(reg) + ' (' + ltr(N(reg ? Math.round(acc / reg * 100) : 0) + '%') + B(' معروفة حالتهم) · غير محسوبين ', ' with a known status) · unaccounted ')); tw(U.hcU, parts.unaccounted, sc.key);
     U.hcBar.setAttribute('aria-label', B('محسوبون ', 'Accounted ') + N(acc) + '/' + N(reg));
     // finds and the hand-off
     var fs = snap.robot ? snap.robot.finds.slice().reverse() : [], sig = fs.map(function (f) { return f.id + ':' + f.action + ':' + (sc.sent[f.id] ? 1 : 0) + ':' + (f.reportedAt === null ? 0 : 1); }).join(',') + CR.lang() + CR.roleOf(S.role).rank;
@@ -652,7 +725,8 @@
         var needs = (f.needs || []).map(function (q) { return NEED[q] ? T2(NEED[q]) : q; }).join('، '), who = f.name ? LL(f.name) : f.registered ? B('مقيم مسجّل', 'Registered resident') : B('شخص غير مسجّل', 'Unregistered person'), sent = sc.sent[f.id], pend = f.reportedAt === null || f.reportedAt === undefined;
         var b = CR.btn('btn btn-ghost btn-sm', 'send', sent ? 'سُلِّم ✓' : pend ? 'بانتظار الاتصال' : 'سلّم', sent ? 'Handed off ✓' : pend ? 'Waiting for the link' : 'Hand off', function () { handoff(f.id); }, { 'data-needs': 'operator' });
         if (sent || pend) b.setAttribute('aria-disabled', 'true');
-        return h('li', { class: 'crr-find', 'data-persona': f.persona || '' }, h('div', { class: 'crr-fh' }, h('b', { class: 'num' }, f.id), h('span', null, f.room ? B('غرفة ', 'room ') + f.room : (f.place ? LL(f.place) : '')), h('span', { class: 'crr-ft num' }, tmss(f.t - tI))),
+        var isNew = !sc.seenFinds[f.id] && !CR.reduced(); sc.seenFinds[f.id] = 1;
+        return h('li', { class: 'crr-find', 'data-persona': f.persona || '', 'data-new': isNew ? '1' : null }, h('div', { class: 'crr-fh' }, h('b', { class: 'num' }, f.id), h('span', null, f.room ? B('غرفة ', 'room ') + f.room : (f.place ? LL(f.place) : '')), h('span', { class: 'crr-ft num' }, tmss(f.t - tI))),
           h('div', { class: 'crr-fb small' }, h('span', null, who + (needs ? ' · ' + needs : '')), h('span', null, B('الحالة (تقدير): ', 'Condition (est.): ') + (COND[f.condition.key] ? T2(COND[f.condition.key]) : f.condition.key)), h('span', { class: 'muted' }, (BY[f.by] ? T2(BY[f.by]) : f.by) + ' · ' + (ACT[f.action] ? T2(ACT[f.action]) : f.action) + (f.woke === true ? ' · ' + B('استيقظ', 'woke') : ''))), b);
       }));
       U.findsEmpty.hidden = !!fs.length; U.finds.hidden = !fs.length;
@@ -729,11 +803,13 @@
       if (n > 0) { n = Math.min(n, 30); R.acc -= Math.floor(R.acc); var left = n; while (left > 0 && now() - t0 < 8) { Sim.step(sc.sim, 1); left--; } afterTick(sc); if (R.flSel === 'auto') { var f = floorAuto(sc); if (f !== R.fl) R.fl = f; } }
     }
     R.lastTs = ts;
-    var moving = R.playing && !sc.sim.done && !CR.reduced(), burn = !CR.reduced() && sc.snap && sc.snap.hazard === 'fire';
-    if (R.dirtyCanvas || ((moving || burn) && now() - R.canvasAt > 60)) { drawPlan(); R.dirtyCanvas = false; R.canvasAt = now(); }
+    var rm = CR.reduced(), run = R.playing && !sc.sim.done && !rm, adt = run ? clamp((ts - (R.lastDraw || ts)) / 1000, 0, 0.1) : 0;
+    R.lastDraw = ts; if (adt) sc.fx.t += adt;
+    stepTws(clamp((ts - (R.lastTw || ts)) / 1000, 0, 0.1)); R.lastTw = ts;
+    if (R.dirtyCanvas || run) { drawPlan(adt); R.dirtyCanvas = false; R.canvasAt = now(); }                       // playing: one canvas frame per animation frame; paused or reduced: only when something changed
     if (R.dirtyUI || R.snapDirty || now() - R.paintAt > 420) update(false);
   }
-  function active(on) { R.active = !!on; if (on) { R.lastTs = 0; R.acc = 0; R.dirtyUI = R.dirtyCanvas = true; update(true); } }
+  function active(on) { R.active = !!on; if (on) { R.lastTs = 0; R.acc = 0; R.lastDraw = 0; R.lastTw = 0; R.dirtyUI = R.dirtyCanvas = true; update(true); } }
   function tabBadge() {                                    // finds the robot has reported that the crews have not been handed yet
     var sc = R.cur; if (!sc || !sc.snap || !sc.snap.robot) return '';
     return sc.snap.robot.finds.filter(function (f) { return f.reportedAt !== null && f.reportedAt !== undefined && !sc.sent[f.id]; }).length || '';
@@ -761,6 +837,11 @@
     play: function (v) { R.playing = !!v; R.lastTs = 0; R.dirtyUI = true; update(true); }, setSpeed: function (v) { R.speed = +v; R.dirtyUI = true; update(true); }, speed: function () { return R.speed; }, playing: function () { return R.playing; },
     truth: function (v) { R.truth = !!v; R.dirtyCanvas = R.dirtyUI = true; update(true); }, setFloor: function (f) { R.flSel = f; R.fl = f === 'auto' ? (R.cur ? floorAuto(R.cur) : 0) : f; R.dirtyCanvas = true; update(true); }, floor: function () { return R.fl; },
     phase: function () { return R.cur ? phaseOf(R.cur) : null; }, limits: function () { return R.cur ? limitsList(R.cur).map(function (q) { return q[0]; }) : []; }, draw: function () { drawPlan(); }, paint: function () { update(true); },
+    motion: function () {
+      var sc = R.cur, fx = sc && sc.fx, rl = {}; if (fx) Object.keys(fx.routes).forEach(function (k2) { rl[k2] = fx.routes[k2].reveal; });
+      return { reduced: CR.reduced(), t: fx ? fx.t : 0, particles: fx ? fx.parts.length : 0, kinds: fx ? fx.parts.reduce(function (o, p) { o[p.k] = (o[p.k] || 0) + 1; return o; }, {}) : {}, routes: rl,
+        tw: R.tws.filter(function (e) { return e._tw; }).map(function (e) { return { cls: e.className, cur: e._tw.cur, tgt: e._tw.tgt, text: e.textContent, v: e.getAttribute('data-v') }; }), phaseRing: R.ui.phases ? getComputedStyle(R.ui.phases.querySelector('[aria-current]') || R.ui.phases, '::after').animationName : null };
+    },
     stats: function () { return { active: isOn(), simT: R.cur ? R.cur.sim.t : null, frames: R.frames || 0 }; }
   };
 })();

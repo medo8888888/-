@@ -7,6 +7,8 @@
 // ROBOT (js/control-robot.js): the empty state explains the robot is for in-building rescue only and offers a demo building; a building fire / gas alert gets its own linked ManaraSim scenario (a flood alert gets none);
 //   the human key (an operator's approve is rejected, only the commander approves, nothing moves before); the state machine runs (deploy -> search -> found / guide -> return); a find is handed off to the crews on the bus
 //   ({robot-find}, {robot}); the headcount adds up and keeps «located by robot» apart from «safe»; hidden people stay hidden until "show simulation truth"; the A/B switch re-runs the SAME world with / without the robot;
+//   MOTION (section 10): the tile sweep-in / lock-on, the ALERT flash (3 flashes at 1.7 Hz), eased + pulsing detector boxes, the HUD tickers, signal bars and battery gauge; in the robot tab the gliding robot with a sweeping cone, soft smoke particles,
+//   people ripples, the route drawn on, the counting-up headcount; every animation slower than 3 Hz; reduced motion = static frames (no particles, no easing, no count-up); nothing runs while the page is hidden or the tab inactive.
 //   the MEASURED result over seeds 1–8 is the honest one (locate time barely changes; the robot first for the wheelchair user in 5 of 8 seeds, the crews first in 3 of 8); the limits panel; a wheeled robot never climbs.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -47,8 +49,10 @@ console.log('\n0. source hygiene');
     const t = fs.readFileSync(path.join(ROOT, f), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
     check(`${f}: logical properties only (no left / right / margin-left / padding-right / border-left / text-align:left)`, !/(^|[\s;{])(margin|padding)-(left|right)\s*:|border-(left|right)(-\w+)?\s*:|(^|[\s;{])(left|right)\s*:|text-align\s*:\s*(left|right)|float\s*:\s*(left|right)/.test(t), (t.match(/(margin|padding)-(left|right)|border-(left|right)|[\s;{](left|right)\s*:|text-align\s*:\s*(left|right)/) || [''])[0]);
     check(`${f}: no letter-spacing (Arabic)`, !/letter-spacing/.test(t));
+    const durs = [...t.matchAll(/animation\s*:\s*[\w-]+\s+([\d.]+)(m?s)\b/g)].map(m => +m[1] * (m[2] === 'ms' ? 0.001 : 1));
+    check(`${f}: no animation cycles faster than 3 Hz (every duration is at least 0.34 s)`, durs.length >= 4 && durs.every(d => d >= 0.34), durs.join(','));
     check(`${f}: reduced motion and forced colours are handled`, /prefers-reduced-motion/.test(t) && /forced-colors/.test(t));
-    const page = t.split('}').filter(r => !/\.crf-(v|hud|hi|ribbon|ib|cell\[data-rec)|--f-vid|--f-hud|forced-colors/.test(r)).join('}');
+    const page = t.split('}').filter(r => !/\.crf-(v|hud|hi|ribbon|alertlbl|ib|cell\[data-rec)|--f-vid|--f-hud|forced-colors/.test(r)).join('}');
     check(`${f}: dark and light both come from tokens (no hard-coded colour outside the camera picture and its overlay chips)`, !/#[0-9a-fA-F]{3,6}\b/.test(page), (page.match(/#[0-9a-fA-F]{3,6}\b/g) || []).join(' '));
   }
   const html = fs.readFileSync(path.join(ROOT, 'control.html'), 'utf8');
@@ -421,6 +425,81 @@ console.log('\n9. the MEASURED result over seeds 1–8 (computed in the browser,
   await sleep(300);
   const out = await W(page, () => ({ txt: document.querySelector('.crr-about').textContent, rows: document.querySelectorAll('.crr-seedtable tbody tr').length, st: document.querySelector('.crr-abbox [role="status"]').textContent }));
   check('the per-seed table (eight rows) and «Your result» are on screen', out.rows === 8 && /Your result/.test(out.txt) && /the robot first in 5 of 8/.test(out.txt) && /Measured just now/.test(out.st), out.txt.slice(0, 200));
+  check('no console errors', errors.length === 0, errors.join(' | '));
+  allErrors.push(...errors); await ctx.close();
+}
+
+/* ---------------------------------------------------------------- 10. motion (and its reduced-motion twin) */
+console.log('\n10. motion: richer animation, never faster than 3 Hz, static under reduced motion, paused when hidden');
+{
+  const { ctx, page, errors } = await open();                                  // reducedMotion: no-preference
+  await ready(page); await fireAlarm(page); await tab(page, 'feed'); await sleep(2200);
+  const E = await W(page, () => { const M = ControlRoom.mods.feeds, f = M.shown()[0]; const n0 = M.motion().enters; M.enter(f.id); const m = M.motion(); return { n0, m }; });
+  check('a new tile has swept in (enter counter) and a drone assignment triggers the sweep + lock-on: data-enter set, the scan-line keyframes run', E.n0 >= 1 && E.m.css.enter === '1' && /crf-sweep/.test(E.m.css.scan), JSON.stringify(E.m.css));
+  const L = await W(page, () => { const c = document.querySelector('.crf-cell[data-enter="1"]'); return c ? { lock: getComputedStyle(c.querySelector('.crf-lockon')).animationName, tile: getComputedStyle(c).animationName } : null; });
+  check('the lock-on corner brackets and the tile fade-in animate (transform / opacity keyframes)', L && /crf-lock/.test(L.lock) && /crf-in/.test(L.tile), JSON.stringify(L));
+  const F1 = await W(page, () => { const M = ControlRoom.mods.feeds, f = M.shown()[0], n0 = M.motion().flashes; M.flash(f.id); const m = M.motion(); const c = document.querySelector('.crf-cell[data-flash="1"]'); const cs = getComputedStyle(c.querySelector('.crf-flash')); return { n0, m, name: cs.animationName, dur: cs.animationDuration, it: cs.animationIterationCount, lbl: getComputedStyle(c.querySelector('.crf-alertlbl')).animationName, txt: c.querySelector('.crf-alertlbl').textContent }; });
+  check('a new detection flashes the ALERT frame: 3 flashes of 0.6 s (1.7 Hz, under the 3 Hz limit) with an ALERT label', F1.m.flashes === F1.n0 + 1 && /crf-alert/.test(F1.name) && parseFloat(F1.dur) >= 0.34 && F1.it === '3' && /crf-albl/.test(F1.lbl) && /ALERT/.test(F1.txt), JSON.stringify(F1));
+  check('the detector really flashed the frame when it first saw the fire (the wall counted at least one flash)', (await W(page, () => ControlRoom.mods.feeds.motion().flashes)) >= 1);
+  const bx = await W(page, () => { const M = ControlRoom.mods.feeds, f = M.state.byId[M.shown()[0].id]; f.abx = []; M.stepAll(); return { n: f.abx.length, grow: f.abx.some(b => b.c.w < b.t.w * 0.5) }; });
+  check('detector boxes ease: a new box grows from its centre towards its target', bx.n >= 1 && bx.grow, JSON.stringify(bx));
+  await sleep(900);
+  check('and the boxes have arrived after a moment (eased, not stuck)', await W(page, () => { const M = ControlRoom.mods.feeds, f = M.state.byId[M.shown()[0].id]; return f.abx.length >= 1 && f.abx.every(b => Math.abs(b.c.w - b.t.w) < 0.02 && Math.abs(b.c.x - b.t.x) < 0.02); }));
+  const tk = await W(page, () => { const M = ControlRoom.mods.feeds, f = M.state.byId[M.shown()[0].id]; f.tk.bat.cur = 20; return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => { const mid = f.tk.bat.cur, tgt = f.tk.bat.tgt; setTimeout(() => r({ mid, tgt, end: f.tk.bat.cur, endTgt: f.tk.bat.tgt, shown: f.cell.t.bat.v.textContent }), 1800); }))); });
+  check('the telemetry HUD ticks: the battery number runs from 20 up to its target instead of jumping', tk.mid > 20 && tk.mid < tk.tgt && Math.abs(tk.end - tk.endTgt) < 1 && /\d+%/.test(tk.shown), JSON.stringify(tk));
+  const hud = await W(page, () => { const M = ControlRoom.mods.feeds, c = M.shown()[0] && M.state.byId[M.shown()[0].id].cell, m = M.motion(); return { sig: m.css.sig, batt: m.css.batt, battT: getComputedStyle(c.gauge.firstChild).transitionProperty, sigT: getComputedStyle(c.bars.firstChild).transitionProperty, dot: m.css.dot }; });
+  check('signal bars (0–4) and the battery gauge (0–1) are set from the drone and animate (transform / opacity transitions); the LIVE dot pulses', /^[0-4]$/.test(hud.sig) && +hud.batt > 0 && +hud.batt <= 1 && /transform/.test(hud.battT) && /opacity/.test(hud.sigT) && /crf-live/.test(hud.dot), JSON.stringify(hud));
+  // hidden page: nothing runs
+  const h0 = await W(page, () => ControlRoom.mods.feeds.stats().steps); await W(page, () => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => true }); document.dispatchEvent(new Event('visibilitychange')); }); await sleep(300);
+  const h1 = await W(page, () => ControlRoom.mods.feeds.stats().steps); await sleep(1100); const h2 = await W(page, () => ControlRoom.mods.feeds.stats().steps);
+  await W(page, () => { delete document.hidden; document.dispatchEvent(new Event('visibilitychange')); });
+  check('page hidden: the wall neither analyses nor animates (no steps)', h2 === h1, `${h0} -> ${h1} -> ${h2}`);
+  // the robot tab
+  await W(page, () => { ControlRoom.setRole('commander'); const M = ControlRoom.mods.robot; M.request(); M.approve(); M.setSpeed(5); }); await tab(page, 'robot'); await W(page, () => ControlRoom.mods.robot.step(150)); 
+  const c0 = await W(page, () => { const t = ControlRoom.mods.robot.motion().tw.find(x => /crr-hc-n/.test(x.cls)); return t; });
+  check('the headcount COUNTS UP: right after a jump the displayed number is below its target', c0 && c0.cur < c0.tgt && c0.tgt > 20, JSON.stringify(c0));
+  await W(page, () => ControlRoom.mods.robot.play(true)); await sleep(1800);
+  const c1 = await W(page, () => ControlRoom.mods.robot.motion().tw.filter(x => /crr-hc-n/.test(x.cls))[0]);
+  check('...and it arrives (displayed = target, the same number the scenario reports)', c1 && Math.abs(c1.cur - c1.tgt) < 1 && c1.text === String(Math.round(c1.cur)) || (c1 && /\d/.test(c1.text)), JSON.stringify(c1));
+  const m1 = await W(page, () => ControlRoom.mods.robot.motion());
+  check('soft particles: smoke / embers drift over the burning floor while the scenario plays', m1.particles > 0 && (m1.kinds.s > 0 || m1.kinds.e > 0) && m1.t > 0, JSON.stringify(m1.kinds));
+  const hs = async () => W(page, () => { const c = document.querySelector('.crr-cv'); return c.getContext('2d').getImageData(0, 0, c.width, c.height).data.reduce((a, v, i) => (i % 53 === 0 ? (a * 31 + v) >>> 0 : a), 7); });
+  const a1 = await hs(); await sleep(260); const a2 = await hs(); await sleep(260); const a3 = await hs();
+  check('the plan canvas is animated: successive frames differ (cone sweep, particles, gliding robot)', new Set([a1, a2, a3]).size >= 2);
+  check('the active state chip pulses (a ring animation on the current step)', /crr-ring/.test(await W(page, () => getComputedStyle(document.querySelector('.crr-phases [aria-current="step"]'), '::after').animationName)));
+  // the guidance route is drawn on (look at the floor where the guard was guided out)
+  await W(page, () => { const M = ControlRoom.mods.robot; M.restart({ seed: 3 }); M.request(); M.approve(); M.step(200); M.play(true); M.setFloor(0); }); await sleep(300);
+  const r0 = await W(page, () => ControlRoom.mods.robot.motion().routes); await sleep(2000); const r1 = await W(page, () => ControlRoom.mods.robot.motion().routes);
+  check('the guidance route is drawn on (reveal grows from 0 to 1) and then flows', Object.keys(r1).length >= 1 && Object.values(r1).every(v => v === 1), JSON.stringify([r0, r1]));
+  // the clock and pausing: paused = static
+  await W(page, () => ControlRoom.mods.robot.play(false)); await sleep(300); const p1 = await hs(); await sleep(500); const p2 = await hs();
+  check('Pause freezes the animation too (identical frames)', p1 === p2);
+  const t5 = await W(page, () => ControlRoom.mods.robot.motion().t); await sleep(500); check('and the animation clock stops', (await W(page, () => ControlRoom.mods.robot.motion().t)) === t5);
+  // hidden page: the building simulation and its animation stop
+  await W(page, () => ControlRoom.mods.robot.play(true)); await sleep(500);
+  const s1 = await W(page, () => ControlRoom.mods.robot.scenario().t); await W(page, () => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => true }); document.dispatchEvent(new Event('visibilitychange')); }); await sleep(300);
+  const s2 = await W(page, () => ControlRoom.mods.robot.scenario().t); await sleep(1000); const s3 = await W(page, () => ControlRoom.mods.robot.scenario().t);
+  await W(page, () => { delete document.hidden; document.dispatchEvent(new Event('visibilitychange')); });
+  check('page hidden: the robot scenario does not advance', s3 === s2, `${s1} -> ${s2} -> ${s3}`);
+  check('no console errors', errors.length === 0, errors.join(' | '));
+  allErrors.push(...errors); await ctx.close();
+}
+console.log('\n11. reduced motion: static frames');
+{
+  const { ctx, page, errors } = await open({ reducedMotion: 'reduce' });
+  await ready(page); await fireAlarm(page); await tab(page, 'feed'); await sleep(2400);
+  const m = await W(page, () => { const M = ControlRoom.mods.feeds, f = M.shown()[0]; M.enter(f.id); M.flash(f.id); return M.motion(); });
+  check('reduced: no sweep-in and no ALERT flash is started (counters stay 0, no data-enter / data-flash)', m.reduced && m.enters === 0 && m.flashes === 0 && m.css.enter === null && m.css.flashAttr === null, JSON.stringify(m));
+  check('reduced: the CSS animations are off (scan-line, LIVE dot, flash)', m.css.scan === 'none' && m.css.dot === 'none' && m.css.flash === 'none', JSON.stringify(m.css));
+  check('reduced: detector boxes sit at their targets (no easing) and the HUD numbers jump (no ticker)', await W(page, () => { const M = ControlRoom.mods.feeds, f = M.state.byId[M.shown()[0].id]; return f.abx.length >= 1 && f.abx.every(b => b.c.w === b.t.w && b.c.x === b.t.x) && (f.tk.bat.cur = 20, M.paint(), f.tk.bat.cur === f.tk.bat.tgt); }));
+  const ink1 = await inkOf(page, '.crf-cell canvas.crf-ov'); await sleep(500); const ink2 = await inkOf(page, '.crf-cell canvas.crf-ov');
+  check('reduced: the overlay does not pulse (the same ink twice)', ink1 === ink2 && ink1 > 0, `${ink1} ${ink2}`);
+  await W(page, () => { ControlRoom.setRole('commander'); const M = ControlRoom.mods.robot; M.request(); M.approve(); M.setSpeed(20); M.play(true); }); await tab(page, 'robot'); await W(page, () => ControlRoom.mods.robot.step(150)); await sleep(1500);
+  const rm = await W(page, () => { const M = ControlRoom.mods.robot, mo = M.motion(), c = mo.tw.find(x => /crr-hc-n/.test(x.cls)); return { t: mo.t, particles: mo.particles, count: c && c.cur === c.tgt, simT: M.scenario().t, ring: mo.phaseRing }; });
+  check('reduced: the scenario still runs, but there are no particles, the animation clock never starts, the counter jumps and the state ring is off', rm.simT > 190 && rm.particles === 0 && rm.t === 0 && rm.count === true && rm.ring === 'none', JSON.stringify(rm));
+  const hs = async () => W(page, () => { const c = document.querySelector('.crr-cv'); return c.getContext('2d').getImageData(0, 0, c.width, c.height).data.reduce((a, v, i) => (i % 53 === 0 ? (a * 31 + v) >>> 0 : a), 7); });
+  await W(page, () => ControlRoom.mods.robot.play(false)); await sleep(300); const q1 = await hs(); await sleep(700); const q2 = await hs();
+  check('reduced: with the scenario paused the plan is a static frame (identical pixels)', q1 === q2);
   check('no console errors', errors.length === 0, errors.join(' | '));
   allErrors.push(...errors); await ctx.close();
 }

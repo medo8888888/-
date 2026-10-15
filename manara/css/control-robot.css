@@ -147,6 +147,20 @@
 .crr-log li[data-tone="safe"] { border-inline-start-color: var(--r-safe); } .crr-log li[data-tone="danger"] { border-inline-start-color: var(--r-danger); } .crr-log li[data-tone="warn"] { border-inline-start-color: var(--r-warn); } .crr-log li[data-tone="cool"] { border-inline-start-color: var(--r-accent); }
 .crr-log time { color: var(--r-muted); }
 
+/* ---- motion: transform / opacity only; every pulse is slower than 3 Hz; the canvas motion is in js/control-robot.js; all of it is off under prefers-reduced-motion (see below) ---- */
+.crr-phases li { position: relative; }
+.crr-phases li[aria-current="step"]::after { content: ""; position: absolute; inset: -3px; border-radius: 999px; border: 2px solid var(--r-accent); opacity: 0; pointer-events: none; animation: crr-ring 1.6s ease-out infinite; }
+@keyframes crr-ring { 0% { opacity: .75; transform: scale(.96); } 100% { opacity: 0; transform: scale(1.14); } }
+.crr-find[data-new="1"] { animation: crr-findin .6s cubic-bezier(.2, .8, .2, 1) 1 both; }
+@keyframes crr-findin { from { opacity: 0; transform: translateY(12px) scale(.97); } to { opacity: 1; transform: none; } }
+.crr-clock::before { content: ""; display: inline-block; inline-size: 7px; block-size: 7px; border-radius: 50%; background: var(--r-muted); margin-inline-end: 6px; }
+.crr-clock[data-run="1"]::before { background: var(--r-accent); animation: crr-blink 1.2s ease-in-out infinite; }
+@keyframes crr-blink { 50% { opacity: .25; } }
+.crr-meter[data-tone="low"] .crr-mbar i { animation: crr-blink 1s ease-in-out infinite; }
+.crr-hc-n, .crr-hc-u, .crr-hclist b { font-variant-numeric: tabular-nums; }
+.crr-hc-n { font-size: 1.2em; color: var(--r-safe); }
+.crr-mbar i { transition: inline-size .6s ease; }
+
 .crr button:focus-visible, .crr select:focus-visible, .crr input:focus-visible, .crr summary:focus-visible { outline: 3px solid var(--r-accent); outline-offset: 2px; }
 @media (pointer: coarse) { .crr-segb, .crr-flb { min-block-size: 44px; } .crr .btn-sm { min-block-size: 44px; } }
 @media (prefers-reduced-motion: reduce) { .crr *, .crr *::before, .crr *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; } }

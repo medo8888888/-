@@ -188,6 +188,7 @@
       var st = data.stages[s], ls = M.lang();
       var key = s <= 1 ? 'suspect' : s === 2 ? 'confirmed' : s === 3 ? 'approved' : 'dispatched';
       var li = $('#al-main'); li.setAttribute('data-st', s <= 1 ? 'suspect' : s === 2 ? 'confirmed' : 'approved');
+      if (s === 0 && !reduced()) { li.classList.remove('enter'); void li.offsetWidth; li.classList.add('enter'); setTimeout(function () { li.classList.remove('enter'); }, 1300); }
       var stEl = $('#al-main-st'); clear(stEl);
       var sp = el('span', null, L(STATE_TXT[key]) + (s === 1 || s === 0 ? ' · ' + bi('مفتاح واحد', '1 key') : '')); stEl.appendChild(sp);
       $('#al-main-age').textContent = mmss(st.alert ? st.alert.ageSec : 0);

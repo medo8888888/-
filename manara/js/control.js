@@ -389,7 +389,7 @@
         if (seen.verdict !== a.verdict && a.verdict) {
           seen.verdict = a.verdict;
           var vt = a.verdictText ? nm(a.verdictText) : a.verdict;
-          toast({ ar: 'تحقق المسيّرة للإنذار ' + a.id + ': ' + (a.verdictText ? a.verdictText.ar : a.verdict), en: 'Drone verification for ' + a.id + ': ' + (a.verdictText ? a.verdictText.en : a.verdict) }, a.verdict === 'confirmed' ? 'danger' : 'warn', 4800);
+          toast({ ar: a.id + ' — ' + (a.verdictText ? a.verdictText.ar : 'تحقق المسيّرة: ' + a.verdict), en: a.id + ' — ' + (a.verdictText ? a.verdictText.en : 'Drone verification: ' + a.verdict) }, a.verdict === 'confirmed' ? 'danger' : 'warn', 4800);
           chime(a.verdict === 'confirmed' ? 'critical' : 'warn'); live(vt + ' — ' + a.id);
           CR.emit('verdict', a);
         }
