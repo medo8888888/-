@@ -1,0 +1,204 @@
+/* ==========================================================================
+   App-shell layer (js/wow.js). Everything here is enhancement: without the
+   script, or under prefers-reduced-motion, the pages look and work as before.
+   Loaded last, so it can calm down the slower motion that base.css/fx.css ship.
+   1 motion tokens · 2 page push transition · 3 quick reveals · 4 press feedback
+   5 sliding tab indicators · 6 toast · 7 condensing nav + tab bar · 8 sheet drag
+   9 wave progress · 10 parallax · 11 sound button · 12 cursor
+   ========================================================================== */
+
+/* ---------- 1. motion tokens (other modules write var(--dur, 200ms) with literal fallbacks) ---------- */
+:root{
+  --dur-fast:120ms;--dur:200ms;--dur-slow:300ms;
+  --spring:cubic-bezier(.22,.8,.24,1);
+}
+@supports (animation-timing-function:linear(0,1)){
+  :root{--spring:linear(0,.38 8%,.9 20%,1.06 32%,1.02 45%,.995 62%,1)}
+}
+
+/* ---------- 2. page transition: the shell stays, only the content pushes ----------
+   Cross-document view transitions (base.css opts in with @view-transition). Everything that is not named below is the
+   "root" group, which is only viewport-sized, so animating root stays cheap even though <main> can be 10,000px tall.
+   RTL: inline-end is the LEFT, so a "forward" page enters from the left (negative x) and the old one leaves to the right
+   (positive x); "back" mirrors the signs. Transform + opacity only, no blur. */
+/* base.css names .nav itself; a named element is a backdrop root, which stops its child's backdrop-filter from blurring the page
+   behind it. The glass bar is the child, so the name moves onto the bar (same group name, same box). */
+.nav{view-transition-name:none}
+.nav-bar{view-transition-name:nav}
+@media (prefers-reduced-motion:no-preference){
+  /* persistent shell: each gets its own group and is frozen (no cross-fade, no move, no old copy) */
+  .chat-fab{view-transition-name:yb-fab}
+  .yb-pass{view-transition-name:yb-pass}
+  .totop{view-transition-name:yb-totop}
+  .progress{view-transition-name:yb-progress}
+  :root:not(.vt-theme)::view-transition-group(nav),
+  :root:not(.vt-theme)::view-transition-group(tabbar),
+  :root:not(.vt-theme)::view-transition-group(yb-fab),
+  :root:not(.vt-theme)::view-transition-group(yb-pass),
+  :root:not(.vt-theme)::view-transition-group(yb-totop),
+  :root:not(.vt-theme)::view-transition-group(yb-progress){animation:none}
+  :root:not(.vt-theme)::view-transition-old(nav),
+  :root:not(.vt-theme)::view-transition-old(tabbar),
+  :root:not(.vt-theme)::view-transition-old(yb-fab),
+  :root:not(.vt-theme)::view-transition-old(yb-pass),
+  :root:not(.vt-theme)::view-transition-old(yb-totop),
+  :root:not(.vt-theme)::view-transition-old(yb-progress){display:none}
+  :root:not(.vt-theme)::view-transition-new(nav),
+  :root:not(.vt-theme)::view-transition-new(tabbar),
+  :root:not(.vt-theme)::view-transition-new(yb-fab),
+  :root:not(.vt-theme)::view-transition-new(yb-pass),
+  :root:not(.vt-theme)::view-transition-new(yb-totop),
+  :root:not(.vt-theme)::view-transition-new(yb-progress){animation:none;mix-blend-mode:normal}
+
+  /* content: forward = old leaves to the right in 150 ms (ease-in), new arrives from the left in 250 ms (ease-out, so the slide
+     can be seen; the --spring curve is front-loaded and would be done after 50 ms). Plain cross-fade pairs are
+     mix-blend-mode:normal on purpose: the default plus-lighter flashes a light page white while the two fades overlap. */
+  ::view-transition-old(root){animation:yb-out-f 150ms cubic-bezier(.4,0,1,1) both;mix-blend-mode:normal}
+  ::view-transition-new(root){animation:yb-fade-in 160ms ease-out both,yb-in-f 250ms var(--ease) both;mix-blend-mode:normal}
+  html:active-view-transition-type(back):not(.vt-theme)::view-transition-old(root){animation-name:yb-out-b}
+  html:active-view-transition-type(back):not(.vt-theme)::view-transition-new(root){animation-name:yb-fade-in,yb-in-b}
+  html[data-nav=back]:not(.vt-theme)::view-transition-new(root){animation-name:yb-fade-in,yb-in-b}
+}
+@keyframes yb-fade-in{from{opacity:0}}
+@keyframes yb-out-f{to{opacity:0;transform:translateX(28px)}}
+@keyframes yb-in-f{from{transform:translateX(-36px)}}
+@keyframes yb-out-b{to{opacity:0;transform:translateX(-28px)}}
+@keyframes yb-in-b{from{transform:translateX(36px)}}
+html.yb-jump{scroll-behavior:auto!important}   /* arriving on #hash: the push transition and a smooth scroll must not stack */
+
+/* ---------- 3. reveals: quick and quiet (240 ms, 8 px, no blur, at most a short stagger) ---------- */
+html.js .rv{transform:translateY(8px);transition:opacity 240ms ease-out,transform 240ms ease-out;transition-delay:min(var(--d,0s),80ms)}
+html.js .rv.in{opacity:1;transform:none}
+html.js .rv.rv-now{transition:none}                 /* already on screen when the page arrived: no animation at all */
+.fx-ripple{animation-duration:.38s}
+
+/* ---------- 4. press feedback: the individual `scale` property, so hover/tilt transforms are left alone ---------- */
+:is(.btn,.btn-ai,.icon-btn,a.card,.card[href],.tile,.team-card,.tabbar a,.tabbar button,.sheet-item,.sheet-wide,[role=tab],button.chip,a.chip,.chat-fab,.totop){
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.sheet-panel,.search-results,.chat-log{overscroll-behavior:contain}
+@media (prefers-reduced-motion:no-preference){
+  :is(.btn,.btn-ai,.icon-btn,a.card,.card[href],.tile,.team-card,.tabbar a,.tabbar button,.sheet-item,.sheet-wide,[role=tab],button.chip,a.chip,.chat-fab,.totop){
+    transition-property:scale,transform,translate,opacity,box-shadow,background-color,border-color,color;
+    transition-duration:240ms,250ms,350ms,250ms,250ms,250ms,250ms,250ms;
+    transition-timing-function:var(--spring),var(--ease),var(--ease),ease,ease,ease,ease,ease;
+    transition-delay:0s}
+  :is(.btn,.btn-ai,.icon-btn,.tabbar a,.tabbar button,.sheet-item,.sheet-wide,[role=tab],button.chip,a.chip,.chat-fab,.totop):active{scale:.96}
+  :is(a.card,.card[href],.tile,.team-card):active{scale:.98}
+  :is(.btn,.btn-ai,.icon-btn,a.card,.card[href],.tile,.team-card,.tabbar a,.tabbar button,.sheet-item,.sheet-wide,[role=tab],button.chip,a.chip,.chat-fab,.totop):active{
+    transition-duration:80ms,250ms,350ms,250ms,250ms,250ms,250ms,250ms;
+    transition-timing-function:ease-out,var(--ease),var(--ease),ease,ease,ease,ease,ease}
+}
+
+/* ---------- 5. sliding indicator for every [role=tablist] (js/wow.js injects .seg-ind; data-seg="own" opts out) ---------- */
+.has-seg{position:relative}
+.has-seg>.seg-ind{position:absolute;left:0;top:0;z-index:0;pointer-events:none;opacity:0;
+  transition:transform var(--dur,200ms) var(--ease),width var(--dur,200ms) var(--ease),height var(--dur,200ms) var(--ease),opacity 120ms}
+.has-seg.seg-on>.seg-ind{opacity:1}
+.has-seg [role=tab]{position:relative;z-index:1}
+.has-seg.seg-on [role=tab][aria-selected=true]{background:transparent!important;border-color:transparent!important;box-shadow:none!important}
+
+/* ---------- 6. toast (window.YanabeeApp.toast) ---------- */
+.app-toast{position:fixed;inset-inline:0;margin-inline:auto;width:max-content;max-width:calc(100vw - 32px);
+  bottom:calc(var(--tab-h) + 16px + env(safe-area-inset-bottom));z-index:430;
+  display:flex;align-items:center;gap:6px;min-height:48px;padding:6px 18px;border-radius:16px;
+  background:var(--surface);color:var(--ink);border:1px solid var(--line-2);box-shadow:var(--shadow-lg);
+  font-family:var(--font-h);font-weight:500;font-size:.95rem;line-height:1.6;touch-action:none;user-select:none;-webkit-user-select:none;
+  opacity:0;transform:translate3d(0,16px,0);pointer-events:none;
+  transition:opacity 160ms ease-in,transform 160ms ease-in}
+.app-toast.show{opacity:1;transform:none;pointer-events:auto;transition:opacity 220ms ease-out,transform 220ms var(--spring)}
+.app-toast.dragging{transition:none}
+.app-toast[hidden]{display:none}
+.app-toast-t{min-width:0;overflow-wrap:anywhere}
+.app-toast-a{flex:none;min-height:44px;min-width:44px;padding:0 12px;margin-inline-end:-10px;border-radius:12px;font-weight:700;color:var(--brand)}
+.app-toast-a:hover{background:color-mix(in oklab,var(--brand) 10%,transparent)}
+@media(min-width:861px){.app-toast{bottom:calc(76px + env(safe-area-inset-bottom))}}
+
+/* ---------- 7. the nav stays; it condenses. A phone shows the page title once the heading scrolls behind it ---------- */
+.nav{transition:padding-top 180ms ease-out}
+.nav.hide{transform:none!important}                 /* main.js used to hide the bar on scroll; the shell is persistent */
+.nav-bar{transition:height 180ms ease-out,box-shadow .3s,background-color .3s}
+.brand small{max-height:1.6em;overflow:hidden;transition:opacity 120ms ease-out,max-height 180ms ease-out}
+.nav.scrolled{padding-top:8px}
+.nav.scrolled .nav-bar{height:54px}
+.nav.scrolled .brand small{opacity:0;max-height:0}
+@media(max-width:860px){.nav.scrolled{padding-top:6px}.nav.scrolled .nav-bar{height:50px}}
+.nav-title{display:none;flex:1 1 0;min-width:0;margin-inline:2px 8px;font-family:var(--font-h);font-weight:600;font-size:1rem;line-height:1.5;color:var(--head);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;
+  opacity:0;transform:translateY(6px);transition:opacity 150ms ease-out,transform 150ms ease-out}
+.nav-title.on{opacity:1;transform:none}
+@media(max-width:960px){
+  .nav-title{display:block}
+  html.nav-titled .brand span{display:none}
+}
+/* tab bar: one pill that slides under the active icon */
+.tab-ind{display:none}
+@media(max-width:860px){
+  .tab-ind{display:block;position:absolute;left:0;top:0;z-index:-1;width:56px;height:30px;border-radius:15px;pointer-events:none;opacity:0;
+    background:color-mix(in oklab,var(--brand) 14%,transparent);transition:transform 220ms var(--ease),opacity 150ms}
+  .tabbar.has-ind .tab-ind{opacity:1}
+  .tabbar.has-ind .active .i{background:none;padding:0;width:22px;height:22px}
+}
+
+/* ---------- 8. bottom sheet: faster, no per-item stagger, draggable (js/wow.js tracks the finger 1:1) ---------- */
+.sheet-panel{transition:transform var(--dur-slow,300ms) var(--ease)}
+.sheet-backdrop{transition:opacity var(--dur,200ms)}
+.sheet-item{transition-delay:0s!important}
+.sheet-handle,.sheet-head{touch-action:none}
+.sheet.dragging .sheet-panel,.sheet.dragging .sheet-backdrop{transition:none!important}
+.search-panel.dragging,.chat-panel.dragging{animation:none!important;transition:none!important}
+@media(max-width:760px){.search-bar,.chat-head{touch-action:none}}
+
+/* ---------- 9. wave scroll progress (moves only while the page moves) ---------- */
+html.wow-prog .progress{height:5px;background:none;transform:none!important;overflow:visible}
+html.wow-prog .progress::before{content:"";position:absolute;inset:0;
+  background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.62) 50%,transparent 70%) 120% 0/60% 100% no-repeat,var(--grad);
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='34' height='5' viewBox='0 0 34 5'%3E%3Cpath d='M0 0H34V2.7C29.5 4.7 21.5 4.7 17 2.7S4.5.7 0 2.7Z'/%3E%3C/svg%3E") 0 0/34px 5px repeat-x;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='34' height='5' viewBox='0 0 34 5'%3E%3Cpath d='M0 0H34V2.7C29.5 4.7 21.5 4.7 17 2.7S4.5.7 0 2.7Z'/%3E%3C/svg%3E") 0 0/34px 5px repeat-x;
+  clip-path:inset(0 0 0 calc((1 - var(--p,0)) * 100%))}
+html.wow-prog .progress.flow::before{animation:wow-flow 1s linear infinite}   /* only while .flow is set: scrolling + a 300 ms tail */
+@keyframes wow-flow{to{-webkit-mask-position:-34px 0;mask-position:-34px 0;background-position:-60% 0,0 0}}
+.wow-head{position:absolute;top:-1px;left:0;width:11px;height:11px;margin:0 0 0 -5.5px;border-radius:50%;pointer-events:none;opacity:0;
+  background:radial-gradient(circle at 36% 30%,#fff 0 18%,color-mix(in oklab,var(--accent) 80%,#fff) 40%,var(--accent) 70%,var(--sky));
+  box-shadow:0 0 0 2px color-mix(in oklab,var(--accent) 30%,transparent);transition:opacity .2s}
+.progress.on .wow-head{opacity:1}
+
+/* ---------- 10. parallax: applied 1:1 in the scroll handler (no easing), small amplitudes ---------- */
+/* oversize the layers that sit inside an overflow:hidden frame so a shift never shows an edge */
+html.wow-par-on .b-photo img.wow-par,html.wow-par-on .b-photo svg.wow-par{height:calc(100% + 52px);margin-block:-26px}
+html.wow-par-on .tc-art img.wow-par,html.wow-par-on .tc-art svg.wow-par{height:calc(100% + 30px);margin-block:-15px}
+html.wow-par-on .cta-bg.wow-par{inset-block:-26px}
+html.wow-par-on .init-pattern.wow-par{inset-block:-26px}
+/* hero blobs: fx.css owns their `translate` (pointer light); this adds the scroll term (factors <= 1, so the shift stays <= 24px) */
+html.wow-par-on .hero .blob{translate:calc(var(--px,0) * -26px) calc(var(--py,0) * -18px + var(--wy,0px) * .6)}
+html.wow-par-on .hero .blob.b2{translate:calc(var(--px,0) * 34px) calc(var(--py,0) * 20px + var(--wy,0px) * .8)}
+html.wow-par-on .hero .blob.b3{translate:calc(var(--px,0) * -14px) calc(var(--py,0) * 30px + var(--wy,0px))}
+
+/* ---------- 11. sound button ---------- */
+.sound-btn .x{display:none}
+.sound-btn:not([aria-pressed=true]) .w1,.sound-btn:not([aria-pressed=true]) .w2{display:none}
+.sound-btn:not([aria-pressed=true]) .x{display:block}
+.sound-btn[aria-pressed=true]{color:var(--brand);background:color-mix(in oklab,var(--brand) 12%,transparent)}
+
+/* ---------- 12. cursor ring + press splash (canvas lives only on fine pointers without reduced motion) ---------- */
+.wow-cursor{position:fixed;inset:0;width:100%;height:100%;z-index:140;pointer-events:none}
+.ring{transition:--p .6s var(--ease)}              /* base.css fills rings over 1.4 s: keep it under 700 ms */
+
+/* ---------- quiet by request ---------- */
+@media(prefers-reduced-motion:reduce){
+  .wow-cursor{display:none!important}
+  .app-toast{transition:none}
+  html.wow-prog .progress.flow::before{animation:none}
+  .has-seg>.seg-ind,.tab-ind,.nav,.nav-bar,.nav-title{transition:none}
+}
+@media print{
+  .wow-cursor,.wow-head,.sound-btn,.app-toast,.nav-title,.tab-ind,.seg-ind{display:none!important}
+}
+
+/* clarity: headline text takes one solid colour instead of a gradient fill. Only for sources that no other module owns
+   (base.css .stat b, teams.css, learn.css, operations.css, quran.css, season.css); home.css .grad-text and intro.css .intro-word
+   are deleted at their source by the home module, story.css by the story module. */
+.tm-h1-a,.ln-h1-a,.q-h1-main,.op-ring-c b,.stat b,.ss-rep-title{
+  background:none!important;-webkit-background-clip:border-box!important;background-clip:border-box!important;
+  -webkit-text-fill-color:currentColor!important;color:var(--brand)!important}
+.q-h1-main{color:var(--q-em)!important}
+[data-theme=dark] .q-h1-main{color:var(--q-em-2)!important}
