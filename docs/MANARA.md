@@ -178,13 +178,13 @@ grid 96 × 64). Text is always `{ar, en}`. One alert schema serves all six hazar
 
 **`window.ManaraSim`** (`js/sim.js`) — a pure, seeded, deterministic multi-hazard simulation (no DOM, no
 network; attaches to `globalThis`, so Node tests load it with `vm`). The exact API is the header
-comment of `sim.js`; the tests are `tools/manara/test-sim.mjs` (about 250 checks, ~75 s). In one paragraph:
+comment of `sim.js`; the tests are `tools/manara/test-sim.mjs` (408 checks, ~110 s, the rescue robot included). In one paragraph:
 a Doha-style block (96 × 64 cells of 5 m) with a 3-floor workers' residence and a 2-floor school (each
 with its own indoor graph: rooms, corridor, Stair A/B, roof door, refuge balcony, guard desk), an LPG
 store, a road underpass, a park, a road graph with **time-varying simulated traffic** and fictional
 responders (2 fire stations, 2 police posts, an ambulance point, 2 hospitals with capability flags).
 Seven presets (`fire-night` default, `gas-night`, `flood-day`, `dust-day`, `heat-day`, `sos-day`,
-`school-fire-day`). One pipeline for every hazard — sensors with noise/drift/warm-up → a **two-key**
+`school-fire-day`; `PRESET_ORDER`) plus the robot scenario `fire-night-robot` (`PRESET_ORDER_ALL`, see "The rescue robot (simulated)" below). One pipeline for every hazard — sensors with noise/drift/warm-up → a **two-key**
 verification state machine (SUSPECT → CONFIRMED needs two independent keys; the public alert needs the
 operator's approval; the local alarm never waits) → alert composer (zones, per-person language/format,
 night wake-up ladder T+0/+30/+60/+90 s that stops on confirmation) → hazard-aware routing (multi-source
@@ -210,9 +210,215 @@ RGB/HSI, Chen et al. 2004), smoke cues, connected regions, and a temporal detect
 (flicker + growth + hysteresis) that outputs `clear | suspect | fire | smoke` with a
 confidence. Its exact API is documented at the top of `fire.js`.
 
+## The rescue robot (simulated) — `ManaraSim`, section 10b of `js/sim.js`
+
+User requirement (verbatim): "the dornes will alert us and there will be robot". The drone is the eye outside; the **robot** is the
+eye inside the building. **Honesty first, on every screen that shows it:** the robot is a **concept with a simulated prototype**.
+Nothing has been built or tested; a real one would need the authority's approval; the robot assists, **firefighters decide**. Every
+number below is a named assumption (`ManaraSim.PARAMS`, group `robot`, all `src:'assumption'`), detection is **rule-based (seeded
+probabilities), not "AI"**, and all results are labelled **SIMULATION — a mechanism check, not proof of impact**.
+
+**With the robot off, nothing changes**: the original seven presets give the identical event stream and `ManaraSim.hash()` (pinned in
+`test-sim.mjs` section 15, 14 hashes = 7 presets × 2 modes). Robot data appears in `snapshot()`, `headcount()`, `handoff()` and `metrics()`
+only when the robot is enabled. `ManaraSim.PRESET_ORDER` is unchanged (7); `PRESET_ORDER_ROBOT = ['fire-night-robot']` and
+`PRESET_ORDER_ALL = PRESET_ORDER + PRESET_ORDER_ROBOT` are new. UIs that list presets from `PRESET_ORDER_ALL` get the robot scenario;
+the `robot` entry of `PARAM_GROUPS` makes Mission Control's assumptions and sweep panels show the 51 robot sliders by themselves.
+
+### Turning it on
+
+```js
+ManaraSim.create({ preset:'fire-night-robot' })                          // the robot scenario (robot enabled by the preset)
+ManaraSim.create({ preset:'fire-night', robot:true })                    // any fire/gas building preset, mode 'manara'
+ManaraSim.create({ preset:'fire-night', robot:{ units:2, variant:'wheeled'|'tracked', autoApprove:true, carrier:0|1 } })   // units 1..3
+ManaraSim.create({ preset:'fire-night-robot', robot:false })             // same world (locked door, Abu Salem in the corridor), no robot
+ManaraSim.enableRobot(sim, cfg)                                          // later, on a running sim → {ok} | {ok:false, code:'na', reason:{ar,en}}
+```
+
+Only fire and gas in a building, in the MANARA world (`mode:'manara'`); otherwise `enableRobot` answers `{ok:false, code:'na'}`.
+`role` (`'viewer'|'operator'|'commander'`, default `operator`) can be passed to `create()` or set with `setRole`. These roles are
+simulated labels, **there is no real authentication**.
+
+### State machine and the approval gate
+
+`stowed → approved → deploying → searching ⇄ guiding / holding → returning → (stowed again) | fault`
+
+| State | Meaning |
+|---|---|
+| `stowed` | at the building entrance (the lobby node `LOB`), parked, not moving; `approval.status` is `none` → `requested` (when the alert is CONFIRMED) |
+| `approved` | the **incident commander** approved; waits `robotDeploySec`, or for the fire engine's arrival + `robotUnloadSec` when `robotCarrier = 1` |
+| `deploying` | leaving the entrance |
+| `searching` | A* to the next room, a sweep of `robotRoomSweepSec`, corridors covered on the way; investigates "possible person" false alarms |
+| `guiding` | a person was found: it speaks and drops route beacons; critical finds can interrupt a routine guide |
+| `holding` | stays with a person who cannot move until crews arrive (`robotHoldMaxSec`) |
+| `returning` | battery below `robotReturnPct` **or** below the estimated cost of the way back, or recalled |
+| `fault` | `trapped` by fire, `battery` exhausted or `overheated` (thermal shutdown); reported with the reason in `stats.faultWhy` |
+
+**No movement before approval.** `approveRobot(sim, id, role)` is valid **only for `role:'commander'`**; any other role is rejected
+`{ok:false, code:'role', reason:{ar,en}}` and logged as an event. With `autoApprove:true` (the A/B runs) a simulated commander approves
+`robotApproveSec` after the request; the sim never moves the robot before `approvedAt`.
+
+### Operator API (every call returns `{ok, code?, reason?:{ar,en}}`; check `.ok`)
+
+| Call | |
+|---|---|
+| `setRole(sim, 'viewer'\|'operator'\|'commander')` | simulated role |
+| `deployRobot(sim, id?)` | request deployment (operator or commander); **still needs the commander's approval** |
+| `approveRobot(sim, id?, role?)` / `rejectRobot(...)` | commander only |
+| `recallRobot(sim, id?)` | back to the entrance (cancels a deployment that has not started) |
+| `setSearchPriority(sim, ['302','R205',…])` | operator order overrides the automatic one (`[]` = automatic); unknown rooms are returned in `ignored` |
+| `teleopRobot(sim, id, 'C22'\|'305'\|{x,y,fl})` | one-shot go-to waypoint (needs the link; refused if unreachable: stairs for a wheeled robot, fire/heat/obstacle) |
+| `speakVia(sim, id, key, lang?)` | the operator speaks through the robot; `key` is one of `ManaraSim.robot.SAY_KEYS` = `intro, guide, wake, stay, refuge, hold, check, blocked, hood` |
+| `setRobotObstacle(sim, 'R204', {locked:true\|false, kind?})` | mark a door/corridor locked or blocked (the robot never forces it) |
+| `robots(sim)` / `robotTelemetry(sim, id?)` | telemetry, below |
+| `robotView(sim, id?)` | the camera view descriptor alone |
+| `robotMetrics(sim)`, `abRobot(opts)`, `sweepRobot(opts)` | metrics, A/B, sensitivity |
+| `busRobot(sim)`, `busRobotFind(sim, findId)` | bus messages, below |
+| `ManaraSim.robot` | `{STATES, ROLES, SAY_KEYS, STATE_LABELS, CONDITIONS, astar(sim, fromId, toId, opt), graph(structIdx), priority(sim, id?), say(sim, key, persona, personKey?, extra?)}`; read-only helpers that never change the run |
+
+### What the model does (all SIM)
+
+* **Movement** on the building's indoor graph (the residence: 53 nodes, 29 rooms; entrance `LOB`, refuge `REF`, roof door `R`): **A\*** with an
+  admissible heuristic (tested equal to Dijkstra), edge cost = length / speed × stair penalty × smoke slow-down. It never enters a node that is
+  burning, hotter than `robotMaxTempC`, or (gas) at the danger level; heat soak above `robotHeatWarnC` retreats it. **Wheeled** cannot climb
+  stairs (upper floors are reported *unreachable*); **tracked** climbs at `robotStairPenalty` (speed) and `robotStairDrain` (battery).
+* **Doors**: it opens a closed, unlocked door (`robotDoorSec`) but **never breaks a locked one**: the door is reported (`blocked` list, event
+  `robot-blocked`, a card entry, bus) and the corridor is marked blocked and routed around.
+* **Search order**: rooms of unaccounted residents who need help first, then other unaccounted residents, then smoke and closeness to the
+  danger, then the remaining rooms; the operator's priority list overrides.
+* **Sensors**: thermal camera (contrast = (34 °C − room temperature) / `robotContrastC`, so **a hot room reduces thermal contrast — the Gulf-heat
+  caveat**; attenuated by smoke), visible camera with its own lamp (`robotRgbSmokeK`), audio (a conscious person calling out, masked by the
+  siren), a CO/gas reading in the view. Per second in view: `p = 1 − (1 − p_thermal)(1 − p_rgb)(1 − p_audio)`, seeded (`hr(seed, …)`). **False
+  negatives** (a person in view stays unseen; counted as `missed`) and **false positives** (a hot object: "possible person" → investigated for
+  `robotInvestigateSec` → dismissed) both happen.
+* **Link**: a mesh with `robotMeshRangeM`, `robotFloorLossM` per floor, relay beacons (`robotBeaconRelay`), random dropouts
+  (`robotDropoutPct` per weak-signal second, lasting `robotDropoutSec`). **While the link is down reports wait in a buffer** and are flushed on
+  reconnect; the control room sees `link.buffered`. After `robotLinkLostSec` without a link it backs toward the nearest node the mesh reaches (a relay beacon or the entrance) to regain the link.
+* **On a find**: record `{room, person, needs, condition guess (est.), time}` → the control room. The robot speaks through
+  `MANARA_MSG.robot.say` in the person's language and format: **wheelchair** → "stay here, help is coming" plus `refuge` flag (the refuge
+  balcony); **Deaf** → steady green light + opt-in strobe + pictogram + text on the robot display; asleep → wake attempts (`robotWakeP`,
+  `robotWakeTries`); able to walk → guidance + route beacons (`robotBeaconsPerFind`); cannot move in smoke → smoke hood
+  (`robotHoods`, `robotHoodFactor`) and **holds** until crews arrive. The condition guess is a rule-based estimate (`conscious`, `moving`,
+  `asleep`, `injured`, `unresponsive`), **never a diagnosis**.
+* **Crews**: when the robot reported a person's location, the rescue time of the crews for that person is scaled by `(1 − robotCrewSpeedup)`
+  (assumption: they know where to go).
+
+### Scenario preset `fire-night-robot`
+
+04:00, a fire in room 303 (`R303`, tIgnite 30 s, 1500 s), **Stair A locked** (the exit), **room R308's door locked**, and the hero resident
+**Abu Salem** (wheelchair, `immobile`) in the smoke-logged corridor at `C20` with no working app. Tracked robot, one unit, `scene:'BLD'`.
+Story with seed 1: the alert is confirmed → request → the commander approves at +30 s → deploy +20 s → climbs Stair A → hears Abu Salem and
+finds him by audio at about 212 s → drops relay beacons → reports his condition → holds → crews bring him out sooner. The preset is **not**
+part of `PRESET_ORDER`, so every existing page and result is unchanged until it asks for `PRESET_ORDER_ALL` or `preset:'fire-night-robot'`.
+
+### Parameters (`ManaraSim.PARAMS`, group `robot`, 51 entries, all assumptions; defaults)
+
+| Area | Keys (default) |
+|---|---|
+| Approval / deployment | `robotApproveSec` 30 s · `robotCarrier` 0 (1 = carried by the fire engine) · `robotDeploySec` 20 · `robotUnloadSec` 40 |
+| Mobility | `robotSpeedWheeled` 1.0 m/s · `robotSpeedTracked` 0.6 · `robotStairPenalty` 2.5× · `robotStairDrain` 1.5× · `robotSmokeSlowPct` 30 · `robotOpensDoors` 1 · `robotDoorSec` 4 |
+| Heat | `robotMaxTempC` 85 · `robotHeatWarnC` 60 · `robotHeatSoakSec` 120 · `robotRoomC` 30 (room air in the thermal-contrast model) |
+| Battery | `robotBattMin` 45 min · `robotTrackedDrain` 1.4× · `robotHeatDrain` 0.25 per 10 °C · `robotSmokeDrain` 0.5 · `robotIdleDrain` 0.3 · `robotReturnPct` 25 |
+| Sensors | `robotRangeM` 8 · `robotThermalPd` 0.35 /s · `robotContrastC` 8 K · `robotThermalSmokeK` 1.2 · `robotRgbSmokeK` 5 · `robotRgbPd` 0.15 · `robotAudioPd` 0.25 · `robotAudioRangeM` 6 · `robotNoiseMask` 0.6 |
+| False alarms / sweeps | `robotFalsePosPerMin` 0.6 · `robotInvestigateSec` 12 · `robotRoomSweepSec` 10 · `robotRecheckPasses` 2 |
+| Link | `robotMeshRangeM` 30 · `robotFloorLossM` 15 · `robotBeaconRelay` 1 · `robotDropoutPct` 2 %/s · `robotDropoutSec` 10 · `robotLinkLostSec` 45 |
+| Behaviour | `robotFollowP` 0.85 · `robotWakeP` 0.6 · `robotWakeTries` 3 · `robotHoldMaxSec` 300 · `robotGuideSec` 25 · `robotBeacons` 8 · `robotBeaconsPerFind` 3 · `robotHoods` 2 · `robotHoodFactor` 0.4 · `robotCrewSpeedup` 0.3 · `robotStatusSec` 30 |
+
+### Telemetry (`ManaraSim.robots(sim)`, and `snapshot(sim).robot` when enabled)
+
+```js
+snapshot.robot = { enabled:true, label:{ar,en}, role:'operator', variant:'tracked', units:1, autoApprove:true,
+  robots:[{ id:'R1', name:{ar,en}, variant, state:'searching', stateLabel:{ar,en}, since:612.0,
+    approval:{ status:'none'|'requested'|'approved'|'rejected', requestedAt, approvedAt, by },
+    pose:{ x, y, fl, node:'R306', label:{ar,en} }, heading:180,             // x,y in grid cells (1 cell = 5 m), fl = floor index
+    battery:0.899,                                                          // 0..1
+    link:{ q:0.77, up:true, dropouts:0, downSec:0, buffered:0 },
+    target:{ kind:'room'|…, node, room, label:{ar,en} } | null,
+    finds:['F1',…], blocked:['B1',…], beacons:[{node,x,y,fl,t}], beaconsLeft, hoodsLeft, hold:{ person, since } | null, tempC, heat,
+    stats:{ falsePositives, enteredBlocked, retreats, distanceM, stairsM, spoke, returnedAt, faultAt, faultWhy, doorsOpened },
+    coverage:{ pct, roomsSearched, roomsTotal, nodes:[{id,cov}], rooms:{ '302':'searched'|'open'|'locked'|'unreachable'|'hot' } },
+    view:{ node, label, room, fl, visibility, thermalVisibility, rangeM, smoke, tempC, gasPpm|null, lighting:'lit'|'dark', heading,   // null while stowed/approved/deploying
+           people:[{ ref, key|null, name|null, x, y, distM, strength, detected, condition|null }] } }],
+  finds:[ findRecord… ], blocked:[ blockRecord… ], speech:[ last 20 spoken lines ], priority:['302',…] }
+```
+
+`view.visibility` is the visible-light visibility 6 m ahead (smoke attenuation), `thermalVisibility` the same for the thermal camera; `people[]`
+holds the people in the camera's view, unidentified (`ref:'blob-…'`, `key:null`) until detected.
+
+### Bus messages (additions to the `Manara.link` list above; both are SIM and carry `sim:true`)
+
+```js
+// mission → phone/other tabs: ManaraSim.busRobot(sim) (null when no robot); a UI sends it about every 2 s, like 'alert-update'
+{ type:'robot', scope:'building', sim:true, label:{ar,en}, role:'operator'|'commander'|'viewer', t:330,
+  robots:[{ id:'R1', name:{ar,en}, variant:'tracked'|'wheeled', state:'stowed'|'approved'|'deploying'|'searching'|'guiding'|'holding'|'returning'|'fault', stateLabel:{ar,en},
+            approval:'none'|'requested'|'approved'|'rejected', pose:{x,y,fl,node,label:{ar,en}}, heading, battery:0.899,
+            link:{q,up,dropouts,downSec,buffered}, target:{…}|null, coveragePct:42, finds:6, blocked:7, holding:'res-081'|null }] }
+// mission → phone/other tabs: ManaraSim.busRobotFind(sim, 'F1') (null for an unknown id); a UI sends it once per find, when `reportedAt` is set
+{ type:'robot-find', sim:true, id:'F1', robot:'R1', foundAt:98, reportedAt:98,           // reportedAt > foundAt when the link was down
+  room:'103'|null, place:{ar,en}, floor:1,
+  person:{ key:'res-009', name:{ar,en}|null, persona:'adult'|'elderly'|'child'|'wheelchair', needs:['wheelchair'|'deaf'|'blind'|'elderly'|'child'], lang:'ne', registered:true },
+  condition:{ key:'conscious'|'moving'|'asleep'|'injured'|'unresponsive', est:true, text:{ar,en} },
+  confidence:0.15, by:'thermal'|'camera'|'audio'|'camera+audio', refuge:{ at:false, route:false }, action:'queued'|'guide'|'wake'|'stay'|'refuge'|'hold'|'none', route:['LOB','C02','R103'], routeM:8,
+  text:{ ar:'الروبوت R1 عثر على أحد المقيمين — غرفة 103 — الحالة: نائم (أو فاقد الوعي) (تقدير)', en:'Robot R1 located a person — room 103 — condition: asleep (or unconscious) (est.)' },
+  note:{ ar:'تقدير بقواعد بسيطة، وليس تشخيصاً', en:'A rule-based estimate, not a diagnosis' } }
+```
+
+Readers must show `label` / `note`, and must not turn `condition` into a medical claim.
+
+### Headcount, hand-off card, events
+
+* **`headcount(sim)`** gains **`located`** (and `locatedList`, `rooms[room].located`) **only when the robot is enabled**: a resident the robot found and reported
+  who has not checked in. It is **a separate bucket from "safe"**: `registered = safe + safeAway + help + located + unaccounted`
+  (tested; 120 = 5 + 11 + 0 + 5 + 99 in the sample run above, T+330 s). `unaccounted` falls when someone is located; `safe` does not move.
+* **`handoff(sim)`** gains, only with the robot: `people.located`, `locatedByRobot` (the same list as `locatedList`), a `robot` block
+  `{label, role, units:[{id,variant,state,battery%,pose,coveragePct,beacons}], finds:[…], blocked:[…]}` and an extra note ("the robot is a simulated
+  concept; it assists, firefighters decide"). Each find is a card entry: room, person, needs, condition guess (est.), time.
+* **Events** (`sim.events`, all bilingual): `robot-state`, `robot-approval-requested`, `robot-approved`, `robot-approval-rejected` (including a non-commander try),
+  `robot-find`, `robot-blocked`, `robot-false-positive`, `robot-speak`, `robot-woke`, `robot-no-response`, `robot-hold`, `robot-hold-end`, `robot-hood`, `robot-beacon`,
+  `robot-relay`, `robot-link`, `robot-battery-low`, `robot-retreat`, `robot-room-searched`, `robot-search-order`, `robot-search-complete`, `robot-status`,
+  `robot-teleop`, `robot-priority`, `robot-obstacle`, `robot-recall`, `robot-returned`, `robot-fault`.
+
+### Words the robot says — `MANARA_MSG.robot` (`js/messages.js`, section 5.100, append-only)
+
+119 phrases `rb.*`. `MANARA_MSG.robot = { keys(), opKeys(), say(req), op(req), label(…), states, roles, conditions, strings, light, notice }`.
+`say({key, hazard, persona, lang, needs, vars})` → `{headline, lines[], text, formats[], flags:{refuge}, display, pictograms, light, speech, also:{ar,en}, draft, status, dir,
+fallback, requestedLang}`. Calm, short, first-person lines per hazard (fire/gas) and persona (adult, elderly, child, wheelchair, deaf, blind, worker, asleep). **Arabic
+and English are complete; Malayalam, Nepali, Bengali, Urdu, Hindi and Tagalog have only the short core instructions and are marked `draft-needs-native-review`**
+(`draft:true`, and `draftNotice` in the result). A language without a line falls back to English with `fallback:true`. `friendly-robot` is a light
+signature (steady green + two white flashes every 2 s; the strobe is opt-in with the standard warning). Operator log lines (for example "Robot R1
+located Abu Salem — room 302 — condition: conscious (est.)"), blocked-door reports and the commander's approval prompts are `op(...)` keys. If `messages.js`
+is not loaded `sim.js` uses a small built-in Arabic/English fallback (`via:'built-in'`). `test-msg.mjs` section 14 checks that the keys `sim.js` speaks
+are exactly the keys the registry has.
+
+### Metrics, the A/B and the sensitivity sweep (**SIMULATION — a mechanism check, not proof of impact**)
+
+* `robotMetrics(sim)` — the same definitions in the world with and without the robot: **time to locate each unaccounted resident** (`unaccounted.timeToLocate`
+  p50/p90, `perPerson[]`, never-located people are *censored* and counted to the end of the run), **% of needs-help residents located before the crews arrive**
+  (`needsHelp.pctBeforeCrews`) and before they were brought out (`pctBeforeRescue`), **people reached before the smoke-exposure threshold**
+  (`reachedBeforeThreshold`; "threshold" = the model's injury dose 0.3, not a medical measure), residents still unaccounted at T+120/300/450/600 s,
+  exposure (`injured`, `incapacitated`, person-seconds in smoke), detection (`falsePositives`, `missedInView`), per-robot battery, coverage and link, and the
+  `assumptions` that produced the numbers.
+* `abRobot({preset?:'fire-night-robot', seed?, seconds?, params?})` → `{without, withRobot, delta, hash}`: the **same seed**, common random numbers (both worlds
+  have identical people and hazard until the robot acts). `delta` is signed "positive = better with the robot" and includes `timeSaved`
+  (per person located first by the robot: seconds earlier than the same person in the world without the robot; for someone never located without the robot the
+  figure is a **lower bound**).
+* `sweepRobot({param, values, seeds?, seconds?, params?, baselineRuns?})` → `{baseline, rows[]}` for ONE assumption at a time (`param` may also be `'variant'` or `'units'`).
+  `test-sim.mjs` section 24 prints the A/B table and seven sweeps (thermal detection probability, link dropouts, mesh range, battery, who carries the robot, variant,
+  room air temperature). The honest result: **it depends**. Seed 1, `fire-night-robot`: the robot is the first to locate 6 residents with a mean 542 s saved; in the sweep
+  the thermal-camera-only robot finds nobody at room air 34 °C (the Gulf-heat caveat) and several people at 24 °C; a wheeled robot cannot reach the third floor
+  (needs-help residents located before they were brought out 0 % vs 100 % for the tracked one); a robot carried by the fire engine arrives after the crews and
+  saves less. These are statements about the **model**, not about any real robot.
+
+### Limits (say them)
+
+No robot exists; thermal contrast, battery, smoke, heat limits, doors, stairs, mesh range, noise and the people's behaviour are all assumptions; the building
+graph is the residence in the simulation (53 nodes), not a real building; detection is a seeded probability; the "condition" is a guess; there is no real
+authentication of roles; a real deployment needs the authority's approval, a safety case and field tests; the robot reports and talks, firefighters decide.
+
 ## Commands
 
 ```bash
+node tools/manara/test-sim.mjs           # ManaraSim incl. the rescue robot (sections 15–24: approval gate, A* = Dijkstra, doors, search order, finds, guidance, detection, battery, A/B, sweeps)
+node tools/manara/test-msg.mjs           # MANARA_MSG incl. the robot strings (section 14)
 node tools/manara/shot.mjs mission.html --w 390,1440 --theme dark,light --lang ar,en   # look at it
 node tools/manara/test-engine.mjs        # ManaraSim + ManaraFire unit tests (Node, no browser)
 node tools/manara/test-ui.mjs            # every page: loads clean, both languages/themes, no overflow
@@ -431,4 +637,212 @@ before approval the recommendation is refreshed (event `recommendation-change`).
 ```bash
 node tools/manara/test-national.mjs     # the national engine (determinism, Dijkstra vs brute force, dispatch, re-dispatch, hazards, A/B, CAP, a simulated day, performance)
 node tools/manara/test-qatar-data.mjs   # the bundled data
+```
+
+## Drone fleet — alerts from the sky (`js/national.js` section 16, `js/drone-scene.js` → `window.ManaraDroneScene`)
+
+User requirement (verbatim): "the dornes will alert us and there will be robot". The drones are the **sky half** of the control room's "proof before panic": a drone that can reach a suspected hazard in minutes
+brings the first picture, the control room sees it, and the human key (approve) stays with the control room. The robot is the **building half** (`ManaraSim`, section "The rescue robot" above).
+
+**Honesty (say it on screen, never loosen it).** The drones are a **CONCEPT with a SIMULATED prototype**. No drone has been flown, tested in a fire, or approved by any authority; the numbers are named, bilingual,
+adjustable assumptions (`PARAMS` group `drone`, 53 of them) or are computed by the simulation. The pictures are drawn by `ManaraDroneScene` (no real footage). The detector is **rule-based computer vision**
+(colour models + flicker over time, plus a contextual thermal test) — never "AI". Every drone object carries `sim: true`; the hidden truth of an alert (`alert.sim.truth`) is a simulation device, not something the
+control room can see. AED delivery is a concept only: it needs the authority's order, a confirmed SOS and a kit-carrying drone.
+
+### Files
+
+```
+site/manara/js/national.js            the drone fleet engine: section 16 "DRONE FLEET" (header comment = exact API), PARAMS group 'drone', bus messages
+site/manara/js/drone-scene.js         window.ManaraDroneScene: procedural RGB + thermal aerial frames, and analyze() (REAL ManaraFire on RGB + thermal contextual test)
+tools/manara/test-national.mjs        section 14 "drone fleet" (79 checks added to the 212 of the earlier sections; 291 in all) + a DRONE REPORT line
+tools/manara/test-drone-scene.mjs     75 checks: frames, determinism, fire / decoys / thermal / people / gas / flood / dust, analyze(), overlay drawing, engine integration, timing
+```
+Load order: `fire.js` first (ManaraDroneScene uses `ManaraFire` when present), then `drone-scene.js`; the three data scripts then `national.js`.
+
+### The fleet in the engine
+
+* **Docks.** Real civil-defence / fire stations from the bundled OSM data (`droneStationDocks` per station) and the roofs of selected ED-verified hospitals (`droneHospitalDocks`, each the farthest from the docks already chosen).
+  With the default data: **26 drones** (20 stations + 6 hospital roofs). Callsigns `DR-01 …`.
+* **States.** `docked → launching → en-route → on-station → verifying → returning → charging`, plus `patrol` (the sector loop) and `fault`. Texts in `N.DRONE_STATE` (`{ar, en}`).
+* **Flight.** A straight line over the real map at `droneCruiseMps`, with sub-tick exact event times (the hash is the same however the clock is stepped). **Heat** derates battery endurance and speed above `droneTempC`
+  (the battery temperature = the engine's air temperature at the drone's position + the air heated by a nearby fire + `droneBattSunC` in full sun); **wind** by a wind triangle (the dust storm's wind where the storm is;
+  no launch above `droneMaxWindMps`); **battery**: a mission is accepted only if out + hover + back keeps `droneReservePct`; a drone turns home at the reserve. No launch above `droneTempMaxC`.
+* **Coverage and patrol.** `droneCoverageM` radius per drone; a share of the fleet (`dronePatrolPct`) flies looped patrol sectors (`dronePatrolRadiusM`, the set on patrol is redrawn every `dronePatrolBlockMin`).
+* **Faults.** A sortie can fail (`droneFaultPct`): link loss / motor / GPS. The drone turns home by itself (event, bilingual) and a **replacement** is launched for the same alert (up to 2 relaunches); the faulted drone is out
+  of service for `droneRepairMin`.
+
+### Launch triggers
+
+| Trigger | How | What happens |
+|---|---|---|
+| `sentinel` | `createIncident({trigger: 'sentinel'})` (default for non-SOS when `droneAuto` = 1) | an alert is raised; the nearest available drone launches **to verify** by itself |
+| `citizen` | `createIncident({trigger: 'citizen'})` (default for SOS) | same, from a "need help" report |
+| `operator` | `launchDrone(nat, 'nearest' \| droneId, {lon, lat, hazard?, incident?, alert?})` | the operator's launch-to-verify; an event where nothing is happening ends "no evidence" and **no unit is dispatched** |
+| `patrol` | `createIncident({trigger: 'patrol'})` | a real event nobody knows about (`status: 'unseen'`, it grows) until a patrolling drone detects it (seeded chance `dronePatrolDetectPct` per minute, falling with distance, dust and hazard visibility) or a bystander reports it after `droneUnseenMin` |
+
+Patrolling drones also raise **false alerts** (`droneFalsePerHour`: sunset glare on a glass tower, a red truck, hot machinery); the control room dismisses them on evidence (`dismissAlert`), the simulated operator does so after
+`droneDismissSec`. An approved false alarm sends units in error: they find nothing, the incident is cancelled and the alert closes as a RESOLVED false alarm with a note (event `false-alarm-dispatch`).
+
+### Evidence keys and the verification outcome
+
+Keys: **sensor** (sentinel / citizen report) + **vision** (rule-based colour + flicker) + **thermal** (contextual hotspot / people / cold plume). `droneKeysNeeded` independent keys (default 2) → `confirmed`;
+one → `downgraded` (stays SUSPECT); none → `dismissed` (a drone can dismiss only what it raised itself, never a sensor or citizen alert). The chances are computed from the same ground / air temperatures the scene uses:
+gas shows only in the thermal image, dust only in RGB, and a person (~35 °C) is invisible to thermal on hot midday ground. `droneGate` = 1 makes the simulated operator wait for the verification (proof before panic);
+default 0 keeps the earlier behaviour.
+
+### DRONE ALERT object (`droneAlert(nat, id)`, `snapshot().droneAlerts`, bus `drone-alert`)
+
+```js
+{ id: 'DA-1', source: 'drone', droneId, callsign, droneName: {ar, en}, alert: 'AL-1', incident: 'N1',
+  stage: 'sighting' | 'verified', via: 'sentinel' | 'citizen' | 'operator' | 'patrol',
+  hazard, hazardName: {ar, en}, confidence: 0..1, outcome: 'pending' | 'confirmed' | 'downgraded' | 'dismissed',
+  lon, lat, target: {lon, lat}, headingDeg, altM, wind: {deg, mps}, batteryPct, link: 0..1,
+  thermal: { kind: 'hotspot' | 'hot-object' | 'cold-plume' | 'people' | 'cool-water' | 'none', maxC, minC, bgC, contrastC, capC, saturated, hotspot: {lon, lat, tC} | null },
+  evidence: { sensor, vision: {seen, conf, label: {ar, en}}, thermal: {seen, conf, kind} },
+  frame: { v: 1, sceneSeed, hazard, decoy, severity, sev, flames, camera: {altM, headingDeg, pitchDeg, fovDeg, distM, offsetE, offsetN},
+           timeOfDay, context, wind, ambientC, groundC, solar, visFactor, thermalCapC, t0, view, width: 320, height: 240 },   // → ManaraDroneScene
+  state: 'SUSPECT' | …, t, clock, text: {ar, en}, sim: true }
+```
+`frame` is a JSON-safe descriptor: `ManaraDroneScene.renderRGB(frame, t)` from a parsed copy gives byte-identical pixels (tested).
+
+### Alert queue (`alertQueue(nat, {all?})`, `alert(nat, id)`, `snapshot().alerts`)
+
+```js
+{ id: 'AL-1', source: 'sentinel' | 'citizen' | 'operator' | 'drone', via, sourceName, trigger: {ar, en}, hazard, hazardName, confidence,
+  state: 'SUSPECT' | 'CONFIRMED' | 'APPROVED' | 'DISPATCHED' | 'ON-SCENE' | 'RESOLVED' | 'DISMISSED', stateName: {ar, en},
+  priority: 0..100, level: 'critical' | …, ageSec, t, clock, lon, lat, place: {id, name, distKm}, muni, incident, droneId, droneAlerts: ['DA-1'],
+  evidence, thermal, frame, verdict, verdictText, tState: {SUSPECT: t, APPROVED: t, …}, escalated, unverifiedApproval, dismissedBy, dismissReason, note, aedDropped, text,
+  sim: { truth: 'real' | 'false', decoy, hazardTrue, note } }          // sorted by priority; the states follow the incident's plan
+```
+
+### Operator actions
+
+| Call | Notes |
+|---|---|
+| `launchDrone(nat, droneId \| 'nearest', {lon, lat, hazard?, incident?, alert?})` | `{ok, drone, etaSec, why, runnerUp}`; a busy / unknown drone or an unreachable target is refused with a reason |
+| `recallDrone(nat, droneId)` | a drone in flight turns home and docks; a docked one cannot be recalled |
+| `setDroneParam(nat, droneId, 'patrol' \| 'altM' \| 'speedMps' \| 'light', v)` · `setDroneParam(nat, paramKey, v)` | per-drone settings, or a fleet-wide assumption of the `drone` group |
+| `dismissAlert(nat, alertId)` · `escalateAlert(nat, alertId)` · `approveAlert(nat, alertId)` | dismiss cancels the incident and releases the reserved units (refused once approved); escalate = top priority + CONFIRMED by a human decision; approve is the human key |
+| `announce(nat, droneId, messageKey, 'ar' \| 'en')` | a voice message from the drone speaker (keys `nat.drone.say.*`) in the comms log; refused when the drone is not on station |
+| `dropAed(nat, droneId, alertId, {authority})` | **concept**: SOS only, a confirmed alert, a drone that carries a kit (`droneAedAtHospitals`: hospital roofs) on station, and only as an authority-operated step; once; never for any other hazard |
+
+Accessors: `drones(nat)` · `fleetBoard(nat)` (every drone with state, battery, ETA, heat derating, incident, alert; counts; `robots: []` — the robot belongs to the building simulation) · `commsLog(nat, {kind?, alert?, incident?, drone?, since?, limit?})`
+· `droneEta(nat, lon, lat, t?, hazard?)` (pure, the fastest drone) · `droneRank(nat, target)` · `droneRange(nat, droneId)` · `droneEnv(nat, lon, lat)`. KPIs: `kpis(nat).drones = {total, byState, available, enRoute, onStation, charging, patrolling, batteryMeanPct,
+alerts: {falseAlarmRatePct, falseDismissedPct, timeToApproveSec, …}, firstEyes: {n, droneFirstPct, droneArrivalSec, groundArrivalSec, firstEyesSec, leadSec, firstEyesMin}}`.
+
+**First eyes on scene.** `incident.eyes = {droneT, droneId, groundT, launchT}` — the first moment a drone and the first ground unit were at the scene; the distribution is in `kpis().drones.firstEyes` and `ab().firstEyes`
+(a labelled **SIM** metric: it holds for the assumptions above, not for a real fleet).
+
+### Bus messages (`Manara.link.send(...)`, scope `'national'`)
+
+```js
+N.busDroneAlert(nat, 'DA-1') → { type: 'drone-alert', scope: 'national', id, alert, incident, source: 'drone', via, stage, droneId, droneName, hazard, hazardName, confidence, outcome, state, priority,
+                                 lon, lat, target, headingDeg, altM, wind, batteryPct, link, thermal, evidence, frame, t, clock, text: {ar, en}, sim: true }
+N.busDroneStatus(nat [, droneId]) → { type: 'drone-status', scope: 'national', id, clock,
+                                 drones: [{ id, callsign, name, state, stateText, lon, lat, altM, headingDeg, speedMps, batteryPct, etaSec, incident, alert, link,
+                                            derate: {tempC, speedLostPct, enduranceLostPct}, fault }], counts, sim: true }
+```
+Events added to `snapshot().events`: `alert-raised · drone-launched · drone-on-station · drone-verified · alert-confirmed · alert-dismissed · alert-escalated · drone-patrol-detect · drone-returning · drone-relaunch · drone-fault ·
+drone-low-battery · drone-recalled · drone-announce · aed-drop · false-alarm-dispatch · false-alarm-on-scene` (each with an `{ar, en}` text).
+
+### `ManaraDroneScene` — what the camera sees (and what the detectors say)
+
+A pure, deterministic, DOM-free classic script (the canvas helper is optional). Same descriptor + same `t` → same pixels. **Everything drawn is a simulation.**
+
+```js
+const S = ManaraDroneScene, d = S.preset('fire', 3);                    // 'fire' 'gas' 'flood' 'dust' 'heat' 'sos' 'clear' 'decoy-glare' 'decoy-red-truck' 'decoy-machinery'
+const rgb = S.renderRGB(d, 1.2), th = S.renderThermal(d, 1.2);           // {data: RGBA, width: 320, height: 240}; thermal: iron palette + temps (Float32Array °C), half resolution
+const r = S.analyze(rgb, { thermal: th, lang: 'en' });                    // one frame: 'suspect' at most (flames are proven by flicker, not by colour)
+const v = S.verify(d, { seconds: 2.5, fps: 12 });                         // a clip through the REAL ManaraFire temporal detector → v.finalState === 'fire'
+S.drawOverlay(canvas2dContext, r, 320, 240, { lang: 'ar' });             // boxes, polygons, crosshair with °C, state chip — overlays are normalised 0..1
+```
+`analyze` → `{state, vision {state, confidence, flicker, growth, reasons, regions, boxes, cues}, thermal {kind, bg {mean, median, mad}, thresholds, fires, hotObjects, people, coldPlumes, boxes, polygons, crosshair, maxC},
+evidence {vision, thermal}, hazardGuess, confidence, overlays {boxes, polygons, crosshair}, notes, limitations, ms, sim}`. `createAnalyzer().push(rgb, thermal, tMs)` keeps the temporal state (a ManaraFire detector and the thermal history).
+
+* **Scenes.** Top-down / oblique orthographic camera; buildings, roads, desert / sea, vehicles, people; fire = flickering flames + a smoke plume drifting **downwind**; gas = a vapour cloud visible **only in thermal**; flood = water spreading
+  over the roads; dust = haze that lowers contrast; heat / SOS = a collapsed person; and the **look-alikes** (sunset glare on a glass tower, a red truck, hot machinery).
+* **RGB detector.** The real `ManaraFire` (colour models + flicker / growth / persistence; rule-based computer vision, not AI). A red truck or a sunset-lit tower is fire-**coloured** but static → at most `suspect`, never `fire` (tested on 48 look-alike clips).
+* **Thermal detector (contextual).** A pixel is a hotspot when `T > background mean + 3 · MAD` **and** `T > background + 6 °C` (trimmed mean and MAD of the frame): sun-baked asphalt and roofs are the background, not hotspots. A hotspot ≥ 150 °C is a
+  fire source, a cooler one a hot object (machinery, an engine). People (~35 °C) are found by a local-contrast test; a cold patch that **breathes** between two thermal frames is a gas candidate (a single frame is only a candidate: shadows are cold too).
+* **Honest limits** (`ManaraDroneScene.LIMITATIONS`, `analysis.limitations`): thermal people-detection fails on hot midday ground (the person is colder than the road); glass blocks long-wave infrared; colour rules are fooled by sunsets, red paint and
+  sodium lamps; flicker needs a hovering camera; a thermal camera shows temperature, not gas; a flooded road can trigger the smoke rule (the analysis says so). A real deployment needs real footage, a trained and validated model, and the authority's approval — none exists yet.
+
+### Drone assumptions (PARAMS group `drone`, all adjustable with `setParam`; each has a bilingual label and description in `N.PARAMS`)
+
+| Key | Default | Range | Unit | Meaning (en) |
+|---|---|---|---|---|
+| `droneStationDocks` | 1 | 0–2 | drones | Drones per fire / Civil Defence station |
+| `droneHospitalDocks` | 6 | 0–12 | docks | Drone docks on hospital roofs |
+| `dronePatrolRadiusM` | 2500 | 800–8000 | m | Patrol sector radius |
+| `droneCruiseMps` | 18 | 8–30 | m/s | Cruise speed |
+| `droneLaunchSec` | 25 | 5–120 | s | Launch time |
+| `droneAltM` | 80 | 30–120 | m | Flight altitude |
+| `droneStandoffM` | 120 | 30–400 | m | Stand-off distance from the hazard |
+| `droneSettleSec` | 8 | 0–60 | s | Camera settle time |
+| `droneVerifySec` | 25 | 5–120 | s | Verification time |
+| `droneHoldSec` | 600 | 60–3600 | s | Time on station |
+| `droneCoverageM` | 1800 | 300–6000 | m | Coverage radius |
+| `droneEnduranceMin` | 35 | 10–90 | min | Flight endurance |
+| `droneHoverDrainX` | 1.3 | 1–2 | × | Hover drain |
+| `droneReservePct` | 25 | 10–50 | % | Battery reserve |
+| `droneMinLaunchPct` | 55 | 20–100 | % | Minimum charge to launch |
+| `droneReadyPct` | 90 | 50–100 | % | Ready charge |
+| `droneChargePctPerMin` | 2 | 0.5–10 | %/min | Charging rate |
+| `droneTempC` | 40 | 30–50 | °C | Heat derating starts |
+| `droneBattSunC` | 5 | 0–15 | °C | Battery heat in full sun |
+| `droneDerateBattPerC` | 2 | 0–6 | %/°C | Endurance lost per °C above the limit |
+| `droneDerateSpeedPerC` | 1 | 0–4 | %/°C | Speed lost per °C above the limit |
+| `droneTempMaxC` | 55 | 40–65 | °C | No-launch temperature |
+| `droneFireHeatC` | 20 | 0–60 | °C | Extra air heat near a fire |
+| `droneWindDeg` | 315 | 0–359 | ° | Wind direction (from) |
+| `droneWindMps` | 5 | 0–25 | m/s | Wind speed |
+| `droneMaxWindMps` | 14 | 6–25 | m/s | Maximum wind to fly |
+| `droneUnavailPct` | 15 | 0–100 | % | Docked drones randomly unavailable |
+| `droneFaultPct` | 1 | 0–50 | % | Sorties with a fault |
+| `droneRepairMin` | 30 | 5–240 | min | Repair time |
+| `droneLinkRangeKm` | 10 | 2–30 | km | Radio-link range |
+| `dronePatrolPct` | 30 | 0–100 | % | Share of the fleet on patrol |
+| `dronePatrolBlockMin` | 45 | 10–180 | min | Patrol period |
+| `dronePatrolMps` | 12 | 5–25 | m/s | Patrol speed |
+| `dronePatrolDetectPct` | 55 | 0–100 | %/min | Patrol detection chance |
+| `droneFalsePerHour` | 0.2 | 0–3 | /h | False alerts per patrol hour |
+| `droneUnseenMin` | 30 | 5–240 | min | Event no patrol finds |
+| `droneVisionTprPct` | 90 | 30–100 | % | Vision key chance (clear fire) |
+| `droneThermalTprPct` | 92 | 30–100 | % | Thermal key chance (hotspot) |
+| `dronePeopleThermalTprPct` | 85 | 10–100 | % | People thermal chance (cool ground) |
+| `droneGasThermalTprPct` | 55 | 5–100 | % | Gas cloud thermal chance |
+| `droneVisionFprPct` | 5 | 0–50 | % | False vision key on a look-alike |
+| `droneThermalFprPct` | 4 | 0–50 | % | False thermal key |
+| `droneKeysNeeded` | 2 | 1–2 | keys | Keys needed to confirm |
+| `droneThermalCapC` | 550 | 150–1500 | °C | Thermal camera ceiling |
+| `droneFireC` | 150 | 100–300 | °C | Hot-source temperature |
+| `droneGroundSunC` | 18 | 0–30 | °C | Extra ground heat in full sun |
+| `droneAuto` | 1 | 0–1 | 0/1 | Launch a drone to verify automatically |
+| `droneGate` | 0 | 0–1 | 0/1 | Operator waits for the drone result |
+| `droneGateTimeoutSec` | 180 | 30–900 | s | Wait limit for the drone |
+| `droneAutoDismiss` | 1 | 0–1 | 0/1 | Simulated operator dismisses false alerts |
+| `droneDismissSec` | 20 | 0–300 | s | Time to dismiss an alert |
+| `droneAedAtHospitals` | 1 | 0–1 | 0/1 | Hospital drones carry an AED kit |
+| `droneAedPreferSec` | 90 | 0–600 | s | Prefer an AED drone within |
+
+Every value above is an **assumption** for the simulation — not a measured property of any real drone. `droneTempC` (40 °C) is the MANARA-SPEC working limit used for the heat derating.
+
+### Simulated results the tests print (seed-dependent, deterministic; labelled SIM)
+
+These come from `node tools/manara/test-national.mjs` (`DRONE REPORT` line) and `test-drone-scene.mjs`; they describe the simulation under the assumptions above, **not** the real world.
+
+* **Drone before ground (A/B, seed 7, 150 incidents):** a drone is on station before the first ground unit in **90 %** of the incidents a drone can reach (median 244 s vs 440.5 s); 33 % of the incidents are out of range of every drone (they get no drone).
+  Full simulation of 24 seeded incidents: 15 of 19 = **79 %**, median 265 s (drone) vs 645 s (first ground unit).
+* **False alarms (one simulated day, `droneFalsePerHour` raised to 3):** 233 patrol false alerts, **96.6 %** dismissed on evidence, 8 dispatched in error.
+* **People on thermal:** the thermal people key succeeds 2 % at 13:00 in July (hot ground) vs 70 % at 02:00 — the honest limitation made visible.
+* **Range and flight:** 13 km (January 03:00) / 11 km (July 14:00) / 8.3 km (heat wave) at the default endurance; a typical sortie arrives in 235–268 s and uses 35–52 % of the battery.
+* **Performance:** a simulated day with drones ~13 s (the earlier day without them ~19 s on the same machine); `snapshot()` ~3 ms; a 5-second tick with six incidents ~5 ms; `droneEta` 0.2 ms. `ManaraDroneScene`: a 320 × 240 RGB frame 0.05–1.3 ms,
+  thermal ≤ 2.5 ms, an analysis ~3 ms, a cold scene build ~5 ms, a 30-frame verification clip ~200 ms.
+
+### Commands
+
+```bash
+node tools/manara/test-national.mjs      # includes section 14, the drone fleet (determinism, flight time = distance / speed, heat derating, lifecycle, false alarms, first eyes, bus messages, performance)
+node tools/manara/test-drone-scene.mjs   # the aerial scenes and their detectors (needs fire.js, drone-scene.js and the data + national.js for the integration section)
+node tools/manara/test-fire.mjs          # the ManaraFire detector that the scene analysis runs
 ```

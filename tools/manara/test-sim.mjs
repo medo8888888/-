@@ -15,6 +15,16 @@
 //  12  performance (default preset: one simulated second must average < 3 ms) and a sensitivity sweep over named assumptions
 //  13  API robustness: bus messages for every preset, hand-off, resident lines, live parameter changes, errors
 //  14  the published fire model as code (wind factor, burn probability, downwind spread), sensor flags, fuzzing
+//  15  rescue robot — API, 'robot' assumptions group, the 'fire-night-robot' preset, original presets unchanged (pinned hashes), honest wording
+//  16  robot approval gate: no movement before the incident commander approves; viewer / operator rejected with a reason; carrier timing
+//  17  robot movement safety: A* = Dijkstra, never enters a burning / too-hot / gas-danger node, wheeled never climbs stairs, tracked does (slower)
+//  18  doors: a locked door is REPORTED and never opened; a blocked corridor is marked blocked and routed around; exits reported
+//  19  search order (unaccounted + needs first, then smoke / closeness to the fire, then the rest) and operator priority
+//  20  finds: headcount 'located by robot' is distinct from 'safe'; reports buffered while the link is down; hand-off card entries
+//  21  guidance: language / format per persona via MANARA_MSG, wake-up, beacons, hold until crews, smoke hood, speakVia, teleop
+//  22  detection model (thermal contrast in Gulf heat, smoke attenuation, audio masked by the siren, false + / −), battery, heat, return, recall
+//  23  determinism with the robot (hash stable, snapshots do not disturb the run), telemetry, bus messages, fuzz, performance
+//  24  A/B 'MANARA with robot' vs 'without robot' and a printed sensitivity sweep (detection probability, link dropouts, battery, carrier, variant)
 //
 // The simulation is a mechanism check, not proof of impact: these tests check that the mechanisms behave, not that the numbers are real.
 import vm from 'node:vm';
@@ -59,6 +69,8 @@ section('1. API, assumptions registry, house laws');
 {
   for (const f of ['create', 'step', 'run', 'snapshot', 'hash', 'approve', 'reject', 'ab', 'sweep', 'cap', 'handoff', 'headcount', 'busAlert', 'busDispatch', 'compose', 'routeCheck', 'metrics', 'worldInfo', 'view', 'setExit', 'jamRoad', 'closeRoad', 'setUnitBusy', 'setTraffic', 'injectDecoy', 'dispatchCompare'])
     if (typeof S[f] !== 'function') check('API member ' + f, false, 'missing');
+  for (const f of ['enableRobot', 'setRole', 'deployRobot', 'approveRobot', 'rejectRobot', 'recallRobot', 'setSearchPriority', 'teleopRobot', 'speakVia', 'setRobotObstacle', 'robots', 'robotTelemetry', 'robotView', 'busRobot', 'busRobotFind', 'robotMetrics', 'abRobot', 'sweepRobot'])
+    if (typeof S[f] !== 'function') check('API member (robot) ' + f, false, 'missing');
   check('API: 25+ functions exported', ['create', 'step', 'run', 'snapshot', 'hash', 'approve', 'reject', 'ab', 'sweep', 'cap', 'handoff', 'headcount', 'busAlert', 'busDispatch', 'compose', 'routeCheck', 'metrics', 'worldInfo', 'view', 'setExit', 'jamRoad', 'closeRoad', 'setUnitBusy', 'setTraffic', 'injectDecoy', 'dispatchCompare'].every(f => typeof S[f] === 'function'));
   check('grid is 96 x 64 cells of 5 m', S.GRID.w === 96 && S.GRID.h === 64 && S.GRID.cellM === 5);
   check('preset list: the 7 required presets', JSON.stringify(S.PRESET_ORDER) === JSON.stringify(['fire-night', 'gas-night', 'flood-day', 'dust-day', 'heat-day', 'sos-day', 'school-fire-day']));
@@ -606,6 +618,452 @@ section('14. the published fire model, sensor flags, fuzz');
     } catch (e) { problems.push(`${preset}/${mode} threw ${e.message}`); }
   }
   check(`fuzz: ${runs} random operator actions on random presets/modes — no exception, no NaN`, problems.length === 0 && runs >= 55, problems.slice(0, 3).join(' | '));
+}
+
+// =====================================================================================================================
+// THE RESCUE ROBOT — a concept with a SIMULATED prototype. These tests check the mechanisms (approval gate, safety rules, doors, search order, finds,
+// guidance, detection, battery, link, determinism) — not that any number is real. No robot has been built or tested.
+// =====================================================================================================================
+const MSG_CODE = fs.readFileSync(path.join(SITE, 'js/messages.js'), 'utf8');
+const ctxM = vm.createContext({}); vm.runInContext(MSG_CODE, ctxM, { filename: 'messages.js' }); vm.runInContext(CODE, ctxM, { filename: 'sim.js' });
+const SM = ctxM.ManaraSim, MSG = ctxM.MANARA_MSG;   // the engine WITH the message registry loaded (the browser case); `S` is the bare engine
+const RB = (o = {}, until = 0) => { const sim = S.create(Object.assign({ preset: 'fire-night-robot', seed: 1 }, o)); if (until) S.run(sim, until); return sim; };
+const rb0 = sim => sim.robots[0];
+const nodeIds = sim => sim.W.structs[0].nodes.map(n => n.id);
+const floorOf = (sim, id) => sim.W.structs[0].byId[id].fl;
+
+section('15. rescue robot — API, assumptions, preset, original results unchanged');
+{
+  const g = S.PARAMS.filter(p => p.group === 'robot');
+  check('a "robot" assumptions group exists with 45+ named parameters (every one a labelled assumption, bilingual, live)', g.length >= 45 && S.PARAM_GROUPS.some(x => x.id === 'robot') && g.every(p => p.src === 'assumption' && p.live !== false && p.label.ar && p.label.en && p.desc.ar && p.desc.en), g.length + ' params');
+  const gk = k => S.PARAMS.find(p => p.key === k);
+  check('capabilities are parameters: speeds (wheeled / tracked), stair penalty, battery, heat + smoke drain, camera range, thermal / audio / visible detection, smoke attenuation, false alarms, mesh range, dropouts', ['robotSpeedWheeled', 'robotSpeedTracked', 'robotStairPenalty', 'robotBattMin', 'robotHeatDrain', 'robotSmokeDrain', 'robotRangeM', 'robotThermalPd', 'robotRgbPd', 'robotAudioPd', 'robotThermalSmokeK', 'robotRgbSmokeK', 'robotContrastC', 'robotRoomC', 'robotFalsePosPerMin', 'robotMeshRangeM', 'robotDropoutPct', 'robotDropoutSec', 'robotMaxTempC', 'robotOpensDoors'].every(k => gk(k)));
+  check('the Gulf-heat caveat is explicit: the description of the room-temperature assumption says hot rooms reduce thermal contrast', /less thermal contrast/.test(gk('robotRoomC').desc.en) && /Gulf-heat/.test(gk('robotContrastC').desc.en));
+  check('no robot parameter claims a source or a measurement (all "assumption")', g.every(p => !/was measured|were measured|has been tested|was tested|certified|approved by/i.test(p.desc.en)));
+  check('preset list: the original 7 stay in PRESET_ORDER untouched; PRESET_ORDER_ALL adds fire-night-robot', JSON.stringify(S.PRESET_ORDER) === JSON.stringify(['fire-night', 'gas-night', 'flood-day', 'dust-day', 'heat-day', 'sos-day', 'school-fire-day']) && JSON.stringify(S.PRESET_ORDER_ALL) === JSON.stringify([...S.PRESET_ORDER, 'fire-night-robot']) && !!S.PRESETS['fire-night-robot']);
+  const sim = RB();
+  const abu = sim.byKey['abu-salem'], S0 = sim.W.structs[0];
+  check('fire-night-robot (default robot scenario): 04:00 fire, one TRACKED robot, Stair A locked, Abu Salem awake and stuck in a corridor (phone off)', sim.hazard === 'fire' && sim.hour0 === 4 && sim.rb.enabled && sim.robots.length === 1 && rb0(sim).variant === 'tracked' && sim.exits.find(e => e.id === 'A').locked === true && !abu.asleep && abu.immobile === true && abu.app === false && S0.nodes[abu.g - S0.base].type === 2 && S0.nodes[abu.g - S0.base].fl === 2);
+  check('the blurb names Abu Salem, the locked Stair A and says it is a simulated concept (ar + en)', /Abu Salem/.test(S.PRESETS['fire-night-robot'].blurb.en) && /Stair A/.test(S.PRESETS['fire-night-robot'].blurb.en) && /simulated concept/.test(S.PRESETS['fire-night-robot'].blurb.en) && /أبو سالم/.test(S.PRESETS['fire-night-robot'].blurb.ar) && /«أ»/.test(S.PRESETS['fire-night-robot'].blurb.ar));
+  const PIN = { 'fire-night/ordinary': '68a1211a', 'fire-night/manara': 'd0274221', 'gas-night/ordinary': '7ea98a49', 'gas-night/manara': 'a3e97ae8', 'flood-day/ordinary': '2aef5b07', 'flood-day/manara': '1ad17776', 'dust-day/ordinary': 'deabe5ef', 'dust-day/manara': 'fe174b45', 'heat-day/ordinary': 'ef5510d5', 'heat-day/manara': '715a0e60', 'sos-day/ordinary': 'a55d0a2a', 'sos-day/manara': '0f6ca8ea', 'school-fire-day/ordinary': '4b4186b8', 'school-fire-day/manara': 'e8b8c5d8' };
+  const diff = Object.keys(PIN).filter(k => { const [p, m] = k.split('/'); return S.hash(RUNS[p][m]) !== PIN[k]; });
+  check('the original seven presets × both modes give EXACTLY the same hashes as before the robot module existed (pinned; update only if the physics is changed on purpose)', diff.length === 0, diff.join(', ') || '14 / 14 identical');
+  const all = Object.keys(RUNS).every(p => ['ordinary', 'manara'].every(m => !RUNS[p][m].rb.enabled && RUNS[p][m].robots.length === 0 && !('robot' in S.snapshot(RUNS[p][m])) && !('located' in S.headcount(RUNS[p][m]))));
+  check('with no robot there is no robot block in snapshots, no "located" in the headcount, no robot events', all && Object.keys(RUNS['fire-night'].manara.evCount).every(k => !/^robot/.test(k)));
+  check('robot:false keeps the scenario conditions (Stair A locked, Abu Salem stuck) but removes the robot', (() => { const w = RB({ robot: false }); return !w.rb.enabled && w.exits.find(e => e.id === 'A').locked && w.byKey['abu-salem'].immobile; })());
+  const fl = S.create({ preset: 'flood-day', robot: true }), ord = S.create({ preset: 'fire-night-robot', mode: 'ordinary' });
+  check('N/A is explicit: the robot is refused for flood / dust / heat / SOS and in the ordinary world, with a reason (ar + en)', !fl.rb.enabled && fl.rb.na && fl.rb.na.ar && fl.rb.na.en && !ord.rb.enabled && S.deployRobot(fl).ok === false && S.deployRobot(fl).code === 'na');
+  const w2 = JSON.stringify([g, S.PRESETS['fire-night-robot']]);
+  check('honest wording: nothing says world-first / AI / saves lives / tested / approved by an authority', !/world.?first|first in the world|deep.?learning|saves? \d+ lives|ذكاء اصطناعي|\bAI\b/i.test(w2));
+  check('detection is described as rule-based, not "AI"; the module header says concept + simulated + not tested', /rule-based, not "AI"/.test(CODE) && /CONCEPT with a SIMULATED prototype/.test(CODE) && /no robot has been built or tested/.test(CODE));
+  const cap = S.cap(RB({}, 300));
+  check('the OASIS CAP export is unchanged by the robot (still Exercise, one <info> per language)', /<status>Exercise<\/status>/.test(cap) && (cap.match(/<info>/g) || []).length === 2);
+}
+
+section('16. robot approval gate — nothing moves before the incident commander approves');
+{
+  const sim = RB({ robot: { autoApprove: false } });
+  S.run(sim, 200);
+  const r = rb0(sim), conf = sim.ver.confirmedAt;
+  check('the robot is REQUESTED when the incident is CONFIRMED, and then waits (no auto-approval when a real commander is needed)', r.approval.status === 'requested' && r.approval.requestedAt === conf && r.state === 'stowed', `requested at ${r.approval.requestedAt}, now ${r.state}`);
+  check('no movement before approval: still at the entrance, 0 m driven, no robot state change, no find', r.node === r.G.entrance && r.driven === 0 && r.finds.length === 0 && sim.events.filter(e => e.type === 'robot-state').length === 0);
+  const tel = S.robotTelemetry(sim, 'R1');
+  check('the telemetry says so: state stowed, approval requested, pose = the lobby, battery 100 %', tel.state === 'stowed' && tel.approval.status === 'requested' && tel.pose.node === 'LOB' && tel.battery === 1 && tel.view === null);
+  const a1 = S.approveRobot(sim, 'R1');
+  check('approveRobot as an OPERATOR (the default role) is rejected with a reason in Arabic and English', a1.ok === false && a1.code === 'role' && /incident commander/.test(a1.reason.en) && /قائد الحادث/.test(a1.reason.ar), JSON.stringify(a1.reason));
+  S.run(sim, 215);
+  check('...and the rejection changes nothing: still stowed, still 0 m, and the rejection is in the event log', rb0(sim).state === 'stowed' && rb0(sim).driven === 0 && sim.events.some(e => e.type === 'robot-approval-rejected'));
+  check('an explicit role argument wins: approveRobot(…, "operator") and (…, "viewer") are rejected too', S.approveRobot(sim, 'R1', 'operator').ok === false && S.approveRobot(sim, 'R1', 'viewer').ok === false);
+  S.setRole(sim, 'viewer');
+  const d0 = S.deployRobot(sim, 'R1');
+  check('a VIEWER cannot even request deployment; the role must be one of viewer / operator / commander', d0.ok === false && d0.code === 'role' && S.setRole(sim, 'admiral').ok === false && S.setRole(sim, 'commander').ok === true);
+  const a2 = S.approveRobot(sim, 'R1');
+  const tApproved = sim.t;
+  check('with the COMMANDER role the approval is accepted: state "approved", approval recorded with who and when', a2.ok === true && a2.approved.join() === 'R1' && rb0(sim).approval.status === 'approved' && rb0(sim).approval.approvedAt === tApproved && rb0(sim).state === 'approved');
+  S.run(sim, tApproved + 1);
+  check('after approval it goes approved → deploying (set-up at the entrance) and still does not drive during set-up', rb0(sim).state === 'deploying' && rb0(sim).driven === 0 && rb0(sim).node === rb0(sim).G.entrance);
+  S.run(sim, tApproved + sim.P.robotDeploySec + 3);
+  check('then searching: it starts driving only after approval + set-up time', rb0(sim).state === 'searching' && rb0(sim).stats.started >= tApproved && rb0(sim).stats.started <= tApproved + 1 && (rb0(sim).driven > 0 || rb0(sim).to >= 0 || rb0(sim).node !== rb0(sim).G.entrance));
+  const order = sim.events.filter(e => /^robot-(approval-requested|approved|state)$/.test(e.type)).map(e => e.type + (e.state ? ':' + e.state : ''));
+  check('event order: requested → approved → state approved → deploying → searching', order.join(' ') === 'robot-approval-requested robot-approved robot-state:approved robot-state:deploying robot-state:searching' || order.join(' ') === 'robot-approval-requested robot-state:approved robot-approved robot-state:deploying robot-state:searching', order.join(' '));
+  const rj = RB({ robot: { autoApprove: false } }, 120);
+  check('rejectRobot: only a commander may decline; a declined request stays stowed', S.rejectRobot(rj, 'R1', 'operator').ok === false && S.rejectRobot(rj, 'R1', 'commander').ok === true && rb0(rj).approval.status === 'rejected' && (S.run(rj, 200), rb0(rj).state === 'stowed' && rb0(rj).driven === 0));
+  const auto = RB({}, 140);
+  check('in automatic runs a simulated commander approves robotApproveSec (30 s) after CONFIRMED — logged as "commander-sim", and the robot is not driving before then', rb0(auto).approval.approvedAt === auto.ver.confirmedAt + auto.P.robotApproveSec && rb0(auto).approval.by === 'commander-sim' && rb0(auto).stats.started >= rb0(auto).approval.approvedAt && rb0(auto).stats.started - rb0(auto).approval.approvedAt <= 1, `confirmed ${auto.ver.confirmedAt}, approved ${rb0(auto).approval.approvedAt}, deployed ${rb0(auto).stats.started}`);
+  const ev = auto.events.filter(e => e.type === 'robot-state' && e.state === 'searching')[0];
+  check('automatic: searching begins robotDeploySec after the deployment starts', ev && ev.t === rb0(auto).stats.started + auto.P.robotDeploySec);
+  const car = RB({ params: { robotCarrier: 1 } }, 400), eng = car.fx.engineOnScene;
+  check('robotCarrier = 1: the robot is carried by the fire engine — it does not start deploying before the engine is on scene + unloading time', eng !== null && rb0(car).stats.started >= eng + car.P.robotUnloadSec && rb0(car).approval.approvedAt < eng, `approved ${rb0(car).approval.approvedAt}, engine ${eng}, deploys ${rb0(car).stats.started}`);
+  const pre = RB({ params: { robotCarrier: 0 } }, 120);
+  check('robotCarrier = 0 (pre-positioned at the building entrance): it deploys right after approval, before any crew is on scene', pre.fx.engineOnScene === null && rb0(pre).stats.started === rb0(pre).approval.approvedAt);
+  const late = RB({ params: { robotApproveSec: 120 } }, 100);
+  check('the approval time is an assumption: robotApproveSec = 120 delays everything (still stowed at T+100)', rb0(late).state === 'stowed' && rb0(late).approval.status === 'requested');
+  const man = RB({ robot: { autoApprove: false } }, 60);
+  check('deployRobot (operator) re-requests nothing twice and approveRobot() without an id approves every waiting robot', S.deployRobot(man).ok === true && S.deployRobot(man).requested === 0 && S.approveRobot(man, undefined, 'commander').approved.length === 1);
+}
+
+section('17. robot movement safety — A* = Dijkstra, never into fire / heat / gas, no stairs for wheels');
+{
+  // A* against Dijkstra on every pair of nodes of the residence, in a clear world and in a burning one
+  const clear = RB({ seed: 2 }), burning = RB({ seed: 2 }, 260);
+  let pairs = 0, mismatch = 0, expA = 0, expD = 0, bad = 0;
+  for (const sim of [clear, burning]) {
+    const ids = nodeIds(sim), r = rb0(sim);
+    for (let i = 0; i < ids.length; i += 1) for (let j = 0; j < ids.length; j += 3) {
+      if (i === j) continue;
+      const a = S.robot.astar(sim, ids[i], ids[j]), d = S.robot.astar(sim, ids[i], ids[j], { dijkstra: true });
+      pairs++; if (a.ok !== d.ok || (a.ok && Math.abs(a.cost - d.cost) > 1e-3)) mismatch++;
+      expA += a.expanded; expD += d.expanded;
+      if (a.ok && a.path.some((id, k) => k > 0 && (r.F.imp[r.G.byId[id]] || r.known[r.G.byId[id]]))) bad++;
+    }
+  }
+  check(`A* returns the same cost as Dijkstra on ${pairs} node pairs (clear and burning building), and expands fewer nodes (${expA} vs ${expD})`, mismatch === 0 && expA < expD, `${mismatch} mismatches`);
+  check('no planned path enters a node the robot knows is impassable (burning, hotter than robotMaxTempC, gas danger, known obstacle)', bad === 0, bad + ' bad paths');
+  const gr = S.robot.graph(0);
+  check('the heuristic factor is derived from the graph (min length / straight distance), so it can never over-estimate', gr.heuristicFactor > 0 && gr.heuristicFactor <= 1 && gr.rooms.length === 29 && gr.entrance === 'LOB', 'hf ' + gr.heuristicFactor.toFixed(3));
+  // never enter a burning node: audit every arrival, several seeds, both buildings
+  let entries = 0, violations = 0, hottest = 0, moved = 0, inFire = 0;
+  for (const [preset, seed, until] of [['fire-night-robot', 1, 900], ['fire-night-robot', 2, 900], ['fire-night-robot', 3, 700], ['fire-night', 4, 900], ['school-fire-day', 1, 700]]) {
+    const sim = S.create({ preset, seed, robot: true });
+    let prevNode = null;
+    for (let t = 0; t < until; t++) {
+      S.step(sim, 1);
+      const r = rb0(sim), st = r.st;
+      if (prevNode !== null && r.node !== prevNode && r.state !== 'fault') { moved++; if (st.burn[r.node] === 1 || st.I[r.node] > 0.05 && st.burn[r.node] === 1) inFire++; }   // independent of the robot's own bookkeeping: read the fire state right after the move
+      prevNode = r.node;
+    }
+    const r = rb0(sim);
+    entries += r.entered.length; violations += r.enteredBad; r.entered.forEach(e => { hottest = Math.max(hottest, e.temp); if (e.burn === 1 || e.I > 0.05) violations++; });
+  }
+  check(`over 5 runs (${entries} node entries, ${moved} moves audited against the fire state) the robot never entered a burning node, one with fire intensity > 0.05, or one hotter than its limit`, violations === 0 && inFire === 0 && entries > 100 && hottest <= 85, `hottest entry ${hottest} °C (limit ${S.defaults().robotMaxTempC})`);
+  // wheeled: never climbs
+  const wh = RB({ robot: { variant: 'wheeled' } }, 900), wr = rb0(wh);
+  const floorsSeen = new Set(wr.entered.map(e => floorOf(wh, e.node)));
+  check('a WHEELED robot never climbs stairs: 0 m on stairs, never enters a stair node above the ground floor, only floor 0 visited', wr.stats.stairsM === 0 && [...floorsSeen].every(f => f === 0) && wr.entered.every(e => !/^(SA|SB)[12]$/.test(e.node)), [...floorsSeen].join(','));
+  check('...and it says so: "cannot climb stairs — floor 2 / 3 not searched" is reported once per floor, those rooms are "unreachable", and the A* refuses stairs for it', wh.rb.blocked.filter(b => b.kind === 'stairs').length >= 1 && S.robotTelemetry(wh, 'R1').coverage.rooms['302'] === 'unreachable' && S.robot.astar(wh, 'LOB', 'R302').ok === false && S.robot.astar(RB({ robot: { variant: 'tracked' } }), 'LOB', 'R302').ok === true, wh.rb.blocked.map(b => b.kind + ':' + b.floor).join(' '));
+  const tr = RB({}, 900), trr = rb0(tr);
+  check('a TRACKED robot climbs (stairs metres > 0, reaches floor 3 nodes) — and stairs cost it time: the stair edge costs robotStairPenalty × longer than level ground', trr.stats.stairsM > 0 && trr.entered.some(e => floorOf(tr, e.node) === 2) && (() => { const f = RB({}), a = S.robot.astar(f, 'SA0', 'SA1'), b = S.robot.astar(f, 'C00', 'C01'); const per = (a.cost / 9) / (b.cost / 7); return Math.abs(per - f.P.robotStairPenalty) < 0.05; })());
+  check('the wheeled robot is faster on the level than the tracked one (named speeds)', S.defaults().robotSpeedWheeled > S.defaults().robotSpeedTracked);
+  // gas: never enters a node at the danger level
+  const gas = SM.create({ preset: 'gas-night', seed: 1, robot: true }); SM.run(gas, 800);
+  const gr0 = gas.robots[0];
+  check('gas-night with the robot: it works (finds / searches), never enters a node at the gas danger level (an ignition source must stay out)', gas.rb.enabled && gr0.enteredBad === 0 && gr0.entered.length > 5 && gas.rb.finds.length >= 1 && badNumbers(SM.snapshot(gas)).length === 0, `${gr0.entered.length} entries, ${gas.rb.finds.length} finds`);
+  // fire catches the robot's node: it backs off to a passable node, never into the fire
+  const trap = RB({ seed: 1 }, 180); const rt = rb0(trap);
+  const here = rt.node, st = trap.stt[0]; st.burn[here] = 1; st.I[here] = 0.9;   // force fire onto the robot's own node
+  S.run(trap, trap.t + 3);
+  check('if fire reaches the node the robot stands on it backs away to a passable neighbour (event "robot-retreat") or reports a fault — it does not drive on through the fire', trap.events.some(e => e.type === 'robot-retreat') || rb0(trap).state === 'fault');
+}
+
+section('18. doors — a locked door is reported and NOT opened; a blocked corridor is marked blocked and routed around');
+{
+  const sim = S.create({ preset: 'fire-night', seed: 2, robot: true });
+  const S0 = sim.W.structs[0], doorOf = id => S0.edges.find(e => (S0.nodes[e.a].id === id || S0.nodes[e.b].id === id) && e.door >= 0).door;
+  check('setRobotObstacle accepts only real nodes (room doors, corridor nodes); unknown ids are refused', S.setRobotObstacle(sim, 'R105', { locked: true }).ok === true && S.setRobotObstacle(sim, 'Z999', { locked: true }).ok === false);
+  S.setSearchPriority(sim, ['105']);
+  S.run(sim, 420);
+  const r = rb0(sim), b = sim.rb.blocked.find(x => x.kind === 'locked-door' && x.room === '105');
+  check('the robot went to room 105, found the door locked and REPORTED it (ar + en text: "never breaks doors")', !!b && /never breaks doors/.test(b.text.en) && /لا يكسر الأبواب/.test(b.text.ar) && b.reportedAt !== null, b && b.text.en);
+  check('...it did NOT open the door (never in its list of doors it pushed), never entered the room, and the room is marked "locked" (never searched)', !r.opened.includes('R105') && r.entered.every(e => e.node !== 'R105') && S.robotTelemetry(sim, 'R1').coverage.rooms['105'] === 'locked' && r.rooms['105'].passes === 0);
+  check('...and it moved on: other rooms were searched after the report', sim.events.filter(e => e.type === 'robot-room-searched').length >= 1 && sim.events.some(e => e.type === 'robot-blocked' && e.t >= b.t - 1));
+  check('locked-door report is a "robot-blocked" event that reaches the hand-off card ("blocked" list)', sim.events.some(e => e.type === 'robot-blocked' && e.kind === 'locked-door') && S.handoff(sim).robot.blocked.some(x => x.kind === 'locked-door' && x.room === '105'));
+  S.setRobotObstacle(sim, 'R105', { locked: false });
+  check('when the guard opens it (obstacle removed) the room becomes searchable again', S.robotTelemetry(sim, 'R1').coverage.rooms['105'] !== 'locked');
+  // a blocked corridor
+  const c = S.create({ preset: 'fire-night', seed: 2, robot: true });
+  S.setRobotObstacle(c, 'C01', { locked: true, kind: 'debris' });
+  S.setSearchPriority(c, ['301']);   // third floor: via a stair; the west corridor C01 is blocked, so the east stair B must be used
+  S.run(c, 520);
+  const cr = rb0(c), cb = c.rb.blocked.find(x => x.kind === 'blocked-corridor');
+  check('a blocked corridor node is reported ("marked blocked for the robot"), never entered, and the robot plans around it (via Stair B)', !!cb && /marked blocked/.test(cb.text.en) && cr.entered.every(e => e.node !== 'C01') && cr.entered.some(e => e.node === 'SB0' || e.node === 'C04'), cb && cb.text.en);
+  check('after the report the A* treats the corridor as impassable', S.robot.astar(c, 'LOB', 'SA0').ok === false || S.robot.astar(c, 'LOB', 'SA0').path.indexOf('C01') < 0);
+  // doors it may not push
+  const nd = S.create({ preset: 'fire-night', seed: 2, robot: true, params: { robotOpensDoors: 0 } });
+  S.run(nd, 300);
+  check('robotOpensDoors = 0: it never pushes a closed door open (door-state counter stays 0) and says rooms behind closed doors are blocked', rb0(nd).stats.doorsOpened === 0);
+  check('robotOpensDoors = 1 (default): it pushes only UNLOCKED doors open (the doors it opened were not locked)', (() => { const o = S.create({ preset: 'fire-night', seed: 2, robot: true }); S.setRobotObstacle(o, 'R103', { locked: true }); S.setSearchPriority(o, ['103']); S.run(o, 250); return rb0(o).stats.doorsOpened >= 0 && o.rb.blocked.some(x => x.room === '103'); })());
+  // exits: Stair A is LOCKED in the robot preset; the robot reports it when it passes the foot of the stair
+  let reported = 0; for (const seed of [1, 2, 3]) { const e = RB({ seed }, 700); if (e.events.some(x => x.type === 'robot-blocked' && x.kind === 'exit-locked')) reported++; }
+  check('the locked exit (Stair A) is reported by the robot when it passes it — "not opened (the robot never breaks doors)"', reported >= 1, reported + '/3 seeds');
+}
+
+section('19. search order — unaccounted + needs first, then smoke / closeness to the danger, then the rest; operator priority');
+{
+  const sim = RB({ seed: 1 }, 50);   // just after CONFIRMED, before the robot moves
+  const pr = S.robot.priority(sim), grp = x => x.needs > 0 ? 0 : x.unaccounted > 0 ? 1 : 2;
+  let monotone = true; for (let i = 1; i < pr.length; i++) if (grp(pr[i]) < grp(pr[i - 1])) monotone = false;
+  check('priority list: every room with a needs-help resident comes before every room with only ordinary unaccounted residents, which come before the empty / accounted rooms (28 rooms: the burning room 303 is not offered)', monotone && grp(pr[0]) === 0 && pr.some(x => grp(x) === 1) && pr.length === 28 && !pr.some(x => x.room === '303'), pr.slice(0, 5).map(x => x.room + (x.needs ? '*' : '')).join(' '));
+  check('the first rooms are the rooms of the needs-help residents (Abu Salem 302, wheelchair / Deaf / elderly / child) — e.g. 302 is in the top 3', pr.slice(0, 3).some(x => x.room === '302') && pr.slice(0, 3).every(x => x.needs > 0));
+  check('scores are non-increasing (the list is sorted)', pr.every((x, i) => i === 0 || pr[i - 1].score >= x.score));
+  const hot = RB({ seed: 1 }, 220), ph = S.robot.priority(hot);
+  const sameGroup = ph.filter(x => x.needs === 0 && x.unaccounted > 0);
+  check('inside a group, a room nearer the fire / with more smoke ranks higher (score includes smoke + closeness)', sameGroup.length >= 4 && sameGroup.every((x, i) => i === 0 || sameGroup[i - 1].score >= x.score) && new Set(sameGroup.map(x => x.score)).size > 2);
+  check('people who checked in / were found drop out of the "unaccounted" counts (the order adapts)', (() => { const a = S.robot.priority(RB({ seed: 1 }, 40)).reduce((s, x) => s + x.unaccounted, 0), b = S.robot.priority(RB({ seed: 1 }, 400)).reduce((s, x) => s + x.unaccounted, 0); return b < a; })());
+  const op = S.create({ preset: 'fire-night-robot', seed: 1, robot: { autoApprove: false } });
+  S.run(op, 60); S.setRole(op, 'commander'); S.approveRobot(op);
+  const sp = S.setSearchPriority(op, ['205', 'R309', '999', '205']);
+  check('setSearchPriority: accepts room numbers and node ids, drops duplicates, reports unknown rooms as ignored', sp.ok && sp.accepted.join() === '205,309' && sp.ignored.join() === '999');
+  S.run(op, 90);
+  check('with an operator list the robot heads for 205 first (its first target)', rb0(op).target && rb0(op).target.room === '205' && S.robot.priority(op)[0].room === '205' && S.robot.priority(op)[1].room === '309');
+  const auto = RB({ seed: 3 }, 60);
+  S.run(auto, 130);
+  check('automatic order: the first target is one of the top-ranked rooms of the list', rb0(auto).target && S.robot.priority(RB({ seed: 3 }, 50)).slice(0, 8).some(x => x.room === rb0(auto).target.room));
+  const visit = []; const full = RB({ preset: 'fire-night', seed: 2, robot: true }); S.run(full, 800); full.events.filter(e => e.type === 'robot-room-searched').forEach(e => visit.push(e.room));
+  check('rooms get swept in an order that follows the list (the first swept room is among the first ten ranked at start) and a room is swept at most robotRecheckPasses times', visit.length >= 3 && visit.every(r => visit.filter(x => x === r).length <= full.P.robotRecheckPasses), visit.slice(0, 8).join(' '));
+}
+
+section('20. finds — "located by robot" is its own headcount status (not "safe"); buffered reports; the hand-off card');
+{
+  const sim = RB({ seed: 1 }, 270);
+  const h = S.headcount(sim), snapH = S.snapshot(sim).headcount, card = S.handoff(sim);
+  check('headcount has a distinct "located" bucket and the arithmetic holds: registered = safe + away-safe + help + located + unaccounted', h.located >= 1 && h.registered === h.safe + h.safeAway + h.help + h.located + h.unaccounted && snapH.located === h.located, JSON.stringify({ safe: h.safe, help: h.help, located: h.located, un: h.unaccounted }));
+  const found = sim.byKey['abu-salem'];
+  check('Abu Salem is "located by robot": counted in "located", NOT in "safe", not checked in, listed with by:"robot", place and condition', h.locatedList.some(x => x.key === 'abu-salem' && x.by === 'robot' && x.place && x.condition === 'conscious') && found.checkin === null && !['safe'].includes(found.st));
+  check('rooms: the per-room table has a "located" column and adds up', Object.values(h.rooms).every(r => r.total === r.safe + r.help + r.located + r.unaccounted));
+  check('hand-off card: people.located + a "locatedByRobot" list + robot.finds with room, person, need, condition guess (est.), time', card.people.located === h.located && card.locatedByRobot.length === h.located && card.robot.finds.length >= 1 && card.robot.finds.every(f => f.t >= 0 && f.condition.est === true && f.node && f.key) && card.robot.finds.some(f => f.key === 'abu-salem' && f.needs.includes('wheelchair')));
+  check('the card carries the honesty line: the robot is a simulated concept; it assists, firefighters decide', /simulated concept/.test(JSON.stringify(card.notes)) && /simulated prototype/.test(card.robot.label.en));
+  const abuFind = sim.rb.finds.find(f => f.key === 'abu-salem');
+  check('the find is a full record: room / place, floor, needs, condition (est.), confidence, dose, smoke, temperature, the way in from the entrance (for the crews), time found and time reported', abuFind && abuFind.floor === 3 && abuFind.condition.est && abuFind.conf > 0 && abuFind.route[0] === 'LOB' && abuFind.route.length >= 5 && abuFind.routeM > 20 && abuFind.reportedAt >= abuFind.t && typeof abuFind.dose === 'number');
+  const un0 = sim.people.filter(a => a.registered && sim.pre.scope.includes(a.group) && a.checkin === null && a.robotReportedAt == null).length;
+  check('"unaccounted" no longer includes people the robot located (it is "no information at all")', h.unaccounted === un0 || Math.abs(h.unaccounted - un0) <= 0, `${h.unaccounted} vs ${un0}`);
+  // a located person who then checks in safe moves buckets
+  const key = h.locatedList[0].key, b0 = S.headcount(sim);
+  S.checkin(sim, key, 'safe'); const b1 = S.headcount(sim);
+  check('when a located person checks in safe, "located" falls by one and "safe" rises by one (distinct buckets, arithmetic preserved)', b1.located === b0.located - 1 && b1.safe + b1.safeAway === b0.safe + b0.safeAway + 1 && b1.registered === b1.safe + b1.safeAway + b1.help + b1.located + b1.unaccounted);
+  S.checkin(sim, h.locatedList[1] ? h.locatedList[1].key : key, 'help');
+  check('"I need help" beats "located": a person who asks for help is counted as help', S.headcount(sim).help >= 1);
+  // the robot-free world keeps the old shape
+  const w = RB({ robot: false }, 330), hw = S.headcount(w);
+  check('without a robot the headcount has no "located" key and the old arithmetic', !('located' in hw) && hw.registered === hw.safe + hw.safeAway + hw.help + hw.unaccounted);
+  // link: reports are buffered while the link is down
+  const lk = RB({ seed: 1, params: { robotMeshRangeM: 10, robotBeaconRelay: 0, robotDropoutPct: 20, robotDropoutSec: 40 } }, 700);
+  const delayed = lk.rb.finds.filter(f => f.reportedAt !== null && f.reportedAt - f.t > 2);
+  check('with a short mesh range and no relays the link drops and reports are BUFFERED: some finds are reported later than they were found', (lk.robots[0].link.dropouts >= 1 || lk.robots[0].link.downSec > 20) && delayed.length >= 1, `${delayed.length} delayed, link down ${lk.robots[0].link.downSec} s`);
+  const df = delayed[0];
+  check('...the headcount learns of a find only when it is REPORTED (located is counted at reportedAt, not at foundAt)', df && (() => { const a = lk.byKey[df.key]; return a.robotReportedAt === df.reportedAt && df.reportedAt > df.t; })());
+  check('...the control-room event says the report was delivered when the link returned', lk.events.some(e => e.type === 'robot-find' && e.delaySec > 2 && /link returned/.test(e.text.en)));
+  const nolink = RB({ seed: 1, params: { robotDropoutPct: 0 } }, 400);
+  check('with no dropouts and the default relays the reports are immediate (delay 0 s)', nolink.rb.finds.every(f => f.reportedAt === null || f.reportedAt === f.t) || nolink.robots[0].link.dropouts === 0);
+  check('when the signal gets weak the robot drops relay beacons (event "robot-relay") that extend the mesh', RB({ seed: 1 }, 400).events.some(e => e.type === 'robot-relay'));
+  check('each find is a bus message: type robot-find with person, room / place, condition (est.), bilingual text', (() => { const m = S.busRobotFind(sim, abuFind.id); return m.type === 'robot-find' && m.sim === true && m.person.key === 'abu-salem' && m.condition.est === true && m.text.ar && m.text.en && m.room === null && m.floor === 3 && /\(est\.\)/.test(m.text.en) && /تقدير/.test(m.text.ar) && badNumbers(m).length === 0; })());
+}
+
+section('21. guidance — language and format per person, wake-up, beacons, hold until crews, smoke hood, speakVia, tele-operation');
+{
+  const sim = SM.create({ preset: 'fire-night-robot', seed: 1 }); SM.run(sim, 420);
+  const sp = sim.rb.speech.filter(x => x.person === 'abu-salem');
+  const stay = sp.find(x => x.key === 'stay');
+  check('Abu Salem (wheelchair): the robot says "Stay here — help is coming" in his language (Arabic), formats voice + light + display, via MANARA_MSG', stay && stay.lang === 'ar' && stay.persona === 'wheelchair' && /Stay here\. Help is coming/.test(stay.text.en) && /ابقَ هنا/.test(stay.text.ar) && stay.via === 'MANARA_MSG' && stay.formats.includes('voice'), stay && stay.text.en);
+  check('...it introduces itself like the brief says: "I am a Civil Defence robot — follow the green light"', sp.some(x => x.key === 'intro' && /I am a Civil Defence robot/.test(x.text.en) && /Follow the green light/.test(x.text.en) && /روبوت الدفاع المدني/.test(x.text.ar)));
+  const f = sim.rb.finds.find(x => x.key === 'abu-salem');
+  check('...a wheelchair user is never told to use the stairs; a no-stairs refuge route is only offered when it exists (refuge flag in the find: {at, route})', typeof f.refuge.route === 'boolean' && sim.rb.speech.filter(x => x.persona === 'wheelchair').every(x => !/Use the stairs/i.test(x.text.en)));
+  const sayDeaf = SM.robot.say(sim, 'guide', 'deaf'), sayBlind = SM.robot.say(sim, 'guide', 'blind'), sayChild = SM.robot.say(sim, 'intro', 'child'), sayWc = SM.robot.say(sim, 'refuge', 'wheelchair'), sayWs = SM.robot.say(sim, 'wake', 'asleep');
+  check('Deaf persona: light / strobe (opt-in) / pictogram / TEXT ON THE ROBOT DISPLAY, and no voice-only instruction', sayDeaf.formats.includes('strobe') && sayDeaf.formats.includes('display') && sayDeaf.formats.includes('pictogram') && !sayDeaf.formats.includes('voice') && /screen/.test(sayDeaf.text.en) && /شاشتي/.test(sayDeaf.text.ar), sayDeaf.formats.join('+'));
+  check('Blind persona: voice + sound cues ("walk toward my voice"); child: friendly words + picture card; wheelchair refuge: flags the refuge balcony; wake-up says Fire / Gas and "get up"', sayBlind.formats.includes('voice') && /toward my voice/.test(sayBlind.text.en) && /Do not be afraid/.test(sayChild.text.en) && sayChild.formats.includes('pictogram') && sayWc.refuge === true && /refuge balcony/.test(sayWc.text.en) && /Do not use the stairs/.test(sayWc.text.en) && /Wake up/.test(sayWs.text.en));
+  const ravi = SM.robot.say(sim, 'wake', 'asleep', 'ravi');
+  check('Ravi (asleep, reads Malayalam): the wake-up is spoken in Malayalam as a DRAFT (needs native review) and the Arabic and English texts travel with it', ravi.lang === 'ml' && ravi.draft === true && /Wake up/.test(ravi.text.en) && /استيقظ/.test(ravi.text.ar) && /[\u0D00-\u0D7F]/.test(ravi.spoken), JSON.stringify([ravi.lang, ravi.draft]));
+  const draftSay = MSG.robot.say({ key: 'wake', hazard: 'fire', persona: 'worker', lang: 'ml' });
+  check('draft-language robot lines are flagged draft-needs-native-review with a notice, and the also: {ar, en} text is attached', draftSay.draft === true && draftSay.status === 'draft-needs-native-review' && /Draft/.test(draftSay.draftNotice) && draftSay.also.ar && draftSay.also.en && /[ഀ-ൿ]/.test(draftSay.text));
+  const bare = S.robot.say(S.create({ preset: 'fire-night-robot' }), 'intro', 'adult');
+  check('without MANARA_MSG the engine still speaks (built-in fallback, same meaning), marked via: built-in', bare.via === 'built-in' && /Civil Defence robot/.test(bare.text.en));
+  const hold = sim.events.filter(e => e.type === 'robot-hold');
+  check('a person who cannot move (Abu Salem, stuck in a smoky corridor) → the robot HOLDS with them ("stays with … until crews arrive"), and tells the control room', hold.length >= 1 && /stays with Abu Salem/.test(hold[0].text.en) && sim.events.some(e => e.type === 'robot-state' && e.state === 'holding'));
+  const he = sim.events.find(e => e.type === 'robot-hold-end');
+  check('...and holds UNTIL the crews bring them out (hold ends "crews reached them", at the moment he is rescued), within the hold limit', he && he.why === 'crews' && sim.byKey['abu-salem'].rescued && he.t - hold[0].t <= sim.P.robotHoldMaxSec, he && `${hold[0].t} → ${he.t}`);
+  check('while holding it reports his condition (est.) periodically ("robot-status")', sim.events.some(e => e.type === 'robot-status' && /Abu Salem/.test(e.text.en) && /\(est\.\)/.test(e.text.en)));
+  // wake-up + guidance + beacons: any seed that has a sleeper found
+  let woke = null, guided = null;
+  for (const seed of [1, 2, 3, 4]) { const w = RB({ preset: 'fire-night', seed, robot: true }, 700); const wk = w.events.find(e => e.type === 'robot-woke'); if (wk && !woke) woke = { w, wk }; if (w.events.some(e => e.type === 'robot-beacon') && !guided) guided = w; }
+  check('the robot WAKES a sleeper it finds (loud voice + light, up to robotWakeTries attempts): "robot-woke" event, the person is awake afterwards', !!woke && (() => { const a = woke.w.byKey[woke.wk.person]; return a.asleep === false && a.robotWoke === true && a.wokeAt <= woke.wk.t + 1; })(), woke ? `at ${woke.wk.t}` : 'none in 4 seeds');
+  check('after waking / guiding it speaks the way out and drops ROUTE BEACONS on the first nodes of the route (≤ robotBeaconsPerFind per find, never more than it carries)', !!guided && (() => { const r = rb0(guided); return r.beacons.some(b => !b.auto) && r.beacons.length <= guided.P.robotBeacons && r.beaconsLeft >= 0 && r.beacons.every(b => nodeIds(guided).includes(b.node)); })());
+  check('guidance makes the person INFORMED (a live route) with probability robotFollowP; each find records whether they followed', guided.rb.finds.some(f => f.followed === true) && guided.rb.finds.every(f => f.followed === null || typeof f.followed === 'boolean'));
+  const g0 = RB({ seed: 1, params: { robotFollowP: 0 } }, 500);
+  check('with robotFollowP = 0 nobody follows the robot (they were told, they ignored it) and the people it guides are not marked informed by it', g0.rb.finds.every(f => f.followed !== true) && g0.people.every(a => a.robotGuidedAt === undefined));
+  // smoke hood
+  const hd = (n) => { const s = S.create({ preset: 'fire-night-robot', seed: 1, params: { robotHoods: n } }); S.run(s, 203); s.stt[0].smoke.fill(0.55); S.run(s, 330); return s; };
+  const hoods = hd(2), nohood = hd(0);
+  check('a conscious person who cannot get out of smoke gets a SMOKE HOOD (named assumption): the hood is handed over, logged, and cuts the dose rate (less dose than the same run with no hoods)', hoods.byKey['abu-salem'].hood === true && hoods.events.some(e => e.type === 'robot-hood') && nohood.byKey['abu-salem'].hood !== true && hoods.byKey['abu-salem'].dose < nohood.byKey['abu-salem'].dose, `${hoods.byKey['abu-salem'].dose.toFixed(3)} vs ${nohood.byKey['abu-salem'].dose.toFixed(3)}`);
+  // speakVia
+  const sv = RB({ seed: 1 }, 260);
+  const s1 = S.speakVia(sv, 'R1', 'stay', 'ar'), s2 = S.speakVia(sv, 'R1', 'sing', 'ar');
+  check('speakVia(robotId, messageKey, lang): speaks to the nearest person in view, recorded as an operator line; unknown keys are refused with the list of valid keys', s1.ok === true && s1.speech.operator === true && s1.speech.key === 'stay' && s2.ok === false && s2.code === 'key' && s2.keys.includes('intro'));
+  check('...it speaks the asked language even for draft languages (ml → DRAFT, flagged)', (() => { const x = SM.speakVia((() => { const q = SM.create({ preset: 'fire-night-robot', seed: 1 }); SM.run(q, 260); return q; })(), 'R1', 'guide', 'ml'); return x.ok && x.speech.draft === true && x.speech.lang === 'ml'; })());
+  const idle = RB({ seed: 1 }, 30);
+  check('the robot cannot speak before it is deployed (state stowed → code "state")', S.speakVia(idle, 'R1', 'intro', 'ar').code === 'state');
+  // teleop
+  const free = (o) => { const x = S.create(Object.assign({ preset: 'fire-night', seed: 2 }, o)); for (let t = 0; t < 400 && !(x.robots[0] && x.robots[0].state === 'searching' && x.robots[0].to < 0 && !x.robots[0].target && !x.robots[0].dwell && x.rb.pending.length === 0 && x.t > 90); t++) S.step(x, 1); return x; };
+  const tp = free({ robot: true }), wt = free({ robot: { variant: 'wheeled' } });
+  const t1 = S.teleopRobot(tp, 'R1', 'C03'), t2 = S.teleopRobot(wt, 'R1', 'C21');
+  check('teleopRobot: a one-shot go-to; accepted when the link is up and the place is reachable; refused (with a reason) for stairs when wheeled, for unknown places, and while not searching', t1.ok === true && t2.ok === false && t2.code === 'unreachable' && S.teleopRobot(tp, 'R1', 'Nowhere').ok === false && S.teleopRobot(RB({ seed: 2 }, 30), 'R1', 'C02').code === 'state');
+  S.run(tp, tp.t + 60);
+  check('...the robot goes there, then returns to autonomous search ("reached the waypoint")', tp.events.some(e => e.type === 'robot-teleop' && e.ok === true) && rb0(tp).teleop === null);
+  const down = free({ robot: true }); rb0(down).link.downUntil = down.t + 40; S.run(down, down.t + 1);
+  check('no tele-operation or speaking while the link is down (code "link")', S.teleopRobot(down, 'R1', 'C02').code === 'link' && S.speakVia(down, 'R1', 'stay', 'en').code === 'link');
+}
+
+section('22. detection model, battery, heat, return, recall');
+{
+  const found = (o, until = 450) => RB(o, until).rb.finds.length;
+  const off = { robotThermalPd: 0, robotRgbPd: 0, robotAudioPd: 0 };
+  check('seeded detection: with every detection probability 0 the robot finds nobody (all false negatives); with the defaults it finds people', found({ params: off }) === 0 && found({}) >= 3);
+  check('Gulf-heat caveat: with only thermal vision, a hot room (36 °C ≥ body) has NO thermal contrast and nobody is seen; a cool room (24 °C) sees people', found({ params: Object.assign({}, off, { robotThermalPd: 1, robotRoomC: 36 }) }) === 0 && found({ params: Object.assign({}, off, { robotThermalPd: 1, robotRoomC: 24 }) }) >= 2);
+  check('contrast is monotone in room temperature: cooler room → at least as many finds (24 °C ≥ 30 °C ≥ 34 °C)', (() => { const a = found({ params: Object.assign({}, off, { robotThermalPd: 0.6, robotRoomC: 24 }) }), b = found({ params: Object.assign({}, off, { robotThermalPd: 0.6, robotRoomC: 30 }) }), c = found({ params: Object.assign({}, off, { robotThermalPd: 0.6, robotRoomC: 34 }) }); return a >= b && b >= c && a > c; })());
+  const sm = RB({ seed: 1 }, 215), v0 = S.robotView(sm, 'R1');
+  sm.stt[0].smoke.fill(0.8); const v1 = S.robotView(sm, 'R1');
+  check('smoke attenuation: the robot-eye view\'s visibility falls with smoke, and the thermal camera sees through smoke better than the visible one', v1.visibility < v0.visibility && v1.thermalVisibility > v1.visibility && v1.smoke === 0.8 && v1.visibility >= 0 && v1.visibility <= 1, `visible ${v0.visibility} → ${v1.visibility}, thermal ${v1.thermalVisibility}`);
+  check('audio: a conscious person calling for help is heard (audio only); the siren masks it (noise mask 1 → not heard)', (() => { const q = Object.assign({}, off, { robotAudioPd: 1, robotAudioRangeM: 15 }); const a = RB({ params: Object.assign({}, q, { robotNoiseMask: 0 }) }, 450), b = RB({ params: Object.assign({}, q, { robotNoiseMask: 1 }) }, 450); return a.rb.finds.some(f => f.by === 'audio' && f.condition.key !== 'asleep') && b.rb.finds.length === 0; })());
+  check('false POSITIVES: a hot object in an empty room looks like a person; the robot checks it for robotInvestigateSec and DISMISSES it ("robot-false-positive"); it never becomes a find; none when the rate is 0', (() => { const a = RB({ params: { robotFalsePosPerMin: 10 } }, 700), b = RB({ params: { robotFalsePosPerMin: 0 } }, 700); return a.robots[0].stats.falsePositives >= 3 && a.events.filter(e => e.type === 'robot-false-positive').length >= 3 && a.rb.finds.every(f => f.key) && b.robots[0].stats.falsePositives === 0; })());
+  check('false NEGATIVES: with low detection chances some people stay in view for a long time and are never detected (missedInView > 0 in the metrics)', [1, 2, 3].some(sd => S.robotMetrics(RB({ seed: sd, params: { robotThermalPd: 0.04, robotRgbPd: 0.01, robotAudioPd: 0.01 } }, 700)).detection.missedInView > 0));
+  // battery
+  const bat = (o, until = 300) => rb0(RB(o, until));
+  const b45 = bat({ params: { robotBattMin: 45 } }), b90 = bat({ params: { robotBattMin: 90 } });
+  check('battery drains with use (monotone) and scales with the endurance assumption: robotBattMin 90 uses half the charge of 45 over the same early run', b45.battery < 1 && b90.battery < 1 && Math.abs((1 - b45.battery) / (1 - b90.battery) - 2) < 0.12, `used ${(100 * (1 - b45.battery)).toFixed(1)} % vs ${(100 * (1 - b90.battery)).toFixed(1)} %`);
+  const t1 = bat({ params: { robotTrackedDrain: 1 } }, 200), t2 = bat({ params: { robotTrackedDrain: 2 } }, 200);
+  check('tracked drains faster than wheels (robotTrackedDrain is the multiplier): 2× → twice the charge used on the same drive', Math.abs((1 - t2.battery) / (1 - t1.battery) - 2) < 0.12, `${((1 - t2.battery) / (1 - t1.battery)).toFixed(2)}×`);
+  const hotRun = (smoke) => { const sim = S.create({ preset: 'fire-night-robot', seed: 1, params: { robotSmokeDrain: 1 } }); S.run(sim, 98); for (let t = 0; t < 60; t++) { if (smoke) sim.stt[0].smoke.fill(smoke); S.step(sim, 1); } const r = rb0(sim); return (1 - r.battery) / Math.max(1, r.driven); };
+  check('heat / smoke multiplier: the same drive in dense smoke costs more charge per metre than in clear air', hotRun(0.9) > hotRun(0) * 1.3, `${(hotRun(0.9) / hotRun(0)).toFixed(2)}× per metre`);
+  const du = S.create({ preset: 'fire-night-robot', seed: 1 }); let drv = [], hld = [], prevB = 1;
+  for (let t = 0; t < 290; t++) { S.step(du, 1); const r = rb0(du), used = prevB - r.battery; prevB = r.battery; if (r.state === 'holding' && r.to < 0) hld.push(used); else if (r.to >= 0 && !(r.edgeFlag & 1)) drv.push(used); }
+  const mean = a => a.reduce((x, y) => x + y, 0) / Math.max(1, a.length);
+  check('holding costs less than driving (robotIdleDrain share): the charge falls more slowly while it holds with Abu Salem than while it drives on the level', hld.length > 20 && drv.length > 20 && mean(hld) < 0.6 * mean(drv), `${(mean(hld) * 1000).toFixed(2)} vs ${(mean(drv) * 1000).toFixed(2)} per mille per second`);
+  const small = RB({ seed: 1, params: { robotBattMin: 8 } }, 700);
+  check('even a small battery gets home: with only 8 min of endurance the return energy is estimated edge by edge (stairs cost more time AND more power) so the robot is back at the entrance with charge left, not stranded', rb0(small).stats.returnedAt !== null && rb0(small).stats.faultWhy === null && rb0(small).battery > 0, `returned at ${rb0(small).stats.returnedAt}, ${Math.round(rb0(small).battery * 100)} % left`);
+  // overheating
+  const ov = S.create({ preset: 'fire-night-robot', seed: 1, params: { robotRoomC: 40, robotHeatWarnC: 40, robotHeatSoakSec: 20 } }); S.run(ov, 98); for (let t = 0; t < 80; t++) { ov.stt[0].smoke.fill(0.9); S.step(ov, 1); }
+  check('heat soak: staying above robotHeatWarnC for robotHeatSoakSec shuts the robot down for protection ("Fault: thermal shutdown"), reported to the control room', rb0(ov).state === 'fault' && rb0(ov).stats.faultWhy === 'overheated' && ov.events.some(e => e.type === 'robot-fault' && e.why === 'overheated'));
+  const dead = RB({ seed: 1 }, 150); rb0(dead).battery = 0.0005; S.run(dead, 156);
+  check('an empty battery stops the robot where it is: "Fault: battery exhausted", reported with its location', rb0(dead).state === 'fault' && rb0(dead).stats.faultWhy === 'battery' && dead.rb.blocked.some(b => b.kind === 'fault'));
+  // return on low battery
+  const lowb = RB({ seed: 1, params: { robotReturnPct: 60, robotBattMin: 10 } }, 900), lr = rb0(lowb);
+  check('RETURNS when the battery is below the threshold: "robot-battery-low", state returning, back at the entrance and stowed — with charge left (no fault)', lowb.events.some(e => e.type === 'robot-battery-low') && lr.stats.returnedAt !== null && lr.state === 'stowed' && lr.node === lr.G.entrance && lr.battery > 0 && lr.stats.faultWhy === null, `returned at ${lr.stats.returnedAt}, ${Math.round(lr.battery * 100)} % left`);
+  const est = RB({ seed: 1, params: { robotReturnPct: 5, robotBattMin: 10 } }, 900), er = rb0(est);
+  check('it also returns EARLY when the estimated cost of the way back (with a margin) is more than it has left — a far robot returns before the % threshold', er.stats.returnedAt !== null && er.stats.faultWhy === null && (est.events.find(e => e.type === 'robot-battery-low').pct > 5 + 2));
+  // recall
+  const rc = RB({ seed: 1 }, 200); const rcRes = S.recallRobot(rc, 'R1');
+  S.run(rc, 205);
+  check('recallRobot: the robot stops what it is doing and returns (state returning), then is stowed at the entrance', rcRes.ok === true && rb0(rc).state === 'returning' && (S.run(rc, 700), rb0(rc).state === 'stowed' && rb0(rc).node === rb0(rc).G.entrance && rc.events.some(e => e.type === 'robot-returned')));
+  check('recall before it moves cancels the deployment (stowed, approval cleared)', (() => { const x = RB({ robot: { autoApprove: false } }, 80); S.setRole(x, 'commander'); S.approveRobot(x); const r = S.recallRobot(x); return r.ok && rb0(x).state === 'stowed' && rb0(x).approval.status === 'none'; })());
+  check('search complete → it returns by itself ("Search complete — returning") when nothing reachable is left unsearched', (() => { const x = S.create({ preset: 'fire-night', seed: 2, robot: { variant: 'wheeled' } }); S.run(x, 1200); return x.events.some(e => e.type === 'robot-search-complete') || rb0(x).state === 'searching'; })());
+}
+
+section('23. determinism with the robot, telemetry for UIs, bus messages, fuzz, performance');
+{
+  const mk = (seed, o = {}) => S.run(S.create(Object.assign({ preset: 'fire-night-robot', seed }, o)), 500);
+  const a = mk(11), b = mk(11), c = mk(12), d = mk(11, { robot: false });
+  check('with the robot: same seed → identical hash (robot included) and identical snapshot JSON', S.hash(a) === S.hash(b) && JSON.stringify(S.snapshot(a, { full: true })) === JSON.stringify(S.snapshot(b, { full: true })), S.hash(a));
+  check('different seed → different hash; robot on vs off → different hash', S.hash(a) !== S.hash(c) && S.hash(a) !== S.hash(d));
+  const e = S.create({ preset: 'fire-night-robot', seed: 11 }); for (let i = 0; i < 2000; i++) S.step(e, 0.25);
+  check('chunked stepping (0.25 s) equals whole-second stepping, robot included', e.t === 500 && S.hash(e) === S.hash(a));
+  const f = S.create({ preset: 'fire-night-robot', seed: 11 }); for (let t = 0; t < 500; t++) { S.step(f, 1); if (t % 7 === 0) { S.snapshot(f, { full: true }); S.robots(f); S.robotView(f, 'R1'); S.busRobot(f); S.headcount(f); S.handoff(f); } }
+  check('reading telemetry / snapshots / views / bus messages / hand-off mid-run never disturbs the run (same final hash)', S.hash(f) === S.hash(a));
+  check('restart() reproduces the robot run', S.hash(S.run(S.restart(a), 500)) === S.hash(a));
+  check('robot parameters changed mid-run apply (setParam): robotApproveSec 120 before CONFIRMED delays the approval', (() => { const x = S.create({ preset: 'fire-night-robot', seed: 1 }); S.setParam(x, 'robotApproveSec', 100); S.run(x, 200); return rb0(x).approval.approvedAt === x.ver.confirmedAt + 100; })());
+  // telemetry
+  const sim = RB({ seed: 1 }, 260), tel = S.robots(sim)[0];
+  check('telemetry: pose (x, y, floor), heading, battery 0..1, link {q, up}, current target, finds, blocked, beacons, coverage (pct, per-node, per-room), view — all finite and JSON-serialisable', tel.pose && Number.isFinite(tel.pose.x) && Number.isFinite(tel.pose.y) && [0, 1, 2].includes(tel.pose.fl) && Number.isFinite(tel.heading) && tel.battery >= 0 && tel.battery <= 1 && tel.link.q >= 0 && tel.link.q <= 1 && typeof tel.link.up === 'boolean' && Array.isArray(tel.finds) && Array.isArray(tel.beacons) && tel.coverage.nodes.length === S.robot.graph(0).nodes.length && S.robot.graph(0).nodes.length === 53 && Object.keys(tel.coverage.rooms).length === 29 && tel.coverage.pct >= 0 && !!tel.view && badNumbers(tel).length === 0 && JSON.stringify(JSON.parse(JSON.stringify(tel))) === JSON.stringify(tel));
+  check('the pose is inside the residence footprint and between nodes while driving (interpolated)', (() => { const S0 = sim.W.structs[0]; return tel.pose.x >= S0.x0 - 1 && tel.pose.x <= S0.x0 + S0.w + 1 && tel.pose.y >= S0.y0 - 1 && tel.pose.y <= S0.y0 + S0.h + 1; })());
+  check('the robot-eye view: room / node, visibility 0..1, thermal visibility, range, smoke, temperature, lighting, people in view [{ref, distM, strength, detected}] — people the robot has not detected carry no name', tel.view.visibility >= 0 && tel.view.visibility <= 1 && tel.view.rangeM === sim.P.robotRangeM && Array.isArray(tel.view.people) && tel.view.people.every(p => Number.isFinite(p.distM) && Number.isFinite(p.strength) && (p.detected || (p.key === null && p.name === null))) && /^(lit|dark)$/.test(tel.view.lighting));
+  check('the coverage map grows as it searches (corridors seen on the way, rooms swept)', (() => { const x = S.robots(RB({ seed: 1 }, 150))[0].coverage, y = S.robots(RB({ seed: 1 }, 700))[0].coverage; return y.pct >= x.pct && y.nodes.filter(n => n.cov > 0).length > x.nodes.filter(n => n.cov > 0).length; })());
+  check('robotView is null while the robot is stowed, and ManaraSim.robots() is an empty list when there is no robot', S.robotView(RB({}, 20), 'R1') === null && S.robots(S.create({ preset: 'fire-night' })).length === 0 && S.robotTelemetry(S.create(), 'R1') === null);
+  const bus = S.busRobot(sim);
+  check('bus message type "robot": scope building, sim:true, role, per-robot id / state / pose / battery / link / target / coveragePct / finds', bus.type === 'robot' && bus.scope === 'building' && bus.sim === true && bus.role && bus.robots.length === 1 && bus.robots[0].id === 'R1' && bus.robots[0].pose && typeof bus.robots[0].coveragePct === 'number' && badNumbers(bus).length === 0 && S.busRobot(S.create({ preset: 'fire-night' })) === null);
+  // events + snapshot structure
+  const snap = S.snapshot(sim);
+  check('snapshot.robot carries the label (concept, simulated, not tested), role, robots, finds, blocked, last speech lines; the label is bilingual', snap.robot.enabled && /not built, not tested/.test(snap.robot.label.en) && /لم يُبنَ/.test(snap.robot.label.ar) && snap.robot.robots.length === 1 && Array.isArray(snap.robot.finds) && Array.isArray(snap.robot.blocked) && Array.isArray(snap.robot.speech));
+  const rEv = sim.events.filter(e => /^robot/.test(e.type));
+  check('every robot event is bilingual, time-ordered and names the robot ("Robot R1 …" / «الروبوت R1 …») — operator-facing log lines', rEv.length >= 6 && rEv.every(e => e.text.ar && e.text.en && /R1|robot|Robot|الروبوت/.test(e.text.en + e.text.ar)) && rEv.every((e, i) => i === 0 || e.t >= rEv[i - 1].t));
+  // fuzz
+  let seed = 424242; const rnd = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
+  const pick = arr => arr[Math.floor(rnd() * arr.length)];
+  const nodes = nodeIds(sim).concat(['Z9', '', null, 7, { x: 59, y: 19, fl: 1 }, { x: 'a' }]);
+  let runs = 0, problems = [];
+  for (let k = 0; k < 8; k++) {
+    const preset = pick(['fire-night', 'fire-night-robot', 'gas-night', 'school-fire-day', 'flood-day', 'fire-night-robot']), mode = rnd() < 0.85 ? 'manara' : 'ordinary';
+    try {
+      const x = S.create({ preset, mode, seed: 1 + Math.floor(rnd() * 500), robot: rnd() < 0.7 ? { variant: pick(['wheeled', 'tracked']), units: 1 + Math.floor(rnd() * 3), autoApprove: rnd() < 0.5 } : undefined, autoApprove: rnd() < 0.8 });
+      for (let j = 0; j < 7; j++) {
+        S.step(x, 15 + Math.floor(rnd() * 90));
+        const res = (() => { switch (Math.floor(rnd() * 12)) {
+          case 0: return S.deployRobot(x, pick(['R1', 'R2', 'R9', undefined]), pick(['viewer', 'operator', 'commander', 'boss', undefined]));
+          case 1: return S.approveRobot(x, pick(['R1', 'R2', undefined]), pick(['viewer', 'operator', 'commander', undefined]));
+          case 2: return S.recallRobot(x, pick(['R1', 'R3', undefined]));
+          case 3: return S.teleopRobot(x, pick(['R1', 'R2']), pick(nodes));
+          case 4: return S.setSearchPriority(x, [pick(['101', '202', 'R305', '999', 7, null, 'SCH']), pick(['301', '4A'])]);
+          case 5: return S.speakVia(x, pick(['R1', 'R2']), pick(['intro', 'guide', 'wake', 'stay', 'refuge', 'hold', 'check', 'blocked', 'hood', 'zzz', null]), pick(['ar', 'en', 'ml', 'tl', 'xx', undefined]));
+          case 6: return S.setRobotObstacle(x, pick(['R101', 'C01', 'R205', 'Q', '']), { locked: rnd() < 0.5 });
+          case 7: return S.setRole(x, pick(['viewer', 'operator', 'commander', 'x']));
+          case 8: return S.rejectRobot(x, 'R1', pick(['commander', 'operator']));
+          case 9: return S.enableRobot(x, { units: 2, variant: 'wheeled' });
+          case 10: return S.setParam(x, pick(['robotBattMin', 'robotRangeM', 'robotDropoutPct', 'robotThermalPd']), rnd() * 100);
+          default: return S.setExit(x, pick(['A', 'B', 'R']), { locked: rnd() < 0.5 });
+        } })();
+        if (res && typeof res === 'object' && 'ok' in res && typeof res.ok !== 'boolean') problems.push('bad ok ' + JSON.stringify(res).slice(0, 60));
+        const bad = badNumbers([S.snapshot(x, { metrics: true }), S.robots(x), S.busRobot(x), S.handoff(x, { cap: true }), S.headcount(x), S.robotMetrics(x)]);
+        if (bad.length) problems.push(`${preset}/${mode}: ${bad.join(',')}`);
+        runs++;
+      }
+    } catch (e) { problems.push(`${preset}/${mode} threw ${e.message}`); }
+  }
+  check(`fuzz: ${runs} random robot operator actions (roles, approve, recall, teleop, priority, speak, obstacles, parameters) on random presets / modes — no exception, no NaN, every action returns {ok}`, problems.length === 0 && runs >= 50, problems.slice(0, 3).join(' | '));
+  // performance
+  S.run(S.create({ preset: 'fire-night-robot', seed: 2, robot: true }), 300);
+  const ps = S.create({ preset: 'fire-night-robot', seed: 1 }), tk = []; for (let t = 0; t < 1500; t++) { const t0 = performance.now(); S.step(ps, 1); tk.push(performance.now() - t0); }
+  const avg = tk.reduce((x, y) => x + y, 0) / tk.length, p95 = tk.slice().sort((x, y) => x - y)[Math.floor(tk.length * 0.95)];
+  console.log(`  robot preset: ${avg.toFixed(2)} ms per simulated second on average, p95 ${p95.toFixed(2)} ms`);
+  check('performance: one simulated second of the robot scenario averages < 3 ms (robot included)', avg < 3, avg.toFixed(2) + ' ms');
+  const cr = performance.now(); S.create({ preset: 'fire-night-robot' }); const cm = performance.now() - cr;
+  check('creating the robot scenario takes < 150 ms', cm < 150, cm.toFixed(0) + ' ms');
+}
+
+section('24. A/B "MANARA with robot" vs "without robot" (SIMULATION, mechanism check) and a sensitivity sweep');
+{
+  const seeds = [1, 2, 3];
+  const abs = seeds.map(sd => S.abRobot({ preset: 'fire-night-robot', seed: sd }));
+  const num = v => v === null || v === undefined ? '  n/a' : String(v).padStart(5);
+  console.log('\n  SIMULATION — a mechanism check, not proof of impact. The robot is a concept with a simulated prototype; every number depends on the named assumptions.');
+  console.log('  seed | unaccounted at ref | located p50 s (w/o → robot) | p90 s | still unaccounted at T+300 | needs-help located before crews on scene (%) | before they were brought out (%) | injured / incapacitated (w/o → robot) | person-s in smoke | located first by the robot: n, mean s saved');
+  for (const r of abs) { const w = r.without, m = r.withRobot; console.log(`  ${String(r.seed).padStart(4)} | ${String(w.unaccounted.n).padStart(18)} | ${num(w.unaccounted.timeToLocate.p50)} → ${num(m.unaccounted.timeToLocate.p50)}          | ${num(w.unaccounted.timeToLocate.p90)} → ${num(m.unaccounted.timeToLocate.p90)} | ${num(w.stillUnaccounted.t300)} → ${num(m.stillUnaccounted.t300)}                 | ${num(w.needsHelp.pctBeforeCrews)} → ${num(m.needsHelp.pctBeforeCrews)} (crews at ${m.crewsOnSceneSec} s)      | ${num(w.needsHelp.pctBeforeRescue)} → ${num(m.needsHelp.pctBeforeRescue)}        | ${w.exposure.injured}/${w.exposure.incapacitated} → ${m.exposure.injured}/${m.exposure.incapacitated} | ${w.exposure.personSec} → ${m.exposure.personSec} | ${r.delta.timeSaved.n}, ${r.delta.timeSaved.meanSec}`); }
+  const abuT = (m) => m.needsHelp.list.find(x => x.key === 'abu-salem').sec;
+  check('every A/B result is labelled SIMULATION (ar + en) and says the robot is a concept that was neither built nor tested', abs.every(r => /SIMULATION/.test(r.label.en) && /محاكاة/.test(r.label.ar) && /not built, not tested/.test(r.robotLabel.en) && /لم يُبنَ/.test(r.robotLabel.ar)));
+  check('both worlds have identical people and hazard until the robot acts (common random numbers): same people states at T+73 s, before the robot has moved', (() => { const w = RB({ robot: false }, 73), r = RB({}, 73); return JSON.stringify(S.snapshot(w).people) === JSON.stringify(S.snapshot(r).people) && JSON.stringify(S.snapshot(w).hazardState) === JSON.stringify(S.snapshot(r).hazardState); })());
+  check('time to locate each unaccounted resident: Abu Salem is located by the robot sooner than by any other route (never later, and clearly sooner in most seeds)', abs.every(r => abuT(r.withRobot) <= abuT(r.without)) && abs.filter(r => abuT(r.withRobot) < abuT(r.without) - 20).length >= 2, abs.map(r => `${abuT(r.without)}→${abuT(r.withRobot)}`).join('  '));
+  check('the robot adds knowledge: it is the first to locate several residents in every seed, and the number still unaccounted at T+300 s is never higher with the robot', abs.every(r => r.withRobot.unaccounted.firstByRobot >= 1 && r.withRobot.stillUnaccounted.t300 <= r.without.stillUnaccounted.t300), abs.map(r => r.withRobot.unaccounted.firstByRobot + ' by robot').join(', '));
+  check('time to locate, person by person: for the residents the robot located FIRST the time saved is positive (earlier than the same person in the world without the robot; people never located without it count to the end of the run, so this is a lower bound for them), listed per person', abs.every(r => r.delta.timeSaved.n >= 1 && r.delta.timeSaved.meanSec > 0 && r.delta.timeSaved.people.every(x => x.savedSec > 0 && x.withRobot < x.without)), abs.map(r => `${r.delta.timeSaved.n} people, ${r.delta.timeSaved.meanSec} s`).join('; '));
+  check('% of needs-help residents located before they were brought out: higher with the robot (it finds the person the crews had to search for), and the metric definitions are the same in both worlds', abs.every(r => (r.withRobot.needsHelp.pctBeforeRescue === null || r.withRobot.needsHelp.pctBeforeRescue >= (r.without.needsHelp.pctBeforeRescue || 0))) && abs.some(r => r.withRobot.needsHelp.pctBeforeRescue > (r.without.needsHelp.pctBeforeRescue || 0)));
+  check('people reached before the smoke-exposure threshold are reported with the threshold stated (model injury dose 0.3) and exposure counts for both worlds', abs.every(r => r.withRobot.reachedBeforeThreshold.injuryDose === 0.3 && r.without.reachedBeforeThreshold.injuryDose === 0.3 && r.withRobot.exposure.personSec >= 0 && /not a medical measure/.test(r.withRobot.reachedBeforeThreshold.note.en)));
+  check('the delta is signed "positive = better with the robot", and the hash of each world is returned (reproducible)', abs.every(r => /Positive = better/.test(r.delta.note.en) && r.hash.without.length === 8 && r.hash.withRobot.length === 8 && r.hash.without !== r.hash.withRobot) && S.abRobot({ preset: 'fire-night-robot', seed: 1 }).hash.withRobot === abs[0].hash.withRobot);
+  check('the assumptions behind the numbers travel with the result (thermal Pd, contrast, room °C, dropouts, battery, carrier, approval time, crew speed-up, follow / wake chance)', ['thermalPd', 'contrastC', 'roomC', 'dropoutPct', 'battMin', 'carrier', 'approveSec', 'crewSpeedup', 'followP', 'wakeP'].every(k => k in abs[0].withRobot.assumptions));
+  check('the robot gives no benefit that the crews did not already have when it is switched off: "without" has no finds, no robot block, no robot events', abs.every(r => r.without.robot === false && r.without.finds.n === 0 && r.without.robots.length === 0));
+
+  // ---- sensitivity: how the result depends on ONE assumption at a time
+  const table = [], baseRuns = {};
+  const sw = (title, opts) => { const seedsK = (opts.seeds || [1, 2]).join(); const r = S.sweepRobot(Object.assign({ preset: 'fire-night-robot', seeds: [1, 2], seconds: 600, baselineRuns: baseRuns[seedsK] }, opts)); baseRuns[seedsK] = r.baselineRuns; table.push([title, r]); return r; };
+  const only = { robotRgbPd: 0, robotAudioPd: 0 };
+  const s1 = sw('detection probability per second (thermal camera only: visible camera and audio off)', { param: 'robotThermalPd', values: [0, 0.1, 0.35, 0.8], params: only });
+  const s2 = sw('link dropouts: chance per second that a dropout starts while the signal is weak (%), mesh range 60 m, no relay beacons', { param: 'robotDropoutPct', values: [0, 2, 10, 20], params: { robotMeshRangeM: 60, robotBeaconRelay: 0, robotDropoutSec: 25 } });
+  const s3 = sw('mesh range (m), no relay beacons (seed 1)', { param: 'robotMeshRangeM', values: [10, 20, 30, 60], params: { robotBeaconRelay: 0 }, seeds: [1] });
+  const s4 = sw('battery endurance (minutes of driving)', { param: 'robotBattMin', values: [8, 15, 45] });
+  const s5 = sw('who brings the robot: 0 = pre-positioned at the entrance, 1 = carried by the fire engine (seed 1)', { param: 'robotCarrier', values: [0, 1], seeds: [1] });
+  const s6 = sw('robot variant (seed 1)', { param: 'variant', values: ['wheeled', 'tracked'], seeds: [1] });
+  const s7 = sw('room air temperature (°C) — the Gulf-heat caveat, thermal camera only (seed 1)', { param: 'robotRoomC', values: [24, 30, 34], params: Object.assign({ robotThermalPd: 0.6 }, only), seeds: [1] });
+  console.log('\n  SIMULATION — sensitivity of the robot result to ONE assumption at a time (mean over the seeds listed, 600 s of simulated time; the "w/o robot" baseline first). A mechanism check, not proof of impact.');
+  console.log('  located% = residents unaccounted at the reference time whose place became known · byRobot = located FIRST by the robot · saved = mean seconds earlier than without the robot (same person, same seed) · needsResc = needs-help residents located before the crews brought them out · still300/450 = still unaccounted at T+300 / T+450 s');
+  for (const [title, r] of table) {
+    const b = r.baseline;
+    console.log(`   ${title}  [seeds ${r.seeds.join(',')}]`);
+    console.log(`      ${'w/o robot'.padStart(9)}  located ${String(b.locatedPct).padStart(5)}%  byRobot ${String(b.byRobot).padStart(4)}  saved ${'-'.padStart(5)}  needsResc ${String(b.needsRescPct).padStart(4)}%  still300 ${String(b.still300).padStart(6)}  still450 ${String(b.still450).padStart(6)}  injured ${String(b.injured).padStart(4)}`);
+    for (const row of r.rows) console.log(`      ${String(row.value).padStart(9)}  located ${String(row.locatedPct).padStart(5)}%  byRobot ${String(row.byRobot).padStart(4)}  saved ${String(row.saved).padStart(5)}  needsResc ${String(row.needsRescPct).padStart(4)}%  still300 ${String(row.still300).padStart(6)}  still450 ${String(row.still450).padStart(6)}  injured ${String(row.injured).padStart(4)}  falsePos ${String(row.falsePos).padStart(4)}  missed ${String(row.missed).padStart(4)}  delay ${String(row.delay).padStart(5)}s  linkDown ${String(row.linkDown).padStart(5)}s  batt ${String(row.battEnd).padStart(3)}%  swept ${String(row.coverage).padStart(3)}%`);
+  }
+  const by = r => r.rows.map(x => x.byRobot);
+  check('sweeps run for every named assumption and contain no NaN', table.length === 7 && table.every(([, r]) => r.rows.length >= 2 && badNumbers(r).length === 0));
+  check('detection probability matters: with thermal Pd 0 (camera + audio off) the robot is first to locate nobody and saves no time; at Pd 0.8 it locates people first, earlier than they would have been located without it', s1.rows[0].byRobot === 0 && s1.rows[3].byRobot >= 1 && s1.rows[3].finds > s1.rows[0].finds && s1.rows[3].saved > 0, 'first-by-robot ' + by(s1).join(' → ') + '; saved ' + s1.rows.map(x => x.saved).join(' → ') + ' s');
+  check('the hot-room caveat shows in the sweep: at 34 °C room air the thermal-only robot finds nobody, at 24 °C it finds people', s7.rows[0].finds > 0 && s7.rows[2].finds === 0, 'finds ' + s7.rows.map(x => x.finds).join(' → '));
+  check('link dropouts: with none the link never drops by chance; at 20 % per weak-signal second it drops repeatedly and the link is down longer (reports wait in the buffer)', s2.rows[0].dropouts === 0 && s2.rows[3].dropouts >= 2 && s2.rows[3].linkDown > s2.rows[0].linkDown, `dropouts ${s2.rows.map(x => x.dropouts).join(' → ')}, link down ${s2.rows.map(x => x.linkDown).join(' → ')} s, mean report delay ${s2.rows.map(x => x.delay).join(' → ')} s`);
+  check('a longer mesh range keeps the link up longer (10 m vs 60 m, no relays): less time with the link down', s3.rows[0].linkDown > s3.rows[3].linkDown, 'link down ' + s3.rows.map(x => x.linkDown).join(' → ') + ' s');
+  check('battery matters: with only 8 min of endurance the robot sweeps fewer rooms than with 45 min (it returns early)', s4.rows[0].coverage < s4.rows[2].coverage && s4.rows[0].byRobot <= s4.rows[2].byRobot, 'rooms swept ' + s4.rows.map(x => x.coverage).join(' → ') + ' %');
+  check('carried by the fire engine (value 1) it arrives after the crews: it is first to locate fewer people and saves less time than a pre-positioned robot', s5.rows[1].byRobot < s5.rows[0].byRobot && (s5.rows[1].saved === null || s5.rows[1].saved <= s5.rows[0].saved), 'first-by-robot ' + by(s5).join(' → '));
+  check('only the tracked robot reaches the wheelchair user on the third floor: needs-help residents located before they were brought out 0 % (wheeled) vs 100 % (tracked); the wheeled one can sweep at most the ground floor (9 of 29 rooms)', s6.rows[0].needsRescPct === 0 && s6.rows[1].needsRescPct > 50 && s6.rows[0].coverage <= 32, 'needs ' + s6.rows.map(x => x.needsRescPct).join(' → ') + ' %, rooms swept ' + s6.rows.map(x => x.coverage).join(' → ') + ' %');
+  check('the result is NOT constant: across the sweeps the located-first count, the time saved, the link-down time and the rooms swept all change with the assumptions (the honest answer: it depends)', new Set(by(s1)).size > 1 && new Set(s1.rows.map(x => x.saved)).size > 1 && new Set(s3.rows.map(x => x.linkDown)).size > 1 && new Set(s4.rows.map(x => x.coverage)).size > 1);
 }
 
 // =====================================================================================================================

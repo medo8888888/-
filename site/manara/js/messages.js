@@ -1574,6 +1574,201 @@
   p('nat.resident.onscene', '{unit} وصلت إلى الموقع', '{unit} is on scene', null, { alt: 'nat.resident.onscene.alt' });
   p('nat.resident.onscene.alt', 'وصلت وحدة الاستجابة إلى الموقع', 'A response unit is on scene');
 
+  /* ---------- 5.100 THE RESCUE ROBOT (a concept with a simulated prototype — ManaraSim.robot…): unit labels, calm lines SPOKEN by the robot (per hazard, persona, language),
+   *            operator-facing log lines, blocked-door reports and approval prompts. Ids start with `rb.`; nothing here claims a real robot, a test or an approval.
+   *            Arabic + English are complete. Malayalam, Nepali, Bengali, Urdu, Hindi and Tagalog have ONLY the short core instruction (intro, follow the light, exit, walk,
+   *            stay low, wake-up, stay here, refuge, hold, check, blocked, hood) and are drafts that need a native speaker — the persona extras (child, elderly, Deaf, blind)
+   *            exist in Arabic and English only, exactly like the persona cells above. A phrase with a placeholder has a generic twin (`.alt`) for when a value is missing. ---------- */
+  ['robot', 'cond', 'floor', 'pct'].forEach(function (k) { KNOWN_TOKENS[k] = 1; });
+  function pa(id, ar, en, altAr, altEn, dr) { p(id + '.alt', altAr, altEn); p(id, ar, en, dr || null, { alt: id + '.alt' }); }
+
+  // ---- labels
+  p('rb.unit', 'روبوت الإنقاذ', 'Rescue robot', ['രക്ഷാ റോബോട്ട്', 'उद्धार रोबोट', 'উদ্ধার রোবট', 'ریسکیو روبوٹ', 'बचाव रोबोट', 'rescue robot']);
+  pa('rb.unit.named', 'روبوت الإنقاذ {robot}', 'Rescue robot {robot}', 'روبوت الإنقاذ', 'Rescue robot');
+  p('rb.sim', 'محاكاة (SIM): الروبوت مفهوم بنموذج أولي محاكى — لم يُبنَ ولم يُجرَّب. يساعد، ورجال الإطفاء هم من يقرّر.', 'SIM: the robot is a concept with a simulated prototype — not built, not tested. It assists; firefighters decide.');
+  p('rb.limits', 'حدوده: الدرج (العجلات لا تصعد)، والبطارية، والحرارة والدخان، ومدى الاتصال، وإنذارات حرارية كاذبة في حرارة الخليج، والضجيج.', 'Its limits: stairs (wheels cannot climb), battery, heat and smoke, link range, false thermal alarms in Gulf heat, and noise.');
+  p('rb.state.stowed', 'في مكانه (جاهز)', 'Stowed (ready)');
+  p('rb.state.approved', 'معتمد — ينتظر النشر', 'Approved — waiting to deploy');
+  p('rb.state.deploying', 'يُجهَّز عند المدخل', 'Deploying at the entrance');
+  p('rb.state.searching', 'يبحث', 'Searching');
+  p('rb.state.guiding', 'يرشد', 'Guiding');
+  p('rb.state.holding', 'يبقى مع شخص', 'Holding with a person');
+  p('rb.state.returning', 'يعود', 'Returning');
+  p('rb.state.fault', 'عطل', 'Fault');
+  p('rb.role.viewer', 'مشاهد', 'Viewer');
+  p('rb.role.operator', 'مشغّل', 'Operator');
+  p('rb.role.commander', 'قائد الحادث', 'Incident commander');
+  p('rb.role.note', 'الأدوار محاكاة وليست دخولاً حقيقياً: المشغّل يطلب نشر الروبوت، وقائد الحادث وحده يعتمده.', 'Roles are simulated, not a real login: an operator requests the robot, only the incident commander approves it.');
+  p('rb.cond.conscious', 'واعٍ', 'conscious');
+  p('rb.cond.asleep', 'نائم (أو فاقد الوعي)', 'asleep (or unconscious)');
+  p('rb.cond.unresponsive', 'لا يستجيب', 'not responding');
+  p('rb.cond.injured', 'مصاب', 'injured');
+  p('rb.cond.moving', 'يتحرك', 'moving');
+  p('rb.cond.note', 'الحالة تقدير بقواعد بسيطة من الحرارة والصوت والحركة، وليست تشخيصاً طبياً.', 'The condition is a rule-based estimate from heat, sound and movement, not a medical diagnosis.');
+  p('rb.ui.deploy', 'نشر الروبوت (يحتاج اعتماداً)', 'Deploy robot (needs approval)');
+  p('rb.ui.approve', 'اعتماد قائد الحادث', 'Approve (incident commander)');
+  p('rb.ui.recall', 'استدعاء الروبوت', 'Recall robot');
+  p('rb.ui.teleop', 'إرسال إلى نقطة', 'Send to a waypoint');
+  p('rb.ui.priority', 'أولوية البحث', 'Search priority');
+  p('rb.ui.speak', 'تكلّم عبر الروبوت', 'Speak through the robot');
+  p('rb.ui.view', 'منظر الروبوت', 'Robot view');
+  p('rb.ui.battery', 'البطارية', 'Battery');
+  p('rb.ui.link', 'الاتصال', 'Link');
+  p('rb.ui.coverage', 'تغطية البحث', 'Search coverage');
+  p('rb.ui.visibility', 'الرؤية في الدخان', 'Visibility in smoke');
+  p('rb.ui.finds', 'ما عثر عليه الروبوت', 'What the robot found');
+  p('rb.ui.blocked', 'مسدود أمام الروبوت', 'Blocked for the robot');
+  p('rb.ui.beacons', 'منارات الطريق', 'Route beacons');
+  p('rb.hc.located', 'عُثر عليه بالروبوت', 'Located by robot');
+  p('rb.hc.safe', 'بأمان', 'Safe');
+  p('rb.hc.note', '«عُثر عليه بالروبوت» ليست «بأمان»: مكان الشخص معروف لكنه لم يخرج بعد.', '“Located by robot” is not “safe”: we know where the person is, but they are not out yet.');
+  p('rb.metric.note', 'مقارنة «منارة مع الروبوت» و«بدونه» محاكاة لفحص آلية العمل، وليست دليلاً على الأثر؛ وكل افتراض ظاهر.', 'The “MANARA with robot” vs “without robot” comparison is a SIMULATION, a mechanism check, not proof of impact; every assumption is shown.');
+  p('rb.detect.note', 'الكشف بقواعد بسيطة (تباين حراري وصوت وكاميرا) وليس ذكاءً اصطناعياً، وله سالب كاذب وموجب كاذب.', 'Detection is rule-based (thermal contrast, sound, camera), with false negatives and false positives.');
+
+  // ---- approval prompts
+  pa('rb.approve.prompt', 'الروبوت {robot} جاهز. نشره داخل المبنى يحتاج اعتماد قائد الحادث.', 'Robot {robot} is ready. Sending it into the building needs the incident commander\'s approval.', 'الروبوت جاهز. نشره داخل المبنى يحتاج اعتماد قائد الحادث.', 'The robot is ready. Sending it into the building needs the incident commander\'s approval.');
+  p('rb.approve.role', 'اعتماد نشر الروبوت من صلاحية قائد الحادث فقط.', 'Only the incident commander can approve sending the robot in.');
+  pa('rb.approve.done', 'اعتمد قائد الحادث الروبوت {robot}.', 'The incident commander approved robot {robot}.', 'اعتمد قائد الحادث الروبوت.', 'The incident commander approved the robot.');
+  pa('rb.approve.declined', 'رفض قائد الحادث نشر الروبوت {robot}.', 'The incident commander declined deploying robot {robot}.', 'رفض قائد الحادث نشر الروبوت.', 'The incident commander declined deploying the robot.');
+  p('rb.approve.nothing', 'لا يتحرك الروبوت قبل اعتماد قائد الحادث.', 'The robot does not move before the incident commander approves.');
+
+  // ---- operator-facing log lines
+  pa('rb.op.enter', 'الروبوت {robot} يدخل المبنى — الأولوية لغير المحصيّين ومن لديهم احتياجات.', 'Robot {robot} is entering — unaccounted people and people with needs first.', 'الروبوت يدخل المبنى — الأولوية لغير المحصيّين ومن لديهم احتياجات.', 'The robot is entering — unaccounted people and people with needs first.');
+  pa('rb.op.find.generic', 'الروبوت عثر على شخص.', 'The robot located a person.', 'الروبوت عثر على شخص.', 'The robot located a person.');
+  p('rb.op.find.unnamed.alt', 'الروبوت {robot} عثر على شخص — الحالة: {cond} (تقدير).', 'Robot {robot} located a person — condition: {cond} (est.).', null, { alt: 'rb.op.find.generic' });
+  p('rb.op.find.unnamed', 'الروبوت {robot} عثر على شخص — غرفة {room} — الحالة: {cond} (تقدير).', 'Robot {robot} located a person — room {room} — condition: {cond} (est.).', null, { alt: 'rb.op.find.unnamed.alt' });
+  p('rb.op.find.alt', 'الروبوت {robot} عثر على {name} — الحالة: {cond} (تقدير).', 'Robot {robot} located {name} — condition: {cond} (est.).', null, { alt: 'rb.op.find.unnamed' });
+  p('rb.op.find', 'الروبوت {robot} عثر على {name} — غرفة {room} — الحالة: {cond} (تقدير).', 'Robot {robot} located {name} — room {room} — condition: {cond} (est.).', null, { alt: 'rb.op.find.alt' });
+  p('rb.op.find.place', 'الروبوت {robot} عثر على {name} — {place} — الحالة: {cond} (تقدير).', 'Robot {robot} located {name} — {place} — condition: {cond} (est.).', null, { alt: 'rb.op.find.alt' });
+  pa('rb.op.blocked.door', 'الروبوت {robot}: باب غرفة {room} مقفل — لم يُفتح (الروبوت لا يكسر الأبواب). يلزم الحارس أو فرق الإنقاذ.', 'Robot {robot}: the door of room {room} is locked — not opened (the robot never breaks doors). The guard or crews must open it.', 'باب مقفل — لم يُفتح (الروبوت لا يكسر الأبواب). يلزم الحارس أو فرق الإنقاذ.', 'A door is locked — not opened (the robot never breaks doors). The guard or crews must open it.');
+  pa('rb.op.blocked.corridor', 'الروبوت {robot}: الممر مسدود عند {place} — عُلِّم مسدوداً للروبوت.', 'Robot {robot}: the corridor is blocked at {place} — marked blocked for the robot.', 'الممر مسدود — عُلِّم مسدوداً للروبوت.', 'The corridor is blocked — marked blocked for the robot.');
+  pa('rb.op.blocked.exit', 'الروبوت {robot}: {exit} مقفل — لم يُفتح. يلزم الحارس أو فرق الإنقاذ.', 'Robot {robot}: {exit} is locked — not opened. The guard or crews must deal with it.', 'مخرج مقفل — لم يُفتح. يلزم الحارس أو فرق الإنقاذ.', 'An exit is locked — not opened. The guard or crews must deal with it.');
+  pa('rb.op.blocked.stairs', 'الروبوت {robot} (عجلات) لا يصعد الدرج — الطابق {floor} لم يُفتَّش: يلزم روبوت بجنزير أو فرق الإنقاذ.', 'Robot {robot} (wheeled) cannot climb stairs — floor {floor} not searched: a tracked unit or crews are needed.', 'الروبوت ذو العجلات لا يصعد الدرج — طوابق لم تُفتَّش: يلزم روبوت بجنزير أو فرق الإنقاذ.', 'A wheeled robot cannot climb stairs — floors not searched: a tracked unit or crews are needed.');
+  pa('rb.op.blocked.hot', 'الروبوت {robot}: {place} شديدة الحرارة أو الدخان أو لا طريق إليها — لم تُفتَّش.', 'Robot {robot}: {place} is too hot, too smoky or cut off — not searched.', 'مكان شديد الحرارة أو الدخان أو لا طريق إليه — لم يُفتَّش.', 'A place is too hot, too smoky or cut off — not searched.');
+  pa('rb.op.fp', 'الروبوت {robot}: «شخص محتمل» في {place} لم يتأكد — أُسقط كإنذار كاذب.', 'Robot {robot}: a possible person in {place} was not confirmed — dismissed as a false alarm.', '«شخص محتمل» لم يتأكد — أُسقط كإنذار كاذب.', 'A possible person was not confirmed — dismissed as a false alarm.');
+  pa('rb.op.hold', 'الروبوت {robot} يبقى مع {name} — {place} — حتى تصل الفرق، ويبلّغ غرفة التحكم.', 'Robot {robot} stays with {name} — {place} — until crews arrive, and reports to the control room.', 'الروبوت يبقى مع شخص لا يستطيع الحركة حتى تصل الفرق، ويبلّغ غرفة التحكم.', 'The robot stays with a person who cannot move until crews arrive, and reports to the control room.');
+  pa('rb.op.status', 'الروبوت {robot} (مع {name}): الحالة {cond} (تقدير).', 'Robot {robot} (with {name}): condition {cond} (est.).', 'الروبوت مع شخص: الحالة (تقدير).', 'The robot is with a person: condition (est.).');
+  pa('rb.op.woke', 'أيقظ الروبوت {robot} {name}.', 'Robot {robot} woke {name}.', 'أيقظ الروبوت شخصاً نائماً.', 'The robot woke a sleeping person.');
+  pa('rb.op.hood', 'الروبوت {robot} سلّم غطاء دخان إلى {name}.', 'Robot {robot} handed a smoke hood to {name}.', 'الروبوت سلّم غطاء دخان إلى شخص واعٍ.', 'The robot handed a smoke hood to a conscious person.');
+  pa('rb.op.beacon', 'الروبوت {robot} وضع منارات على طريق {name} نحو {exit}.', 'Robot {robot} placed route beacons for {name} toward {exit}.', 'الروبوت وضع منارات على طريق الخروج.', 'The robot placed route beacons on the way out.');
+  pa('rb.op.relay', 'الروبوت {robot} وضع مرحّل اتصال عند {place}.', 'Robot {robot} dropped a link relay at {place}.', 'الروبوت وضع مرحّل اتصال.', 'The robot dropped a link relay.');
+  pa('rb.op.link.lost', 'انقطع اتصال الروبوت {robot} — يعمل بنفسه وتُخزَّن تقاريره.', 'Robot {robot} lost its link — it keeps working on its own and its reports are buffered.', 'انقطع اتصال الروبوت — يعمل بنفسه وتُخزَّن تقاريره.', 'The robot lost its link — it keeps working on its own and its reports are buffered.');
+  pa('rb.op.link.back', 'عاد اتصال الروبوت {robot} — تُرسَل التقارير المخزَّنة.', 'Robot {robot} link is back — buffered reports are sent.', 'عاد اتصال الروبوت — تُرسَل التقارير المخزَّنة.', 'The robot link is back — buffered reports are sent.');
+  pa('rb.op.battery', 'بطارية الروبوت {robot} {pct}٪ — يعود إلى المدخل.', 'Robot {robot} battery {pct} % — returning to the entrance.', 'بطارية الروبوت منخفضة — يعود إلى المدخل.', 'The robot battery is low — returning to the entrance.');
+  pa('rb.op.return', 'عاد الروبوت {robot} إلى المدخل.', 'Robot {robot} is back at the entrance.', 'عاد الروبوت إلى المدخل.', 'The robot is back at the entrance.');
+  pa('rb.op.recall', 'استدعى المشغّل الروبوت {robot} إلى المدخل.', 'The operator recalled robot {robot} to the entrance.', 'استدعى المشغّل الروبوت إلى المدخل.', 'The operator recalled the robot to the entrance.');
+  pa('rb.op.fault', 'الروبوت {robot} تعطّل في {place} — يلزم الاسترداد.', 'Robot {robot} has a fault at {place} — it needs recovering.', 'الروبوت تعطّل — يلزم الاسترداد.', 'The robot has a fault — it needs recovering.');
+  pa('rb.op.teleop', 'أمر المشغّل الروبوت {robot} بالذهاب إلى {place}.', 'The operator sent robot {robot} to {place}.', 'أمر المشغّل الروبوت بالذهاب إلى نقطة.', 'The operator sent the robot to a waypoint.');
+  p('rb.op.firefighters', 'يساعد الروبوت ورجال الإطفاء هم من يقرّر.', 'The robot assists; firefighters decide.');
+
+  // ---- resident-facing lines SPOKEN by the robot (the core set has all eight languages; ml ne bn ur hi tl are drafts)
+  p('rb.say.intro', 'أنا روبوت الدفاع المدني — جئت لمساعدتك.', 'I am a Civil Defence robot. I am here to help.', ['ഞാൻ സിവിൽ ഡിഫൻസ് റോബോട്ട് ആണ്. ഞാൻ സഹായിക്കാൻ വന്നതാണ്.', 'म नागरिक सुरक्षा रोबोट हुँ। म तपाईंलाई मद्दत गर्न आएको हुँ।', 'আমি সিভিল ডিফেন্সের রোবট। আমি আপনাকে সাহায্য করতে এসেছি।', 'میں سول ڈیفنس کا روبوٹ ہوں۔ میں آپ کی مدد کے لیے آیا ہوں۔', 'मैं सिविल डिफेंस का रोबोट हूँ। मैं आपकी मदद के लिए आया हूँ।', 'Ako ay robot ng Civil Defence. Narito ako para tumulong.']);
+  p('rb.say.light', 'اتبع الضوء الأخضر.', 'Follow the green light.', ['പച്ച വെളിച്ചം പിന്തുടരുക.', 'हरियो बत्ती पछ्याउनुहोस्।', 'সবুজ আলো অনুসরণ করুন।', 'سبز روشنی کے پیچھے چلیں۔', 'हरी रोशनी के पीछे चलें।', 'Sundan ang berdeng ilaw.']);
+  p('rb.say.exit.alt', 'اتجه إلى أقرب مخرج مفتوح.', 'Go to the nearest open exit.', ['ഏറ്റവും അടുത്ത തുറന്ന വാതിലിലേക്ക് പോകുക.', 'नजिकको खुला ढोकातिर जानुहोस्।', 'সবচেয়ে কাছের খোলা দরজার দিকে যান।', 'قریب ترین کھلے دروازے کی طرف جائیں۔', 'सबसे पास के खुले दरवाज़े की ओर जाएं।', 'Pumunta sa pinakamalapit na bukas na labasan.']);
+  p('rb.say.exit', 'اتجه إلى {exit}.', 'Go to {exit}.', ['{exit} ലേക്ക് പോകുക.', '{exit} तिर जानुहोस्।', '{exit}-এর দিকে যান।', '{exit} کی طرف جائیں۔', '{exit} की ओर जाएं।', 'Pumunta sa {exit}.'], { alt: 'rb.say.exit.alt' });
+  p('rb.say.walk', 'امشِ ولا تركض.', 'Walk. Do not run.', ['നടക്കുക, ഓടരുത്.', 'हिँड्नुहोस्, नदौडिनुहोस्।', 'হাঁটুন, দৌড়াবেন না।', 'چلیں، دوڑیں نہیں۔', 'चलें, दौड़ें नहीं।', 'Maglakad, huwag tumakbo.']);
+  p('rb.say.low', 'ابقَ منخفضًا تحت الدخان.', 'Stay low under the smoke.', ['പുകയ്ക്ക് താഴെ കുനിഞ്ഞ് നീങ്ങുക.', 'धुवाँ मुनि झुकेर जानुहोस्।', 'ধোঁয়ার নিচে নিচু হয়ে যান।', 'دھوئیں کے نیچے جھک کر چلیں۔', 'धुएँ के नीचे झुककर चलें।', 'Yumuko sa ilalim ng usok.']);
+  p('rb.say.noswitch', 'لا لهب ولا مفاتيح كهربائية.', 'No flames. Do not touch switches.', ['തീ കത്തിക്കരുത്. സ്വിച്ച് തൊടരുത്.', 'आगो नबाल्नुहोस्। स्विच नछुनुहोस्।', 'আগুন জ্বালাবেন না। সুইচ ছোঁবেন না।', 'آگ نہ جلائیں۔ سوئچ نہ چھوئیں۔', 'आग न जलाएं। स्विच न छुएं।', 'Huwag magsindi ng apoy. Huwag hawakan ang switch.']);
+  p('rb.say.wake.fire', 'استيقظ! حريق! انهض الآن.', 'Wake up! Fire! Get up now.', ['ഉണരൂ! തീ! ഉടൻ എഴുന്നേൽക്കൂ.', 'ब्यूँझनुहोस्! आगो! अहिले उठ्नुहोस्।', 'জাগুন! আগুন! এখনই উঠুন।', 'جاگیں! آگ! ابھی اٹھیں۔', 'जागिए! आग! अभी उठिए।', 'Gumising! Sunog! Bumangon na ngayon.']);
+  p('rb.say.wake.gas', 'استيقظ! تسرّب غاز! انهض الآن.', 'Wake up! Gas leak! Get up now.', ['ഉണരൂ! ഗ്യാസ് ചോർച്ച! ഉടൻ എഴുന്നേൽക്കൂ.', 'ब्यूँझनुहोस्! ग्यास चुहावट! अहिले उठ्नुहोस्।', 'জাগুন! গ্যাস লিক! এখনই উঠুন।', 'جاگیں! گیس لیک! ابھی اٹھیں۔', 'जागिए! गैस लीक! अभी उठिए।', 'Gumising! Tumatagas ang gas! Bumangon na ngayon.']);
+  p('rb.say.stay', 'ابقَ هنا — المساعدة في الطريق.', 'Stay here. Help is coming.', ['ഇവിടെത്തന്നെ നിൽക്കുക. സഹായം വരുന്നുണ്ട്.', 'यहीँ बस्नुहोस्। सहायता आउँदैछ।', 'এখানেই থাকুন। সাহায্য আসছে।', 'یہیں رہیں۔ مدد آ رہی ہے۔', 'यहीं रहें। मदद आ रही है।', 'Manatili ka rito. Paparating na ang tulong.']);
+  p('rb.say.nostairs', 'لا تستخدم الدرج.', 'Do not use the stairs.', ['പടികൾ ഉപയോഗിക്കരുത്.', 'भर्याङ प्रयोग नगर्नुहोस्।', 'সিঁড়ি ব্যবহার করবেন না।', 'سیڑھیاں استعمال نہ کریں۔', 'सीढ़ियों का उपयोग न करें।', 'Huwag gumamit ng hagdan.']);
+  p('rb.say.refuge', 'اذهب إلى شرفة اللجوء وابقَ هناك — المساعدة في الطريق.', 'Go to the refuge balcony and stay there. Help is coming.', ['അഭയ ബാൽക്കണിയിലേക്ക് പോയി അവിടെ നിൽക്കുക. സഹായം വരുന്നുണ്ട്.', 'शरण बालकनीमा गएर त्यहीँ बस्नुहोस्। सहायता आउँदैछ।', 'আশ্রয় বারান্দায় গিয়ে সেখানেই থাকুন। সাহায্য আসছে।', 'پناہ بالکونی میں جا کر وہیں رہیں۔ مدد آ رہی ہے۔', 'शरण बालकनी में जाकर वहीं रहें। मदद आ रही है।', 'Pumunta sa refuge balcony at manatili roon. Paparating na ang tulong.']);
+  p('rb.say.known', 'أبلغتُ غرفة التحكم بمكانك.', 'I have told the control room where you are.', ['നിങ്ങൾ എവിടെയാണെന്ന് ഞാൻ കൺട്രോൾ റൂമിനെ അറിയിച്ചു.', 'तपाईं कहाँ हुनुहुन्छ भनेर मैले नियन्त्रण कक्षलाई जानकारी दिएँ।', 'আপনি কোথায় আছেন তা আমি কন্ট্রোল রুমকে জানিয়েছি।', 'میں نے کنٹرول روم کو آپ کی جگہ بتا دی ہے۔', 'मैंने कंट्रोल रूम को आपकी जगह बता दी है।', 'Ipinaalam ko na sa control room kung nasaan ka.']);
+  p('rb.say.hold', 'أنا معك ولن أتركك. المساعدة في الطريق.', 'I am staying with you. Help is coming.', ['ഞാൻ നിങ്ങളോടൊപ്പം ഉണ്ട്. സഹായം വരുന്നുണ്ട്.', 'म तपाईंसँगै छु। सहायता आउँदैछ।', 'আমি আপনার সঙ্গেই আছি। সাহায্য আসছে।', 'میں آپ کے ساتھ ہوں۔ مدد آ رہی ہے۔', 'मैं आपके साथ हूँ। मदद आ रही है।', 'Kasama mo ako. Paparating na ang tulong.']);
+  p('rb.say.check', 'هل تسمعني؟ ارفع يدك أو المس شاشتي.', 'Can you hear me? Raise your hand or touch my screen.', ['നിങ്ങൾക്ക് എന്നെ കേൾക്കാമോ? കൈ ഉയർത്തുക, അല്ലെങ്കിൽ എന്റെ സ്ക്രീനിൽ തൊടുക.', 'के तपाईंले मलाई सुन्नुहुन्छ? हात उठाउनुहोस् वा मेरो स्क्रिन छुनुहोस्।', 'আপনি কি আমাকে শুনতে পাচ্ছেন? হাত তুলুন বা আমার স্ক্রিনে ছুঁয়ে দিন।', 'کیا آپ مجھے سن سکتے ہیں؟ ہاتھ اٹھائیں یا میری اسکرین کو چھوئیں۔', 'क्या आप मुझे सुन सकते हैं? हाथ उठाइए या मेरी स्क्रीन छुइए।', 'Naririnig mo ba ako? Itaas ang kamay o hawakan ang screen ko.']);
+  p('rb.say.blocked', 'هذا الطريق مغلق. ابقَ هنا وسأبحث عن طريق آخر.', 'This way is blocked. Stay here. I will look for another way.', ['ഈ വഴി അടഞ്ഞിരിക്കുന്നു. ഇവിടെ നിൽക്കുക. ഞാൻ മറ്റൊരു വഴി നോക്കാം.', 'यो बाटो बन्द छ। यहीँ बस्नुहोस्। म अर्को बाटो खोज्छु।', 'এই পথ বন্ধ। এখানেই থাকুন। আমি অন্য পথ খুঁজছি।', 'یہ راستہ بند ہے۔ یہیں رہیں۔ میں دوسرا راستہ دیکھتا ہوں۔', 'यह रास्ता बंद है। यहीं रहें। मैं दूसरा रास्ता देखता हूँ।', 'Sarado ang daang ito. Manatili ka rito. Maghahanap ako ng ibang daan.']);
+  p('rb.say.hood', 'ضع غطاء الدخان الذي سلّمتك إياه على وجهك.', 'Put the smoke hood I gave you over your face.', ['ഞാൻ തന്ന പുക-മൂടി മുഖത്ത് ധരിക്കുക.', 'मैले दिएको धुवाँ-मास्क अनुहारमा लगाउनुहोस्।', 'আমি যে ধোঁয়া-মুখোশ দিয়েছি তা মুখে পরুন।', 'میں نے جو دھوئیں کا نقاب دیا ہے اسے چہرے پر پہنیں۔', 'मैंने जो धुएँ वाला मास्क दिया है उसे चेहरे पर पहनिए।', 'Isuot sa mukha ang smoke hood na ibinigay ko.']);
+  // persona extras: Arabic and English only (like the persona cells of the playbook)
+  p('rb.say.child', 'لا تخف. أنا روبوت مساعد. اتبع الضوء الأخضر ومعلّمك.', 'Do not be afraid. I am a helper robot. Follow the green light and your teacher.');
+  p('rb.say.elderly', 'امشِ ببطء وأمسك بالدرابزين. سأضيء لك الطريق.', 'Go slowly. Hold the rail. I will light the way.');
+  p('rb.say.deaf', 'اقرأ شاشتي. اتبع الأسهم الخضراء والضوء.', 'Read my screen. Follow the green arrows and the light.');
+  p('rb.say.blind', 'أنا أمامك. امشِ نحو صوتي وسأخبرك متى تنعطف.', 'I am in front of you. Walk toward my voice. I will tell you when to turn.');
+
+  // the robot's own light: the same friendly signature as the drone (steady green, two short white flashes every two seconds)
+  FLASH['friendly-robot'] = { kind: 'signature', optIn: false, target: 'robot', cycleMs: 2000, base: { token: '--safe' }, events: [{ atMs: 1000, durMs: 100, color: 'white' }, { atMs: 1300, durMs: 100, color: 'white' }],
+    name: T('ضوء الروبوت الودّي: أخضر ثابت ووميضان أبيضان كل ثانيتين', 'Friendly robot light: steady green with two white flashes every 2 seconds') };
+
+  var RB_KEYS = ['intro', 'guide', 'wake', 'stay', 'refuge', 'hold', 'check', 'blocked', 'hood'];
+  var RB_PICS = {
+    intro: ['dr-light', 'act-follow-arrows', 'act-help-coming'], guide: ['act-follow-arrows', 'act-exit', 'act-no-run'], wake: ['act-knock', 'act-exit', 'act-follow-arrows'],
+    stay: ['act-stay-still', 'act-help-coming'], refuge: ['act-no-stairs', 'act-refuge', 'act-help-coming'], hold: ['act-help-coming', 'act-stay-still'], check: ['st-info', 'act-check-in'],
+    blocked: ['st-no', 'act-stay-still', 'act-help-coming'], hood: ['act-mask', 'act-low']
+  };
+  // which phrase ids make up each spoken message (hazard 'fire' | 'gas'; persona extras are added for ar/en)
+  function rbPlan(key, hz, ps) {
+    var lines = [], pics = (RB_PICS[key] || RB_PICS.intro).slice(), flags = { refuge: false }, headline = null;
+    var gas = hz === 'gas';
+    switch (key) {
+      case 'intro': lines = ['rb.say.intro', 'rb.say.light']; break;
+      case 'guide': lines = ['rb.say.exit', gas ? 'rb.say.noswitch' : 'rb.say.walk']; if (!gas) lines.push('rb.say.low'); pics = [gas ? 'hz-gas' : 'hz-fire', 'act-follow-arrows', 'act-exit']; break;
+      case 'wake': lines = [gas ? 'rb.say.wake.gas' : 'rb.say.wake.fire', 'rb.say.light']; if (gas) lines.push('rb.say.noswitch'); pics = [gas ? 'hz-gas' : 'hz-fire', 'act-knock', 'act-exit']; break;
+      case 'stay': lines = ['rb.say.stay', 'rb.say.known']; break;
+      case 'refuge': lines = ['rb.say.nostairs', 'rb.say.refuge']; flags.refuge = true; break;
+      case 'hold': lines = ['rb.say.hold', 'rb.say.known']; break;
+      case 'check': lines = ['rb.say.check']; break;
+      case 'blocked': lines = ['rb.say.blocked']; break;
+      case 'hood': lines = ['rb.say.hood']; break;
+    }
+    headline = lines[0];
+    var formats = ['voice', 'light', 'display'];
+    if (ps === 'wheelchair' && key === 'guide') { lines = ['rb.say.stay', 'rb.say.nostairs']; pics = ['act-no-stairs', 'act-stay-still', 'act-help-coming']; headline = lines[0]; }
+    if (ps === 'child' && (key === 'intro' || key === 'guide')) { lines = ['rb.say.child'].concat(lines.filter(function (x) { return x !== 'rb.say.intro'; })); headline = lines[0]; formats = ['voice', 'light', 'display', 'pictogram']; }
+    if (ps === 'elderly' && key === 'guide') { lines.splice(1, 0, 'rb.say.elderly'); }
+    if (ps === 'deaf') { formats = ['light', 'strobe', 'display', 'pictogram']; if (key !== 'check') lines.splice(1, 0, 'rb.say.deaf'); }
+    if (ps === 'blind') { formats = ['voice', 'sound']; if (key === 'intro' || key === 'guide') lines.splice(1, 0, 'rb.say.blind'); }
+    if (lines.length > 4) lines = lines.slice(0, 4);
+    return { lines: lines, headline: headline, pics: pics, flags: flags, formats: formats };
+  }
+  function robotSay(o) {
+    o = o || {};
+    var key = o.key; if (RB_KEYS.indexOf(key) < 0) return null;
+    var hz = normHazard(o.hazard) === 'gas' ? 'gas' : 'fire';
+    var ps = normPersona(o.persona); if (['guard', 'volunteer'].indexOf(ps) >= 0) ps = 'adult';
+    if (!o.persona && Array.isArray(o.needs) && o.needs.length) ps = personaFromNeeds(o.needs).text;
+    var want = normLang(o.lang), chain = [want, 'en', 'ar'].filter(function (x, i, a) { return a.indexOf(x) === i; });
+    var vars = o.vars || {}, plan = rbPlan(key, hz, ps), out = null, i, k;
+    var build1 = function (lang) {
+      var ls = [];
+      plan.lines.forEach(function (id) { var r = resolve(id, lang, vars); if (r && r.text) ls.push(r.text); });
+      return ls;
+    };
+    var ar = build1('ar'), en = build1('en');
+    for (i = 0; i < chain.length && !out; i++) { var ls = build1(chain[i]); if (ls.length) out = { lang: chain[i], lines: ls }; }
+    if (!out) return null;
+    var draft = isDraftLang(out.lang), fl = FLASH['friendly-robot'];
+    var speechOk = plan.formats.indexOf('voice') >= 0;
+    var res = { key: key, hazard: hz, persona: ps, lang: out.lang, requestedLang: want, fallback: out.lang !== want, draft: draft, status: draft ? DRAFT : 'complete', dir: LANG[out.lang].dir,
+      headline: out.lines[0], lines: out.lines.slice(), text: out.lines.join(' '), formats: plan.formats.slice(), flags: { refuge: plan.flags.refuge },
+      display: { headline: out.lines[0], lines: out.lines.slice(), large: ps === 'deaf' || ps === 'elderly' },
+      pictograms: plan.pics.filter(function (id) { return PIC[id]; }).map(function (id) { return { id: id, label: pickLang(PIC[id].name, out.lang === 'ar' ? 'ar' : 'en') }; }),
+      light: { id: 'friendly-robot', kind: fl.kind, name: clone(fl.name) },
+      speech: speechOk ? { lang: LANG[out.lang].bcp47, text: speechClean(out.lines.join(' ')), draft: draft, rate: ps === 'elderly' || ps === 'blind' ? 0.85 : 0.95 } : null,
+      also: { ar: ar.join(' '), en: en.join(' ') }, sources: [], review: draft ? ['native-speaker'] : [] };
+    if (ps === 'deaf') res.light.strobe = { id: 'strobe-optin', optIn: true, fallback: 'steady-green', warning: clone(FLASH['strobe-optin'].warning), note: T('الوميض اختياري، والضوء الأخضر الثابت هو الأساس', 'The flash is opt-in; the steady green light is the base') };
+    if (draft) { res.draftNotice = pickLang(DRAFT_NOTICE, 'en') + ' · ' + pickLang(DRAFT_NOTICE, 'ar'); }
+    return res;
+  }
+  var RB_OP = { find: 'rb.op.find', 'find.place': 'rb.op.find.place', 'blocked.door': 'rb.op.blocked.door', 'blocked.corridor': 'rb.op.blocked.corridor', 'blocked.exit': 'rb.op.blocked.exit', 'blocked.stairs': 'rb.op.blocked.stairs', 'blocked.hot': 'rb.op.blocked.hot',
+    fp: 'rb.op.fp', hold: 'rb.op.hold', status: 'rb.op.status', woke: 'rb.op.woke', hood: 'rb.op.hood', beacon: 'rb.op.beacon', relay: 'rb.op.relay', 'link.lost': 'rb.op.link.lost', 'link.back': 'rb.op.link.back', battery: 'rb.op.battery',
+    return: 'rb.op.return', recall: 'rb.op.recall', fault: 'rb.op.fault', teleop: 'rb.op.teleop', enter: 'rb.op.enter' };
+  var robotApi = {
+    keys: function () { return RB_KEYS.slice(); }, opKeys: function () { return Object.keys(RB_OP); }, say: robotSay,
+    op: function (key, lang, vars) {   // operator-facing line; vars.cond may be a condition key ('conscious', 'asleep', …)
+      var id = RB_OP[key]; if (!id) return '';
+      var v = {}; for (var k in (vars || {})) v[k] = vars[k];
+      if (typeof v.cond === 'string' && P['rb.cond.' + v.cond]) v.cond = { ar: P['rb.cond.' + v.cond].ar, en: P['rb.cond.' + v.cond].en };
+      return text(id, lang, v);
+    },
+    label: function (id, lang, vars) { return text('rb.' + id, lang, vars); },
+    states: function (lang) { var o = {}; ['stowed', 'approved', 'deploying', 'searching', 'guiding', 'holding', 'returning', 'fault'].forEach(function (s) { o[s] = text('rb.state.' + s, lang); }); return o; },
+    roles: function (lang) { var o = {}; ['viewer', 'operator', 'commander'].forEach(function (s) { o[s] = text('rb.role.' + s, lang); }); return o; },
+    conditions: function (lang) { var o = {}; ['conscious', 'asleep', 'unresponsive', 'injured', 'moving'].forEach(function (s) { o[s] = text('rb.cond.' + s, lang); }); return o; },
+    strings: function (lang) { var o = {}; Object.keys(P).forEach(function (id) { if (id.indexOf('rb.') === 0 && !/\.alt$/.test(id) && !/\{\w+\}/.test(P[id].en)) o[id] = { ar: P[id].ar, en: P[id].en }; }); return o; },
+    light: function () { return clone(FLASH['friendly-robot']); },
+    notice: function (lang) { return { sim: text('rb.sim', lang), limits: text('rb.limits', lang), firefighters: text('rb.op.firefighters', lang), detection: text('rb.detect.note', lang), metrics: text('rb.metric.note', lang), roles: text('rb.role.note', lang) }; }
+  };
+
   var api = {
     VERSION: VERSION, DRAFT_STATUS: DRAFT,
     get: get, bundle: bundle, byAction: byAction, actions: function () { return clone(ACTION_MAP); }, ladder: ladder, text: text, fmtMinutes: fmtMinutes, fmtDuration: fmtDuration,
@@ -1595,5 +1790,6 @@
     personaFromNeeds: function (needs) { return personaFromNeeds(needs); },
     normalize: { hazard: normHazard, level: normLevel, persona: normPersona, lang: normLang }
   };
+  api.robot = robotApi;
   root.MANARA_MSG = api;
 })(typeof globalThis !== 'undefined' ? globalThis : typeof self !== 'undefined' ? self : typeof window !== 'undefined' ? window : this);

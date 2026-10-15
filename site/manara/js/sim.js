@@ -135,6 +135,29 @@
  *   thermal search finds people on balconies / roof / outdoors) → YIELD when a fire engine is on scene → RETURN → CHARGING. Friendly light
  *   (steady green + two white flashes). Battery endurance is derated above 40 °C (assumption). A concept operated by the authority.
  *
+ * RESCUE ROBOT (a CONCEPT with a SIMULATED prototype; fire + gas in a building; everything below is SIM and every number a named assumption, group 'robot')
+ *   ManaraSim.create({ preset:'fire-night-robot' })  — or  create({ preset, robot:true | { units:1..3, variant:'tracked'|'wheeled', autoApprove, carrier:0|1 } }); robot:false switches
+ *   it off (the scenario conditions stay, so 'with robot' vs 'without robot' compares the same world). With the robot off NOTHING changes: same events, same hash.
+ *   STATES  stowed → approved → deploying → searching → guiding → holding → returning → (stowed again) | fault.   Nothing moves before an INCIDENT COMMANDER approves.
+ *   OPERATOR ROLES (simulated, no real authentication)  setRole(sim,'viewer'|'operator'|'commander');  deployRobot(sim,id?) requests deployment (operator or commander);
+ *     approveRobot(sim,id?,role?) is valid ONLY for a commander — otherwise { ok:false, code:'role', reason:{ar,en} } and an event;  recallRobot(sim,id?);  setSearchPriority(sim,['302','R205',…]);
+ *     teleopRobot(sim,id,'C22'|'305'|{x,y,fl}) one-shot go-to (needs the link);  speakVia(sim,id,messageKey,lang) the operator speaks through the robot;  setRobotObstacle(sim,'R204',{locked:true}).
+ *     Robot actions return { ok, code?, reason?:{ar,en} } objects (check .ok).
+ *   MOVEMENT  on the building's indoor graph; A* (ManaraSim.robot.astar) avoids burning / too-hot / gas-danger nodes, costs smoke; a WHEELED robot cannot climb stairs (floors above are reported 'unreachable'), a TRACKED
+ *     one climbs at a speed penalty; it never enters a node that is burning, hotter than robotMaxTempC, or (gas) at the danger level; it does NOT break doors: a locked door / blocked corridor is REPORTED and marked blocked.
+ *   SEARCH  order = rooms of unaccounted residents with needs first, then other unaccounted, then by smoke / closeness to the danger, then the remaining rooms; operator priority overrides.  Corridors are covered on the way.
+ *   DETECTION (rule-based, not "AI")  per second in view: thermal  p = robotThermalPd × contrast × smoke-visibility (contrast falls in hot rooms: the Gulf-heat caveat) and audio (a conscious person calling out, masked by the siren);
+ *     seeded, so false negatives happen (a person in view stays unseen) and false positives happen (a hot object: 'possible person' → investigated → dismissed).
+ *   ON A FIND  record { room, person, needs, condition guess (est.), time } → the control room (event 'robot-find', hand-off card entry, headcount.located = 'located by robot', DISTINCT from 'safe'); speaks in the person's language and
+ *     format (MANARA_MSG.robot.say when loaded, built-in fallback otherwise): sleeper → wake attempts; able person → guidance + route beacons; wheelchair → 'stay here, help is coming' + refuge flag; cannot move in smoke → HOLDS with them
+ *     until crews arrive. Reports are buffered while the mesh link is down. It RETURNS when battery < threshold (or less than the estimated return cost) or when recalled.
+ *   TELEMETRY  ManaraSim.robots(sim) → [{ id, state, variant, pose:{x,y,fl}, heading, battery, link:{q,up}, target, coverage:{pct, nodes:[{id,cov}], rooms:{id:status}}, finds, blocked, beacons, view:{ room, visibility, people[] } … }]; robotView(sim,id) alone.
+ *   METRICS (SIM, mechanism check)  ManaraSim.robotMetrics(sim) → time to locate each unaccounted resident, % of needs-help residents located before crews arrive, people reached before the exposure threshold, false +/−, battery, link;
+ *     ManaraSim.abRobot({preset,seed}) → 'MANARA with robot' vs 'without robot' (same seed);  ManaraSim.sweepRobot({param,values,seeds}) → sensitivity to ONE assumption (detection probability, link dropouts, battery, …).
+ *   API NAMESPACE  ManaraSim.robot = { STATES, ROLES, SAY_KEYS, astar(sim, fromId, toId, {dijkstra?}), graph(structIdx), priority(sim) → the current search order, say(sim, key, persona, personKey?) }; ManaraSim.PRESET_ORDER_ALL = PRESET_ORDER + 'fire-night-robot'.
+ *   BUS  ManaraSim.busRobot(sim) → { type:'robot', … };  ManaraSim.busRobotFind(sim, findId) → { type:'robot-find', … }  (docs/MANARA.md).
+ *   LIMITS (say them)  no robot has been built or tested; a real one needs approval from the authority; thermal contrast, battery, smoke, heat, doors, stairs, Wi-Fi/mesh range, noise are all assumptions; it assists, firefighters decide.
+ *
  * DISPATCH — the fastest unit given traffic, not the nearest by distance   (see docs/MANARA-SPEC.md "Nearest-responder dispatch")
  *   Road graph with time-varying simulated traffic: segment time = length / (free-flow speed × emergencyFactor × congestion);
  *   congestion = 1 − (1 − dailyProfile(hour)) × classSensitivity × load, × hot-spot dips (the school road at drop-off 06:45–07:45 and pick-up
@@ -212,7 +235,7 @@
     return h / 4294967296;
   }
   // domain tags for hr() so that different subsystems never share a draw
-  var D = { FIRE: 11, FIREOUT: 12, SENSOR: 13, PERSON: 14, WAKE: 15, MISC: 16, DUST: 17, HEAT: 18, UNIT: 19, GAS: 20 };
+  var D = { FIRE: 11, FIREOUT: 12, SENSOR: 13, PERSON: 14, WAKE: 15, MISC: 16, DUST: 17, HEAT: 18, UNIT: 19, GAS: 20, ROBOT: 21 };
   // cheap approximately-Gaussian noise (sum of four hashed bytes, normalised): one hash per call
   function fastNoise(seed, a, b) {
     var h = hash32((seed ^ Math.imul(a + 1, 0x9e3779b1) ^ Math.imul(b + 7, 0x85ebca6b)) | 0);
@@ -282,7 +305,8 @@
     { id: 'sos',      label: T('شخص يحتاج مساعدة', 'Someone needs help') },
     { id: 'traffic',  label: T('حركة المرور (محاكاة)', 'Traffic (simulated)') },
     { id: 'dispatch', label: T('الاستجابة والإرسال', 'Dispatch & responders') },
-    { id: 'drone',    label: T('الطائرة المسيّرة', 'Drone') }
+    { id: 'drone',    label: T('الطائرة المسيّرة', 'Drone') },
+    { id: 'robot',    label: T('روبوت الإنقاذ (يُستعمل عند تفعيله فقط)', 'Rescue robot (used only when it is enabled)') }
   ];
   var PARAM_DEFS = [];
   var AT_START = { nightAsleepPct: 1, phoneAppPct: 1, volunteers: 1, unitBusyPct: 1, roofLocked: 1, walkScale: 1, gasWarn: 1, gasDanger: 1, gasHeavy: 1 };   // applied when the world is created (change with restart())
@@ -513,6 +537,109 @@
     ['سعة البطارية بالدقائق عند حرارة معتدلة (افتراض).', 'Battery endurance in minutes at a moderate temperature (assumption).']);
   def('ambientC', 'drone', 38, 15, 50, 1, '°C', ['حرارة الجو (محاكاة)', 'Ambient temperature (SIM)'],
     ['تُنقص زمن طيران البطارية فوق 40°م (افتراض).', 'Cuts battery endurance above 40 °C (assumption).']);
+  // ---- rescue robot (a concept with a simulated prototype: none of these numbers is measured; real hardware must be tested and approved)
+  def('robotApproveSec', 'robot', 30, 0, 300, 5, 's', ['زمن اعتماد قائد الحادث', 'Incident-commander approval time'],
+    ['ثوانٍ يحتاجها قائد الحادث (افتراضياً في التشغيل الآلي) ليعتمد نشر الروبوت بعد «مؤكَّد» (افتراض بشري).', 'Seconds the simulated incident commander takes to approve deploying the robot after CONFIRMED in automatic runs (human assumption).']);
+  def('robotCarrier', 'robot', 0, 0, 1, 1, '0/1', ['من يحمل الروبوت', 'Who brings the robot'],
+    ['0 = الروبوت موضوع مسبقاً عند مدخل المبنى؛ 1 = تحمله سيارة الإطفاء ولا يتحرك قبل وصولها (افتراض).', '0 = pre-positioned at the building entrance; 1 = carried by the fire engine and it cannot start before that engine arrives (assumption).']);
+  def('robotDeploySec', 'robot', 20, 0, 120, 5, 's', ['تجهيز الروبوت عند المدخل', 'Set-up time at the entrance'],
+    ['ثوانٍ لفتح الروبوت وفحصه الذاتي قبل أن يبدأ الحركة (افتراض).', 'Seconds to unpack and self-test before it starts moving (assumption).']);
+  def('robotUnloadSec', 'robot', 40, 0, 300, 5, 's', ['إنزال الروبوت من المركبة', 'Unloading from the vehicle'],
+    ['ثوانٍ إضافية لإنزاله عندما تحمله سيارة الإطفاء (افتراض).', 'Extra seconds to unload it when the fire engine carries it (assumption).']);
+  def('robotSpeedWheeled', 'robot', 1.0, 0.3, 2.0, 0.1, 'm/s', ['سرعة الروبوت ذي العجلات', 'Wheeled robot speed'],
+    ['السرعة على أرض مستوية؛ لا يستطيع صعود الدرج (افتراض).', 'Speed on level floor; it cannot climb stairs (assumption).']);
+  def('robotSpeedTracked', 'robot', 0.6, 0.2, 1.5, 0.1, 'm/s', ['سرعة الروبوت ذي الجنزير', 'Tracked robot speed'],
+    ['السرعة على أرض مستوية؛ يصعد الدرج بسرعة أقل (افتراض).', 'Speed on level floor; it climbs stairs more slowly (assumption).']);
+  def('robotStairPenalty', 'robot', 2.5, 1, 6, 0.5, '×', ['بطء الجنزير على الدرج', 'Tracked robot stair slow-down'],
+    ['كم مرة أبطأ يصعد الروبوت ذو الجنزير الدرج من سيره على أرض مستوية (افتراض).', 'How many times slower the tracked robot climbs stairs than it drives on level floor (assumption).']);
+  def('robotStairDrain', 'robot', 1.5, 1, 4, 0.5, '×', ['استهلاك البطارية على الدرج', 'Battery use on stairs'],
+    ['مضاعف استهلاك البطارية أثناء الصعود (افتراض).', 'Multiplier on battery drain while climbing (assumption).']);
+  def('robotSmokeSlowPct', 'robot', 30, 0, 80, 5, '%', ['بطء الروبوت في الدخان', 'Slow-down in thick smoke'],
+    ['نسبة تباطؤ الروبوت في دخان كثيف لأنه يتحرك بحذر (افتراض).', 'Speed reduction in thick smoke because the robot moves carefully (assumption).']);
+  def('robotOpensDoors', 'robot', 1, 0, 1, 1, '0/1', ['يدفع الأبواب غير المقفلة', 'Pushes unlocked doors open'],
+    ['1 = يستطيع دفع باب مغلق غير مقفل؛ 0 = لا يدخل غرفة بابها مغلق. لا يكسر الأبواب أبداً (افتراض).', '1 = it can push open a closed but unlocked door; 0 = it cannot enter a room whose door is closed. It never breaks doors (assumption).']);
+  def('robotDoorSec', 'robot', 4, 1, 30, 1, 's', ['زمن دفع الباب', 'Time to push a door open'],
+    ['ثوانٍ يحتاجها لفتح باب غير مقفل (افتراض).', 'Seconds to open an unlocked door (assumption).']);
+  def('robotMaxTempC', 'robot', 85, 50, 200, 5, '°C', ['أعلى حرارة يدخلها الروبوت', 'Highest air temperature it will enter'],
+    ['لا يدخل الروبوت مكاناً حرارته أعلى من هذا (افتراض؛ يجب اختبار أي عتاد حقيقي).', 'The robot will not enter a place hotter than this (assumption; any real hardware must be tested).']);
+  def('robotHeatWarnC', 'robot', 60, 40, 120, 5, '°C', ['حرارة تراكم التسخين', 'Heat-soak warning temperature'],
+    ['فوق هذه الحرارة يتباطأ الروبوت ويتراكم عليه التسخين (افتراض).', 'Above this temperature the robot slows down and heat builds up in it (assumption).']);
+  def('robotHeatSoakSec', 'robot', 120, 20, 600, 10, 's', ['زمن الإيقاف الحراري', 'Time to thermal shutdown'],
+    ['ثوانٍ في الحرارة المرتفعة حتى يتوقف الروبوت للحماية (افتراض).', 'Seconds in high heat until the robot shuts down to protect itself (assumption).']);
+  def('robotRoomC', 'robot', 30, 20, 40, 1, '°C', ['حرارة هواء الغرف', 'Room air temperature'],
+    ['حرارة الهواء داخل الغرف البعيدة عن الحريق (افتراض). كلما ارتفعت قلّ التباين الحراري بين الجسم والغرفة.', 'Indoor air temperature in rooms away from the fire (assumption). The hotter it is, the less thermal contrast a body has against the room.']);
+  def('robotBattMin', 'robot', 45, 10, 120, 5, 'min', ['عمر بطارية الروبوت', 'Robot battery endurance'],
+    ['دقائق التشغيل في ظروف عادية (افتراض).', 'Minutes of driving under ordinary conditions (assumption).']);
+  def('robotTrackedDrain', 'robot', 1.4, 1, 3, 0.1, '×', ['استهلاك الجنزير', 'Tracked robot battery use'],
+    ['كم مرة يستهلك الروبوت ذو الجنزير من البطارية أكثر من ذي العجلات (افتراض).', 'How many times more battery the tracked robot uses than the wheeled one (assumption).']);
+  def('robotHeatDrain', 'robot', 0.25, 0, 1, 0.05, '×/10 °C', ['أثر الحرارة على البطارية', 'Heat effect on the battery'],
+    ['زيادة الاستهلاك لكل 10 °م فوق 40 °م (افتراض).', 'Extra drain for every 10 °C above 40 °C (assumption).']);
+  def('robotSmokeDrain', 'robot', 0.5, 0, 2, 0.1, '×', ['أثر الدخان على البطارية', 'Smoke effect on the battery'],
+    ['زيادة الاستهلاك في دخان كثيف (مراوح التبريد والمرشّحات) (افتراض).', 'Extra drain in dense smoke (cooling fans and filters) (assumption).']);
+  def('robotIdleDrain', 'robot', 0.3, 0.05, 1, 0.05, '×', ['استهلاك الوقوف', 'Standing (idle) battery use'],
+    ['نسبة استهلاك البطارية أثناء البقاء مع شخص أو الوقوف مقارنة بالسير (افتراض).', 'Share of the driving battery use while holding with a person or standing still (assumption).']);
+  def('robotReturnPct', 'robot', 25, 5, 60, 5, '%', ['مستوى البطارية للعودة', 'Battery level that triggers return'],
+    ['يعود الروبوت إذا نزلت بطاريته عن هذه النسبة أو عن تكلفة العودة المقدَّرة، أيهما أكبر (افتراض).', 'The robot returns when its battery falls below this share or below the estimated cost of the way back, whichever is higher (assumption).']);
+  def('robotRangeM', 'robot', 8, 3, 20, 1, 'm', ['مدى الكاميرا الحرارية', 'Thermal-camera range'],
+    ['أقصى مسافة يرى بها الروبوت شخصاً في خط النظر داخل الغرفة أو الممر (افتراض).', 'The farthest distance at which the robot can see a person in line of sight inside a room or corridor (assumption).']);
+  def('robotThermalPd', 'robot', 0.35, 0.05, 1, 0.05, 'prob/s', ['احتمال الكشف الحراري في الثانية', 'Thermal detection chance per second'],
+    ['احتمال أن يكشف الروبوت شخصاً أمامه في كل ثانية عند أقصى تباين حراري وهواء صافٍ (قاعدة بسيطة، افتراض).', 'Chance per second of spotting a person in view at full thermal contrast and clear air (a simple rule, assumption).']);
+  def('robotContrastC', 'robot', 8, 2, 15, 1, 'K', ['فرق الحرارة للتباين الكامل', 'Temperature gap for full contrast'],
+    ['الفرق بين حرارة الجسم وحرارة الغرفة الذي يعطي تبايناً كاملاً؛ في الغرف الحارة يقلّ التباين (حرارة الخليج) (افتراض).', 'The gap between body and room temperature that gives full contrast; in hot rooms contrast falls (the Gulf-heat caveat) (assumption).']);
+  def('robotThermalSmokeK', 'robot', 1.2, 0, 6, 0.2, '×', ['توهين الدخان للحرارية', 'Smoke attenuation, thermal camera'],
+    ['معامل توهين الرؤية الحرارية بالدخان لكل 5 م (الحرارية ترى عبر الدخان أفضل من الضوء المرئي) (افتراض).', 'Attenuation of thermal vision by smoke per 5 m (thermal sees through smoke better than visible light) (assumption).']);
+  def('robotRgbSmokeK', 'robot', 5, 0, 15, 0.5, '×', ['توهين الدخان للكاميرا المرئية', 'Smoke attenuation, visible camera'],
+    ['معامل توهين الكاميرا العادية بالدخان لكل 5 م (افتراض).', 'Attenuation of the ordinary camera by smoke per 5 m (assumption).']);
+  def('robotRgbPd', 'robot', 0.15, 0, 1, 0.05, 'prob/s', ['احتمال الكشف بالكاميرا المرئية في الثانية', 'Visible-camera detection chance per second'],
+    ['احتمال أن تلتقط كاميرا الضوء المرئي (مع مصباح الروبوت) شخصاً في الهواء الصافي؛ يضعف بسرعة مع الدخان (افتراض).', 'Chance per second that the visible camera (with the robot\'s own lamp) picks out a person in clear air; it falls quickly with smoke (assumption).']);
+  def('robotAudioPd', 'robot', 0.25, 0, 1, 0.05, 'prob/s', ['احتمال الكشف الصوتي في الثانية', 'Audio detection chance per second'],
+    ['احتمال أن يسمع الروبوت شخصاً واعياً ينادي طلباً للمساعدة عن قرب في الهدوء (افتراض).', 'Chance per second that the robot hears a conscious person calling for help at close range in quiet (assumption).']);
+  def('robotAudioRangeM', 'robot', 6, 2, 15, 1, 'm', ['مدى الميكروفون', 'Microphone range'],
+    ['أقصى مسافة يسمع منها الروبوت نداءً (افتراض).', 'The farthest distance at which the robot can hear a call (assumption).']);
+  def('robotNoiseMask', 'robot', 0.6, 0, 1, 0.1, '×', ['حجب الضجيج للصوت', 'Noise masking of audio'],
+    ['نسبة ما ينقصه صوت الصافرة والحريق من قدرة الميكروفون (افتراض).', 'Share of the microphone\'s ability removed by the siren and fire noise (assumption).']);
+  def('robotFalsePosPerMin', 'robot', 0.6, 0, 10, 0.1, '/min', ['إنذارات حرارية كاذبة في الدقيقة', 'False thermal alarms per minute'],
+    ['معدل «شخص محتمل» كاذب (جسم ساخن مثل شاحن أو أثاث دافئ) لكل دقيقة داخل الغرف (افتراض).', 'Rate of false "possible person" alarms (a hot object such as a charger or warm furniture) per minute inside rooms (assumption).']);
+  def('robotInvestigateSec', 'robot', 12, 3, 60, 1, 's', ['زمن التحقق من الإنذار', 'Time to check an alarm'],
+    ['ثوانٍ يقضيها الروبوت في التحقق من إنذار كاذب قبل أن يسقطه (افتراض).', 'Seconds the robot spends checking a false alarm before dismissing it (assumption).']);
+  def('robotRoomSweepSec', 'robot', 10, 3, 60, 1, 's', ['زمن مسح الغرفة', 'Room sweep time'],
+    ['ثوانٍ يقضيها داخل الغرفة قبل أن يعدّها ممسوحة (افتراض).', 'Seconds it spends inside a room before counting it as swept (assumption).']);
+  def('robotRecheckPasses', 'robot', 2, 1, 3, 1, 'passes', ['عدد مرات مسح الغرفة', 'Sweeps per room'],
+    ['كم مرة يجوز للروبوت مسح غرفة ما زال فيها مقيمون غير محصيّين (افتراض).', 'How many times the robot may sweep a room that still has unaccounted residents (assumption).']);
+  def('robotMeshRangeM', 'robot', 30, 10, 80, 5, 'm', ['مدى شبكة الاتصال', 'Mesh link range'],
+    ['المسافة التي يعمل فيها الاتصال من بوابة المدخل أو أقرب مرحّل على طول الممر (الجدران والطوابق تقلّلها) (افتراض).', 'Distance over which the link works from the entrance gateway or the nearest relay along the path (walls and floors reduce it) (assumption).']);
+  def('robotFloorLossM', 'robot', 15, 0, 40, 5, 'm', ['خسارة المدى لكل طابق', 'Range lost per floor'],
+    ['أمتار من المدى يخسرها الاتصال عند كل طابق فاصل (افتراض).', 'Metres of range the link loses for every floor in between (assumption).']);
+  def('robotBeaconRelay', 'robot', 1, 0, 1, 1, '0/1', ['المنارات تعمل مرحّلات', 'Beacons also relay the link'],
+    ['1 = كل منارة طريق يضعها الروبوت تمدّ الشبكة أيضاً (افتراض).', '1 = every route beacon the robot drops also extends the mesh (assumption).']);
+  def('robotDropoutPct', 'robot', 2, 0, 20, 0.5, '%/s', ['انقطاع الاتصال (٪ في الثانية)', 'Link dropouts (% per second)'],
+    ['احتمال بدء انقطاع في كل ثانية عندما تكون الإشارة ضعيفة (أقل من 50٪) (افتراض).', 'Chance per second that a dropout starts while the signal is weak (below 50 %) (assumption).']);
+  def('robotDropoutSec', 'robot', 10, 2, 120, 2, 's', ['مدة الانقطاع', 'Dropout length'],
+    ['ثوانٍ يستمرّ فيها الانقطاع؛ يواصل الروبوت عمله بنفسه وتُخزَّن تقاريره (افتراض).', 'Seconds a dropout lasts; the robot keeps working on its own and its reports are buffered (assumption).']);
+  def('robotLinkLostSec', 'robot', 45, 10, 300, 5, 's', ['مهلة فقد الاتصال', 'Lost-link patience'],
+    ['بعد هذه المدة بلا اتصال يتراجع الروبوت نحو أقرب مرحّل (افتراض).', 'After this long without a link the robot backs toward the nearest relay (assumption).']);
+  def('robotFollowP', 'robot', 0.85, 0, 1, 0.05, 'prob', ['احتمال اتباع الإرشاد', 'Chance of following guidance'],
+    ['احتمال أن يتبع شخص واعٍ قادر على الحركة إرشاد الروبوت (افتراض، ليس قياساً).', 'Chance that an awake person who can move follows the robot\'s guidance (assumption, not a measurement).']);
+  def('robotWakeP', 'robot', 0.6, 0, 1, 0.05, 'prob', ['احتمال الإيقاظ بمحاولة', 'Wake chance per attempt'],
+    ['احتمال أن توقظ محاولة واحدة (صوت عالٍ + ضوء) شخصاً نائماً (افتراض).', 'Chance that one attempt (loud voice + light) wakes a sleeper (assumption).']);
+  def('robotWakeTries', 'robot', 3, 1, 6, 1, 'tries', ['محاولات الإيقاظ', 'Wake-up attempts'],
+    ['عدد المحاولات (كل 5 ثوانٍ) قبل أن يعدّه الروبوت غير مستجيب (افتراض).', 'Number of attempts (5 s apart) before the robot treats the person as not responding (assumption).']);
+  def('robotHoldMaxSec', 'robot', 300, 30, 1800, 30, 's', ['أقصى بقاء مع شخص', 'Longest hold with one person'],
+    ['أقصى مدة يبقى فيها الروبوت مع من لا يستطيع الحركة قبل أن يعود للبحث إن لم يصل الإنقاذ (افتراض).', 'The longest the robot stays with someone who cannot move before it goes back to searching if crews have not arrived (assumption).']);
+  def('robotGuideSec', 'robot', 25, 5, 90, 5, 's', ['أقصى زمن للإرشاد', 'Longest guidance stop'],
+    ['أقصى ثوانٍ يقضيها الروبوت في إرشاد شخص ووضع المنارات (افتراض).', 'The most seconds the robot spends guiding one person and dropping beacons (assumption).']);
+  def('robotBeacons', 'robot', 8, 0, 20, 1, 'units', ['منارات الطريق المحمولة', 'Route beacons carried'],
+    ['عدد المنارات (علامات ضوئية صغيرة) التي يحملها (افتراض).', 'Number of beacons (small light markers) it carries (assumption).']);
+  def('robotBeaconsPerFind', 'robot', 3, 0, 6, 1, 'units', ['منارات لكل عثور', 'Beacons per find'],
+    ['أقصى عدد منارات يضعها الروبوت على طريق شخص واحد (افتراض).', 'The most beacons the robot drops on one person\'s route (assumption).']);
+  def('robotHoods', 'robot', 2, 0, 6, 1, 'units', ['أغطية الدخان في الحقيبة', 'Smoke hoods in the pouch'],
+    ['عدد أغطية الدخان التي يستطيع الروبوت تسليمها لشخص واعٍ لا يستطيع التحرك في دخان (افتراض).', 'How many smoke hoods the robot can hand to a conscious person who cannot move in smoke (assumption).']);
+  def('robotHoodFactor', 'robot', 0.4, 0.1, 1, 0.05, 'share', ['نسبة الجرعة مع غطاء الدخان', 'Dose rate left with a smoke hood on'],
+    ['نسبة معدّل جرعة الدخان المتبقية لمن يلبس الغطاء في النموذج (افتراض، ليست قياساً).', 'Share of the smoke dose rate that is left for a person wearing the hood, in the model (assumption, not a measurement).']);
+  def('robotCrewSpeedup', 'robot', 0.3, 0, 0.8, 0.05, 'share', ['توفير وقت الفرق عند معرفة المكان', 'Crew time saved when the place is known'],
+    ['نسبة الوقت التي توفّرها فرق الإنقاذ حين يكون الروبوت قد حدّد الغرفة والشخص (افتراض).', 'Share of rescue time saved when the robot has already pinned down the room and the person (assumption).']);
+  def('robotStatusSec', 'robot', 30, 10, 120, 5, 's', ['فاصل تقارير الحالة', 'Status-report interval'],
+    ['ثوانٍ بين تقارير الروبوت عن حال من يبقى معه (افتراض).', 'Seconds between robot status reports about the person it stays with (assumption).']);
 
   function defaultParams() { var P = {}; for (var i = 0; i < PARAM_DEFS.length; i++) P[PARAM_DEFS[i].key] = PARAM_DEFS[i].default; return P; }
   function resolveParams(over) {
@@ -926,9 +1053,19 @@
       jams: { 'AR-W': { f: 0.25, label: T('أعمال طريق على الشريان الغربي (محاكاة)', 'Road works on the West Arterial (SIM)') } },
       name: T('حريق في المدرسة (07:30)', 'School fire (07:30)'),
       blurb: T('حريق في المقصف عند بداية اليوم الدراسي: طابور التوصيل وأعمال طريق على الشريان الغربي، فتصل محطة الإطفاء الأبعد أولاً.', 'A canteen fire as the school day starts: drop-off queue plus road works on the West Arterial, so the farther fire station arrives first.'),
-      incident: T('حريق في المدرسة', 'School fire') }
+      incident: T('حريق في المدرسة', 'School fire') },
+    // the robot scenario (NOT part of PRESET_ORDER: the seven original presets and their results stay exactly as they were; see PRESET_ORDER_ALL)
+    'fire-night-robot': { id: 'fire-night-robot', hazard: 'fire', hour: 4.0, tIgnite: 30, durationSec: 1500, wind: { deg: 315, speed: 4 }, struct: 0, room: 'R303', scene: 'BLD', scope: ['RB'],
+      robot: { enabled: true, variant: 'tracked', units: 1 },
+      locks: ['A'], lockedDoors: ['R308'], heroStart: { 'abu-salem': { node: 'C20', app: false, awake: true, immobile: true } },
+      name: T('حريق ليلاً مع روبوت الإنقاذ (04:00)', 'Fire at night with the rescue robot (04:00)'),
+      blurb: T('حريق في غرفة بالطابق الثالث من سكن العمال ليلاً والمخرج السفلي للدرج «أ» مقفل. أبو سالم (كرسي متحرك) مستيقظ لكنه عالق في ممر الطابق نفسه الذي يمتلئ بالدخان وهاتفه في غرفته. بعد اعتماد قائد الحادث يدخل الروبوت ويبحث ويُبلغ عمّن يجده (محاكاة لمفهوم).',
+        'A third-floor room fire in the workers\' residence at night with the foot of Stair A locked. Abu Salem (wheelchair) is awake but stuck in the same floor\'s corridor, which fills with smoke, and his phone is in his room. After the incident commander approves, the robot goes in, searches and reports who it finds (a simulated concept).'),
+      incident: T('حريق في سكن العمال — بحث بالروبوت', 'Fire in the workers\' residence — robot search') }
   };
   var PRESET_ORDER = ['fire-night', 'gas-night', 'flood-day', 'dust-day', 'heat-day', 'sos-day', 'school-fire-day'];
+  var PRESET_ORDER_ROBOT = ['fire-night-robot'];
+  var PRESET_ORDER_ALL = PRESET_ORDER.concat(PRESET_ORDER_ROBOT);
 
   function evt(sim, type, data, ar, en) {
     var e = { t: sim.t, type: type };
@@ -953,7 +1090,7 @@
     var w = world();
     var P = resolveParams(opts.params);
     var sim = {
-      opts: cloneJSON({ preset: presetId, mode: opts.mode, seed: opts.seed, params: opts.params || {}, hour: opts.hour, wind: opts.wind, gasType: opts.gasType, autoApprove: opts.autoApprove, tIgnite: opts.tIgnite, durationSec: opts.durationSec }),
+      opts: cloneJSON({ preset: presetId, mode: opts.mode, seed: opts.seed, params: opts.params || {}, hour: opts.hour, wind: opts.wind, gasType: opts.gasType, autoApprove: opts.autoApprove, tIgnite: opts.tIgnite, durationSec: opts.durationSec, robot: opts.robot, role: opts.role }),
       v: 1, preset: presetId, pre: pre, hazard: pre.hazard, mode: opts.mode === 'ordinary' ? 'ordinary' : 'manara',
       seed: ((opts.seed === undefined ? 1 : opts.seed) >>> 0) || 1, P: P, W: w, t: 0, acc: 0,
       hour0: isNum(opts.hour) ? opts.hour : pre.hour, wind: null, events: [], evCount: {}, done: false, doneAt: null,
@@ -978,6 +1115,7 @@
     });
     sim.exits = newExits(w);
     w.exits.forEach(function (e, i) { if (e.lock0 && P.roofLocked) sim.exits[i].locked = true; });
+    applyPresetScenario(sim);
     sim.hz = { type: pre.hazard, started: false, ended: false, tStart: null };
     sim.local = { on: false, at: null, zone: null, until: null, ack: false };
     sim.ver = { phase: 'idle', suspectAt: null, confirmedAt: null, approvedAt: null, publicAt: null, clearedAt: null, zone: null, keysNow: [], needsApproval: false, history: [] };
@@ -985,11 +1123,13 @@
     sim.cordon = { active: false, at: null };
     sim.people = []; sim.byKey = {}; sim.heroes = {};
     populate(sim);
+    applyHeroStart(sim);
     initHazard(sim);
     initSensors(sim);
     initRouting(sim);
     initDrone(sim);
     initTraffic(sim);
+    initRobot(sim, opts);
     initMetrics(sim);
     if (pre.jams) for (var jk in pre.jams) { sim.traffic.jams[jk] = pre.jams[jk].f; evt(sim, 'scenario-jam', { seg: jk }, 'ظرف السيناريو: ' + pre.jams[jk].label.ar, 'Scenario condition: ' + pre.jams[jk].label.en); }
     evt(sim, 'start', { preset: presetId, mode: sim.mode, seed: sim.seed }, 'بدأت المحاكاة: ' + pre.name.ar, 'Simulation started: ' + pre.name.en);
@@ -2223,6 +2363,7 @@
         break;
       }
     }
+    if (a.hood) r *= sim.P.robotHoodFactor;   // a smoke hood handed over by the robot (named assumption)
     LV.s = s; LV.r = r;
     // "danger present here" for exposure statistics: visible smoke, gas above the warning level, water you would notice, dust above the warning level
     LV.d = hz === 'fire' ? (s >= 0.15 || r >= 0.05) : hz === 'gas' ? (r > 0) : hz === 'flood' ? (s * (P.floodBlockCm / 100) >= 0.05) : hz === 'dust' ? (r > 0) : false;
@@ -2383,7 +2524,7 @@
         if (LV.d) a.exposedSec++;
         if (LV.r > 0) {
           a.dose += LV.r;
-          if (!a.injured && a.dose >= 0.3) { a.injured = true; if (a.hero) evt(sim, 'injured', { person: a.key }, a.name.ar + ' تعرّض/ت لإصابة في النموذج', a.name.en + ' was injured in the model'); }
+          if (!a.injured && a.dose >= 0.3) { a.injured = true; a.injuredAt = t; if (a.hero) evt(sim, 'injured', { person: a.key }, a.name.ar + ' تعرّض/ت لإصابة في النموذج', a.name.en + ' was injured in the model'); }
           if (a.dose >= 1) { a.st = 'incapacitated'; a.downAt = t; a.moveAt = -1; evt(sim, 'incapacitated', { person: a.key, hero: a.hero }, 'عجز شخص عن الحركة (نموذج): ' + (a.name ? a.name.ar : a.key), 'A person became unable to move (model): ' + (a.name ? a.name.en : a.key)); continue; }
         }
       }
@@ -2403,6 +2544,10 @@
       }
       if (!a.asleep && a.aware === 1 && sim.mode === 'manara' && a.signs && sim.ver.phase === 'public') { /* sign-following: uses the live field (see fieldFor) */ }
       // 3. start moving / staying
+      if (a.immobile && a.moveAt >= 0 && t >= a.moveAt && a.st !== 'waiting') {   // a scenario condition (never set in the original presets): the person cannot leave without help
+        a.st = 'waiting'; a.waitSince = t; a.moveAt = -1;
+        if (!a.trappedLogged) { a.trappedLogged = true; evt(sim, 'trapped', { person: a.key, live: true }, 'شخص بلا مسار آمن: ' + (a.name ? a.name.ar : a.key), 'Person with no safe route: ' + (a.name ? a.name.en : a.key)); }
+      }
       if (a.moveAt >= 0 && t >= a.moveAt && a.st !== 'moving' && a.st !== 'safe' && a.st !== 'sheltered' && a.st !== 'waiting') {
         if (a.plan === 'stay') { a.st = 'sheltered'; a.safeKind = 'stay'; a.safeAt = t; if (a.firstSafeAt === null) a.firstSafeAt = t; }
         else if (a.plan === 'evac' || a.plan === 'shelter' || a.plan === 'help' || a.plan === 'trip') a.st = 'moving';
@@ -2420,7 +2565,7 @@
           if (!sim.movedAssembly || t - sim.movedAssembly > 20) { sim.movedAssembly = t; evt(sim, 'reroute', { cause: 'assembly-unsafe' }, 'صار موضع التجمع غير آمن (دخان/غاز) — مسار جديد لمن فيه فقط', 'The assembly point became unsafe (smoke/gas) — a new route goes only to the people there'); }
         }
       }
-      if (a.st === 'waiting' && (t - a.waitSince) % 6 === 5) { a.stuck = 0; a.st = 'moving'; }   // look for a route again every few seconds
+      if (a.st === 'waiting' && !a.immobile && (t - a.waitSince) % 6 === 5) { a.stuck = 0; a.st = 'moving'; }   // look for a route again every few seconds
       if (a.st === 'moving') moveAgent(sim, a, rt);
       stepCheckin(sim, a);
     }
@@ -2528,13 +2673,14 @@
   }
 
   function headcount(sim) {
-    var scope = {}, reg = 0, safe = 0, safeAway = 0, help = 0, un = 0, rooms = {}, unaccounted = [], helpList = [];
+    var scope = {}, reg = 0, safe = 0, safeAway = 0, help = 0, un = 0, rooms = {}, unaccounted = [], helpList = [], rbOn = !!(sim.rb && sim.rb.enabled), located = [];
     sim.pre.scope.forEach(function (g) { scope[g] = true; });
     sim.people.forEach(function (a) {
       if (!a.registered || !scope[a.group]) return;
       reg++;
       if (a.checkin === 'safe') { if (a.away || a.checkinAway) safeAway++; else safe++; }
       else if (a.checkin === 'help') { help++; helpList.push(a); }
+      else if (rbOn && a.robotReportedAt !== undefined && a.robotReportedAt !== null) { located.push(a); }   // 'located by robot': found and reported, but NOT safe and not checked in
       else { un++; unaccounted.push(a); }
     });
     var fireNode = sim.hazard === 'fire' ? sim.W.structs[sim.hz.struct].nodes[sim.hz.originLocal] : null;
@@ -2546,8 +2692,16 @@
       if (fireNode && a.room) { var nn = sim.W.structs[sim.hz.struct].byId['R' + a.room]; if (nn) score += Math.max(0, 8 - dist2(nn.x, nn.y, fireNode.x, fireNode.y)) + (nn.fl === fireNode.fl ? 4 : 0); }
       return { key: a.key, name: a.name, room: room, lang: a.lang, needs: needs, score: round1(score), asleep: a.asleep, last: a.st };
     }).sort(function (x, y) { return y.score - x.score; });
-    sim.people.forEach(function (a) { if (a.registered && scope[a.group] && a.room) { var r = rooms[a.room] || (rooms[a.room] = { room: a.room, total: 0, safe: 0, help: 0, unaccounted: 0 }); r.total++; if (a.checkin === 'safe') r.safe++; else if (a.checkin === 'help') r.help++; else r.unaccounted++; } });
-    return { registered: reg, safe: safe, safeAway: safeAway, help: help, unaccounted: un, rooms: rooms, unaccountedList: list, helpList: helpList.map(function (a) { return { key: a.key, name: a.name, room: a.room, lang: a.lang }; }) };
+    sim.people.forEach(function (a) { if (a.registered && scope[a.group] && a.room) { var r = rooms[a.room] || (rooms[a.room] = rbOn ? { room: a.room, total: 0, safe: 0, help: 0, located: 0, unaccounted: 0 } : { room: a.room, total: 0, safe: 0, help: 0, unaccounted: 0 }); r.total++; if (a.checkin === 'safe') r.safe++; else if (a.checkin === 'help') r.help++; else if (rbOn && a.robotReportedAt !== undefined && a.robotReportedAt !== null) r.located++; else r.unaccounted++; } });
+    var hcOut = { registered: reg, safe: safe, safeAway: safeAway, help: help, unaccounted: un, rooms: rooms, unaccountedList: list, helpList: helpList.map(function (a) { return { key: a.key, name: a.name, room: a.room, lang: a.lang }; }) };
+    if (rbOn) {   // registered = safe + safeAway + help + located + unaccounted (located = found and reported by a robot, not yet safe)
+      hcOut.located = located.length;
+      hcOut.locatedList = located.map(function (a) {
+        var f = sim.rb.finds.filter(function (x) { return x.id === a.robotFindId; })[0] || null;
+        return { key: a.key, name: a.name, room: a.room || a.cls || null, lang: a.lang, needs: needsOf(a), by: 'robot', foundAt: f ? f.t : null, reportedAt: a.robotReportedAt, place: f ? f.place : null, condition: f ? f.condition.key : null, find: a.robotFindId || null };
+      });
+    }
+    return hcOut;
   }
 
   /* ====================================================================================
@@ -2645,6 +2799,1134 @@
     }
     return found;
   }
+
+  /* ====================================================================================
+   * 10b. THE RESCUE ROBOT — a CONCEPT with a SIMULATED prototype (assists; firefighters decide)
+   *      stowed -> approved -> deploying -> searching -> guiding -> holding -> returning -> (stowed) | fault
+   *      It lives on the building's indoor graph (rooms, corridors, stairs, lobby), plans with A*, never enters a burning / too-hot /
+   *      gas-danger node, never breaks a door, cannot climb stairs when wheeled, detects people with a seeded rule-based model (thermal contrast,
+   *      smoke attenuation, audio) that has false negatives and false positives, reports every find to the control room over a mesh link that
+   *      can drop (reports are buffered), speaks in the person's language and format, drops route beacons, holds with people who cannot move,
+   *      and returns when its battery says so. Every number is a named assumption (PARAMS group 'robot'); nothing here is measured.
+   * ==================================================================================== */
+  var ROBOT_STATES = ['stowed', 'approved', 'deploying', 'searching', 'guiding', 'holding', 'returning', 'fault'];
+  var ROBOT_ROLES = ['viewer', 'operator', 'commander'];
+  var ROBOT_STATE_TXT = {
+    stowed: T('في مكانه (جاهز)', 'Stowed (ready)'), approved: T('معتمد — ينتظر النشر', 'Approved — waiting to deploy'), deploying: T('يُجهَّز عند المدخل', 'Deploying at the entrance'),
+    searching: T('يبحث', 'Searching'), guiding: T('يرشد', 'Guiding'), holding: T('يبقى مع شخص', 'Holding with a person'), returning: T('يعود', 'Returning'), fault: T('عطل', 'Fault')
+  };
+  var BODY_C = 34;                 // skin temperature used for thermal contrast (°C; a constant of the model)
+  var DOSE_INJURY = 0.3;           // the model's injury threshold (the same constant stepPeople uses)
+  var ROBOT_SAY_KEYS = ['intro', 'guide', 'wake', 'stay', 'refuge', 'hold', 'check', 'blocked', 'hood'];
+  var COND = {
+    conscious: T('واعٍ', 'conscious'), asleep: T('نائم (أو فاقد الوعي)', 'asleep (or unconscious)'), unresponsive: T('لا يستجيب', 'not responding'),
+    injured: T('مصاب', 'injured'), moving: T('يتحرك', 'moving')
+  };
+  var RB_FALLBACK = {   // built-in texts (used only when MANARA_MSG is not loaded; messages.js holds the full multi-language set)
+    intro: T('أنا روبوت الدفاع المدني — اتبع الضوء الأخضر', 'I am a Civil Defence robot — follow the green light'),
+    guide: T('اتبع الضوء الأخضر إلى {exit}. امشِ ولا تركض.', 'Follow the green light to {exit}. Walk, do not run.'),
+    wake: T('استيقظ! خطر! انهض الآن واتبع الضوء الأخضر.', 'Wake up! Danger! Get up now and follow the green light.'),
+    stay: T('ابقَ هنا — المساعدة في الطريق.', 'Stay here — help is coming.'),
+    refuge: T('اذهب إلى شرفة اللجوء وابقَ هناك — المساعدة في الطريق.', 'Go to the refuge balcony and stay there — help is coming.'),
+    hold: T('أنا معك ولن أتركك. المساعدة في الطريق.', 'I am staying with you. Help is coming.'),
+    check: T('هل تسمعني؟ ارفع يدك أو المس شاشتي.', 'Can you hear me? Raise your hand or touch my screen.'),
+    blocked: T('هذا الطريق مغلق — ابقَ هنا وسأبحث عن طريق آخر.', 'This way is blocked — stay here and I will look for another way.'),
+    hood: T('ضع غطاء الدخان الذي سلّمتك إياه على وجهك.', 'Put the smoke hood I gave you over your face.')
+  };
+
+  // ---------------------------------------------------------------- the robot's own indoor graph (static per structure)
+  var RGRAPH = {};
+  function robotGraph(sidx) {
+    if (RGRAPH[sidx]) return RGRAPH[sidx];
+    var w = world(), S = w.structs[sidx], n = S.nodes.length, adj = [], i, hf = Infinity;
+    for (i = 0; i < n; i++) adj.push([]);
+    S.edges.forEach(function (e) {
+      var a = S.nodes[e.a], b = S.nodes[e.b], eu = Math.sqrt(Math.pow((a.x - b.x) * CELL, 2) + Math.pow((a.y - b.y) * CELL, 2));
+      if (eu > 1e-6) hf = Math.min(hf, e.len / eu);
+      adj[e.a].push({ to: e.b, len: e.len, flag: e.flag, door: e.door });
+      adj[e.b].push({ to: e.a, len: e.len, flag: e.flag, door: e.door });
+    });
+    var rooms = [], byRoom = {}, byId = {};
+    S.nodes.forEach(function (nd, l) {
+      byId[nd.id] = l;
+      if (nd.type === NT.ROOM || nd.type === NT.SUPPORT) { var r = { l: l, id: nd.id, room: nd.room || nd.id, label: nd.label, fl: nd.fl, type: nd.type }; rooms.push(r); byRoom[r.room] = r; byRoom[nd.id] = r; }
+    });
+    var exits = S.exits.filter(function (ex) { return ex.kind !== 'roof'; }).map(function (ex) { return { id: ex.id, gi: ex.gi, l: S.byId[ex.node].local, name: ex.name, kind: ex.kind }; });
+    return (RGRAPH[sidx] = { sidx: sidx, S: S, n: n, adj: adj, hf: isFinite(hf) ? hf : 0.2, entrance: S.byId[S.exits[0].node].local, rooms: rooms, byRoom: byRoom, byId: byId, exits: exits });
+  }
+  function rbNodeText(g, l) {   // a place as {ar,en}: "room 302" / "Corridor, floor 2"
+    var nd = g.S.nodes[l], fl = nd.fl + 1;
+    if (nd.type === NT.ROOM && nd.room) return T('غرفة ' + nd.room, 'room ' + nd.room);
+    if (nd.type === NT.SUPPORT) return nd.label;
+    return T(nd.label.ar + ' — الطابق ' + fl, nd.label.en + ', floor ' + fl);
+  }
+  var RB_HEAP = null;
+
+  // ---------------------------------------------------------------- per-tick danger / temperature field of every node (what the twin's sensors and the robot's own camera know)
+  function rbFieldFill(sim, g, F) {
+    var st = sim.stt[g.sidx], P = sim.P, n = g.n, i, k, base = P.robotRoomC, gasOn = sim.hazard === 'gas';
+    for (i = 0; i < n; i++) {
+      var I = st.I[i], hot = st.burn[i] === 1 || I > 0.05;
+      F.smoke[i] = st.smoke[i];
+      F.temp[i] = base + (hot ? 380 * I : 0) + 12 * st.smoke[i] * st.smoke[i];
+      F.gas[i] = gasOn ? st.gas[i] : 0;
+      F.hot[i] = hot ? 1 : 0;
+    }
+    for (i = 0; i < n; i++) {   // radiant heat from burning neighbours (a closed door shields most of it)
+      if (!F.hot[i]) continue;
+      var list = g.adj[i];
+      for (k = 0; k < list.length; k++) {
+        var e = list[k], f = (e.door >= 0 && !st.doorOpen[e.door]) ? 0.2 : 1;
+        F.temp[e.to] += 70 * Math.max(0, st.I[i]) * f;
+      }
+    }
+    for (i = 0; i < n; i++) F.imp[i] = (F.hot[i] || F.temp[i] > P.robotMaxTempC || (gasOn && F.gas[i] >= P.gasDanger)) ? 1 : 0;
+    return F;
+  }
+  function newField(n) { return { smoke: new Float32Array(n), temp: new Float32Array(n), gas: new Float32Array(n), hot: new Uint8Array(n), imp: new Uint8Array(n) }; }
+
+  // ---------------------------------------------------------------- A* (and, with opt.dijkstra, plain Dijkstra for the cross-check test)
+  //   cost (seconds) = len / speed x (stairs: penalty) x (1 + 3 smoke^2) (+ door push time); blocked: impassable, known obstacles, stairs for a wheeled robot.
+  //   opt.person: plan for a PERSON (stairs allowed unless opt.noStairs, no door delay). Heuristic = hf x straight distance / speed with hf = min(len / straight distance) over all edges,
+  //   so it never over-estimates (admissible and consistent): A* returns the same cost as Dijkstra.
+  function rbAStar(sim, rb, from, to, opt) {
+    opt = opt || {};
+    var g = rb.G, n = g.n, adj = g.adj, F = opt.F || rb.F, P = sim.P, st = sim.stt[g.sidx], known = rb.known;
+    var person = !!opt.person, tracked = rb.variant === 'tracked' || !!opt.stairsOk;
+    var v = person ? 1.2 : (tracked ? P.robotSpeedTracked : P.robotSpeedWheeled);
+    var dist = new Float32Array(n).fill(Infinity), prev = new Int16Array(n).fill(-1), done = new Uint8Array(n), expanded = 0;
+    var heap = RB_HEAP || (RB_HEAP = makeHeap(2048)), nodes = g.S.nodes, tn = nodes[to], hfv = opt.dijkstra ? 0 : g.hf / v;
+    var hOf = function (u) { if (!hfv) return 0; var a = nodes[u], dx = (a.x - tn.x) * CELL, dy = (a.y - tn.y) * CELL; return hfv * Math.sqrt(dx * dx + dy * dy); };
+    heap.clear(); dist[from] = 0; heap.push(hOf(from), from);
+    while (heap.size() > 0) {
+      var u = heap.pop();
+      if (done[u]) continue;
+      done[u] = 1; expanded++;
+      if (u === to) break;
+      var list = adj[u];
+      for (var k = 0; k < list.length; k++) {
+        var e = list[k], w = e.to;
+        if (done[w]) continue;
+        var stairs = (e.flag & F_STAIRS) !== 0;
+        if (stairs && !person && !tracked) continue;
+        if (stairs && opt.noStairs) continue;
+        if (!person) { if (F.imp[w] || known[w]) continue; }
+        else if (F.hot[w] || F.temp[w] > P.robotMaxTempC + 80) continue;
+        if (opt.avoid && opt.avoid[w]) continue;
+        var c = e.len / v * (stairs ? (person ? P.stairFactor : P.robotStairPenalty) : 1) * (1 + 3 * F.smoke[w] * F.smoke[w]);
+        if (!person && e.door >= 0 && !st.doorOpen[e.door]) { if (!P.robotOpensDoors) continue; c += P.robotDoorSec; }
+        var nd = dist[u] + c;
+        if (nd < dist[w]) { dist[w] = nd; prev[w] = u; heap.push(nd + hOf(w), w); }
+      }
+    }
+    if (!done[to] && from !== to) return { ok: false, path: [], cost: Infinity, expanded: expanded };
+    var path = [to], q = to;
+    while (q !== from) { q = prev[q]; if (q < 0) return { ok: false, path: [], cost: Infinity, expanded: expanded }; path.push(q); }
+    path.reverse();
+    return { ok: true, path: path, cost: dist[to], expanded: expanded };
+  }
+  function rbEdge(g, a, b) { var list = g.adj[a]; for (var k = 0; k < list.length; k++) if (list[k].to === b) return list[k]; return null; }
+
+  // ---------------------------------------------------------------- creation, roles, approval
+  function newRobot(sim, g, k, variant) {
+    var n = g.n, e = g.entrance;
+    return { id: 'R' + (k + 1), n: k, variant: variant, G: g, S: g.S, st: sim.stt[g.sidx], state: 'stowed', since: 0,
+      approval: { status: 'none', requestedAt: null, approvedAt: null, by: null }, node: e, to: -1, prog: 0, edgeLen: 0, edgeFlag: 0, heading: 0, path: [], target: null,
+      battery: 1, heat: 0, driven: 0, F: newField(n), known: new Uint8Array(n), cov: new Float32Array(n), rooms: {}, doorWait: 0, dwell: null, investigate: null, teleop: null,
+      link: { q: 1, up: true, downUntil: -1, downFor: 0, downSec: 0, dropouts: 0, wasUp: true }, relay: new Float32Array(n), relayDirty: true, linkRecovery: false,
+      outbox: [], finds: [], blocked: [], beacons: [], beaconsLeft: Math.round(sim.P.robotBeacons), hoodsLeft: Math.round(sim.P.robotHoods), hold: null, engage: null, recall: false, deployUntil: null, readyAt: null,
+      entered: [], enteredBad: 0, seenFloors: {}, exitsSeen: {}, flee: 0, opened: [], stats: { falsePositives: 0, stairsM: 0, spoke: 0, returnedAt: null, faultAt: null, faultWhy: null, started: null, doorsOpened: 0 }, planCheckAt: 0, returnReason: null };
+  }
+  function robotSupports(sim) { return sim.mode === 'manara' && (sim.hazard === 'fire' || sim.hazard === 'gas'); }
+  function robotStruct(sim) { return sim.hazard === 'fire' ? sim.hz.struct : 0; }
+  function enableRobot(sim, cfg) {
+    var rb = sim.rb;
+    if (rb.enabled) return { ok: true, already: true };
+    if (!robotSupports(sim)) return { ok: false, code: 'na', reason: T('الروبوت يعمل في الحريق والغاز داخل المبنى وفي وضع المنارة فقط', 'The robot works for fire and gas inside a building, in the MANARA world only') };
+    cfg = (cfg && typeof cfg === 'object') ? cfg : {};
+    var g = robotGraph(robotStruct(sim)), units = clamp(Math.round(cfg.units || 1), 1, 3), variant = cfg.variant === 'wheeled' ? 'wheeled' : 'tracked';
+    if (cfg.carrier !== undefined) sim.P.robotCarrier = cfg.carrier ? 1 : 0;
+    rb.enabled = true; rb.variant = variant; rb.g = g; rb.autoApprove = cfg.autoApprove !== undefined ? !!cfg.autoApprove : !!sim.P.autoApprove;
+    sim.robots = []; for (var k = 0; k < units; k++) sim.robots.push(newRobot(sim, g, k, variant));
+    rb.Fv = newField(g.n);
+    g.rooms.forEach(function (r) { sim.robots.forEach(function (rr) { rr.rooms[r.room] = { l: r.l, id: r.room, passes: 0, status: 'open', lastAt: null, retryAt: 0, found: 0, un: 0 }; }); });
+    sim.robots.forEach(function (rr) { rbFieldFill(sim, g, rr.F); });
+    return { ok: true, units: units, variant: variant };
+  }
+  function initRobot(sim, opts) {
+    var pre = sim.pre;
+    sim.robots = [];
+    sim.rb = { enabled: false, role: ROBOT_ROLES.indexOf(opts.role) >= 0 ? opts.role : 'operator', obst: {}, priority: [], finds: [], blocked: [], speech: [], findSeq: 0, blockSeq: 0, speechSeq: 0, claims: {}, pending: [], na: null };
+    (pre.lockedDoors || []).forEach(function (id) { sim.rb.obst[id] = { locked: true, kind: 'door', since: 0, scenario: true }; });
+    var cfg = opts.robot !== undefined ? opts.robot : (pre.robot && pre.robot.enabled ? pre.robot : null);
+    if (cfg === false || cfg === null || cfg === undefined) return;
+    if (cfg === true) cfg = {};
+    var base = pre.robot || {}, merged = {}, k;
+    for (k in base) merged[k] = base[k];
+    for (k in cfg) merged[k] = cfg[k];
+    var r = enableRobot(sim, merged);
+    if (!r.ok) sim.rb.na = r.reason;
+  }
+  function applyPresetScenario(sim) {   // scenario conditions of a preset (also applied when the robot is off, so 'with' and 'without' compare the same world)
+    var pre = sim.pre, w = sim.W;
+    if (pre.locks) pre.locks.forEach(function (id) { for (var q = 0; q < w.exits.length; q++) if (w.exits[q].id === id && w.exits[q].struct === (pre.struct || 0)) sim.exits[q].locked = true; });
+  }
+  function applyHeroStart(sim) {
+    var pre = sim.pre; if (!pre.heroStart) return;
+    var S = sim.W.structs[pre.struct || 0];
+    Object.keys(pre.heroStart).forEach(function (key) {
+      var a = sim.byKey[key], c = pre.heroStart[key], nd = S.byId[c.node];
+      if (!a || !nd) return;
+      a.g = nd.g; a.ox = 0.2; a.oy = 0;
+      if (c.awake) a.asleep = false;
+      if (c.app === false) a.app = false;
+      if (c.immobile) a.immobile = true;
+    });
+  }
+  function rbRobot(sim, id) {
+    if (!sim.robots.length) return null;
+    if (id === undefined || id === null) return sim.robots[0];
+    for (var i = 0; i < sim.robots.length; i++) if (sim.robots[i].id === id) return sim.robots[i];
+    return null;
+  }
+  var NO_ROBOT = { ok: false, code: 'none', reason: T('لا يوجد روبوت في هذه المحاكاة', 'There is no robot in this simulation') };
+  function setRobotState(sim, r, state, ar, en) {
+    r.state = state; r.since = sim.t;
+    evt(sim, 'robot-state', { robot: r.id, state: state }, 'الروبوت ' + r.id + ': ' + (ar || ROBOT_STATE_TXT[state].ar), 'Robot ' + r.id + ': ' + (en || ROBOT_STATE_TXT[state].en));
+  }
+  function robotRequest(sim, r, who) {
+    if (r.approval.status !== 'none') return false;
+    r.approval.status = 'requested'; r.approval.requestedAt = sim.t; r.approval.by = who;
+    evt(sim, 'robot-approval-requested', { robot: r.id, by: who }, 'الروبوت ' + r.id + ' جاهز — نشره داخل المبنى يحتاج اعتماد قائد الحادث', 'Robot ' + r.id + ' is ready — sending it into the building needs the incident commander\'s approval');
+    return true;
+  }
+  function robotApproveNow(sim, r, who) {
+    r.approval.status = 'approved'; r.approval.approvedAt = sim.t; r.approval.by = who; r.recall = false;
+    var carrier = sim.P.robotCarrier ? 1 : 0;
+    r.readyAt = carrier ? null : sim.t;
+    setRobotState(sim, r, 'approved', 'اعتمد قائد الحادث الروبوت ' + r.id + (carrier ? ' — ينتظر وصول سيارة الإطفاء' : ' — يبدأ النشر'), 'The incident commander approved robot ' + r.id + (carrier ? ' — waiting for the fire engine' : ' — deploying'));
+    evt(sim, 'robot-approved', { robot: r.id, by: who }, 'اعتماد قائد الحادث للروبوت ' + r.id, 'Incident commander approved robot ' + r.id);
+  }
+  function stepRobotApproval(sim) {
+    var rb = sim.rb, t = sim.t, P = sim.P;
+    if (sim.mode !== 'manara') return;
+    for (var i = 0; i < sim.robots.length; i++) {
+      var r = sim.robots[i];
+      if (r.approval.status === 'none' && !r.stats.returnedAt && sim.ver.confirmedAt !== null) robotRequest(sim, r, 'system');
+      if (r.approval.status === 'requested' && rb.autoApprove && t >= r.approval.requestedAt + P.robotApproveSec && r.state === 'stowed') robotApproveNow(sim, r, 'commander-sim');
+    }
+  }
+
+  // ---------------------------------------------------------------- people the robot can see and what it concludes about them
+  function inStruct(sim, r, a) { return a.g >= r.S.base && a.g < r.S.base + r.G.n; }
+  function needsOf(a) {
+    var needs = [];
+    if (a.persona === 'wheelchair') needs.push('wheelchair'); if (a.persona === 'elderly') needs.push('elderly'); if (a.persona === 'child') needs.push('child'); if (a.deaf) needs.push('deaf'); if (a.blind) needs.push('blind');
+    return needs;
+  }
+  function conditionOf(sim, a) {
+    if (a.st === 'incapacitated' || a.st === 'down') return 'unresponsive';
+    if (a.asleep) return 'asleep';
+    if (a.injured) return 'injured';
+    if (a.st === 'moving') return 'moving';
+    return 'conscious';
+  }
+  function isCalling(a) { return !a.asleep && (a.st === 'waiting' || (a.st === 'sheltered' && a.safeKind === 'refuge') || a.injured); }
+  function visibleNodes(sim, r, F, out) {   // distances (m) to every node the robot can see: same room / corridor stretch within range, through open doors only, never across floors
+    var g = r.G, P = sim.P, st = r.st, n = g.n, d = out || new Float32Array(n), i, queue = [r.node];
+    d.fill(Infinity); d[r.node] = 0;
+    for (var qi = 0; qi < queue.length; qi++) {
+      var u = queue[qi], list = g.adj[u];
+      for (var k = 0; k < list.length; k++) {
+        var e = list[k], w = e.to;
+        if (e.flag & F_STAIRS) continue;
+        if (e.door >= 0 && !st.doorOpen[e.door]) continue;
+        var nd = d[u] + e.len;
+        if (nd <= P.robotRangeM && nd < d[w]) { d[w] = nd; queue.push(w); }
+      }
+    }
+    return d;
+  }
+  function rgbVisibility(sim, smoke, distM) { return Math.exp(-sim.P.robotRgbSmokeK * smoke * distM / 5); }
+  function thermalVisibility(sim, smoke, distM) { return Math.exp(-sim.P.robotThermalSmokeK * smoke * distM / 5); }
+  function detectP(sim, r, a, dM, F, l) {   // chance per second that the robot detects person a at distance dM (node l); returns {p, th, rgb, au, contrast}
+    var P = sim.P, smoke = Math.max(F.smoke[r.node], F.smoke[l]), fall = 1 - 0.5 * dM / Math.max(1, P.robotRangeM);
+    var contrast = clamp((BODY_C - F.temp[l]) / P.robotContrastC, 0, 1);
+    var th = P.robotThermalPd * contrast * thermalVisibility(sim, smoke, dM) * fall;
+    var rgb = P.robotRgbPd * rgbVisibility(sim, smoke, dM) * fall;   // the visible camera with the robot's own lamp: works in clear air whatever the room temperature
+    var au = 0;
+    if (!a.asleep && a.st !== 'incapacitated' && a.st !== 'down' && dM <= P.robotAudioRangeM) {
+      au = P.robotAudioPd * Math.exp(-dM / (P.robotAudioRangeM / 2)) * (isCalling(a) ? 1 : 0.3) * (1 - (sim.local.on ? P.robotNoiseMask : 0));
+    }
+    return { p: 1 - (1 - th) * (1 - rgb) * (1 - au), th: th, rgb: rgb, au: au, contrast: contrast };
+  }
+
+  // ---------------------------------------------------------------- speaking (MANARA_MSG.robot.say when loaded; built-in fallback otherwise)
+  function personaOf(a) { return a.deaf ? 'deaf' : a.blind ? 'blind' : a.persona === 'wheelchair' ? 'wheelchair' : a.persona === 'child' ? 'child' : a.persona === 'elderly' ? 'elderly' : a.asleep ? 'asleep' : (a.lang !== 'ar' && a.lang !== 'en') ? 'worker' : 'adult'; }
+  function exitNameFor(g, route) {
+    if (!route || !route.length) return null;
+    var last = route[route.length - 1];
+    for (var i = 0; i < g.exits.length; i++) if (g.exits[i].l === last) return g.exits[i].name;
+    return null;
+  }
+  function rbSay(sim, key, persona, a, extra) {
+    var M = root.MANARA_MSG, lang = (extra && extra.lang) || (a ? a.lang : 'ar'), vars = { exit: extra && extra.exit ? extra.exit : undefined, room: a && a.room ? a.room : undefined, name: a && a.name ? a.name : undefined };
+    var res = null;
+    if (M && M.robot && typeof M.robot.say === 'function') {
+      try { res = M.robot.say({ key: key, hazard: sim.hazard, persona: persona, lang: lang, needs: a ? needsOf(a) : [], vars: vars }); } catch (e) { res = null; }
+    }
+    if (res && res.also && res.also.ar && res.also.en) return { key: key, persona: persona, lang: res.lang, draft: !!res.draft, formats: (res.formats || []).slice(), light: res.light || null, text: { ar: res.also.ar, en: res.also.en }, spoken: res.text, display: res.display || null, via: 'MANARA_MSG', refuge: !!(res.flags && res.flags.refuge) };
+    var fb = RB_FALLBACK[key] || RB_FALLBACK.intro, ex = vars.exit ? vars.exit : T('أقرب مخرج مفتوح', 'the nearest open exit');
+    var txt = T(fb.ar.replace('{exit}', ex.ar), fb.en.replace('{exit}', ex.en));
+    var fm = persona === 'deaf' ? ['light', 'strobe', 'display', 'pictogram'] : persona === 'blind' ? ['voice', 'sound'] : persona === 'child' ? ['voice', 'light', 'display', 'pictogram'] : ['voice', 'light', 'display'];
+    var lg = (lang === 'ar' || lang === 'en') ? lang : 'en';
+    return { key: key, persona: persona, lang: lg, draft: lang !== 'ar' && lang !== 'en', formats: fm, light: { id: persona === 'deaf' ? 'friendly-robot+strobe-optin' : 'friendly-robot' }, text: txt, spoken: txt[lg], display: txt, via: 'built-in', refuge: key === 'refuge' };
+  }
+  function rbSpeak(sim, r, a, key, extra) {
+    var rb = sim.rb, persona = a ? personaOf(a) : ((extra && extra.persona) || 'adult'), s = rbSay(sim, key, persona, a, extra);
+    var line = { id: 'S' + (++rb.speechSeq), t: sim.t, robot: r.id, person: a ? a.key : null, find: a && a.robotFindId ? a.robotFindId : null, key: key, persona: persona, lang: s.lang, requestedLang: a ? a.lang : (extra && extra.lang) || null,
+      draft: s.draft, formats: s.formats, light: s.light, text: s.text, display: s.display, via: s.via, refuge: s.refuge, operator: !!(extra && extra.operator) };
+    rb.speech.push(line); if (rb.speech.length > 300) rb.speech.shift();
+    line.spoken = s.spoken;
+    r.stats.spoke++;
+    if (!a || a.hero || (extra && extra.log)) {
+      var tx = s.text;
+      evt(sim, 'robot-speak', { robot: r.id, person: a ? a.key : null, key: key, lang: s.lang, persona: persona }, 'الروبوت ' + r.id + ' يتكلم' + (a && a.name ? ' مع ' + a.name.ar : '') + ' (' + s.lang + '): «' + tx.ar + '»', 'Robot ' + r.id + ' speaks' + (a && a.name ? ' to ' + a.name.en : '') + ' (' + s.lang + '): "' + tx.en + '"');
+    }
+    return line;
+  }
+  function informPerson(sim, a) {   // the robot's guidance makes the person INFORMED (a live route), exactly like a personal alert would
+    if (a.aware >= 2 || sim.mode !== 'manara') return;
+    a.zoneLevel = a.zoneLevel || zoneLevelFor(sim, a);
+    a.msg = a.msg || composeFor(sim, a);
+    if (!a.asleep) setAware(sim, a, 2, 'robot');
+    a.robotGuidedAt = sim.t;
+  }
+
+  // ---------------------------------------------------------------- reports to the control room (buffered while the link is down)
+  function robotReport(sim, r, kind, id) { r.outbox.push({ kind: kind, id: id, t: sim.t }); if (r.link.up) robotFlush(sim, r); }
+  function findText(sim, r, f) {
+    var nameAr = f.name ? f.name.ar : (f.registered ? 'أحد المقيمين' : 'شخص'), nameEn = f.name ? f.name.en : 'a person';
+    var c = COND[f.condition.key] || COND.conscious;
+    return { ar: 'الروبوت ' + r.id + ' عثر على ' + nameAr + ' — ' + f.place.ar + ' — الحالة: ' + c.ar + ' (تقدير)' + (f.refuge && f.refuge.at ? ' — عند شرفة اللجوء' : ''),
+      en: 'Robot ' + r.id + ' located ' + nameEn + ' — ' + f.place.en + ' — condition: ' + c.en + ' (est.)' + (f.refuge && f.refuge.at ? ' — at the refuge balcony' : '') };
+  }
+  function robotFlush(sim, r) {
+    while (r.outbox.length && r.link.up) {
+      var o = r.outbox.shift(), t = sim.t;
+      if (o.kind === 'find') {
+        var f = sim.rb.finds[+o.id.slice(1) - 1]; if (!f) continue;
+        f.reportedAt = t;
+        var a = sim.byKey[f.key]; if (a) {
+          a.robotReportedAt = t;
+          if (!a.rescued && a.rescueAt) { var nt = t + Math.max(10, (a.rescueAt - t) * (1 - sim.P.robotCrewSpeedup)); if (nt < a.rescueAt) a.rescueAt = nt; }   // crews are told exactly where: the rest of their search shortens
+          else if (sim.fx.rescueOnScene !== null && !a.rescued && !a.rescueAt && (a.st === 'incapacitated' || a.st === 'down' || (a.st === 'sheltered' && a.needsHelp) || a.st === 'waiting')) a.rescueAt = t + sim.P.rescueAssistSec * (1 - sim.P.robotCrewSpeedup);
+        }
+        var tx = findText(sim, r, f);
+        evt(sim, 'robot-find', { robot: r.id, find: f.id, person: f.key, room: f.room, node: f.node, condition: f.condition.key, delaySec: t - f.t, by: f.by }, tx.ar + (t - f.t > 2 ? ' (وصل التقرير بعد عودة الاتصال)' : ''), tx.en + (t - f.t > 2 ? ' (report delivered when the link returned)' : ''));
+      } else if (o.kind === 'blocked') {
+        var b = sim.rb.blocked[+o.id.slice(1) - 1]; if (!b) continue;
+        b.reportedAt = t;
+        evt(sim, 'robot-blocked', { robot: r.id, block: b.id, kind: b.kind, node: b.node, room: b.room }, b.text.ar, b.text.en);
+      }
+    }
+  }
+  function robotBlockedReport(sim, r, kind, nodeId, text, room, floor) {
+    var rb = sim.rb, key = kind + '|' + nodeId;
+    for (var i = 0; i < rb.blocked.length; i++) if (rb.blocked[i].key === key) return rb.blocked[i];
+    var b = { id: 'B' + (++rb.blockSeq), key: key, robot: r.id, t: sim.t, reportedAt: null, kind: kind, node: nodeId, room: room || null, floor: floor === undefined ? null : floor, text: text };
+    rb.blocked.push(b); r.blocked.push(b.id);
+    robotReport(sim, r, 'blocked', b.id);
+    return b;
+  }
+
+  // ---------------------------------------------------------------- what a find does
+  function onFind(sim, r, a, how, pd) {
+    var rb = sim.rb, g = r.G, S = r.S, F = r.F, l = a.g - S.base, nd = S.nodes[l], t = sim.t, P = sim.P;
+    var f = { id: 'F' + (++rb.findSeq), robot: r.id, t: t, reportedAt: null, node: nd.id, place: rbNodeText(g, l), room: nd.room || null, registeredRoom: a.room || a.cls || null, floor: nd.fl + 1, key: a.key, name: a.name || null, role: a.role, registered: !!a.registered,
+      persona: a.persona, needs: needsOf(a), lang: a.lang, by: how, conf: Math.round(pd.p * 100) / 100, condition: { key: conditionOf(sim, a), est: true }, dose: Math.round(a.dose * 1000) / 1000, smoke: Math.round(F.smoke[l] * 100) / 100, tempC: Math.round(F.temp[l]),
+      refuge: { at: S.nodes[l].type === NT.REFUGE, route: false }, action: null, route: [], routeM: null, spoke: [], followed: null, beacons: 0 };
+    a.robotFoundAt = t; a.robotFindId = f.id; a.robotFoundBy = r.id;
+    rb.finds.push(f); r.finds.push(f.id);
+    if (a.room && (r.rooms[a.room])) r.rooms[a.room].found++;
+    var rp = rbAStar(sim, r, g.entrance, l, { dijkstra: false });   // the way in, as the robot knows it now: for the crews' card
+    if (rp.ok) { f.route = rp.path.map(function (x) { return S.nodes[x].id; }); f.routeM = Math.round(rp.path.reduce(function (s, x, i) { if (!i) return 0; var e = rbEdge(g, rp.path[i - 1], x); return s + (e ? e.len : 0); }, 0)); }
+    robotReport(sim, r, 'find', f.id);
+    // a person who cannot get out alone interrupts a routine guide / wake-up (the interrupted person goes back in the queue); while holding or returning, the robot records, reports and queues
+    var critical = f.condition.key === 'unresponsive' || a.persona === 'wheelchair' || a.st === 'waiting';
+    if (r.state === 'guiding' && critical && r.engage && r.engage.find !== f.id) { rb.pending.push(r.engage.find); r.engage = null; r.path = []; setRobotState(sim, r, 'searching', 'يقاطع الإرشاد لشخص لا يستطيع الخروج وحده', 'Interrupts its routine guidance for a person who cannot get out alone'); }
+    var lowDanger = F.smoke[l] < 0.08 && F.temp[l] < 40, top = r.state === 'searching' && !critical && lowDanger ? roomPriority(sim, r)[0] : null;
+    if (r.state === 'searching' && !(top && ((top.needs > 0 && top.score >= 1000) || top.score >= 10000) && top.rm.l !== l)) engageFind(sim, r, a, f);   // triage: someone in no danger waits while a person with needs is still unreached
+    else {
+      f.action = 'queued'; rb.pending.push(f.id);
+      if (!critical && !a.asleep && a.aware < 2) { f.followed = hr(sim.seed, D.ROBOT, a.id, 7000 + rb.findSeq) < P.robotFollowP; if (f.followed) informPerson(sim, a); rbSpeak(sim, r, a, 'guide', { exit: null }); f.spoke.push('guide'); }   // it speaks to a person who can move, even while busy
+    }
+    return f;
+  }
+  function engageFind(sim, r, a, f) {   // decide what to do with a person the robot has found (now, or later from the queue)
+    var rb = sim.rb, g = r.G, S = r.S, F = r.F, P = sim.P, t = sim.t, l = a.g - S.base, cond = conditionOf(sim, a), danger = F.smoke[l] >= 0.15 || F.temp[l] > 45, cannotMove = cond === 'unresponsive';
+    f.condition = { key: cond, est: true };
+    if (r.target && r.target.room && rb.claims[r.target.room] === r.id) delete rb.claims[r.target.room];   // it drops what it was doing: the person comes first
+    r.target = null; r.path = []; r.dwell = null; r.investigate = null;
+    if (danger && F.smoke[l] >= 0.2 && (cond === 'conscious' || cond === 'injured') && !a.asleep && (a.persona === 'wheelchair' || a.st === 'waiting') && r.hoodsLeft > 0 && !a.hood) {   // a conscious person who cannot get out of the smoke gets a hood
+      a.hood = true; r.hoodsLeft--; f.hood = true;
+      evt(sim, 'robot-hood', { robot: r.id, person: a.key }, 'الروبوت ' + r.id + ' سلّم غطاء دخان إلى ' + (a.name ? a.name.ar : 'شخص واعٍ') + ' (يتبقى ' + r.hoodsLeft + ')', 'Robot ' + r.id + ' handed a smoke hood to ' + (a.name ? a.name.en : 'a conscious person') + ' (' + r.hoodsLeft + ' left)');
+    }
+    if (cannotMove) { f.action = 'hold'; rbSpeak(sim, r, a, 'check'); f.spoke.push('check'); startHold(sim, r, a, f); }
+    else if (a.asleep) { f.action = 'wake'; r.engage = { kind: 'wake', key: a.key, find: f.id, tries: 0, nextAt: t, until: t + P.robotGuideSec + 5 * P.robotWakeTries + 30 }; setRobotState(sim, r, 'guiding', 'يوقظ ' + (a.name ? a.name.ar : 'شخصاً نائماً'), 'Waking ' + (a.name ? a.name.en : 'a sleeping person')); }
+    else if (a.persona === 'wheelchair' || a.immobile) {
+      f.action = 'stay'; rbSpeak(sim, r, a, 'intro'); f.spoke.push('intro');
+      var atRef = S.nodes[l].type === NT.REFUGE;
+      var rr = a.immobile ? null : refugeRouteFor(sim, r, a, l);
+      f.refuge.route = !!rr; f.refuge.at = atRef;
+      if (!atRef && rr) { f.action = 'refuge'; rbSpeak(sim, r, a, 'refuge'); f.spoke.push('refuge'); if (hr(sim.seed, D.ROBOT, a.id, 7000 + rb.findSeq) < P.robotFollowP) { informPerson(sim, a); f.followed = true; } else f.followed = false; }
+      else { rbSpeak(sim, r, a, 'stay'); f.spoke.push('stay'); }
+      if (danger || cond === 'injured' || a.st === 'waiting') startHold(sim, r, a, f);
+    } else if (a.aware === 2 && a.st === 'moving') { f.action = 'none'; f.followed = true; }
+    else { f.action = 'guide'; rbSpeak(sim, r, a, 'intro'); f.spoke.push('intro'); beginGuide(sim, r, a, f); }
+    if (f.hood) { rbSpeak(sim, r, a, 'hood'); f.spoke.push('hood'); }
+  }
+  function stepPending(sim, r) {   // back to searching: look after people the robot found while it was busy
+    var rb = sim.rb;
+    while (rb.pending.length) {
+      var f = rb.finds[+rb.pending.shift().slice(1) - 1], a = f ? sim.byKey[f.key] : null;
+      if (!a || a.rescued || a.st === 'safe' || a.checkin || !inStruct(sim, r, a)) continue;
+      if (a.aware === 2 && a.st === 'moving') continue;
+      engageFind(sim, r, a, f); return true;
+    }
+    return false;
+  }
+  function refugeRouteFor(sim, r, a, l) {   // a no-stairs route to the refuge balcony that is not blocked right now (residence only)
+    var g = r.G, ref = g.byId['REF']; if (ref === undefined) return null;
+    var p = rbAStar(sim, r, l, ref, { person: true, noStairs: true });
+    if (!p.ok) return null;
+    for (var i = 0; i < p.path.length; i++) if (r.F.smoke[p.path[i]] >= 0.7) return null;
+    return p.path;
+  }
+  function startHold(sim, r, a, f) {
+    r.hold = { key: a.key, find: f.id, since: sim.t, lastStatus: sim.t };
+    rbSpeak(sim, r, a, 'hold'); f.spoke.push('hold');
+    setRobotState(sim, r, 'holding', 'يبقى مع ' + (a.name ? a.name.ar : 'الشخص') + ' حتى تصل الفرق', 'Holding with ' + (a.name ? a.name.en : 'the person') + ' until crews arrive');
+    evt(sim, 'robot-hold', { robot: r.id, person: a.key, find: f.id }, 'الروبوت ' + r.id + ' يبقى مع ' + (a.name ? a.name.ar : 'شخص لا يستطيع الحركة') + ' — ' + f.place.ar + ' — ويبلّغ غرفة التحكم', 'Robot ' + r.id + ' stays with ' + (a.name ? a.name.en : 'a person who cannot move') + ' — ' + f.place.en + ' — and reports to the control room');
+  }
+  function guideRoute(sim, r, a, f) {   // the route the person will take (the live MANARA route when it exists), as local node indices inside the building
+    var g = r.G, S = r.S, route = [], l = a.g - S.base, i;
+    if (sim.rt.ready && a.aware === 2) {
+      var pr = personRoute(sim, a);
+      if (pr && pr.nodes) for (i = 0; i < pr.nodes.length; i++) { var gi = pr.nodes[i]; if (gi >= S.base && gi < S.base + g.n) route.push(gi - S.base); else break; }
+    }
+    if (route.length < 2) {   // no live field yet: the robot plans it itself to the nearest exit that is really open
+      var best = null;
+      for (i = 0; i < g.exits.length; i++) {
+        var ex = g.exits[i], st = sim.exits[ex.gi].state; if (st === 'LOCKED' || st === 'FIRE') continue;
+        var p = rbAStar(sim, r, l, ex.l, { person: true, noStairs: a.persona === 'wheelchair' });
+        if (p.ok && (!best || p.cost < best.cost)) best = p;
+      }
+      route = best ? best.path : [];
+    }
+    return route;
+  }
+  function beginGuide(sim, r, a, f) {
+    var P = sim.P, t = sim.t;
+    var follows = hr(sim.seed, D.ROBOT, a.id, 7000 + sim.rb.findSeq) < P.robotFollowP;
+    f.followed = follows;
+    if (follows) informPerson(sim, a);
+    var route = guideRoute(sim, r, a, f), ex = exitNameFor(r.G, route);
+    var persona = personaOf(a);
+    rbSpeak(sim, r, a, 'guide', { exit: ex });
+    f.spoke.push('guide');
+    f.guideExit = ex;
+    var way = route.slice(1), tr = r.variant === 'tracked', wp = [], i;
+    for (i = 0; i < way.length && wp.length < P.robotBeaconsPerFind; i++) {   // beacons on the first nodes of the way out, as far as THIS robot can drive there
+      var e = rbEdge(r.G, i ? way[i - 1] : route[0], way[i]);
+      if (e && (e.flag & F_STAIRS) && !tr) break;
+      wp.push(way[i]);
+    }
+    wp = wp.slice(0, Math.max(0, r.beaconsLeft));
+    r.engage = { kind: 'guide', key: a.key, find: f.id, wp: wp, placed: 0, until: t + P.robotGuideSec, exit: ex };
+    setRobotState(sim, r, 'guiding', 'يرشد ' + (a.name ? a.name.ar : 'شخصاً') + ' ويضع منارات الطريق', 'Guiding ' + (a.name ? a.name.en : 'a person') + ' and dropping route beacons');
+  }
+
+  // ---------------------------------------------------------------- search order
+  function roomCounts(sim, r) {   // per room: unaccounted residents (no check-in, not yet found by a robot) and how many of them have needs
+    var counts = {}, scope = {}; sim.pre.scope.forEach(function (gg) { scope[gg] = true; });
+    for (var i = 0; i < sim.people.length; i++) {
+      var a = sim.people[i];
+      if (!a.registered || !scope[a.group] || a.away || a.checkin !== null || (a.robotFoundAt !== undefined && a.robotFoundAt !== null)) continue;
+      var room = a.room || a.cls; if (!room || !r.G.byRoom[room]) continue;
+      var c = counts[room] || (counts[room] = { un: 0, needs: 0 });
+      c.un++; if (needsOf(a).length) c.needs++;
+    }
+    return counts;
+  }
+  function roomPriority(sim, r, quiet) {
+    var g = r.G, rb = sim.rb, S = r.S, F = r.F, counts = roomCounts(sim, r), list = [], origin = sim.hazard === 'fire' ? S.nodes[sim.hz.originLocal] : null;
+    g.rooms.forEach(function (rm) {
+      var rec = r.rooms[rm.room], c = counts[rm.room] || { un: 0, needs: 0 };
+      rec.un = c.un;
+      if (rec.status === 'locked' || rec.status === 'unreachable') return;
+      if (rec.status === 'hot' && sim.t < rec.retryAt) return;
+      var hotNb = false;   // a leaf room next to a corridor that is already hot is a trap: the robot waits
+      if (rm.type === NT.ROOM) for (var kk = 0; kk < g.adj[rm.l].length; kk++) if (F.temp[g.adj[rm.l][kk].to] > sim.P.robotHeatWarnC) hotNb = true;
+      if (hotNb || F.imp[rm.l]) {
+        if (quiet) return;
+        if (rec.hotSince === undefined) rec.hotSince = sim.t;
+        rec.status = sim.t - rec.hotSince > 300 ? 'unreachable' : 'hot'; rec.retryAt = sim.t + 20;
+        robotBlockedReport(sim, r, 'hot', rm.id, T('الروبوت ' + r.id + ': ' + rbNodeText(g, rm.l).ar + ' شديدة الحرارة أو الدخان أو لا طريق إليها — لم تُفتَّش', 'Robot ' + r.id + ': ' + rbNodeText(g, rm.l).en + ' is too hot, too smoky or cut off — not searched'), rm.room, S.nodes[rm.l].fl + 1);
+        return;
+      }
+      if (rec.status === 'hot' && !quiet) { rec.status = 'open'; rec.hotSince = undefined; }
+      if (rec.passes >= sim.P.robotRecheckPasses) return;
+      if (rec.passes >= 1 && c.un === 0) return;
+      var claim = rb.claims[rm.room]; if (claim && claim !== r.id && sim.robots.some(function (o) { return o.id === claim && o.state !== 'stowed' && o.state !== 'fault' && o.state !== 'returning'; })) return;
+      var nd = S.nodes[rm.l], sm = F.smoke[rm.l];
+      for (var k = 0; k < g.adj[rm.l].length; k++) sm = Math.max(sm, F.smoke[g.adj[rm.l][k].to]);
+      var prox = origin ? clamp(1 - dist2(nd.x, nd.y, origin.x, origin.y) * CELL / 40, 0, 1) + (nd.fl === origin.fl ? 0.2 : 0) : 0;
+      var score = (c.needs > 0 ? 1000 : 0) + (c.un > 0 ? 300 : 0) + 25 * Math.min(c.un, 6) + 30 * c.needs + 60 * sm + 30 * prox - 60 * rec.passes;
+      var pi = rb.priority.indexOf(rm.room); if (pi >= 0) score += 100000 - 1000 * pi;   // the operator's list always wins over the automatic order
+      list.push({ rm: rm, rec: rec, score: score, un: c.un, needs: c.needs });
+    });
+    list.sort(function (x, y) { return y.score - x.score || x.rm.l - y.rm.l; });
+    return list;
+  }
+  function pickTarget(sim, r) {
+    var cands = roomPriority(sim, r), best = null, tried = 0;
+    for (var i = 0; i < cands.length && tried < 8; i++) {
+      var cd = cands[i], rm = cd.rm, plan = rbAStar(sim, r, r.node, rm.l);
+      if (!plan.ok) {   // why not? only the stairs (a wheeled robot), or a hazard / blocked corridor on the way
+        var nd = r.S.nodes[rm.l], alt = r.variant === 'wheeled' ? rbAStar(sim, r, r.node, rm.l, { stairsOk: true }) : null;
+        if (alt && alt.ok) {
+          cd.rec.status = 'unreachable';
+          robotBlockedReport(sim, r, 'stairs', 'floor' + nd.fl, T('الروبوت ' + r.id + ' (عجلات) لا يصعد الدرج — الطابق ' + (nd.fl + 1) + ' لم يُفتَّش: يلزم روبوت بجنزير أو فرق الإنقاذ', 'Robot ' + r.id + ' (wheeled) cannot climb stairs — floor ' + (nd.fl + 1) + ' not searched: a tracked unit or crews are needed'), null, nd.fl + 1);
+        } else {
+          cd.rec.status = 'hot'; cd.rec.retryAt = sim.t + 30;
+          robotBlockedReport(sim, r, 'hot', rm.id, T('الروبوت ' + r.id + ': ' + rbNodeText(r.G, rm.l).ar + ' شديدة الحرارة أو الدخان أو لا طريق إليها — لم تُفتَّش', 'Robot ' + r.id + ': ' + rbNodeText(r.G, rm.l).en + ' is too hot, too smoky or cut off — not searched'), rm.room, nd.fl + 1);
+        }
+        continue;
+      }
+      tried++;
+      var eff = cd.score - 0.15 * plan.cost;
+      if (!best || eff > best.eff) best = { eff: eff, cd: cd, plan: plan };
+    }
+    if (!best) return false;
+    r.target = { kind: 'room', node: best.cd.rm.l, room: best.cd.rm.room, id: best.cd.rm.id };
+    r.path = best.plan.path.slice(1); sim.rb.claims[best.cd.rm.room] = r.id;
+    return true;
+  }
+  function searchComplete(sim, r) {
+    if (roomPriority(sim, r).length) return false;
+    for (var id in r.rooms) if (r.rooms[id].status === 'hot') return false;   // a room that is only too hot for now is not finished
+    return true;
+  }
+
+  // ---------------------------------------------------------------- movement (one second)
+  function rbSpeedFactor(sim, r, stairs) {
+    var P = sim.P, F = r.F, sm = F.smoke[r.node], v = r.variant === 'tracked' ? P.robotSpeedTracked : P.robotSpeedWheeled;
+    if (stairs) v /= P.robotStairPenalty;
+    v *= 1 - P.robotSmokeSlowPct / 100 * Math.min(1, sm * 1.5);
+    if (F.temp[r.node] > P.robotHeatWarnC) v *= 0.7;
+    return v;
+  }
+  function rbEnter(sim, r, l) {
+    var g = r.G, F = r.F, st = r.st, nd = g.S.nodes[l];
+    var rec = { t: sim.t, node: nd.id, burn: st.burn[l], I: Math.round(st.I[l] * 100) / 100, temp: Math.round(F.temp[l]), smoke: Math.round(F.smoke[l] * 100) / 100 };
+    if (r.entered.length < 600) r.entered.push(rec);
+    if (st.burn[l] === 1 || st.I[l] > 0.05 || F.temp[l] > sim.P.robotMaxTempC + 0.5) { r.enteredBad++; rec.bad = true; }
+    // exits it passes: report one that is locked / burning (it never forces anything)
+    for (var i = 0; i < g.exits.length; i++) {
+      var ex = g.exits[i];
+      if (ex.l !== l || ex.kind === 'entrance') continue;
+      var state = sim.exits[ex.gi].state;
+      if (state === 'LOCKED' || state === 'FIRE') robotBlockedReport(sim, r, 'exit-' + state.toLowerCase(), ex.id + '@' + state, T('الروبوت ' + r.id + ': ' + ex.name.ar + ' — ' + (state === 'LOCKED' ? 'مقفل' : 'نار') + ' — لم يُفتح (الروبوت لا يكسر الأبواب). يلزم الحارس أو فرق الإنقاذ', 'Robot ' + r.id + ': ' + ex.name.en + ' — ' + (state === 'LOCKED' ? 'LOCKED' : 'on FIRE') + ' — not opened (the robot never breaks doors). The guard or crews must deal with it'), null, nd.fl + 1);
+    }
+  }
+  function rbMove(sim, r) {   // returns 'idle' | 'moving' | 'arrived' | 'blocked' | 'door'
+    var g = r.G, P = sim.P, F = r.F, st = r.st, rb = sim.rb;
+    if (r.doorWait > 0) { r.doorWait--; return 'door'; }
+    if (r.to < 0) {
+      if (!r.path.length) return 'idle';
+      var nx = r.path[0], e = rbEdge(g, r.node, nx);
+      if (!e) { r.path = []; return 'blocked'; }
+      if ((e.flag & F_STAIRS) && r.variant !== 'tracked') { r.path = []; return 'blocked'; }
+      if (F.imp[nx] || r.known[nx]) { r.path = []; return 'blocked'; }
+      var ob = rb.obst[g.S.nodes[nx].id];
+      if (ob && ob.locked) {   // discovered at the door: reported, never forced
+        r.known[nx] = 1;
+        var nd = g.S.nodes[nx], isRoom = nd.type === NT.ROOM;
+        robotBlockedReport(sim, r, isRoom ? 'locked-door' : 'blocked-corridor', nd.id, isRoom ? T('الروبوت ' + r.id + ': باب غرفة ' + nd.room + ' مقفل — لم يُفتح (الروبوت لا يكسر الأبواب). يلزم الحارس أو فرق الإنقاذ', 'Robot ' + r.id + ': the door of room ' + nd.room + ' is locked — not opened (the robot never breaks doors). The guard or crews must open it')
+          : T('الروبوت ' + r.id + ': الممر مسدود عند «' + nd.label.ar + '» — الطابق ' + (nd.fl + 1) + ' — عُلِّم مسدوداً للروبوت', 'Robot ' + r.id + ': the corridor is blocked at "' + nd.label.en + '", floor ' + (nd.fl + 1) + ' — marked blocked for the robot'), isRoom ? nd.room : null, nd.fl + 1);
+        if (isRoom && r.rooms[nd.room]) r.rooms[nd.room].status = 'locked';
+        r.path = []; r.target = null; r.dwell = null;
+        return 'blocked';
+      }
+      if (e.door >= 0 && !st.doorOpen[e.door]) {
+        if (!P.robotOpensDoors) { r.known[nx] = 1; if (g.S.nodes[nx].room && r.rooms[g.S.nodes[nx].room]) r.rooms[g.S.nodes[nx].room].status = 'locked'; r.path = []; r.target = null; return 'blocked'; }
+        st.doorOpen[e.door] = 1; r.doorWait = Math.max(0, Math.round(P.robotDoorSec) - 1); r.stats.doorsOpened++; if (r.opened.length < 200) r.opened.push(g.S.nodes[nx].id);
+        return 'door';
+      }
+      r.to = nx; r.prog = 0; r.edgeLen = e.len; r.edgeFlag = e.flag; r.path.shift();
+      var A = g.S.nodes[r.node], B = g.S.nodes[nx];
+      if (Math.abs(B.x - A.x) + Math.abs(B.y - A.y) > 1e-6) r.heading = (Math.atan2(B.x - A.x, -(B.y - A.y)) / DEG + 360) % 360;
+    }
+    if (F.imp[r.to] || r.known[r.to]) { r.to = -1; r.prog = 0; r.path = []; return 'blocked'; }   // the node ahead became impassable while it drove: it backs off to where it came from
+    var stairs = (r.edgeFlag & F_STAIRS) !== 0, v = rbSpeedFactor(sim, r, stairs);
+    r.prog += v; r.driven += v; if (stairs) r.stats.stairsM += v;
+    if (r.prog >= r.edgeLen) { r.node = r.to; r.to = -1; r.prog = 0; rbEnter(sim, r, r.node); return 'arrived'; }
+    return 'moving';
+  }
+  function rbPose(sim, r) {
+    var S = r.S, A = S.nodes[r.node];
+    if (r.to >= 0 && r.edgeLen > 0) { var B = S.nodes[r.to], f = clamp(r.prog / r.edgeLen, 0, 1); return { x: lerp(A.x, B.x, f), y: lerp(A.y, B.y, f), fl: f < 0.5 ? A.fl : B.fl }; }
+    return { x: A.x, y: A.y, fl: A.fl };
+  }
+
+  // ---------------------------------------------------------------- link (mesh through the entrance gateway and the beacons), battery, heat
+  function relayField(sim, r) {   // metres from the nearest relay to every node (the entrance gateway, plus every beacon when beacons relay); a floor costs robotFloorLossM extra
+    var g = r.G, P = sim.P, d = r.relay, n = g.n, i, queue = [], inq = new Uint8Array(n);
+    d.fill(Infinity);
+    var relays = [g.entrance]; if (P.robotBeaconRelay) r.beacons.forEach(function (b) { relays.push(b.l); });
+    relays.forEach(function (l) { d[l] = 0; queue.push(l); inq[l] = 1; });
+    for (var qi = 0; qi < queue.length; qi++) {   // label-correcting (the graph is tiny)
+      var u = queue[qi]; inq[u] = 0;
+      var list = g.adj[u];
+      for (var k = 0; k < list.length; k++) {
+        var e = list[k], nd = d[u] + e.len + ((e.flag & F_STAIRS) ? P.robotFloorLossM : 0);
+        if (nd < d[e.to]) { d[e.to] = nd; if (!inq[e.to]) { inq[e.to] = 1; queue.push(e.to); } }
+      }
+    }
+    r.relayDirty = false;
+  }
+  function stepLink(sim, r) {
+    var P = sim.P, L = r.link, t = sim.t;
+    if (r.relayDirty) relayField(sim, r);
+    var d = r.relay[r.node], q = clamp(1 - d / P.robotMeshRangeM, 0, 1);
+    if (P.robotBeaconRelay && q < 0.25 && r.beaconsLeft > 0 && r.to < 0 && d > 0) {   // the signal is getting weak: it drops a relay beacon here to extend the mesh
+      var nd0 = r.S.nodes[r.node];
+      r.beacons.push({ node: nd0.id, l: r.node, x: nd0.x, y: nd0.y, fl: nd0.fl, t: t, auto: true }); r.beaconsLeft--;
+      evt(sim, 'robot-relay', { robot: r.id, node: nd0.id }, 'الروبوت ' + r.id + ' وضع مرحّل اتصال عند ' + rbNodeText(r.G, r.node).ar + ' (يتبقى ' + r.beaconsLeft + ')', 'Robot ' + r.id + ' dropped a link relay at ' + rbNodeText(r.G, r.node).en + ' (' + r.beaconsLeft + ' left)');
+      relayField(sim, r); d = r.relay[r.node]; q = clamp(1 - d / P.robotMeshRangeM, 0, 1);
+    }
+    L.q = q;
+    var up = true;
+    if (t < L.downUntil) up = false;
+    else if (q < 0.12) up = false;
+    else if (q < 0.5 && P.robotDropoutPct > 0 && hr(sim.seed, D.ROBOT, 900 + r.n, t) < P.robotDropoutPct / 100 * (1 - q)) { L.downUntil = t + Math.max(2, Math.round(P.robotDropoutSec * (0.7 + 0.6 * hr(sim.seed, D.ROBOT, 950 + r.n, t)))); L.dropouts++; up = false; }
+    if (up !== L.up) {
+      L.up = up;
+      if (up) evt(sim, 'robot-link', { robot: r.id, up: true }, 'عاد اتصال الروبوت ' + r.id + ' — تُرسَل التقارير المخزَّنة', 'Robot ' + r.id + ' link is back — buffered reports are sent');
+      else evt(sim, 'robot-link', { robot: r.id, up: false, q: Math.round(q * 100) / 100 }, 'انقطع اتصال الروبوت ' + r.id + ' — يعمل بنفسه وتُخزَّن تقاريره', 'Robot ' + r.id + ' lost its link — it keeps working on its own and its reports are buffered');
+    }
+    if (!up) { L.downSec++; L.downFor++; } else L.downFor = 0;
+    if (up) robotFlush(sim, r);
+    r.linkRecovery = !up && L.downFor >= P.robotLinkLostSec;
+  }
+  function drainPerSec(sim, r, moving, stairs) {
+    var P = sim.P, F = r.F, l = r.node;
+    var hm = P.robotHeatDrain * Math.max(0, (F.temp[l] - 40) / 10), sm = P.robotSmokeDrain * F.smoke[l];
+    return 1 / (P.robotBattMin * 60) * (r.variant === 'tracked' ? P.robotTrackedDrain : 1) * (1 + hm + sm) * (moving ? (stairs ? P.robotStairDrain : 1) : P.robotIdleDrain);
+  }
+  function returnCost(sim, r) {   // battery needed to drive back to the entrance now: summed edge by edge (stairs cost more time AND more power, heat and smoke raise the drain), with a margin
+    var p = rbAStar(sim, r, r.node, r.G.entrance);
+    if (!p.ok) return null;
+    var P = sim.P, F = r.F, v = r.variant === 'tracked' ? P.robotSpeedTracked : P.robotSpeedWheeled, base = 1 / (P.robotBattMin * 60) * (r.variant === 'tracked' ? P.robotTrackedDrain : 1), e = 0;
+    for (var i = 1; i < p.path.length; i++) {
+      var ed = rbEdge(r.G, p.path[i - 1], p.path[i]), w = p.path[i], stairs = (ed.flag & F_STAIRS) !== 0;
+      var sec = ed.len / v * (stairs ? P.robotStairPenalty : 1) / Math.max(0.3, 1 - P.robotSmokeSlowPct / 100 * Math.min(1, F.smoke[w] * 1.5));
+      e += sec * base * (stairs ? P.robotStairDrain : 1) * (1 + P.robotHeatDrain * Math.max(0, (F.temp[w] - 40) / 10) + P.robotSmokeDrain * F.smoke[w]);
+    }
+    return e * 1.25 + 0.02;
+  }
+  function robotFault(sim, r, why) {
+    if (r.state === 'fault') return;
+    r.stats.faultAt = sim.t; r.stats.faultWhy = why.key;
+    r.path = []; r.target = null; r.hold = null; r.engage = null; r.to = -1; r.prog = 0;
+    var where = rbNodeText(r.G, r.node);
+    setRobotState(sim, r, 'fault', 'عطل: ' + why.text.ar, 'Fault: ' + why.text.en);
+    evt(sim, 'robot-fault', { robot: r.id, why: why.key, node: r.S.nodes[r.node].id }, 'الروبوت ' + r.id + ' تعطّل (' + why.text.ar + ') في ' + where.ar + ' — يلزم الاسترداد', 'Robot ' + r.id + ' has a fault (' + why.text.en + ') at ' + where.en + ' — it needs recovering');
+    robotBlockedReport(sim, r, 'fault', r.id + '@' + why.key, T('الروبوت ' + r.id + ' متوقف في ' + where.ar + ': ' + why.text.ar, 'Robot ' + r.id + ' is stopped at ' + where.en + ': ' + why.text.en), r.S.nodes[r.node].room || null, r.S.nodes[r.node].fl + 1);
+  }
+  function startReturn(sim, r, reason, ar, en) {
+    if (r.state === 'returning' || r.state === 'fault') return;
+    r.hold = null; r.engage = null; r.dwell = null; r.investigate = null; r.teleop = null; r.recall = false;
+    if (r.target && r.target.room && sim.rb.claims[r.target.room] === r.id) delete sim.rb.claims[r.target.room];
+    r.target = { kind: 'entrance', node: r.G.entrance }; r.path = []; r.returnReason = reason;
+    setRobotState(sim, r, 'returning', ar, en);
+  }
+  function rbFlee(sim, r) {   // the fire reached the node it stands on: step to the coolest passable neighbour (never into an impassable one)
+    var g = r.G, F = r.F, list = g.adj[r.node], best = -1, bt = Infinity, i;
+    for (i = 0; i < list.length; i++) { var w = list[i].to; if (F.imp[w] || r.known[w]) continue; if ((list[i].flag & F_STAIRS) && r.variant !== 'tracked') continue; if (F.temp[w] < bt) { bt = F.temp[w]; best = w; } }
+    if (best < 0) { robotFault(sim, r, { key: 'trapped', text: T('حاصرته النار', 'trapped by fire') }); return; }
+    r.node = best; r.to = -1; r.prog = 0; r.path = []; r.flee++;
+    evt(sim, 'robot-retreat', { robot: r.id, node: g.S.nodes[best].id }, 'الروبوت ' + r.id + ' تراجع بعيداً عن النار إلى ' + rbNodeText(g, best).ar, 'Robot ' + r.id + ' backed away from the fire to ' + rbNodeText(g, best).en);
+  }
+
+  // ---------------------------------------------------------------- detection (every second while the robot is active)
+  function stepDetect(sim, r) {
+    var P = sim.P, g = r.G, S = r.S, F = r.F, t = sim.t, vis = r.vis || (r.vis = new Float32Array(g.n)), i, a;
+    visibleNodes(sim, r, F, vis);
+    for (i = 0; i < g.n; i++) if (vis[i] < Infinity) r.cov[i] = Math.min(1, r.cov[i] + 0.25 * thermalVisibility(sim, Math.max(F.smoke[r.node], F.smoke[i]), vis[i]));
+    var hereRoom = S.nodes[r.node].type === NT.ROOM || S.nodes[r.node].type === NT.SUPPORT, someoneHere = false;
+    for (i = 0; i < sim.people.length; i++) {
+      a = sim.people[i];
+      if (a.away || a.g < 0 || a.rescued || !inStruct(sim, r, a)) continue;
+      var l = a.g - S.base, d = vis[l];
+      if (!(d < Infinity)) continue;
+      if (l === r.node) someoneHere = true;
+      if (a.aware === 2 && a.st !== 'waiting' && a.st !== 'incapacitated' && a.st !== 'down' && !(a.st === 'sheltered' && a.safeKind === 'refuge')) continue;   // informed and not stuck: nothing to find or report
+      a.robotViewSec = (a.robotViewSec || 0) + 1;
+      if (a.robotFoundAt !== undefined && a.robotFoundAt !== null) continue;
+      var pd = detectP(sim, r, a, d + 0.4, F, l);
+      if (hr(sim.seed, D.ROBOT, 3000 + a.id, t) < pd.p) onFind(sim, r, a, pd.au > Math.max(pd.th, pd.rgb) ? 'audio' : (pd.au > 0 && pd.au > 0.5 * Math.max(pd.th, pd.rgb)) ? 'camera+audio' : pd.th >= pd.rgb ? 'thermal' : 'camera', pd);
+      if (r.state === 'fault') break;
+    }
+    // false positive: a hot object in a room looks like a person (more often in hot rooms); it is checked, then dismissed
+    if (hereRoom && !someoneHere && !r.investigate && P.robotFalsePosPerMin > 0 && (r.state === 'searching')) {
+      var pfp = P.robotFalsePosPerMin / 60 * (1 + Math.max(0, F.temp[r.node] - P.robotRoomC) / 20);
+      if (hr(sim.seed, D.ROBOT, 5000 + r.n * 100 + r.node, t) < pfp) { r.investigate = { until: t + Math.round(P.robotInvestigateSec), node: r.node }; r.stats.falsePositives++; }
+    }
+  }
+
+  // ---------------------------------------------------------------- the state machine
+  function stepRobot(sim, r) {
+    var P = sim.P, t = sim.t, rb = sim.rb;
+    rbFieldFill(sim, r.G, r.F);
+    if (r.state === 'stowed' || r.state === 'fault') { if (r.state === 'fault') { /* a stopped robot still holds its beacons as relays */ } return; }
+    if (r.state === 'approved') {
+      var ready = r.readyAt;
+      if (ready === null && P.robotCarrier) { var onSc = sim.hazard === 'fire' ? sim.fx.engineOnScene : sim.fx.hazmatOnScene; if (onSc !== null) { r.readyAt = onSc + P.robotUnloadSec; ready = r.readyAt; } }
+      if (ready !== null && t >= ready) { r.deployUntil = t + Math.round(P.robotDeploySec); r.stats.started = t; setRobotState(sim, r, 'deploying', 'يُجهَّز عند مدخل المبنى (بعد اعتماد قائد الحادث)', 'Deploying at the building entrance (after the incident commander\'s approval)'); }
+      return;
+    }
+    if (r.state === 'deploying') {
+      if (t >= r.deployUntil) {
+        setRobotState(sim, r, 'searching', 'يدخل المبنى ويبدأ البحث — الأولوية لغير المحصيّين ومن لديهم احتياجات', 'Entering the building — search order: unaccounted people and people with needs first');
+        var order = roomPriority(sim, r).slice(0, 5).map(function (x) { return x.rm.room; });
+        evt(sim, 'robot-search-order', { robot: r.id, order: order }, 'ترتيب بحث الروبوت ' + r.id + ' (أول الغرف): ' + order.join('، '), 'Robot ' + r.id + ' search order (first rooms): ' + order.join(', '));
+      }
+      return;
+    }
+    // active: searching | guiding | holding | returning
+    stepLink(sim, r);
+    if (r.state === 'fault') return;
+    var moving = r.to >= 0, stairsNow = moving && (r.edgeFlag & F_STAIRS) !== 0;
+    r.battery = Math.max(0, r.battery - drainPerSec(sim, r, moving, stairsNow));
+    var T0 = r.F.temp[r.node];
+    if (T0 > P.robotHeatWarnC) r.heat++; else r.heat = Math.max(0, r.heat - 0.5);
+    if (r.F.imp[r.node] && r.to < 0) { rbFlee(sim, r); if (r.state === 'fault') return; }
+    if (r.battery <= 0) { robotFault(sim, r, { key: 'battery', text: T('نفدت البطارية', 'battery exhausted') }); return; }
+    if (r.heat >= P.robotHeatSoakSec) { robotFault(sim, r, { key: 'overheated', text: T('توقف حراري للحماية', 'thermal shutdown') }); return; }
+    stepDetect(sim, r);
+    if (r.state === 'fault') return;
+    // recall and battery (checked in every active state except when already returning)
+    if (r.state !== 'returning') {
+      var why = null;
+      if (r.recall) why = 'recall';
+      else if (r.battery <= P.robotReturnPct / 100) why = 'battery';
+      else if (t >= r.planCheckAt) { r.planCheckAt = t + 3; var c = returnCost(sim, r); if (c !== null && r.battery <= c) why = 'battery'; }
+      if (why === 'recall') startReturn(sim, r, 'recall', 'استُدعي — يعود إلى المدخل', 'Recalled — returning to the entrance');
+      else if (why === 'battery') {
+        evt(sim, 'robot-battery-low', { robot: r.id, pct: Math.round(r.battery * 100) }, 'بطارية الروبوت ' + r.id + ' ' + Math.round(r.battery * 100) + '٪ — يعود إلى المدخل', 'Robot ' + r.id + ' battery ' + Math.round(r.battery * 100) + ' % — returning to the entrance');
+        startReturn(sim, r, 'battery', 'البطارية منخفضة — يعود', 'Battery low — returning');
+      }
+    }
+    switch (r.state) {
+      case 'searching': stepSearching(sim, r); break;
+      case 'guiding': stepGuiding(sim, r); break;
+      case 'holding': stepHolding(sim, r); break;
+      case 'returning': stepReturning(sim, r); break;
+    }
+  }
+  function replan(sim, r, goal) {
+    var p = rbAStar(sim, r, r.node, goal);
+    if (!p.ok) { r.path = []; return false; }
+    r.path = p.path.slice(1); return true;
+  }
+  function stepSearching(sim, r) {
+    var P = sim.P, t = sim.t, rb = sim.rb, g = r.G;
+    if (r.investigate) {
+      if (t < r.investigate.until) return;
+      var nd0 = r.S.nodes[r.node];
+      evt(sim, 'robot-false-positive', { robot: r.id, node: nd0.id }, 'الروبوت ' + r.id + ': «شخص محتمل» في ' + rbNodeText(g, r.node).ar + ' لم يتأكد — أُسقط كإنذار كاذب (جسم ساخن)', 'Robot ' + r.id + ': a possible person in ' + rbNodeText(g, r.node).en + ' was not confirmed — dismissed as a false alarm (a hot object)');
+      r.investigate = null; return;
+    }
+    if (rb.pending.length && !r.dwell && !r.target && r.to < 0 && stepPending(sim, r)) return;
+    if (r.linkRecovery && r.to < 0 && !r.teleop) {   // lost the link for too long: back toward the nearest relay
+      var cur = r.relay[r.node];
+      if (cur > 0) { var bestN = -1, bc = Infinity; for (var q = 0; q < g.n; q++) if (r.relay[q] === 0) { var pp = rbAStar(sim, r, r.node, q); if (pp.ok && pp.cost < bc) { bc = pp.cost; bestN = q; } } if (bestN >= 0 && (!r.target || r.target.kind !== 'relay')) { r.target = { kind: 'relay', node: bestN }; replan(sim, r, bestN); } }
+    }
+    if (r.teleop && !(r.target && r.target.kind === 'wp')) {
+      r.target = { kind: 'wp', node: r.teleop.l }; r.dwell = null;
+      if (!replan(sim, r, r.teleop.l) && r.node !== r.teleop.l) { evt(sim, 'robot-teleop', { robot: r.id, ok: false }, 'تعذّر الوصول إلى نقطة التحكم عن بُعد', 'The tele-operation waypoint cannot be reached'); r.teleop = null; r.target = null; }
+    }
+    if (r.dwell) {
+      r.dwell.left--;
+      if (r.dwell.left <= 0) {
+        var rec = r.rooms[r.dwell.room]; rec.passes++; rec.status = 'searched'; rec.lastAt = t; r.cov[rec.l] = 1;
+        var found = rec.found;
+        evt(sim, 'robot-room-searched', { robot: r.id, room: r.dwell.room, found: found, pass: rec.passes }, 'الروبوت ' + r.id + ' أنهى مسح غرفة ' + r.dwell.room + (found ? ' — عُثر على ' + found : ' — لا أحد ظاهر'), 'Robot ' + r.id + ' finished sweeping room ' + r.dwell.room + (found ? ' — ' + found + ' found' : ' — no one seen'));
+        delete rb.claims[r.dwell.room]; r.dwell = null; r.target = null;
+      }
+      return;
+    }
+    if (!r.target && r.to < 0) {
+      if (!pickTarget(sim, r)) {
+        if (searchComplete(sim, r)) { evt(sim, 'robot-search-complete', { robot: r.id }, 'الروبوت ' + r.id + ' أنهى البحث في كل الغرف الممكنة — يعود', 'Robot ' + r.id + ' has searched every room it can — returning'); startReturn(sim, r, 'complete', 'أنهى البحث — يعود', 'Search complete — returning'); }
+        return;
+      }
+    }
+    if (r.target && !r.path.length && r.to < 0 && r.node !== r.target.node) { if (!replan(sim, r, r.target.node)) { if (r.target.kind === 'room') delete rb.claims[r.target.room]; r.target = null; return; } }
+    if (r.path.length) {   // the way may have become impassable since it was planned
+      for (var i = 0; i < r.path.length; i++) if (r.F.imp[r.path[i]]) { if (!replan(sim, r, r.target.node)) { if (r.target.kind === 'room') delete rb.claims[r.target.room]; r.target = null; } break; }
+    }
+    var res = rbMove(sim, r);
+    if (res === 'blocked') { if (r.target && r.target.kind === 'room') { delete rb.claims[r.target.room]; } if (r.target && r.target.kind !== 'wp') r.target = null; else if (r.target) { r.target = null; r.teleop = null; } return; }
+    if ((res === 'arrived' || res === 'idle') && r.target && r.node === r.target.node && r.to < 0) {
+      if (r.target.kind === 'room') { r.dwell = { room: r.target.room, left: Math.round(P.robotRoomSweepSec) }; r.cov[r.target.node] = Math.max(r.cov[r.target.node], 0.5); }
+      else if (r.target.kind === 'wp') { evt(sim, 'robot-teleop', { robot: r.id, ok: true }, 'وصل الروبوت ' + r.id + ' إلى نقطة التحكم عن بُعد — يعود للبحث الذاتي', 'Robot ' + r.id + ' reached the tele-operation waypoint — back to autonomous search'); r.teleop = null; r.target = null; }
+      else { r.target = null; }
+    }
+  }
+  function approach(sim, r, a) {   // true while the robot is still driving to the person's node
+    var pl = inStruct(sim, r, a) ? a.g - r.S.base : -1;
+    if (pl < 0 || (r.node === pl && r.to < 0)) return false;
+    if (!r.path.length && r.to < 0) { if (!replan(sim, r, pl)) return false; }
+    var res = rbMove(sim, r);
+    if (res === 'blocked') { r.path = []; return false; }
+    return true;
+  }
+  function stepGuiding(sim, r) {
+    var P = sim.P, t = sim.t, E = r.engage, a = E ? sim.byKey[E.key] : null;
+    if (!E || !a) { r.engage = null; setRobotState(sim, r, 'searching'); return; }
+    var f = sim.rb.finds[+E.find.slice(1) - 1];
+    if (E.kind === 'wake') {
+      if (!a.asleep) { E.kind = 'guide'; f.woke = true; beginGuide(sim, r, a, f); return; }
+      if (t < E.until && approach(sim, r, a)) return;   // it drives to the sleeper's door first
+      if (t >= E.nextAt) {
+        E.tries++; E.nextAt = t + 5;
+        rbSpeak(sim, r, a, 'wake');
+        if (hr(sim.seed, D.ROBOT, 4000 + a.id, E.tries * 997 + t) < P.robotWakeP) {
+          wake(sim, a); a.robotWoke = true; f.woke = true; f.wokeAt = t;
+          evt(sim, 'robot-woke', { robot: r.id, person: a.key, tries: E.tries }, 'أيقظ الروبوت ' + r.id + ' ' + (a.name ? a.name.ar : 'شخصاً') + ' (المحاولة ' + E.tries + ')', 'Robot ' + r.id + ' woke ' + (a.name ? a.name.en : 'a person') + ' (attempt ' + E.tries + ')');
+          E.kind = 'guide'; beginGuide(sim, r, a, f); return;
+        }
+        if (E.tries >= P.robotWakeTries) {
+          f.action = 'hold'; f.woke = false;
+          evt(sim, 'robot-no-response', { robot: r.id, person: a.key }, 'لم يستجب ' + (a.name ? a.name.ar : 'الشخص') + ' بعد ' + E.tries + ' محاولات — يُعامَل كمن لا يستجيب وتُبلَّغ الفرق', (a.name ? a.name.en : 'The person') + ' did not respond after ' + E.tries + ' attempts — treated as not responding and crews are told');
+          f.condition.key = 'unresponsive'; r.engage = null; startHold(sim, r, a, f); return;
+        }
+      }
+      return;
+    }
+    // guide: walk the first nodes of the way out dropping a beacon on each (as far as this robot can drive), then back to the search
+    if (t >= E.until || (E.placed >= E.wp.length && r.to < 0 && !r.path.length)) { endGuide(sim, r, a, f, E); return; }
+    if (!r.path.length && r.to < 0 && E.placed < E.wp.length) {
+      var nxt = E.wp[E.placed];
+      if (r.node === nxt) { dropBeacon(sim, r, f, E); return; }
+      if (!replan(sim, r, nxt)) { E.placed = E.wp.length; return; }
+    }
+    var res = rbMove(sim, r);
+    if (res === 'arrived' && E.wp[E.placed] === r.node) dropBeacon(sim, r, f, E);
+    else if (res === 'blocked') E.placed = E.wp.length;
+  }
+  function dropBeacon(sim, r, f, E) {
+    if (r.beaconsLeft <= 0) { E.placed = E.wp.length; return; }
+    var nd = r.S.nodes[r.node];
+    r.beacons.push({ node: nd.id, l: r.node, x: nd.x, y: nd.y, fl: nd.fl, t: sim.t, find: f.id }); r.beaconsLeft--; E.placed++; f.beacons++; r.relayDirty = true;
+  }
+  function endGuide(sim, r, a, f, E) {
+    r.engage = null; r.path = []; r.target = null;
+    if (f.beacons > 0) evt(sim, 'robot-beacon', { robot: r.id, find: f.id, n: f.beacons, exit: E.exit ? E.exit.en : null }, 'الروبوت ' + r.id + ' وضع ' + f.beacons + ' منارة على طريق ' + (a.name ? a.name.ar : 'الشخص') + (E.exit ? ' نحو «' + E.exit.ar + '»' : ''), 'Robot ' + r.id + ' placed ' + f.beacons + ' route beacon(s) for ' + (a.name ? a.name.en : 'the person') + (E.exit ? ' toward "' + E.exit.en + '"' : ''));
+    setRobotState(sim, r, 'searching', 'يعود إلى البحث', 'Back to searching');
+  }
+  function stepHolding(sim, r) {
+    var P = sim.P, t = sim.t, H = r.hold, a = H ? sim.byKey[H.key] : null;
+    if (!H || !a) { r.hold = null; setRobotState(sim, r, 'searching'); return; }
+    var f = sim.rb.finds[+H.find.slice(1) - 1], why = null;
+    if (a.rescued || a.st === 'safe' || a.checkin === 'safe') why = 'crews';
+    else if (t - H.since >= P.robotHoldMaxSec) why = 'timeout';
+    if (!why && approach(sim, r, a)) return;   // first it drives to the person, then it stays
+    if (!why && t - H.lastStatus >= P.robotStatusSec) {
+      H.lastStatus = t; var cnd = conditionOf(sim, a); if (f) f.condition = { key: cnd, est: true };
+      evt(sim, 'robot-status', { robot: r.id, person: a.key, condition: cnd }, 'الروبوت ' + r.id + ' (مع ' + (a.name ? a.name.ar : 'الشخص') + '): الحالة ' + COND[cnd].ar + ' (تقدير) — دخان ' + Math.round(r.F.smoke[r.node] * 100) + '٪', 'Robot ' + r.id + ' (with ' + (a.name ? a.name.en : 'the person') + '): condition ' + COND[cnd].en + ' (est.) — smoke ' + Math.round(r.F.smoke[r.node] * 100) + ' %');
+    }
+    if (why) {
+      evt(sim, 'robot-hold-end', { robot: r.id, person: a.key, why: why }, 'انتهى بقاء الروبوت ' + r.id + ' مع ' + (a.name ? a.name.ar : 'الشخص') + (why === 'crews' ? ' — وصلت الفرق' : ' — انتهت المهلة'), 'Robot ' + r.id + ' stops holding with ' + (a.name ? a.name.en : 'the person') + (why === 'crews' ? ' — crews reached them' : ' — hold time limit'));
+      r.hold = null; setRobotState(sim, r, 'searching', 'يعود إلى البحث', 'Back to searching');
+    }
+  }
+  function stepReturning(sim, r) {
+    var g = r.G;
+    if (r.node === g.entrance && r.to < 0) {
+      r.stats.returnedAt = sim.t; r.target = null; r.path = []; r.approval = { status: 'none', requestedAt: null, approvedAt: null, by: null };
+      evt(sim, 'robot-returned', { robot: r.id, battery: Math.round(r.battery * 100), reason: r.returnReason }, 'عاد الروبوت ' + r.id + ' إلى المدخل (البطارية ' + Math.round(r.battery * 100) + '٪)', 'Robot ' + r.id + ' is back at the entrance (battery ' + Math.round(r.battery * 100) + ' %)');
+      setRobotState(sim, r, 'stowed', 'عاد إلى مكانه', 'Back at its place'); return;
+    }
+    if (!r.path.length && r.to < 0 && !replan(sim, r, g.entrance)) {
+      if (!r.cutOff) { r.cutOff = true; robotBlockedReport(sim, r, 'cut-off', r.id + '@' + sim.t, T('الروبوت ' + r.id + ' لا يجد طريق عودة — يبقى في ' + rbNodeText(g, r.node).ar, 'Robot ' + r.id + ' has no way back — it stays at ' + rbNodeText(g, r.node).en), null, r.S.nodes[r.node].fl + 1); }
+      return;
+    }
+    var res = rbMove(sim, r);
+    if (res === 'blocked') r.path = [];
+  }
+  function stepRobots(sim) {
+    var rb = sim.rb; if (!rb.enabled) return;
+    stepRobotApproval(sim);
+    for (var i = 0; i < sim.robots.length; i++) stepRobot(sim, sim.robots[i]);
+  }
+
+  // ---------------------------------------------------------------- operator actions
+  function roleOf(sim, role) { return ROBOT_ROLES.indexOf(role) >= 0 ? role : sim.rb.role; }
+  var ROLE_REJECT = T('اعتماد نشر الروبوت من صلاحية قائد الحادث فقط', 'Only the incident commander can approve sending the robot in');
+  function noRole(sim, code, ar, en) { evt(sim, 'robot-approval-rejected', { code: code }, ar, en); return { ok: false, code: code, reason: T(ar, en) }; }
+  function apiSetRole(sim, role) {
+    if (ROBOT_ROLES.indexOf(role) < 0) return { ok: false, code: 'role', reason: T('دور غير معروف', 'Unknown role'), roles: ROBOT_ROLES.slice() };
+    sim.rb.role = role;
+    evt(sim, 'operator-role', { role: role }, 'دور المشغّل (محاكاة): ' + ({ viewer: 'مشاهد', operator: 'مشغّل', commander: 'قائد الحادث' })[role], 'Operator role (simulated): ' + role);
+    return { ok: true, role: role };
+  }
+  function apiDeployRobot(sim, id, role) {
+    var rb = sim.rb;
+    if (!rb.enabled) { var en = enableRobot(sim, {}); if (!en.ok) return en; }
+    role = roleOf(sim, role);
+    if (role === 'viewer') return noRole(sim, 'role', 'المشاهد لا يستطيع طلب نشر الروبوت', 'A viewer cannot request deploying the robot');
+    var list = id === undefined || id === null ? sim.robots : [rbRobot(sim, id)].filter(Boolean);
+    if (!list.length) return NO_ROBOT;
+    var n = 0; list.forEach(function (r) { if (robotRequest(sim, r, role)) n++; });
+    return { ok: true, requested: n, needsApproval: true, note: T('بانتظار اعتماد قائد الحادث', 'Waiting for the incident commander\'s approval') };
+  }
+  function apiApproveRobot(sim, id, role) {
+    if (!sim.rb.enabled) return NO_ROBOT;
+    role = roleOf(sim, role);
+    if (role !== 'commander') return noRole(sim, 'role', ROLE_REJECT.ar, ROLE_REJECT.en);
+    var list = id === undefined || id === null ? sim.robots : [rbRobot(sim, id)].filter(Boolean);
+    if (!list.length) return NO_ROBOT;
+    var done = [];
+    list.forEach(function (r) { if ((r.approval.status === 'requested' || r.approval.status === 'none') && r.state === 'stowed') { if (r.approval.status === 'none') robotRequest(sim, r, role); robotApproveNow(sim, r, 'commander'); done.push(r.id); } });
+    return done.length ? { ok: true, approved: done } : { ok: false, code: 'state', reason: T('لا يوجد روبوت ينتظر الاعتماد', 'No robot is waiting for approval') };
+  }
+  function apiRejectRobot(sim, id, role) {
+    if (!sim.rb.enabled) return NO_ROBOT;
+    role = roleOf(sim, role);
+    if (role !== 'commander') return noRole(sim, 'role', ROLE_REJECT.ar, ROLE_REJECT.en);
+    var r = rbRobot(sim, id); if (!r) return NO_ROBOT;
+    if (r.approval.status !== 'requested') return { ok: false, code: 'state', reason: T('لا يوجد طلب معلّق', 'There is no pending request') };
+    r.approval.status = 'rejected'; evt(sim, 'robot-approval-rejected', { robot: r.id, code: 'declined' }, 'رفض قائد الحادث نشر الروبوت ' + r.id, 'The incident commander declined deploying robot ' + r.id);
+    return { ok: true };
+  }
+  function apiRecallRobot(sim, id) {
+    if (!sim.rb.enabled) return NO_ROBOT;
+    var list = id === undefined || id === null ? sim.robots : [rbRobot(sim, id)].filter(Boolean);
+    if (!list.length) return NO_ROBOT;
+    var n = 0;
+    list.forEach(function (r) {
+      if (r.state === 'stowed' || r.state === 'fault' || r.state === 'returning') return;
+      evt(sim, 'robot-recall', { robot: r.id }, 'استدعى المشغّل الروبوت ' + r.id + ' إلى المدخل', 'The operator recalled robot ' + r.id + ' to the entrance');
+      if (r.state === 'approved' || r.state === 'deploying') { r.approval = { status: 'none', requestedAt: null, approvedAt: null, by: null }; r.stats.returnedAt = sim.t; setRobotState(sim, r, 'stowed', 'أُلغي النشر', 'Deployment cancelled'); }
+      else { r.recall = true; }
+      n++;
+    });
+    return n ? { ok: true, recalled: n } : { ok: false, code: 'state', reason: T('لا شيء لاستدعائه', 'Nothing to recall') };
+  }
+  function normRoom(g, id) { var s = String(id); if (g.byRoom[s]) return g.byRoom[s].room; if (/^R\d+$/.test(s) && g.byRoom[s.slice(1)]) return g.byRoom[s.slice(1)].room; return null; }
+  function apiSetSearchPriority(sim, roomIds) {
+    var g = sim.rb.enabled ? sim.rb.g : robotGraph(robotStruct(sim)), acc = [], bad = [];
+    (roomIds || []).forEach(function (x) { var r = normRoom(g, x); if (r) { if (acc.indexOf(r) < 0) acc.push(r); } else bad.push(String(x)); });
+    sim.rb.priority = acc;
+    sim.robots.forEach(function (r) { if (r.state === 'searching' && r.to < 0 && !r.dwell) { if (r.target && r.target.room) delete sim.rb.claims[r.target.room]; r.target = null; r.path = []; } });
+    evt(sim, 'robot-priority', { rooms: acc }, 'غيّر المشغّل أولوية البحث: ' + (acc.length ? acc.join('، ') : 'الترتيب التلقائي'), 'The operator changed the search priority: ' + (acc.length ? acc.join(', ') : 'automatic order'));
+    return { ok: true, accepted: acc, ignored: bad };
+  }
+  function apiTeleop(sim, id, target) {
+    if (!sim.rb.enabled) return NO_ROBOT;
+    var r = rbRobot(sim, id); if (!r) return NO_ROBOT;
+    if (r.state !== 'searching') return { ok: false, code: 'state', reason: T('التحكم عن بُعد متاح أثناء البحث فقط', 'Tele-operation is available while the robot is searching') };
+    if (!r.link.up) return { ok: false, code: 'link', reason: T('الاتصال مقطوع — لا يمكن إرسال أمر', 'The link is down — a command cannot be sent') };
+    var g = r.G, l = -1;
+    if (typeof target === 'string') { l = g.byId[target] !== undefined ? g.byId[target] : (g.byRoom[normRoom(g, target)] ? g.byRoom[normRoom(g, target)].l : -1); }
+    else if (target && isNum(target.x) && isNum(target.y)) { var best = Infinity, fl = isNum(target.fl) ? target.fl : r.S.nodes[r.node].fl; for (var i = 0; i < g.n; i++) { var nd = r.S.nodes[i]; if (nd.fl !== fl) continue; var dd = dist2(nd.x, nd.y, target.x, target.y); if (dd < best) { best = dd; l = i; } } }
+    if (l < 0) return { ok: false, code: 'target', reason: T('وجهة غير معروفة', 'Unknown waypoint') };
+    var p = rbAStar(sim, r, r.node, l);
+    if (!p.ok && r.node !== l) return { ok: false, code: 'unreachable', reason: T('الوجهة غير قابلة للوصول (درج للروبوت ذي العجلات، أو حرارة/نار، أو عائق)', 'The waypoint cannot be reached (stairs for a wheeled robot, heat or fire, or an obstacle)') };
+    if (r.target && r.target.room) delete sim.rb.claims[r.target.room];
+    r.teleop = { l: l, id: g.S.nodes[l].id }; r.target = null; r.path = []; r.dwell = null;
+    evt(sim, 'robot-teleop', { robot: r.id, node: g.S.nodes[l].id }, 'أمر المشغّل الروبوت ' + r.id + ' بالذهاب إلى «' + rbNodeText(g, l).ar + '»', 'The operator sent robot ' + r.id + ' to "' + rbNodeText(g, l).en + '"');
+    return { ok: true, node: g.S.nodes[l].id, etaSec: Math.round(p.cost) };
+  }
+  function apiSpeakVia(sim, id, key, lang) {
+    if (!sim.rb.enabled) return NO_ROBOT;
+    var r = rbRobot(sim, id); if (!r) return NO_ROBOT;
+    if (ROBOT_SAY_KEYS.indexOf(key) < 0) return { ok: false, code: 'key', reason: T('عبارة غير معروفة', 'Unknown message key'), keys: ROBOT_SAY_KEYS.slice() };
+    if (r.state === 'stowed' || r.state === 'approved' || r.state === 'deploying' || r.state === 'fault') return { ok: false, code: 'state', reason: T('الروبوت ليس في الميدان', 'The robot is not in the field') };
+    if (!r.link.up) return { ok: false, code: 'link', reason: T('الاتصال مقطوع', 'The link is down') };
+    var near = null, bd = Infinity;
+    for (var i = 0; i < sim.people.length; i++) { var a = sim.people[i]; if (a.away || a.g < 0 || !inStruct(sim, r, a)) continue; var l = a.g - r.S.base, d = dist2(r.S.nodes[l].x, r.S.nodes[l].y, r.S.nodes[r.node].x, r.S.nodes[r.node].y) * CELL; if (d < bd && d <= sim.P.robotRangeM) { bd = d; near = a; } }
+    var persona = near ? personaOf(near) : 'adult';
+    var line = rbSpeak(sim, r, near, key, { lang: lang || (near ? near.lang : 'ar'), persona: persona, operator: true, log: true });
+    return { ok: true, speech: line, to: near ? near.key : null };
+  }
+  function apiSetObstacle(sim, id, o) {
+    var g = sim.rb.enabled ? sim.rb.g : robotGraph(robotStruct(sim)), key = String(id);
+    if (g.byId[key] === undefined && /^R\d+$/.test(key) === false) return { ok: false, code: 'target', reason: T('عقدة غير معروفة', 'Unknown node') };
+    if (g.byId[key] === undefined) return { ok: false, code: 'target', reason: T('عقدة غير معروفة', 'Unknown node') };
+    var locked = !o || o.locked === undefined ? true : !!o.locked;
+    if (locked) sim.rb.obst[key] = { locked: true, kind: (o && o.kind) || 'door', since: sim.t };
+    else { delete sim.rb.obst[key]; sim.robots.forEach(function (r) { var l = r.G.byId[key]; if (l !== undefined) { r.known[l] = 0; var nd = r.S.nodes[l]; if (nd.room && r.rooms[nd.room] && r.rooms[nd.room].status === 'locked') r.rooms[nd.room].status = 'open'; } }); }
+    evt(sim, 'robot-obstacle', { node: key, locked: locked }, (locked ? 'أُقفل/سُدّ «' : 'فُتح «') + key + (locked ? '» أمام الروبوت' : '» أمام الروبوت'), (locked ? 'Locked / blocked "' : 'Opened "') + key + '" for the robot');
+    return { ok: true, node: key, locked: locked };
+  }
+
+  // ---------------------------------------------------------------- telemetry for UIs
+  function coverageOf(sim, r) {
+    var g = r.G, rooms = {}, nodes = [], searched = 0, i;
+    g.rooms.forEach(function (rm) { var rec = r.rooms[rm.room]; rooms[rm.room] = rec.status === 'open' && rec.passes > 0 ? 'searched' : rec.status; if (rec.passes > 0) searched++; });
+    for (i = 0; i < g.n; i++) nodes.push({ id: g.S.nodes[i].id, cov: Math.round(r.cov[i] * 100) / 100 });
+    return { pct: g.rooms.length ? Math.round(100 * searched / g.rooms.length) : 0, roomsSearched: searched, roomsTotal: g.rooms.length, nodes: nodes, rooms: rooms };
+  }
+  function viewOf(sim, r) {   // the robot-eye view: what the cameras can see right now (smoke attenuation, people in view)
+    var g = r.G, S = r.S, F = rbFieldFill(sim, g, sim.rb.Fv), l = r.node, nd = S.nodes[l], P = sim.P, vis = visibleNodes(sim, r, F, new Float32Array(g.n)), people = [];
+    for (var i = 0; i < sim.people.length; i++) {
+      var a = sim.people[i];
+      if (a.away || a.g < 0 || !inStruct(sim, r, a)) continue;
+      var pl = a.g - S.base, d = vis[pl]; if (!(d < Infinity)) continue;
+      var found = a.robotFoundAt !== undefined && a.robotFoundAt !== null, pn = S.nodes[pl];
+      var pd = detectP(sim, r, a, d + 0.4, F, pl);
+      people.push({ ref: found ? a.key : 'blob-' + a.id, key: found ? a.key : null, name: found && a.name ? a.name : null, x: Math.round((pn.x + a.ox) * 100) / 100, y: Math.round((pn.y + a.oy) * 100) / 100, distM: Math.round(d * 10) / 10, strength: Math.round(thermalVisibility(sim, Math.max(F.smoke[l], F.smoke[pl]), d) * pd.contrast * 100) / 100, detected: found, condition: found ? conditionOf(sim, a) : null });
+    }
+    var sm = F.smoke[l];
+    return { node: nd.id, label: rbNodeText(g, l), room: nd.room || null, fl: nd.fl, visibility: Math.round(rgbVisibility(sim, sm, 6) * 100) / 100, thermalVisibility: Math.round(thermalVisibility(sim, sm, 6) * 100) / 100, rangeM: P.robotRangeM, smoke: Math.round(sm * 100) / 100,
+      tempC: Math.round(F.temp[l]), gasPpm: sim.hazard === 'gas' ? Math.round(F.gas[l]) : null, lighting: sm > 0.5 ? 'dark' : 'lit', heading: Math.round(r.heading), people: people };
+  }
+  function robotTelemetry(sim, r, full) {
+    var pose = rbPose(sim, r), tg = r.target ? { kind: r.target.kind, node: r.S.nodes[r.target.node].id, room: r.target.room || null, label: rbNodeText(r.G, r.target.node) } : null;
+    var o = { id: r.id, name: T('روبوت الإنقاذ ' + r.id, 'Rescue robot ' + r.id), variant: r.variant, state: r.state, stateLabel: ROBOT_STATE_TXT[r.state], since: r.since,
+      approval: { status: r.approval.status, requestedAt: r.approval.requestedAt, approvedAt: r.approval.approvedAt, by: r.approval.by },
+      pose: { x: Math.round(pose.x * 100) / 100, y: Math.round(pose.y * 100) / 100, fl: pose.fl, node: r.S.nodes[r.node].id, label: rbNodeText(r.G, r.node) }, heading: Math.round(r.heading),
+      battery: Math.round(r.battery * 1000) / 1000, link: { q: Math.round(r.link.q * 100) / 100, up: r.link.up, dropouts: r.link.dropouts, downSec: r.link.downSec, buffered: r.outbox.length },
+      target: tg, finds: r.finds.slice(), blocked: r.blocked.slice(), beacons: r.beacons.map(function (b) { return { node: b.node, x: b.x, y: b.y, fl: b.fl, t: b.t }; }), beaconsLeft: r.beaconsLeft, hoodsLeft: r.hoodsLeft,
+      hold: r.hold ? { person: r.hold.key, since: r.hold.since } : null, tempC: Math.round(r.F.temp[r.node]), heat: Math.round(r.heat),
+      stats: { falsePositives: r.stats.falsePositives, enteredBlocked: r.enteredBad, retreats: r.flee, distanceM: Math.round(r.driven), stairsM: Math.round(r.stats.stairsM), spoke: r.stats.spoke, returnedAt: r.stats.returnedAt, faultAt: r.stats.faultAt, faultWhy: r.stats.faultWhy, doorsOpened: r.stats.doorsOpened } };
+    if (full !== false) { o.coverage = coverageOf(sim, r); o.view = r.state === 'stowed' || r.state === 'approved' || r.state === 'deploying' ? null : viewOf(sim, r); }
+    return o;
+  }
+  function robotSnapshot(sim) {
+    var rb = sim.rb; if (!rb.enabled) return null;
+    return { enabled: true, label: T('الروبوت مفهوم بنموذج أولي محاكى — لم يُبنَ ولم يُجرَّب (SIM)', 'The robot is a concept with a simulated prototype — not built, not tested (SIM)'), role: rb.role, variant: rb.variant, units: sim.robots.length, autoApprove: rb.autoApprove,
+      robots: sim.robots.map(function (r) { return robotTelemetry(sim, r, true); }), finds: rb.finds.map(findOut), blocked: rb.blocked.map(blockOut), speech: rb.speech.slice(-20).map(speechOut), priority: rb.priority.slice() };
+  }
+  function findOut(f) { return { id: f.id, robot: f.robot, t: f.t, reportedAt: f.reportedAt, node: f.node, place: f.place, room: f.room, registeredRoom: f.registeredRoom, floor: f.floor, key: f.key, name: f.name, registered: f.registered, persona: f.persona, needs: f.needs, lang: f.lang, by: f.by, conf: f.conf, condition: f.condition, dose: f.dose, smoke: f.smoke, tempC: f.tempC, refuge: f.refuge, action: f.action, route: f.route, routeM: f.routeM, followed: f.followed, beacons: f.beacons, woke: f.woke === undefined ? null : f.woke }; }
+  function blockOut(b) { return { id: b.id, robot: b.robot, t: b.t, reportedAt: b.reportedAt, kind: b.kind, node: b.node, room: b.room, floor: b.floor, text: b.text }; }
+  function speechOut(s) { return { id: s.id, t: s.t, robot: s.robot, person: s.person, find: s.find, key: s.key, persona: s.persona, lang: s.lang, requestedLang: s.requestedLang, draft: s.draft, formats: s.formats, light: s.light, text: s.text, display: s.display, via: s.via, refuge: s.refuge, operator: s.operator }; }
+
+  // ---------------------------------------------------------------- bus messages
+  function busRobot(sim) {
+    var snap = robotSnapshot(sim); if (!snap) return null;
+    return { type: 'robot', scope: 'building', sim: true, label: snap.label, role: snap.role, t: sim.t,
+      robots: snap.robots.map(function (r) { return { id: r.id, name: r.name, variant: r.variant, state: r.state, stateLabel: r.stateLabel, approval: r.approval.status, pose: r.pose, heading: r.heading, battery: r.battery, link: r.link, target: r.target, coveragePct: r.coverage.pct, finds: r.finds.length, blocked: r.blocked.length, holding: r.hold ? r.hold.person : null }; }) };
+  }
+  function busRobotFind(sim, findId) {
+    var f = sim.rb.finds.filter(function (x) { return x.id === findId; })[0]; if (!f) return null;
+    var c = COND[f.condition.key];
+    return { type: 'robot-find', sim: true, id: f.id, robot: f.robot, foundAt: f.t, reportedAt: f.reportedAt, room: f.room, place: f.place, floor: f.floor,
+      person: { key: f.key, name: f.name, persona: f.persona, needs: f.needs, lang: f.lang, registered: f.registered }, condition: { key: f.condition.key, est: true, text: c }, confidence: f.conf, by: f.by, refuge: f.refuge, action: f.action, route: f.route, routeM: f.routeM,
+      text: findText(sim, { id: f.robot }, f), note: T('تقدير بقواعد بسيطة، وليس تشخيصاً', 'A rule-based estimate, not a diagnosis') };
+  }
+
+  // ---------------------------------------------------------------- metrics (labelled SIM; the same definitions for the world with and without the robot)
+  var ROBOT_LABEL = T('الروبوت مفهوم بنموذج أولي محاكى — لم يُبنَ ولم يُجرَّب', 'The robot is a concept with a simulated prototype — not built, not tested');
+  function knownAtOf(a) {
+    var best = null, c = [a.checkinAt, a.droneLocatedAt, a.robotReportedAt, a.safeKind === 'rescued' ? a.safeAt : null];
+    for (var i = 0; i < c.length; i++) if (c[i] !== null && c[i] !== undefined && (best === null || c[i] < best)) best = c[i];
+    return best;
+  }
+  function robotMetrics(sim) {
+    var P = sim.P, tI = sim.tIgnite, rb = sim.rb, scope = {}; sim.pre.scope.forEach(function (gg) { scope[gg] = true; });
+    var M = { label: SIM_LABEL, robotLabel: ROBOT_LABEL, robot: !!rb.enabled, preset: sim.preset, seed: sim.seed, tEnd: sim.t, variant: rb.enabled ? rb.variant : null, units: sim.robots.length };
+    var tRef = sim.ver.confirmedAt !== null ? sim.ver.confirmedAt + P.robotApproveSec : null;
+    var U = sim.people.filter(function (a) { return a.registered && scope[a.group] && !a.away && tRef !== null && (a.checkinAt === null || a.checkinAt > tRef); });
+    var tCrew = null;
+    [sim.fx.engineOnScene, sim.fx.rescueOnScene].forEach(function (x) { if (x !== null && (tCrew === null || x < tCrew)) tCrew = x; });
+    M.referenceT = tRef === null ? null : round1(tRef - tI); M.crewsOnSceneSec = tCrew === null ? null : round1(tCrew - tI);
+    var times = U.map(function (a) { var k = knownAtOf(a); return k !== null ? k - tI : sim.t - tI; });
+    var st = stats(times), located = U.filter(function (a) { return knownAtOf(a) !== null; });
+    M.unaccounted = { n: U.length, located: located.length, locatedPct: U.length ? Math.round(100 * located.length / U.length) : null, firstByRobot: U.filter(function (a) { return a.robotReportedAt !== undefined && a.robotReportedAt !== null && a.robotReportedAt === knownAtOf(a); }).length,
+      timeToLocate: { n: st.n, p50: st.p50, p90: st.p90, max: st.max, mean: st.mean, censored: U.length - located.length },
+      perPerson: U.map(function (a) { var k = knownAtOf(a); return { key: a.key, room: a.room || a.cls || null, sec: k !== null ? round1(k - tI) : null, secOrEnd: k !== null ? round1(k - tI) : round1(sim.t - tI), byRobot: a.robotReportedAt !== undefined && a.robotReportedAt !== null && a.robotReportedAt === k }; }) };
+    var N = U.filter(function (a) { return needsOf(a).length > 0; }), nb = N.filter(function (a) { var k = knownAtOf(a); return k !== null && tCrew !== null && k <= tCrew; });
+    M.needsHelp = { n: N.length, locatedBeforeCrews: nb.length, pctBeforeCrews: N.length && tCrew !== null ? Math.round(100 * nb.length / N.length) : null, locatedByEnd: N.filter(function (a) { return knownAtOf(a) !== null; }).length,
+      list: N.map(function (a) { var k = knownAtOf(a); return { key: a.key, sec: k !== null ? round1(k - tI) : null }; }) };
+    var resc = N.filter(function (a) { return a.safeKind === 'rescued'; }), early = resc.filter(function (a) { var s0 = a.safeAt; return (a.robotReportedAt !== undefined && a.robotReportedAt !== null && a.robotReportedAt < s0) || (a.droneLocatedAt && a.droneLocatedAt < s0) || (a.checkin === 'help' && a.checkinAt !== null && a.checkinAt < s0); });
+    M.needsHelp.rescued = resc.length; M.needsHelp.locatedBeforeRescue = early.length; M.needsHelp.pctBeforeRescue = resc.length ? Math.round(100 * early.length / resc.length) : null;
+    M.stillUnaccounted = {}; [120, 300, 450, 600].forEach(function (T0) { M.stillUnaccounted['t' + T0] = U.filter(function (a) { var k = knownAtOf(a); return k === null || k - tI > T0; }).length; });
+    var expo = U.filter(function (a) { return a.exposedSec > 0; }), ok = expo.filter(function (a) { var k = knownAtOf(a); return k !== null && (a.injuredAt === undefined || a.injuredAt === null || k < a.injuredAt); });
+    M.reachedBeforeThreshold = { exposed: expo.length, reachedFirst: ok.length, pct: expo.length ? Math.round(100 * ok.length / expo.length) : null, injuryDose: DOSE_INJURY,
+      note: T('«العتبة» = جرعة الإصابة في النموذج (0.3)؛ ليست قياساً طبياً', '"Threshold" = the model\'s injury dose (0.3); not a medical measure') };
+    var finds = rb.finds || [], fdose = finds.map(function (f) { return f.dose; });
+    M.finds = { n: finds.length, reported: finds.filter(function (f) { return f.reportedAt !== null; }).length, meanReportDelaySec: finds.filter(function (f) { return f.reportedAt !== null; }).length ? round1(finds.filter(function (f) { return f.reportedAt !== null; }).reduce(function (s, f) { return s + (f.reportedAt - f.t); }, 0) / finds.filter(function (f) { return f.reportedAt !== null; }).length) : null,
+      belowInjuryDose: fdose.filter(function (d) { return d < DOSE_INJURY; }).length, meanDoseAtFind: fdose.length ? Math.round(1000 * fdose.reduce(function (s, d) { return s + d; }, 0) / fdose.length) / 1000 : null, woke: finds.filter(function (f) { return f.woke === true; }).length, held: finds.filter(function (f) { return f.action === 'hold'; }).length, unregistered: finds.filter(function (f) { return !f.registered; }).length };
+    M.exposure = { exposedPeople: expo.length, injured: U.filter(function (a) { return a.injured; }).length, incapacitated: U.filter(function (a) { return a.st === 'incapacitated' || (a.downAt !== null && a.dose >= 1); }).length, personSec: U.reduce(function (s, a) { return s + a.exposedSec; }, 0) };
+    var inView = sim.people.filter(function (a) { return a.registered && scope[a.group] && !a.away && (a.robotViewSec || 0) >= P.robotRoomSweepSec * 0.5 && (a.robotFoundAt === undefined || a.robotFoundAt === null); });
+    M.detection = { falsePositives: sim.robots.reduce(function (s, r) { return s + r.stats.falsePositives; }, 0), missedInView: inView.length, note: T('«فاتته»: كان الشخص في مجال الرؤية ولم يُكشف (سالب كاذب)', '"Missed" = the person was in view for a while and never detected (a false negative)') };
+    M.robots = sim.robots.map(function (r) { var cv = coverageOf(sim, r); return { id: r.id, variant: r.variant, state: r.state, battery: Math.round(r.battery * 100), coveragePct: cv.pct, roomsSearched: cv.roomsSearched, roomsTotal: cv.roomsTotal, distanceM: Math.round(r.driven), stairsM: Math.round(r.stats.stairsM), finds: r.finds.length, blocked: r.blocked.length, dropouts: r.link.dropouts, linkDownSec: r.link.downSec, returnedAt: r.stats.returnedAt, fault: r.stats.faultWhy, enteredBlocked: r.enteredBad, deployedAt: r.stats.started === null ? null : round1(r.stats.started - tI), approvedAt: r.approval.approvedAt === null ? null : round1(r.approval.approvedAt - tI) }; });
+    M.coveragePct = M.robots.length ? Math.round(M.robots.reduce(function (s, r) { return s + r.coveragePct; }, 0) / M.robots.length) : 0;
+    M.assumptions = { thermalPd: P.robotThermalPd, contrastC: P.robotContrastC, roomC: P.robotRoomC, rangeM: P.robotRangeM, dropoutPct: P.robotDropoutPct, battMin: P.robotBattMin, carrier: P.robotCarrier, approveSec: P.robotApproveSec, crewSpeedup: P.robotCrewSpeedup, followP: P.robotFollowP, wakeP: P.robotWakeP };
+    return M;
+  }
+  function robotDelta(w, r) {   // positive = the robot world is better (lower times / counts, higher percentages)
+    var d = function (a, b) { return a === null || a === undefined || b === null || b === undefined ? null : round1(a - b); };
+    return { note: T('القيم الموجبة = الروبوت أفضل', 'Positive = better with the robot'),
+      locatedPct: d(r.unaccounted.locatedPct, w.unaccounted.locatedPct), timeToLocateP50Sec: d(w.unaccounted.timeToLocate.p50, r.unaccounted.timeToLocate.p50), timeToLocateP90Sec: d(w.unaccounted.timeToLocate.p90, r.unaccounted.timeToLocate.p90),
+      needsPctBeforeCrews: d(r.needsHelp.pctBeforeCrews, w.needsHelp.pctBeforeCrews), needsPctBeforeRescue: d(r.needsHelp.pctBeforeRescue, w.needsHelp.pctBeforeRescue), stillUnaccountedAt300: d(w.stillUnaccounted.t300, r.stillUnaccounted.t300), reachedBeforeThresholdPct: d(r.reachedBeforeThreshold.pct, w.reachedBeforeThreshold.pct),
+      injured: d(w.exposure.injured, r.exposure.injured), incapacitated: d(w.exposure.incapacitated, r.exposure.incapacitated), exposurePersonSec: d(w.exposure.personSec, r.exposure.personSec) };
+  }
+  function timeSaved(mw, mr) {   // for the residents the robot located FIRST: how much earlier than in the world without the robot (the same person, the same seed)
+    var base = {}, rows = [];
+    mw.unaccounted.perPerson.forEach(function (p) { base[p.key] = p.secOrEnd; });
+    mr.unaccounted.perPerson.forEach(function (p) { if (p.byRobot && base[p.key] !== undefined) rows.push({ key: p.key, room: p.room, without: base[p.key], withRobot: p.sec, savedSec: round1(base[p.key] - p.sec) }); });
+    var sv = rows.map(function (x) { return x.savedSec; }), cens = {};
+    mw.unaccounted.perPerson.forEach(function (p) { if (p.sec === null) cens[p.key] = true; });
+    var nc = rows.filter(function (x) { return cens[x.key]; }).length;
+    return { n: rows.length, censoredWithout: nc, meanSec: sv.length ? round1(sv.reduce(function (s, x) { return s + x; }, 0) / sv.length) : null, maxSec: sv.length ? Math.max.apply(null, sv) : null, people: rows,
+      note: T('الزمن الذي وُفِّر لمن عثر عليه الروبوت أولاً مقارنةً بالعالم بلا روبوت (الشخص نفسه والبذرة نفسها). من لم يُعثر عليه أبداً بلا روبوت يُحسب زمنه حتى نهاية التشغيل، فالرقم حدّ أدنى له', 'Time saved for the people the robot located first, compared with the world without it (the same person, the same seed). Someone never located without the robot is counted to the end of the run, so the figure is a lower bound for them') };
+  }
+  function abRobot(opts) {
+    opts = opts || {};
+    var base = { preset: opts.preset || 'fire-night-robot', seed: opts.seed === undefined ? 1 : opts.seed, params: opts.params, hour: opts.hour, wind: opts.wind, autoApprove: true, mode: 'manara' };
+    var w = create(Object.assign({}, base, { robot: false })), r = create(Object.assign({}, base, { robot: opts.robot === undefined ? true : opts.robot }));
+    run(w, opts.seconds); run(r, opts.seconds);
+    var mw = robotMetrics(w), mr = robotMetrics(r);
+    var dl = robotDelta(mw, mr); dl.timeSaved = timeSaved(mw, mr);
+    return { v: 1, label: SIM_LABEL, robotLabel: ROBOT_LABEL, preset: base.preset, seed: base.seed, params: cloneJSON(r.P), without: mw, withRobot: mr, delta: dl, hash: { without: hashSim(w), withRobot: hashSim(r) } };
+  }
+  function sweepRobot(opts) {   // sensitivity of the robot result to ONE assumption (param) or the variant / unit count, averaged over seeds; opts.baselineRuns lets a caller reuse the "without robot" runs
+    opts = opts || {};
+    var seeds = opts.seeds || [1, 2], preset = opts.preset || 'fire-night-robot', rows = [], mean = function (arr) { var v = arr.filter(function (x) { return x !== null && x !== undefined; }); return v.length ? round1(v.reduce(function (s, x) { return s + x; }, 0) / v.length) : null; };
+    var pick = function (m, saved) { var r0 = m.robots[0] || null; return { locatedPct: m.unaccounted.locatedPct, p50: m.unaccounted.timeToLocate.p50, needsPct: m.needsHelp.pctBeforeCrews, needsRescPct: m.needsHelp.pctBeforeRescue, still300: m.stillUnaccounted.t300, still450: m.stillUnaccounted.t450, reachedPct: m.reachedBeforeThreshold.pct, injured: m.exposure.injured, incapacitated: m.exposure.incapacitated, personSec: m.exposure.personSec,
+      falsePos: m.detection.falsePositives, missed: m.detection.missedInView, battEnd: r0 ? r0.battery : null, coverage: m.coveragePct, finds: m.finds.n, dropouts: r0 ? r0.dropouts : null, linkDown: r0 ? r0.linkDownSec : null, byRobot: m.unaccounted.firstByRobot,
+      delay: m.finds.meanReportDelaySec === null ? 0 : m.finds.meanReportDelaySec, saved: saved === undefined ? null : saved }; };
+    var avg = function (list) { var o = {}; Object.keys(list[0]).forEach(function (k) { o[k] = mean(list.map(function (x) { return x[k]; })); }); return o; };
+    var baseRuns = opts.baselineRuns || {};
+    seeds.forEach(function (sd) { if (!baseRuns[sd]) { var s0 = create({ preset: preset, seed: sd, params: opts.params, robot: false, autoApprove: true }); run(s0, opts.seconds); baseRuns[sd] = robotMetrics(s0); } });
+    var baseline = avg(seeds.map(function (sd) { return pick(baseRuns[sd]); }));
+    (opts.values || []).forEach(function (val) {
+      var list = [];
+      seeds.forEach(function (sd) {
+        var params = Object.assign({}, opts.params || {}), cfg = Object.assign({}, opts.robot || {});
+        if (opts.param === 'variant' || opts.param === 'units') cfg[opts.param] = val; else params[opts.param] = val;
+        var s1 = create({ preset: preset, seed: sd, params: params, robot: Object.assign({ enabled: true }, cfg), autoApprove: true }); run(s1, opts.seconds);
+        var m1 = robotMetrics(s1); list.push(pick(m1, timeSaved(baseRuns[sd], m1).meanSec));
+      });
+      var row = avg(list); row.value = val; rows.push(row);
+    });
+    return { v: 1, label: SIM_LABEL, robotLabel: ROBOT_LABEL, preset: preset, param: opts.param, seeds: seeds, baseline: baseline, baselineRuns: baseRuns, rows: rows };
+  }
+  function robotsList(sim) { return sim.robots.map(function (r) { return robotTelemetry(sim, r, true); }); }
+  var ROBOT_API = {
+    STATES: ROBOT_STATES, ROLES: ROBOT_ROLES, SAY_KEYS: ROBOT_SAY_KEYS, STATE_LABELS: ROBOT_STATE_TXT, CONDITIONS: COND,
+    astar: function (sim, from, to, opt) { var r = rbRobot(sim); if (!r) return null; var f = r.G.byId[from], t = r.G.byId[to]; if (f === undefined || t === undefined) return null; rbFieldFill(sim, r.G, sim.rb.Fv); var p = rbAStar(sim, r, f, t, Object.assign({ F: sim.rb.Fv }, opt || {})); return { ok: p.ok, cost: p.cost, expanded: p.expanded, path: p.path.map(function (x) { return r.S.nodes[x].id; }) }; },
+    graph: function (sidx) { var g = robotGraph(sidx || 0); return { nodes: g.S.nodes.map(function (n) { return { id: n.id, fl: n.fl, x: n.x, y: n.y, type: n.type }; }), edges: g.S.edges.map(function (e) { return { a: g.S.nodes[e.a].id, b: g.S.nodes[e.b].id, len: e.len, stairs: (e.flag & F_STAIRS) !== 0, door: e.door >= 0 }; }), rooms: g.rooms.map(function (r) { return r.room; }), entrance: g.S.nodes[g.entrance].id, heuristicFactor: g.hf }; },
+    priority: function (sim, id) { var r = rbRobot(sim, id); if (!r) return null; var save = r.F; r.F = sim.rb.Fv; rbFieldFill(sim, r.G, r.F); var out = roomPriority(sim, r, true).map(function (x) { return { room: x.rm.room, score: Math.round(x.score * 10) / 10, unaccounted: x.un, needs: x.needs, floor: x.rm.fl + 1 }; }); r.F = save; return out; },
+    say: function (sim, key, persona, personKey, extra) { return rbSay(sim, key, persona, personKey ? sim.byKey[personKey] : null, extra || {}); }
+  };
 
   /* ====================================================================================
    * 11. ROADS, TIME-VARYING TRAFFIC, "FASTEST, NOT NEAREST" DISPATCH
@@ -3176,7 +4458,7 @@
     var k = 0;
     sim.people.forEach(function (a) {
       if (a.away) return;
-      if (a.st === 'incapacitated' || (a.st === 'sheltered' && a.needsHelp) || a.st === 'waiting') { a.rescueAt = t + sim.P.rescueAssistSec + 15 * k++; }
+      if (a.st === 'incapacitated' || (a.st === 'sheltered' && a.needsHelp) || a.st === 'waiting') { var known = sim.rb && sim.rb.enabled && a.robotReportedAt !== undefined && a.robotReportedAt !== null; a.rescueAt = t + sim.P.rescueAssistSec * (known ? 1 - sim.P.robotCrewSpeedup : 1) + 15 * k++; }
     });
   }
   function ambulanceArrived(sim) {
@@ -3318,6 +4600,7 @@
     stepGuard(sim);
     stepPeople(sim);
     stepDrone(sim);
+    stepRobots(sim);
     stepDispatch(sim);
     stepEffects(sim);
     stepSeries(sim);
@@ -3458,7 +4741,7 @@
     if (hasHC) {
       M.headcount = { registered: reg.length, atT: {} };
       [60, 120, 300, 600].forEach(function (T0) { M.headcount.atT['t' + T0] = reg.filter(function (a) { return !(a.checkinAt !== null && a.checkinAt <= tI + T0); }).length; });
-      var hc = headcount(sim); M.headcount.final = { safe: hc.safe, safeAway: hc.safeAway, help: hc.help, unaccounted: hc.unaccounted };
+      var hc = headcount(sim); M.headcount.final = { safe: hc.safe, safeAway: hc.safeAway, help: hc.help, unaccounted: hc.unaccounted }; if (hc.located !== undefined) M.headcount.final.located = hc.located;
       var ci = reg.filter(function (a) { return a.checkinAt !== null; }).map(function (a) { return a.checkinAt - tI; }).sort(function (a, b) { return a - b; });
       M.timeTo90pctAccountedSec = ci.length >= Math.ceil(0.9 * reg.length) ? round1(ci[Math.ceil(0.9 * reg.length) - 1]) : null;
     } else { M.headcount = null; M.timeTo90pctAccountedSec = null; }
@@ -3561,7 +4844,7 @@
       localAlarm: { on: sim.local.on, at: sim.local.at || null },
       exits: sim.exits.map(function (e) { return { id: e.id, struct: sim.W.structs[e.struct].id, name: e.name, state: e.state, locked: e.locked }; }),
       alert: sim.alert ? { id: sim.alert.id, level: sim.alert.level, issuedAt: sim.alert.issuedAt, recipients: sim.alert.recipients, counts: sim.alert.counts, instructions: sim.alert.instructions } : null,
-      counts: countsOf(sim), headcount: sim.mode === 'manara' || sim.P.rollCall ? (function () { var h = headcount(sim); return { registered: h.registered, safe: h.safe, safeAway: h.safeAway, help: h.help, unaccounted: h.unaccounted }; })() : null,
+      counts: countsOf(sim), headcount: sim.mode === 'manara' || sim.P.rollCall ? (function () { var h = headcount(sim), o = { registered: h.registered, safe: h.safe, safeAway: h.safeAway, help: h.help, unaccounted: h.unaccounted }; if (h.located !== undefined) o.located = h.located; return o; })() : null,
       drone: { state: sim.drone.state, x: round1(sim.drone.x), y: round1(sim.drone.y), battery: Math.round(sim.drone.battery * 100) / 100, light: sim.drone.light, mission: sim.drone.mission, located: sim.drone.located },
       traffic: { load: sim.P.trafficLoad, hour: round1(clockSec(sim) / 3600), jams: cloneJSON(sim.traffic.jams), closed: Object.keys(sim.traffic.closed), closedBy: cloneJSON(sim.traffic.closedBy) },
       dispatch: dispatchSnapshot(sim),
@@ -3569,6 +4852,7 @@
       hazardState: hazardSummary(sim),
       people: sim.people.map(function (a) { return snapPerson(sim, a, o.full); })
     };
+    if (sim.rb && sim.rb.enabled) S.robot = robotSnapshot(sim);
     if (o.events !== false) S.events = (o.full ? sim.events : sim.events.slice(-(o.lastEvents || 60)));
     if (o.series) S.series = sim.series;
     if (o.metrics) S.metrics = metrics(sim);
@@ -3637,12 +4921,18 @@
       exits: sim.exits.filter(function (e) { return sim.hazard !== 'fire' || sim.W.exits[e.gi].struct === sim.hz.struct; }).map(function (e) { return { id: e.id, name: e.name, state: e.state }; }),
       hazardState: hazardSummary(sim),
       roads: Object.keys(sim.traffic.closed).map(function (id) { return { id: id, by: sim.traffic.closedBy[id], name: sim.W.roads.segById[id].name }; }),
-      people: { registered: hc.registered, safe: hc.safe, safeAway: hc.safeAway, help: hc.help, unaccounted: hc.unaccounted },
+      people: (function () { var o2 = { registered: hc.registered, safe: hc.safe, safeAway: hc.safeAway, help: hc.help, unaccounted: hc.unaccounted }; if (hc.located !== undefined) o2.located = hc.located; return o2; })(),
       unaccounted: hc.unaccountedList.slice(0, o.top || 12), needHelp: hc.helpList,
       needsFlags: sim.people.filter(function (a) { return a.registered && !a.away && (a.persona === 'wheelchair' || a.deaf || a.blind) && (sim.pre.scope.indexOf(a.group) >= 0); }).map(function (a) { return { key: a.key, name: a.name || null, room: a.room, flag: a.persona === 'wheelchair' ? 'wheelchair' : a.deaf ? 'deaf' : 'blind', where: a.st === 'sheltered' && a.safeKind === 'refuge' ? 'refuge' : a.st }; }),
       droneLocated: sim.drone.located, drone: sim.drone.state,
       dispatch: busDispatch(sim), notes: [T('المحاكاة وهمية: 999 تبقى المُرسِل، والمنارة ترسل حزمة متحقَّقاً منها فقط', 'Simulation: 999 stays the dispatcher; MANARA only sends a verified package'), SIM_LABEL]
     };
+    if (sim.rb && sim.rb.enabled) {   // the robot's part of the card: who it located (a distinct status from 'safe'), what it could not open or reach, where it is
+      card.locatedByRobot = hc.locatedList;
+      card.robot = { label: ROBOT_LABEL, role: sim.rb.role, units: sim.robots.map(function (r) { return { id: r.id, variant: r.variant, state: r.state, battery: Math.round(r.battery * 100), pose: { node: r.S.nodes[r.node].id, label: rbNodeText(r.G, r.node) }, coveragePct: coverageOf(sim, r).pct, beacons: r.beacons.length }; }),
+        finds: sim.rb.finds.map(findOut), blocked: sim.rb.blocked.map(blockOut) };
+      card.notes.push(T('الروبوت مفهوم بنموذج أولي محاكى؛ يساعد ورجال الإطفاء يقرّرون', 'The robot is a simulated concept; it assists, firefighters decide'));
+    }
     if (o.cap) card.cap = capXml(sim, o.cap === true ? {} : o.cap);
     return card;
   }
@@ -3780,7 +5070,7 @@
    * 13. PUBLIC API
    * ==================================================================================== */
   var out = {
-    VERSION: VERSION, GRID: { w: W, h: H, cellM: CELL }, PARAMS: PARAM_DEFS, PARAM_GROUPS: PARAM_GROUPS, PRESETS: PRESETS, PRESET_ORDER: PRESET_ORDER, SIM_LABEL: SIM_LABEL,
+    VERSION: VERSION, GRID: { w: W, h: H, cellM: CELL }, PARAMS: PARAM_DEFS, PARAM_GROUPS: PARAM_GROUPS, PRESETS: PRESETS, PRESET_ORDER: PRESET_ORDER, PRESET_ORDER_ROBOT: PRESET_ORDER_ROBOT, PRESET_ORDER_ALL: PRESET_ORDER_ALL, SIM_LABEL: SIM_LABEL,
     defaults: defaultParams, restart: function (sim, over) { return create(Object.assign({}, sim.opts, over || {})); },
     create: create, step: step, run: run, snapshot: snapshot, hash: hashSim, view: view, worldInfo: worldInfo, metrics: metrics, headcount: headcount,
     handoff: handoff, residentLines: residentLines, busAlert: busAlert, busDispatch: busDispatch, compose: function (sim, key) { var a = sim.byKey[key]; if (!a) return null; if (!a.zoneLevel) a.zoneLevel = zoneLevelFor(sim, a); return composeFor(sim, a); },
@@ -3791,6 +5081,12 @@
     traffic: { makeRoadGraph: makeRoadGraph, roadTravel: roadTravel, roadDistance: roadDistance, pickUnit: pickUnit, congestion: congestion, segFactors: segFactors, profileAt: profileAt, ROAD_CLASS: ROAD_CLASS, PROFILE: TRAFFIC_PROFILE,
       snapshot: traffic_snapshot, pickHospital: function (sim, patients, departSec) { return pickHospital(sim, patients, departSec === undefined ? clockSec(sim) : departSec); } }
   };
+  // ---- the rescue robot (section 10b)
+  api.enableRobot = enableRobot; api.setRole = apiSetRole; api.deployRobot = apiDeployRobot; api.approveRobot = apiApproveRobot; api.rejectRobot = apiRejectRobot; api.recallRobot = apiRecallRobot;
+  api.setSearchPriority = apiSetSearchPriority; api.teleopRobot = apiTeleop; api.speakVia = apiSpeakVia; api.setRobotObstacle = apiSetObstacle;
+  api.robots = robotsList; api.robotTelemetry = function (sim, id) { var r = rbRobot(sim, id); return r ? robotTelemetry(sim, r, true) : null; };
+  api.robotView = function (sim, id) { var r = rbRobot(sim, id); return r && r.state !== 'stowed' && r.state !== 'approved' && r.state !== 'deploying' ? viewOf(sim, r) : null; };
+  api.busRobot = busRobot; api.busRobotFind = busRobotFind; api.robotMetrics = robotMetrics; api.abRobot = abRobot; api.sweepRobot = sweepRobot; api.robot = ROBOT_API;
   for (var k in api) out[k] = api[k];
   root.ManaraSim = out;
 })(typeof globalThis !== 'undefined' ? globalThis : typeof self !== 'undefined' ? self : typeof window !== 'undefined' ? window : this);

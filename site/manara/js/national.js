@@ -71,6 +71,34 @@
  *     reason 'traffic'|'network', trafficAloneFlipsOrder, why {ar, en} }     sampler(nat, seed) → i → {lon, lat, src}
  *  Constants: VERSION, SIM_LABEL, PARAMS, PARAM_GROUPS, MSG, HAZARDS, HAZARD_NAME, KIND_NAME, REQUIRED, DOW_NAMES.   N.testing = low-level helpers for tests (graph, cost, tree, pickFor, evalPolicies …).
  *
+ * DRONE FLEET (section 16; a CONCEPT with a SIMULATED prototype — no real drone has been flown, tested in a fire or approved; every number is a named assumption, PARAMS group 'drone')
+ *   Docked drones are generated at the real fire / Civil Defence stations (P.droneStationDocks per station) and on the roofs of selected ED-verified hospitals (P.droneHospitalDocks, each the farthest from the docks already chosen):
+ *   26 drones with the default data.  State machine: docked → launching → en-route → on-station → verifying → returning → charging (+ 'patrol' on the sector loop, + 'fault').  Flight is a STRAIGHT LINE over the real map at P.droneCruiseMps,
+ *   derated by HEAT (battery and speed above P.droneTempC, from the national heat model at the drone's position, plus the air heated by a nearby fire), WIND (a wind triangle; the dust storm's wind where the storm is; no launch above
+ *   P.droneMaxWindMps) and BATTERY (a mission is accepted only if out + hover + back keeps P.droneReservePct; the drone turns home at the reserve).  Each drone has a coverage radius (P.droneCoverageM) and a patrol sector (a closed loop around its dock).
+ *   LAUNCH TRIGGERS: createIncident({trigger: 'sentinel'|'citizen'|'operator'}) raises an alert and launches the nearest available drone TO VERIFY on its own (the public alert and the ground dispatch still need the human key: approve);
+ *   createIncident({trigger: 'patrol'}) creates a real event nobody knows about (status 'unseen', it grows) until a patrolling drone detects it (seeded probability: P.dronePatrolDetectPct, distance, dust, hazard visibility) or a bystander reports it
+ *   after P.droneUnseenMin; launchDrone() is the operator's launch-to-verify.  Patrolling drones also raise FALSE ALERTS (P.droneFalsePerHour: sunset glare, a red truck, hot machinery) that the control room dismisses.
+ *   Evidence keys: sensor (sentinel / citizen report) + vision + thermal; 2 independent keys (P.droneKeysNeeded) = CONFIRMED, 1 = downgraded (stays SUSPECT), 0 = no evidence (a drone cannot dismiss a sensor / citizen alert; it dismisses only what it raised itself).
+ *   Gas shows only in the thermal image; dust only in RGB; a person (~35 °C) is invisible to thermal on hot midday ground (P.droneGroundSunC): the chances are computed from the same ground / air temperatures the scene uses.
+ *   DRONE ALERT (nat.droneAlerts, snapshot().droneAlerts, busDroneAlert): { id:'DA-3', source:'drone', droneId, callsign, droneName, alert:'AL-2', incident, stage:'sighting'|'verified', via, hazard, hazardName, confidence, outcome:'pending'|'confirmed'|'downgraded'|'dismissed',
+ *     lon, lat, target:{lon,lat}, headingDeg, altM, wind:{deg,mps}, batteryPct, link 0..1, thermal:{kind:'hotspot'|'hot-object'|'cold-plume'|'people'|'cool-water'|'none', maxC, minC, bgC, contrastC, capC, saturated, hotspot:{lon,lat,tC}|null},
+ *     evidence:{sensor, vision:{seen, conf, label}, thermal:{seen, conf, kind}}, frame: DESCRIPTOR for ManaraDroneScene {v, sceneSeed, hazard, decoy, severity, sev, flames, camera:{altM, headingDeg, pitchDeg, fovDeg, distM, offsetE, offsetN}, timeOfDay,
+ *     context, wind, ambientC, groundC, solar, visFactor, thermalCapC, t0, view, width, height}, state, t, clock, text:{ar,en}, sim:true }.
+ *   ALERT QUEUE (alertQueue(nat) / snapshot().alerts): { id:'AL-2', source:'sentinel'|'citizen'|'operator'|'drone', via, trigger, hazard, confidence, state:'SUSPECT'|'CONFIRMED'|'APPROVED'|'DISPATCHED'|'ON-SCENE'|'RESOLVED'|'DISMISSED', priority 0..100, level, ageSec, lon, lat,
+ *     place, incident, droneId, droneAlerts:[ids], evidence, verdict, tState:{state: t}, escalated, sim:{truth:'real'|'false', decoy, hazardTrue} (hidden simulation truth) }, sorted by priority.  The states follow the incident's plan (approved → APPROVED, dispatched → DISPATCHED …).
+ *   Operator actions: launchDrone(nat, droneId|'nearest', {lon, lat, hazard?, incident?, alert?}) → {ok, drone, etaSec, why, runnerUp …}   recallDrone(nat, droneId)   setDroneParam(nat, droneId, 'patrol'|'altM'|'speedMps'|'light', v) | setDroneParam(nat, paramKey, v)
+ *     dismissAlert(nat, alertId)   escalateAlert(nat, alertId)   approveAlert(nat, alertId) (the human key; an alert with nothing real behind it sends units to a false alarm)   announce(nat, droneId, messageKey, 'ar'|'en') (comms log; keys nat.drone.say.*)
+ *     dropAed(nat, droneId, alertId, {authority}) — the AED drop is a CONCEPT: SOS only, a confirmed alert, a drone that carries a kit and is on station, and only as an authority-operated step (no drop otherwise).
+ *   Accessors: drones(nat) · fleetBoard(nat) (every drone: state, battery, ETA, heat derating, incident) · alertQueue(nat, {all?}) · alert(nat, id) · commsLog(nat, {kind?, alert?, incident?, drone?, since?, limit?}) · droneEta(nat, lon, lat, t?, hazard?) (the fastest drone, pure) ·
+ *     droneRank(nat, target) · droneRange(nat, droneId) · droneEnv(nat, lon, lat) · busDroneAlert(nat, id) · busDroneStatus(nat, droneId?).  kpis().drones: {total, byState, available, enRoute, onStation, charging, patrolling, batteryMeanPct, alerts:{…falseAlarmRatePct,
+ *     falseDismissedPct, timeToApproveSec …}, firstEyes:{n, droneFirstPct, droneArrivalSec, groundArrivalSec, firstEyesSec, leadSec, firstEyesMin}}.  ab().firstEyes: the same "first eyes on scene" metric for the A/B (a labelled SIM metric).
+ *   Incident extras: incident.trigger · incident.eyes {droneT, droneId, groundT} · P.droneGate = 1 makes the simulated operator wait for the drone's verification (proof before panic) before approving.
+ *   BUS (scope 'national'): busDroneAlert(nat, id) → { type:'drone-alert', scope:'national', id, alert, incident, source:'drone', via, stage, droneId, droneName, hazard, hazardName, confidence, outcome, state, priority, lon, lat, target, headingDeg, altM, wind, batteryPct,
+ *     link, thermal, evidence, frame, t, clock, text:{ar,en}, sim:true }   ·   busDroneStatus(nat) → { type:'drone-status', scope:'national', id, clock, drones:[{id, callsign, name, state, stateText, lon, lat, altM, headingDeg, speedMps, batteryPct, etaSec, incident, alert,
+ *     link, derate:{tempC, speedLostPct, enduranceLostPct}, fault}], counts, sim:true }.
+ *   EVENTS added: alert-raised · drone-launched · drone-on-station · drone-verified · alert-confirmed · alert-dismissed · alert-escalated · drone-patrol-detect · drone-returning · drone-relaunch · drone-fault · drone-low-battery · drone-recalled · drone-announce · aed-drop · false-alarm-dispatch · false-alarm-on-scene
+ *
  * DISPATCH  (docs/MANARA-SPEC.md "Nearest-responder dispatch" — the unit that reaches the scene FASTEST given traffic, not the nearest by distance)
  *   Required types per hazard: fire → fire (+ a second at severity 3) + ambulance + police (+ rescue from severity 2) · gas → fire/HazMat (×2 at severity 3) + ambulance + police · flood → rescue + police + ambulance ·
  *   dust → police + ambulance (standby) · heat → ambulance (+ the destination hospital; cooling support is a note) · sos → ambulance + the destination hospital.  'rescue' = a Civil Defence / fire-station unit.
@@ -164,7 +192,8 @@
     h = hash32(h ^ Mth.imul(c | 0, 0x27d4eb2f));
     return h / 4294967296;
   }
-  var D = { NOISE: 31, BUSY: 32, DIVERT: 33, SAMPLE: 34, SUMP: 35, DUST: 36, RAIN: 37, MISC: 38 };
+  var D = { NOISE: 31, BUSY: 32, DIVERT: 33, SAMPLE: 34, SUMP: 35, DUST: 36, RAIN: 37, MISC: 38,
+    DPATROL: 40, DDET: 41, DFP: 42, DAVAIL: 44, DWIND: 45, DLINK: 46, DFAULT: 47, DKEY: 50, DSECTOR: 51 };      // streams of the drone fleet (section 16)
   function fnv(str) { var h = 0x811c9dc5; for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Mth.imul(h, 0x01000193); } return ('00000000' + (h >>> 0).toString(16)).slice(-8); }
   function xmlEsc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;'); }
   function percentile(sorted, p) {
@@ -351,10 +380,12 @@
     { id: 'heat',     label: T('الحرارة (محاكاة)', 'Heat (simulated)') },
     { id: 'dust',     label: T('الغبار (محاكاة)', 'Dust (simulated)') },
     { id: 'flood',    label: T('السيول (محاكاة)', 'Flood (simulated)') },
-    { id: 'ab',       label: T('المقارنة', 'A/B comparison') }
+    { id: 'ab',       label: T('المقارنة', 'A/B comparison') },
+    { id: 'drone',    label: T('المسيّرات (مفهوم ومحاكاة)', 'Drones (concept, simulated)') }
   ];
   var PARAM_DEFS = [];
-  var AT_START = { unitsPerStation: 1, ambulanceBasing: 1, fireIncludeHq: 1, industrialFire: 1, policeIncludeAdmin: 1, hazmatAllStations: 1 };   // fleet composition: change with create({params}) / restart
+  var AT_START = { unitsPerStation: 1, ambulanceBasing: 1, fireIncludeHq: 1, industrialFire: 1, policeIncludeAdmin: 1, hazmatAllStations: 1,
+    droneStationDocks: 1, droneHospitalDocks: 1, dronePatrolRadiusM: 1 };   // fleet composition: change with create({params}) / restart
   function def(key, group, v, min, max, step, unit, lab, desc, src) {
     PARAM_DEFS.push({ key: key, group: group, default: v, min: min, max: max, step: step, unit: unit, label: T(lab[0], lab[1]), desc: T(desc[0], desc[1]), src: src || 'assumption', live: !AT_START[key] });
   }
@@ -464,6 +495,79 @@
   // ---- A/B
   def('abPlaceWeight', 'ab', 0.5, 0, 1, 0.1, 'share', ['نسبة الحوادث قرب الأماكن', 'Share of incidents near places'], ['في المقارنة: هذه النسبة من الحوادث تُسحب قرب أماكن من البيانات (مدن أكبر أثقل)، والباقي موزّع بانتظام على اليابسة التي تبعد عن الطرق مسافة قريبة (افتراض).', 'In the A/B: this share of incidents is drawn near places from the data (bigger towns weigh more); the rest is uniform over land cells close to a road (assumption).']);
   def('abMaxOffroadKm', 'ab', 3, 0.5, 15, 0.5, 'km', ['أبعد مسافة عن الطريق', 'Farthest from a road'], ['في المقارنة: لا يُسحب حادث أبعد من هذه المسافة عن أقرب طريق في البيانات (افتراض).', 'In the A/B: no incident is drawn farther than this from the nearest road in the data (assumption).']);
+
+  // ---- drones: a CONCEPT with a SIMULATED prototype. Every number below is an ASSUMPTION until an airframe is chosen and the authority approves real operation.
+  //      No real drone has been flown, tested in a fire or approved; the numbers are inputs for a mechanism check, never specifications or results.
+  // fleet (at start)
+  def('droneStationDocks', 'drone', 1, 0, 2, 1, 'drones', ['مسيّرات في كل مركز إطفاء', 'Drones per fire / Civil Defence station'],
+    ['عدد المسيّرات الراسية على كل مركز إطفاء ودفاع مدني من البيانات (مفهوم؛ لا توجد مسيّرات حقيقية).', 'Docked drones on every fire / Civil Defence station in the data (concept; no real drones exist).']);
+  def('droneHospitalDocks', 'drone', 6, 0, 12, 1, 'docks', ['محطات مسيّرات على أسطح المستشفيات', 'Drone docks on hospital roofs'],
+    ['عدد المستشفيات (بطوارئ مؤكدة) التي تُركَّب على سطحها محطة؛ تُختار الأبعد عن المحطات القائمة لتغطية أوسع (افتراض).', 'How many hospitals (with a verified ED) get a roof dock; each is the one farthest from the docks already chosen, for wider coverage (assumption).']);
+  def('dronePatrolRadiusM', 'drone', 2500, 800, 8000, 100, 'm', ['نصف قطر قطاع الدورية', 'Patrol sector radius'],
+    ['تدور المسيّرة في حلقة مغلقة داخل قطاعها حول محطتها بهذا النصف قطر تقريباً (افتراض).', 'A patrolling drone follows a closed loop inside its sector around its dock, about this radius (assumption).']);
+  // flight (straight line over the map)
+  def('droneCruiseMps', 'drone', 18, 8, 30, 1, 'm/s', ['سرعة الطيران', 'Cruise speed'],
+    ['سرعة الطيران الهوائية في خط مستقيم قبل خصم الحرارة والرياح (افتراض؛ تُستبدل ببيانات الطائرة التي تُختار).', 'Air speed in a straight line before heat and wind are applied (assumption; to be replaced by the datasheet of the airframe that is chosen).']);
+  def('droneLaunchSec', 'drone', 25, 5, 120, 5, 's', ['زمن الإقلاع', 'Launch time'],
+    ['الثواني من الأمر حتى تبلغ المسيّرة ارتفاع الطيران (فتح المحطة، الفحص، الصعود) (افتراض).', 'Seconds from the order until the drone is at flight height (dock opens, pre-flight check, climb) (assumption).']);
+  def('droneAltM', 'drone', 80, 30, 120, 5, 'm', ['ارتفاع الطيران', 'Flight altitude'],
+    ['ارتفاع الطيران والمراقبة فوق الأرض؛ حدود الارتفاع تضعها الجهة المنظِّمة وتحتاج إلى موافقتها (افتراض).', 'Cruise and observation height above ground; the height limit is set by the national authority and needs its approval (assumption).']);
+  def('droneStandoffM', 'drone', 120, 30, 400, 10, 'm', ['مسافة الوقوف عن الخطر', 'Stand-off distance from the hazard'],
+    ['تقف المسيّرة عكس اتجاه الريح على هذه المسافة من الخطر كي يبتعد عنها الدخان (افتراض).', 'The drone holds upwind of the hazard at this distance so smoke blows away from it (assumption).']);
+  def('droneSettleSec', 'drone', 8, 0, 60, 1, 's', ['زمن استقرار الكاميرا', 'Camera settle time'], ['ثوانٍ لتثبيت الكاميرا بعد الوصول وقبل بدء التحقق (افتراض).', 'Seconds to steady the camera after arrival, before verification starts (assumption).']);
+  def('droneVerifySec', 'drone', 25, 5, 120, 5, 's', ['زمن التحقق', 'Verification time'],
+    ['ثوانٍ من التحليل (الرؤية الحاسوبية بقواعد + الحرارية) قبل إصدار نتيجة التحقق (افتراض).', 'Seconds of analysis (rule-based computer vision + thermal) before the verification result is issued (assumption).']);
+  def('droneHoldSec', 'drone', 600, 60, 3600, 60, 's', ['مدة البقاء في الموقع', 'Time on station'], ['مدة البث الحيّ من الموقع بعد الاستقرار قبل أن تعود المسيّرة (افتراض).', 'How long the drone streams live from the scene, after settling, before it returns (assumption).']);
+  def('droneCoverageM', 'drone', 1800, 300, 6000, 100, 'm', ['نصف قطر التغطية', 'Coverage radius'],
+    ['النصف قطر الذي تكشف فيه مسيّرة الدورية؛ يقلّ احتمال الكشف كلما ابتعد الحدث (افتراض).', 'Radius within which a patrolling drone can detect; the chance falls the farther the event is (assumption).']);
+  // battery and heat
+  def('droneEnduranceMin', 'drone', 35, 10, 90, 1, 'min', ['زمن الطيران', 'Flight endurance'], ['دقائق الطيران عند سرعة الانطلاق في ظروف معتدلة قبل خصم الحرارة (افتراض).', 'Minutes of cruise flight in mild conditions before heat is applied (assumption).']);
+  def('droneHoverDrainX', 'drone', 1.3, 1, 2, 0.05, '×', ['استهلاك التحليق', 'Hover drain'], ['كم مرة تستهلك البطارية أكثر أثناء التحليق في الموقع مقارنة بالطيران (افتراض).', 'How much faster the battery drains while hovering on station than while cruising (assumption).']);
+  def('droneReservePct', 'drone', 25, 10, 50, 1, '%', ['احتياطي البطارية', 'Battery reserve'], ['نسبة الشحن التي يجب أن تبقى عند الهبوط؛ لا تُقبل مهمة لا تحفظها، وتعود المسيّرة عندما تقترب منها (افتراض).', 'Charge that must remain at landing; no mission that cannot keep it is accepted and the drone turns home as it nears it (assumption).']);
+  def('droneMinLaunchPct', 'drone', 55, 20, 100, 5, '%', ['أدنى شحن للإقلاع', 'Minimum charge to launch'], ['لا تُقلع المسيّرة إذا كان شحنها دون هذه النسبة (افتراض).', 'A drone with less charge than this does not launch (assumption).']);
+  def('droneReadyPct', 'drone', 90, 50, 100, 5, '%', ['شحن الجاهزية', 'Ready charge'], ['تُعدّ المسيّرة «جاهزة» في القاعدة وتخرج للدورية عندما يبلغ شحنها هذه النسبة (افتراض).', 'A drone counts as ready in its dock, and may go on patrol, at this charge (assumption).']);
+  def('droneChargePctPerMin', 'drone', 2, 0.5, 10, 0.5, '%/min', ['سرعة الشحن', 'Charging rate'], ['نسبة الشحن المضافة كل دقيقة في المحطة (افتراض).', 'Charge added per minute in the dock (assumption).']);
+  def('droneTempC', 'drone', 40, 30, 50, 1, '°C', ['حرارة بدء التخفيض', 'Heat derating starts'],
+    ['فوق هذه الحرارة تفقد البطارية والسرعة جزءاً من قدرتهما؛ بطاريات المسيّرات مصنَّفة نحو 40 °م (MANARA-SPEC، حدّ حراري افتراضي).', 'Above this air temperature battery and speed lose part of their capacity; drone batteries are rated to about 40 °C (MANARA-SPEC; an assumed limit).'], 'assumption (MANARA-SPEC: batteries rated to about 40 °C)');
+  def('droneBattSunC', 'drone', 5, 0, 15, 1, '°C', ['سخونة البطارية تحت الشمس', 'Battery heat in full sun'], ['كم تزيد حرارة البطارية على حرارة الهواء تحت شمس مباشرة (محطة على سطح مشمس)؛ يُحتسب التخفيض على حرارة البطارية (افتراض).', 'How much hotter the battery runs than the air in direct sun (a dock on a sun-baked roof); the derating is applied to the battery temperature (assumption).']);
+  def('droneDerateBattPerC', 'drone', 2, 0, 6, 0.5, '%/°C', ['فقد زمن الطيران لكل درجة', 'Endurance lost per °C above the limit'], ['نسبة ما يخسره زمن الطيران لكل درجة فوق الحدّ (افتراض).', 'Share of the flight time lost per °C above the limit (assumption).']);
+  def('droneDerateSpeedPerC', 'drone', 1, 0, 4, 0.5, '%/°C', ['فقد السرعة لكل درجة', 'Speed lost per °C above the limit'], ['نسبة ما تخسره السرعة لكل درجة فوق الحدّ (حدّ حراري للمحركات) (افتراض).', 'Share of the speed lost per °C above the limit (motor thermal throttling) (assumption).']);
+  def('droneTempMaxC', 'drone', 55, 40, 65, 1, '°C', ['حرارة منع الإقلاع', 'No-launch temperature'], ['فوق هذه الحرارة عند المحطة تُمنع المسيّرة من الإقلاع (افتراض).', 'Above this temperature at the dock the drone is grounded (assumption).']);
+  def('droneFireHeatC', 'drone', 20, 0, 60, 5, '°C', ['تسخين الهواء قرب الحريق', 'Extra air heat near a fire'], ['زيادة حرارة الهواء عند قلب حريق شديد، تتلاشى مع المسافة (افتراض).', 'Extra air temperature at the core of a severe fire, fading with distance (assumption).']);
+  // wind
+  def('droneWindDeg', 'drone', 315, 0, 359, 5, '°', ['اتجاه الريح (من)', 'Wind direction (from)'], ['الاتجاه الذي تهبّ منه الريح؛ 315 = شمالية غربية (مُدخل سيناريو). في العاصفة الغبارية تُستخدم رياح العاصفة.', 'Direction the wind blows FROM; 315 = north-westerly (scenario input). In a dust storm the storm wind is used.'], 'assumption');
+  def('droneWindMps', 'drone', 5, 0, 25, 1, 'm/s', ['سرعة الريح', 'Wind speed'], ['متوسط الريح مع تقلّب بطيء وهبّات (مُدخل سيناريو).', 'Mean wind with slow variation and gusts (scenario input).']);
+  def('droneMaxWindMps', 'drone', 14, 6, 25, 1, 'm/s', ['أقصى ريح للإقلاع', 'Maximum wind to fly'], ['فوق هذه الريح لا تُقلع المسيّرات (افتراض؛ تقيّد العواصف الغبارية الشديدة).', 'Above this wind no drone launches (assumption; it limits severe dust storms).']);
+  // availability
+  def('droneUnavailPct', 'drone', 15, 0, 100, 5, '%', ['مسيّرات غير متاحة عشوائياً', 'Docked drones randomly unavailable'], ['نسبة المسيّرات الراسية غير المتاحة لأسباب أخرى (صيانة، مهمة أخرى)؛ تُعاد كل فترة (افتراض).', 'Share of docked drones unavailable for other reasons (maintenance, another task); re-drawn every period (assumption).']);
+  def('droneFaultPct', 'drone', 1, 0, 50, 1, '%', ['نسبة الطلعات التي يقع فيها عطل', 'Sorties with a fault'], ['احتمال أن يقع عطل (فقدان وصلة، محرك، GPS) في طلعة؛ تعود المسيّرة تلقائياً ويُطلَق بديل (افتراض).', 'Chance that a sortie has a fault (link loss, motor, GPS); the drone returns by itself and a replacement is launched (assumption).']);
+  def('droneRepairMin', 'drone', 30, 5, 240, 5, 'min', ['مدة الإصلاح', 'Repair time'], ['الدقائق التي تبقى فيها المسيّرة المعطوبة خارج الخدمة (افتراض).', 'Minutes a faulted drone stays out of service (assumption).']);
+  def('droneLinkRangeKm', 'drone', 10, 2, 30, 1, 'km', ['مدى وصلة الاتصال', 'Radio-link range'], ['المسافة من المحطة التي تنخفض عندها جودة الوصلة إلى الصفر (افتراض).', 'Distance from the dock at which the link quality falls to zero (assumption).']);
+  // patrol and detection
+  def('dronePatrolPct', 'drone', 30, 0, 100, 5, '%', ['نسبة المسيّرات في الدورية', 'Share of the fleet on patrol'], ['كل فترة دورية تُسحب مسيّرات بهذه النسبة للدوران في قطاعاتها (افتراض).', 'In every patrol period this share of the drones is drawn to patrol its sector (assumption).']);
+  def('dronePatrolBlockMin', 'drone', 45, 10, 180, 5, 'min', ['فترة الدورية', 'Patrol period'], ['كل هذه الدقائق يُعاد سحب من يدور (افتراض).', 'Every this many minutes the choice of who patrols is re-drawn (assumption).']);
+  def('dronePatrolMps', 'drone', 12, 5, 25, 1, 'm/s', ['سرعة الدورية', 'Patrol speed'], ['سرعة الدوران في القطاع (أبطأ لتتسع الرؤية) (افتراض).', 'Speed along the sector loop (slower, for a better look) (assumption).']);
+  def('dronePatrolDetectPct', 'drone', 55, 0, 100, 5, '%/min', ['احتمال الكشف أثناء الدورية', 'Patrol detection chance'], ['احتمال كشف حدث حقيقي كل دقيقة عندما يكون تحت المسيّرة مباشرة وفي الجو الصافي؛ يقلّ مع البعد والغبار ونوع الخطر (افتراض).', 'Chance per minute of spotting a real event directly below the drone in clear air; it falls with distance, dust and hazard type (assumption).']);
+  def('droneFalsePerHour', 'drone', 0.2, 0, 3, 0.05, '/h', ['إنذارات كاذبة لكل ساعة دورية', 'False alerts per patrol hour'], ['عدد الأجسام المضلِّلة (وهج الغروب، شاحنة حمراء، آلات ساخنة) التي تظنها مسيّرة الدورية خطراً كل ساعة (افتراض).', 'How many look-alikes (sunset glare, a red truck, hot machinery) a patrolling drone mistakes for a hazard per hour (assumption).']);
+  def('droneUnseenMin', 'drone', 30, 5, 240, 5, 'min', ['حدث لم تكشفه دورية', 'Event no patrol finds'], ['إذا لم تكشف الدورية حدثاً حقيقياً خلال هذه الدقائق يبلّغ عنه أحد المارّة (999) (افتراض).', 'If no patrol finds a real event within this many minutes, a bystander reports it (999) (assumption).']);
+  def('droneVisionTprPct', 'drone', 90, 30, 100, 1, '%', ['احتمال مفتاح الرؤية (حريق صافٍ)', 'Vision key chance (clear fire)'], ['احتمال أن تُظهر الرؤية الحاسوبية بقواعد (ManaraFire) مفتاحاً إيجابياً لحريق حقيقي في جو صافٍ؛ يُضرب بمعاملات الخطر والغبار والليل (افتراض).', 'Chance that the rule-based computer vision (ManaraFire) gives a positive key for a real fire in clear air; scaled by hazard, dust and night factors (assumption).']);
+  def('droneThermalTprPct', 'drone', 92, 30, 100, 1, '%', ['احتمال المفتاح الحراري (بؤرة)', 'Thermal key chance (hotspot)'], ['احتمال أن يكشف الاختبار السياقي الحراري بؤرة حريق حقيقية (افتراض).', 'Chance that the contextual thermal test finds the hotspot of a real fire (assumption).']);
+  def('dronePeopleThermalTprPct', 'drone', 85, 10, 100, 1, '%', ['احتمال رؤية الناس حرارياً (ليلاً)', 'People thermal chance (cool ground)'], ['احتمال كشف شخص بالحرارة عندما تكون الأرض أبرد منه بما يكفي؛ ينهار في الأرض الحارة وقت الظهيرة (افتراض).', 'Chance of spotting a person by heat when the ground is cool enough; it collapses on hot midday ground (assumption).']);
+  def('droneGasThermalTprPct', 'drone', 55, 5, 100, 1, '%', ['احتمال رؤية سحابة الغاز حرارياً', 'Gas cloud thermal chance'], ['السحابة تُرى فقط كفارق حرارة (غاز مبرَّد) لا كغاز؛ كشف الغاز الحقيقي يحتاج كاميرا متخصصة (افتراض).', 'The cloud shows only as a temperature difference (a cooled vapour), not as gas; real gas imaging needs a specialist camera (assumption).']);
+  def('droneVisionFprPct', 'drone', 5, 0, 50, 1, '%', ['مفتاح رؤية كاذب على جسم مضلِّل', 'False vision key on a look-alike'], ['احتمال أن تُخطئ الرؤية الحاسوبية (بعد الفحص الزمني) فتعدّ جسماً ثابتاً مضلِّلاً حريقاً (افتراض).', 'Chance that the computer vision (after the temporal check) still takes a static look-alike for a fire (assumption).']);
+  def('droneThermalFprPct', 'drone', 4, 0, 50, 1, '%', ['مفتاح حراري كاذب', 'False thermal key'], ['احتمال بؤرة حرارية كاذبة في مشهد بلا حرارة غير عادية (افتراض). الآلات الساخنة ساخنة فعلاً فتُرى دائماً تقريباً.', 'Chance of a false thermal hotspot in a scene with nothing unusually hot (assumption). Hot machinery really is hot, so it is almost always seen.']);
+  def('droneKeysNeeded', 'drone', 2, 1, 2, 1, 'keys', ['مفاتيح التأكيد المطلوبة', 'Keys needed to confirm'], ['عدد المفاتيح المستقلة (حسّاس/بلاغ، رؤية، حرارة) اللازمة للتأكيد؛ 2 = «الدليل قبل الذعر» (افتراض).', 'Independent keys (sensor / report, vision, thermal) needed to confirm; 2 = proof before panic (assumption).']);
+  def('droneThermalCapC', 'drone', 550, 150, 1500, 50, '°C', ['سقف الكاميرا الحرارية', 'Thermal camera ceiling'], ['أعلى حرارة تقيسها الكاميرا قبل التشبّع (افتراض).', 'Highest temperature the camera reads before it saturates (assumption).']);
+  def('droneFireC', 'drone', 150, 100, 300, 10, '°C', ['حرارة تصنيف مصدر النار', 'Hot-source temperature'], ['البؤرة الأعلى من هذه الحرارة تُصنَّف «مصدر نار»؛ الأدنى «جسم ساخن» كالآلات (افتراض).', 'A hotspot above this is classed a fire source; below it, a hot object such as machinery (assumption).']);
+  def('droneGroundSunC', 'drone', 18, 0, 30, 1, '°C', ['سخونة الأرض تحت الشمس', 'Extra ground heat in full sun'], ['كم تفوق حرارة الأرض حرارة الهواء في شمس الظهيرة؛ بسببها لا يُرى الناس حرارياً نهاراً (افتراض).', 'How much hotter the ground is than the air in midday sun; because of it people cannot be seen by heat in the daytime (assumption).']);
+  // control room
+  def('droneAuto', 'drone', 1, 0, 1, 1, '0/1', ['إطلاق مسيّرة للتحقق تلقائياً', 'Launch a drone to verify automatically'], ['1 = كل حادث جديد يُطلق أقرب مسيّرة للتحقق (تُطلَق وحدها؛ التنبيه العام والإرسال الأرضي يبقيان بمفتاح بشري) (افتراض).', '1 = every new incident launches the nearest drone to verify (it may launch on its own; the public alert and ground dispatch still need the human key) (assumption).']);
+  def('droneGate', 'drone', 0, 0, 1, 1, '0/1', ['المشغّل ينتظر نتيجة المسيّرة', 'Operator waits for the drone result'], ['1 = في الوضع الآلي ينتظر المشغّل المحاكى نتيجة تحقق المسيّرة قبل الموافقة (الدليل قبل الذعر)؛ 0 = يوافق بعد زمن الموافقة المعتاد (افتراض).', '1 = in automatic mode the simulated operator waits for the drone verification before approving (proof before panic); 0 = approves after the usual approval time (assumption).']);
+  def('droneGateTimeoutSec', 'drone', 180, 30, 900, 30, 's', ['مهلة انتظار المسيّرة', 'Wait limit for the drone'], ['إن لم تصل نتيجة خلال هذا الزمن يقرر المشغّل بالدليل المتاح (افتراض).', 'If no result arrives within this time the operator decides on the evidence at hand (assumption).']);
+  def('droneAutoDismiss', 'drone', 1, 0, 1, 1, '0/1', ['المشغّل المحاكى يرفض الإنذارات الكاذبة', 'Simulated operator dismisses false alerts'], ['1 = في الوضع الآلي يرفض المشغّل المحاكى إنذارات المسيّرة التي لا دليل عليها أو التي ليس فيها غير جسم ساخن ثابت (افتراض).', '1 = in automatic mode the simulated operator dismisses drone alerts that have no evidence or only a static hot object (assumption).']);
+  def('droneDismissSec', 'drone', 20, 0, 300, 5, 's', ['زمن رفض الإنذار', 'Time to dismiss an alert'], ['الثواني بين نتيجة التحقق ورفض المشغّل (افتراض).', 'Seconds between the verification result and the operator dismissing the alert (assumption).']);
+  def('droneAedAtHospitals', 'drone', 1, 0, 1, 1, '0/1', ['مسيّرات المستشفيات تحمل مجموعة إسعاف', 'Hospital drones carry an AED kit'], ['1 = مسيّرات أسطح المستشفيات تحمل مجموعة إسعاف أولي/AED؛ الإسقاط لحالات «شخص يحتاج مساعدة» فقط وبأمر السلطة فقط (مفهوم؛ لا إسقاط حقيقي).', '1 = hospital-roof drones carry a first-aid / AED kit; a drop is for "someone needs help" only and only on the authority\'s order (concept; no real drop).']);
+  def('droneAedPreferSec', 'drone', 90, 0, 600, 30, 's', ['تفضيل مسيّرة الإسعاف', 'Prefer an AED drone within'], ['في بلاغ «يحتاج مساعدة» تُفضَّل المسيّرة الحاملة للمجموعة إن تأخرت أقل من هذا الزمن عن الأسرع (افتراض).', 'For a "needs help" call the AED-carrying drone is preferred if it is slower than the fastest by less than this (assumption).']);
 
   function defaultParams() { var P = {}; for (var i = 0; i < PARAM_DEFS.length; i++) P[PARAM_DEFS[i].key] = PARAM_DEFS[i].default; return P; }
   function resolveParams(over) {
@@ -1191,6 +1295,7 @@
       rainCells: [], ponds: [], flood: { tunnels: [], byEdge: {} }, hosp: {}, stats: { dispatches: 0, redispatches: 0, reroutes: 0, firstEta: [] }
     };
     nat.fleet = buildFleet(W, P);
+    initDrones(nat);
     for (i = 0; i < W.tunnels.length; i++) {
       tun = { e: W.tunnels[i], sump: 0.6 + 0.9 * hr(nat.seed, D.SUMP, W.tunnels[i], 0), depthCm: 0, closed: false };
       nat.flood.tunnels.push(tun); nat.flood.byEdge[tun.e] = tun;
@@ -1617,6 +1722,7 @@
     var plan = inc.plan;
     if (!plan || plan.state !== 'recommended') return false;
     plan.state = 'approved'; plan.t.approved = nat.t; plan.acceptAt = nat.t + nat.P.acceptSec; inc.status = 'approved';
+    if (inc.alertId) { var al0 = getAlert(nat, inc.alertId); if (al0 && !alertFinal(al0)) { if (al0.tApproved === null) al0.tApproved = nat.t; if (al0.state === 'SUSPECT') al0.unverifiedApproval = true; setAlertState(nat, al0, 'APPROVED', nat.t); } }
     plan.units.forEach(function (pu) { if (pu.unitId) { pu.state = 'approved'; pu.states.approved = nat.t; } });
     evt(nat, 'dispatch-approved', { incident: inc.id }, 'اعتُمدت حزمة الحادث المتحقَّق منها وأُرسلت إلى غرفة التحكم (999 تبقى المُرسِل)', 'The verified incident package was approved and sent to the control room (999 stays the dispatcher)');
     return true;
@@ -1629,11 +1735,21 @@
     });
     evt(nat, 'dispatched', { incident: inc.id }, 'قبلت غرفة التحكم الحزمة وأرسلت الوحدات', 'The control room accepted the package and dispatched the units');
   }
+  // The simulated operator (autoApprove): approves approveSec after the recommendation — or, with P.droneGate = 1 and a drone alert behind the incident, approveSec after the drone's verification result
+  // (a drone that cannot be launched, or is too slow, holds the operator for at most P.droneGateTimeoutSec: proof before panic, but never an endless wait).
+  function approvalDue(nat, inc) {
+    var P = nat.P, plan = inc.plan, al = P.droneGate && inc.alertId ? getAlert(nat, inc.alertId) : null, t = nat.t, ref;
+    if (!al) return t - plan.t.recommended >= P.approveSec;
+    if (al.state === 'DISMISSED') return false;
+    ref = al.tVerified;
+    if (ref === null || ref === undefined) return t - plan.t.recommended >= Mth.max(P.approveSec, P.droneGateTimeoutSec);
+    return t - ref >= P.approveSec;
+  }
   function stepIncident(nat, inc, dt, ctxNow) {
     var plan = inc.plan, P = nat.P, t = nat.t;
     updateSeverity(nat, inc);
     if (!plan || plan.state === 'cleared') return;
-    if (plan.state === 'recommended') { if (nat.autoApprove && t - plan.t.recommended >= P.approveSec) approvePlan(nat, inc); }
+    if (plan.state === 'recommended') { if (nat.autoApprove && approvalDue(nat, inc)) approvePlan(nat, inc); }
     else if (plan.state === 'approved') { if (t >= plan.acceptAt) acceptPlan(nat, inc); }
     var anyLive = false, anyOn = false, anyEn = false, anyUnit = false, allCleared = true;
     plan.units.forEach(function (pu) {
@@ -1653,6 +1769,8 @@
             pu.state = 'on-scene'; pu.states['on-scene'] = t; pu.onSceneAt = t; pu.etaSec = 0; u.state = 'on-scene'; u.pos = { edge: u.pos.edge, frac: u.pos.frac, lon: inc.lon, lat: inc.lat };
             if ((pu.kind === 'fire' || pu.kind === 'rescue') && (inc.hazard === 'fire' || inc.hazard === 'gas') && (inc.supAt === null || inc.supAt === undefined)) inc.supAt = t + P.engineSetupSec;
             if (pu.kind === 'police' && P.autoCordon && (inc.hazard === 'fire' || inc.hazard === 'gas' || inc.hazard === 'flood') && !nat.cordons[inc.id]) setCordon(nat, inc.id);
+            if (inc.eyes && inc.eyes.groundT === null) inc.eyes.groundT = t;                 // first ground unit on scene (the drone's arrival is stamped in arriveOnStation)
+            if (inc.falseAlarm && !inc.faAt) inc.faAt = t + 5;                                // a dispatch for a false alarm: the first unit finds nothing
             evt(nat, 'unit-on-scene', { incident: inc.id, unit: u.id, kind: pu.kind }, 'وصلت ' + u.name.ar + ' إلى الموقع', u.name.en + ' is on scene');
           }
         }
@@ -1710,24 +1828,42 @@
     o = o || {};
     var hazard = HAZARDS.indexOf(o.hazard) >= 0 ? o.hazard : 'sos', id = 'N' + (++nat.incSeq), t = nat.t;
     if (!isNum(o.lon) || !isNum(o.lat)) { o = { hazard: o.hazard, lon: 0, lat: 0, severity: o.severity, patients: o.patients, label: o.label }; }     // no usable position: the incident is cancelled below (no road within reach)
+    // trigger: how the control room learns of it — 'sentinel' | 'citizen' | 'operator' (a drone is launched to verify at once, an alert is raised) | 'patrol' (nobody knows until a patrolling drone finds it) | omitted (P.droneAuto decides)
+    var trg = TRIGGERS.indexOf(o.trigger) >= 0 ? o.trigger : (o.trigger === 'drone' ? 'drone' : (nat.P.droneAuto ? (hazard === 'sos' ? 'citizen' : 'sentinel') : null));
     var inc = { id: id, seq: nat.incSeq, hazard: hazard, lon: o.lon, lat: o.lat, severity: clamp(Mth.round(o.severity || 2), 1, 3), sev: 0.3, radiusM: 100, patients: patientsOf(hazard, o.patients), tStart: t, status: 'recommended',
-      label: o.label || null, supAt: null, plan: null, tCleared: null };
+      label: o.label || null, supAt: null, plan: null, tCleared: null, trigger: trg, falseAlarm: !!o.falseAlarm, alertId: o.alertId || null, eyes: { droneT: null, droneId: null, groundT: null, launchT: null }, faAt: 0, detect: null };
     inc.muni = nat.W.geo.municipalityAt(o.lon, o.lat); inc.place = nearestPlace(nat.W, o.lon, o.lat);
     inc.snap = sceneOf(nat, o.lon, o.lat);
     updateSeverity(nat, inc);
-    var hn = HAZARD_NAME[hazard], pl = inc.place;
-    evt(nat, 'incident', { incident: id, hazard: hazard, lon: o.lon, lat: o.lat }, 'حادث جديد (محاكاة): ' + hn.ar + (pl ? ' قرب ' + pl.name.ar : ''), 'New incident (simulation): ' + hn.en + (pl ? ' near ' + pl.name.en : ''));
+    if (trg !== 'patrol' || !inc.snap) evtIncident(nat, inc);
     if (!inc.snap) { inc.status = 'cancelled'; nat.incidents.push(inc); evt(nat, 'incident-unreachable', { incident: id }, 'الموقع بعيد عن أي طريق في البيانات', 'The location is too far from any road in the data'); return inc; }
-    var plan = buildPlan(nat, inc, t, { incident: inc });
+    if (trg === 'patrol') {                                 // a real event nobody has seen yet: it grows; a patrolling drone may find it, otherwise a bystander reports it after P.droneUnseenMin
+      inc.status = 'unseen'; nat.incidents.push(inc); nat.incVer++;
+      return inc;
+    }
+    startResponse(nat, inc);                                // (the incident joins nat.incidents only afterwards, exactly as before: its own slow-down does not shape its own plan)
+    nat.incidents.push(inc);
+    if (trg === 'sentinel' || trg === 'citizen' || trg === 'operator') droneIntake(nat, inc, trg);
+    return inc;
+  }
+  function evtIncident(nat, inc, extra) {
+    var hn = HAZARD_NAME[inc.hazard], pl = inc.place, data = { incident: inc.id, hazard: inc.hazard, lon: inc.lon, lat: inc.lat }, k;
+    if (extra) for (k in extra) data[k] = extra[k];
+    evt(nat, 'incident', data, 'حادث جديد (محاكاة): ' + hn.ar + (pl ? ' قرب ' + pl.name.ar : ''), 'New incident (simulation): ' + hn.en + (pl ? ' near ' + pl.name.en : ''));
+  }
+  // the control room knows: the dispatch recommendation is prepared and the units are reserved (recommended → approved needs the human key)
+  function startResponse(nat, inc) {
+    var id = inc.id, t = nat.t, plan;
+    if (inc.status === 'unseen') inc.status = 'recommended';
+    plan = buildPlan(nat, inc, t, { incident: inc });
     inc.plan = plan; reservePlan(nat, inc);
-    nat.incidents.push(inc); nat.incVer++; nat.stats.dispatches++;
+    nat.incVer++; nat.stats.dispatches++;
     var first = INF; plan.units.forEach(function (pu) { if (pu.unitId && !pu.optional && pu.etaAtRec < first) first = pu.etaAtRec; });
     inc.firstEtaSec = isFin(first) ? Mth.round(first) : null; if (inc.firstEtaSec !== null) nat.stats.firstEta.push(inc.firstEtaSec);
     evt(nat, 'dispatch-recommended', { incident: id, units: plan.units.map(function (u) { return u.kind + ':' + u.unitId; }) },
       'توصية الإرسال: ' + plan.units.map(function (u) { return KIND_NAME[u.kind].ar + ' ← ' + (u.unitId ? u.name.ar + ' (' + mmss(u.etaSec) + ')' : '—'); }).join('، '),
       'Dispatch recommended: ' + plan.units.map(function (u) { return KIND_NAME[u.kind].en + ' ← ' + (u.unitId ? u.name.en + ' (' + mmss(u.etaSec) + ')' : '—'); }).join(', '));
     plan.units.forEach(function (u) { if (u.whyData && u.whyData.farButFaster) evt(nat, 'far-but-faster', { incident: id, kind: u.kind, unit: u.unitId, gainSec: u.whyData.gainSec, extraStraightM: u.whyData.extraStraightM }, u.why.ar, u.why.en); });
-    return inc;
   }
   function getIncident(nat, id) { for (var i = 0; i < nat.incidents.length; i++) if (nat.incidents[i].id === id) return nat.incidents[i]; return null; }
   function approve(nat, id) { var inc = getIncident(nat, id); return inc ? approvePlan(nat, inc) : false; }
@@ -1826,6 +1962,8 @@
     for (i = 0; i < nat.incidents.length; i++) if (nat.incidents[i].status !== 'cleared' && nat.incidents[i].status !== 'cancelled') stepIncident(nat, nat.incidents[i], dt, ctxNow || timeCtx(nat, nat.t));
     for (i = 0; i < nat.fleet.units.length; i++) { u = nat.fleet.units[i]; if (u.state === 'returning') stepReturning(nat, u, dt, ctxNow || timeCtx(nat, nat.t)); }
     if (nat.t >= nat.nextRecheck) recheckAll(nat);
+    tickDrones(nat, dt);                                    // the drone fleet: launch, fly (straight line, heat and wind), hover, verify, return, charge, patrol and detect
+    tickAlerts(nat);                                        // alert states follow the incidents; retries, auto-dismissals, bystander reports
   }
   function step(nat, dt) {
     nat.acc += dt === undefined ? nat.tick : Mth.max(0, +dt || 0);
@@ -1951,7 +2089,7 @@
       traffic: { load: P.trafficLoad, meanSpeedRatio: den ? r2(num / den) : 1, pressure: r2(ctx.p), jammedEdges: nat.jamN, closedEdges: nat.closedN, cordons: nat.cordonN, redispatches: nat.stats.redispatches, reroutes: nat.stats.reroutes },
       hazards: { heat: { wbgtMax: heatMax, level: wbgtLevel(P, heatMax), middayBan: inMiddayBan(ci) }, dust: { on: nat.dust.on, pm10Max: Mth.round(pmMax), frontKm: nat.dust.on ? r1(dustFrontKm(nat, t)) : null },
         flood: { rainMmHr: P.rainMmHr, rainCells: nat.rainCells.length, rainMax: rainMax, tunnelsClosed: closedT, maxDepthCm: r1(maxDepth) } },
-      municipalities: ms, advisories: advisories(nat, t, ms)
+      municipalities: ms, advisories: advisories(nat, t, ms), drones: droneKpis(nat, t)
     };
   }
   // exposure of outdoor work areas: ONLY places the OSM data tags as industrial / port (no worker counts are claimed)
@@ -2009,6 +2147,10 @@
       dust: nat.dust.on ? { on: true, t0: nat.dust.t0, deg: nat.dust.deg, mps: nat.dust.mps, frontKm: r1(dustFrontKm(nat, t)) } : { on: false },
       rain: { mmHr: nat.P.rainMmHr, cells: nat.rainCells.filter(function (rc) { return t >= rc.t0 && t <= rc.t1; }).map(function (rc) { var q = rainCellPos(rc, t); return { id: rc.id, lon: r5(q[0]), lat: r5(q[1]), radiusKm: rc.radiusKm, mmHr: rc.mmHr }; }) },
       evCount: nat.evCount, stats: { dispatches: nat.stats.dispatches, redispatches: nat.stats.redispatches, reroutes: nat.stats.reroutes } };
+    S.drones = nat.drones.list.map(function (d) { return droneRow(nat, d, t, { trails: o.trails !== false, sectors: !!o.sectors }); });
+    S.alerts = alertQueue(nat, { all: true, t: t }).slice(0, o.full ? 400 : 80);
+    S.droneAlerts = nat.droneAlerts.slice(-(o.full ? 200 : 30));
+    S.comms = o.full ? nat.comms.slice() : nat.comms.slice(-(o.lastComms || 40));
     if (o.kpis !== false) S.kpis = kpis(nat, t);
     S.events = o.full ? nat.events.slice() : nat.events.slice(-(o.lastEvents || 60));
     return S;
@@ -2222,10 +2364,18 @@
     var seed = (o.seed >>> 0) || 1, n = o.n === undefined ? 150 : Mth.max(0, o.n | 0), hazards = o.hazards && o.hazards.length ? o.hazards : ['fire', 'gas', 'flood', 'sos'], nat = o.nat || create({ seed: seed, hour: o.hour !== undefined ? o.hour : 7.5, day: o.day || 0, date: o.date, params: o.params, data: o.data });
     var t = o.t !== undefined ? o.t : nat.t, sample = makeSampler(nat, seed), wantRoad = o.roadBaseline !== false, i, r, inc, hz, rows = [];
     var fO = [], fM = [], fR = [], saved = [], savedDiff = [], lastO = [], lastM = [], perKind = {}, differs = 0, farFaster = 0, skipped = 0, kindN = 0, kindDiff = 0;
+    var feD = [], feG = [], feLead = [], feLeadWhere = [], feFirst = 0, feFirstApr = 0, feNone = 0, de;
     for (i = 0; i < n; i++) {
       inc = sample(i); hz = hazards[i % hazards.length];
       r = evalPolicies(nat, inc.lon, inc.lat, hz, t, wantRoad);
       if (!r) { skipped++; continue; }
+      de = droneEtaFor(nat, inc.lon, inc.lat, t, hz);                       // the fastest docked drone (SIMULATED fleet) against the first ground unit: "first eyes on scene"
+      if (!de) feNone++;
+      else {
+        feD.push(de.etaSec); feG.push(r.firstManara); feLead.push(r.firstManara - de.etaSec);
+        if (de.etaSec <= r.firstManara) { feFirst++; feLeadWhere.push(r.firstManara - de.etaSec); }
+        if (de.etaSec <= r.firstManara + nat.P.approveSec + nat.P.acceptSec) feFirstApr++;
+      }
       fO.push(r.firstOrdinary); fM.push(r.firstManara); if (r.firstRoad !== null) fR.push(r.firstRoad); lastO.push(r.lastOrdinary); lastM.push(r.lastManara);
       saved.push(r.firstOrdinary - r.firstManara);
       var anyDiff = false;
@@ -2247,7 +2397,13 @@
       savedSec: { all: stats(saved), whereChoiceDiffers: stats(savedDiff) }, byKind: byKind, sample: rows, changedParams: changedParams(nat), assumptions: assume,
       notes: [T('محاكاة: المواقع والتوفّر والازدحام مُحاكاة، والخريطة لقطة من OpenStreetMap؛ فحص لآلية العمل وليس دليلاً على الأثر.', 'Simulation: positions, availability and traffic are simulated and the map is an OpenStreetMap snapshot; a mechanism check, not proof of impact.'),
         T('الأزمنة لحظية (لقطة الازدحام عند وقت الحادث) وللمقارنة المزدوجة على الحوادث نفسها وبالوحدات المتاحة نفسها.', 'Times are snapshot ETAs at the incident time, paired on the same incidents and the same available units.')] };
-    res.hash = fnv(JSON.stringify({ a: res.firstResponderEtaSec, b: res.savedSec, c: res.differs, d: res.byKind }));
+    res.firstEyes = { label: SIM_LABEL, metric: 'first eyes on scene', n: feD.length, noDroneAvailable: feNone, noDroneAvailablePct: done ? r1(100 * feNone / done) : 0,
+      coveredPct: done ? r1(100 * feD.length / done) : 0, droneFirstOfAllPct: done ? r1(100 * feFirst / done) : null,
+      droneEtaSec: stats(feD), firstGroundEtaSec: stats(feG), droneFirstPct: feD.length ? r1(100 * feFirst / feD.length) : null, droneFirstWithApprovalPct: feD.length ? r1(100 * feFirstApr / feD.length) : null,
+      leadSec: stats(feLead), leadSecWhereDroneFirst: stats(feLeadWhere), dronesInFleet: nat.drones.list.length,
+      notes: [T('محاكاة: أسرع مسيّرة راسية (توفّر عشوائي، تخفيض الحرارة والرياح، خط مستقيم) مقابل أول وحدة أرضية بعد خروجها (بلا تأخير للموافقة)؛ العمود «مع الموافقة» يضيف زمن موافقة المشغّل وقبول غرفة التحكم للوحدات الأرضية فقط، لأن المسيّرة تُطلَق وحدها للتحقق.', 'Simulation: the fastest docked drone (seeded availability, heat and wind derating, straight line) against the first ground unit once it rolls (no approval delay); the "with approval" figure adds the operator approval and control-room acceptance time to the ground units only, because a drone may launch to verify on its own.'),
+        T('أرقام المسيّرات افتراضات مسمّاة (PARAMS، مجموعة drone) لمفهوم لم يُطِر؛ ليست نتائج تجارب.', 'The drone numbers are named assumptions (PARAMS, group drone) for a concept that has not flown; they are not test results.')] };
+    res.hash = fnv(JSON.stringify({ a: res.firstResponderEtaSec, b: res.savedSec, c: res.differs, d: res.byKind, e: res.firstEyes }));
     return res;
   }
   // how the gap depends on the assumptions: a grid over the traffic multiplier and the share of busy units (always show it: the result depends on assumptions)
@@ -2300,7 +2456,799 @@
   }
 
   /* ====================================================================================
-   * 16. PUBLIC API
+   * 16. DRONE FLEET — docked drones on real stations and hospital roofs, patrol sectors, DRONE ALERTS, the alert queue, operator actions, the comms log
+   *     A CONCEPT with a SIMULATED prototype: where a drone is, its battery, what it detects and the false alarms it raises are ALL simulated (SIM). No real drone has been
+   *     flown, tested in a fire or approved by any authority; real operation needs the national authority's approval.  Every number is a named assumption (PARAMS, group 'drone').
+   *     Pure, seeded, deterministic: every random draw is a stateless hashed draw hr(seed, stream, a, b), so the same seed gives the same flights whatever the step size.
+   *     AUTONOMY RULE (docs/MANARA-SPEC.md): a drone may launch to VERIFY on its own; a public alert and the ground dispatch still need the human key (approve); the local siren never waits.
+   * ==================================================================================== */
+  var DRONE_STATE = {
+    docked: T('في القاعدة', 'Docked'), launching: T('تُقلع', 'Launching'), 'en-route': T('في الطريق', 'En route'), patrol: T('في دورية', 'On patrol'), 'on-station': T('في الموقع', 'On station'),
+    verifying: T('تتحقق', 'Verifying'), returning: T('عائدة', 'Returning'), charging: T('تُشحن', 'Charging'), fault: T('عطل', 'Fault') };
+  var ALERT_STATES = ['SUSPECT', 'CONFIRMED', 'APPROVED', 'DISPATCHED', 'ON-SCENE', 'RESOLVED', 'DISMISSED'];
+  var ALERT_RANK = { SUSPECT: 0, CONFIRMED: 1, APPROVED: 2, DISPATCHED: 3, 'ON-SCENE': 4, RESOLVED: 5, DISMISSED: 6 };
+  var ALERT_STATE_NAME = { SUSPECT: T('مشتبه به', 'Suspect'), CONFIRMED: T('مؤكَّد', 'Confirmed'), APPROVED: T('معتمد', 'Approved'), DISPATCHED: T('أُرسلت الوحدات', 'Dispatched'),
+    'ON-SCENE': T('في الموقع', 'On scene'), RESOLVED: T('أُغلق', 'Resolved'), DISMISSED: T('مرفوض', 'Dismissed') };
+  var TRIGGERS = ['sentinel', 'citizen', 'operator', 'patrol'];
+  var SOURCE_NAME = { sentinel: T('حسّاس منارة', 'Sentinel'), citizen: T('مواطن', 'Citizen'), operator: T('المشغّل', 'Operator'), drone: T('مسيّرة', 'Drone') };
+  var TRIGGER_NAME = { sentinel: T('إنذار حسّاس منارة', 'Sentinel alarm'), citizen: T('طلب مساعدة من مواطن', 'Citizen "need help"'), operator: T('إطلاق من المشغّل للتحقق', 'Operator launch-to-verify'),
+    patrol: T('كشف دورية المسيّرة', 'Drone patrol detection') };
+  var HAZ_PRIO = { sos: 90, gas: 85, fire: 80, flood: 70, heat: 60, dust: 45 };
+  // look-alikes that fool the colour rules or the thermal camera (ManaraDroneScene draws them; the rule-based detector's rejection is demonstrable)
+  var DECOYS = { glare: T('وهج الغروب على برج زجاجي', 'Sunset glare on a glass tower'), 'red-truck': T('شاحنة حمراء', 'A red truck'), machinery: T('آلات ساخنة', 'Hot machinery') };
+  // how visible each hazard is to each camera (multipliers on droneVisionTprPct / the thermal chances): ASSUMPTIONS. Gas is not visible; dust is not seen by the thermal camera.
+  var DRONE_MODALITY = { fire: { v: 1, t: 1 }, gas: { v: 0.05, t: 1 }, flood: { v: 0.95, t: 0.25 }, dust: { v: 0.9, t: 0 }, heat: { v: 0.7, t: 1 }, sos: { v: 0.75, t: 1 } };
+  MSG['nat.drone.say.identify'] = T('هنا مسيّرة الدفاع المدني. المساعدة في الطريق إليكم، ابقوا هادئين.', 'This is a Civil Defence drone. Help is on its way. Please stay calm.');
+  MSG['nat.drone.say.follow-light'] = T('اتبعوا الضوء الأخضر إلى مكان آمن.', 'Follow the green light to a safe place.');
+  MSG['nat.drone.say.move-away'] = T('ابتعدوا عن المبنى والمنطقة المحيطة الآن.', 'Move away from the building and the area now.');
+  MSG['nat.drone.say.shelter'] = T('ادخلوا مبنى مغلقاً وأغلقوا النوافذ والأبواب.', 'Go into a closed building and shut windows and doors.');
+  MSG['nat.drone.say.crosswind'] = T('تحرّكوا باتجاه عمودي على الريح بعيداً عن الرائحة، ولا تستخدموا مفاتيح الكهرباء ولا اللهب.', 'Move across the wind, away from the smell. Do not use switches or flames.');
+  MSG['nat.drone.say.flood'] = T('لا تعبروا الماء مشياً أو بالسيارة. اصعدوا إلى مكان مرتفع.', 'Do not walk or drive through water. Move to higher ground.');
+  MSG['nat.drone.say.stay-put'] = T('ابقَ مكانك. المساعدة قادمة.', 'Stay where you are. Help is coming.');
+  MSG['nat.drone.say.aed'] = T('مجموعة الإسعاف الأولي في الطريق بأمر السلطة؛ ابقَ مع المصاب.', 'A first-aid kit is on its way, on the authority\'s order; stay with the person.');
+
+  // ---- the environment a drone flies in (all from the engine's own simulated fields)
+  function cellIndex(nat, lon, lat) {
+    var g = nat.W.grid, ix = Mth.floor((lon - g.lon0) / g.d), iy = Mth.floor((lat - g.lat0) / g.d);
+    return (ix >= 0 && iy >= 0 && ix < g.nx && iy < g.ny) ? iy * g.nx + ix : -1;
+  }
+  function droneAirC(nat, t, lon, lat) {                  // air temperature (°C) from the national heat model at a point and time (sea / outside the grid: the regional curve)
+    var ci = clockInfo(nat.start, t), cl = climateOf(ci, nat.P), c = cellIndex(nat, lon, lat);
+    return c >= 0 && nat.W.grid.land[c] ? heatCell(nat, ci, cl, c).T : airTempAt(cl, ci.hour);
+  }
+  function fireHeatC(nat, lon, lat) {                     // extra air temperature near an active fire (any fire that is not over), from the incident's own radius and severity
+    var add = 0, i, inc, d, R, v;
+    for (i = 0; i < nat.incidents.length; i++) {
+      inc = nat.incidents[i];
+      if (inc.hazard !== 'fire' || inc.status === 'cleared' || inc.status === 'cancelled') continue;
+      R = inc.radiusM + 80; d = haversineM(lon, lat, inc.lon, inc.lat);
+      if (d > 4 * R) continue;
+      v = nat.P.droneFireHeatC * inc.sev * Mth.exp(-(d / R) * (d / R)); if (v > add) add = v;
+    }
+    return add;
+  }
+  function arcDelta(a, b) { return ((b - a + 540) % 360) - 180; }
+  function droneWind(nat, t, lon, lat) {                  // wind blowing FROM deg at mps: a slow seeded variation and gusts; the dust storm's wind where the storm is
+    var P = nat.P, ph = hr(nat.seed, D.DWIND, 1, 0) * 2 * Mth.PI, deg = P.droneWindDeg + 18 * Mth.sin(2 * Mth.PI * t / 5400 + ph), mps = P.droneWindMps * (1 + 0.3 * Mth.sin(2 * Mth.PI * t / 1500 + 2 * ph)), k, pm;
+    if (nat.dust.on && t >= nat.dust.t0) {
+      pm = dustAt(nat, t, lon, lat, 0.5);
+      if (pm > P.dustWarn) { k = clamp((pm - P.dustWarn) / 400, 0, 1); deg = deg + arcDelta(deg, nat.dust.deg) * k; mps = lerp(mps, nat.dust.mps, k); }
+    }
+    return { deg: ((deg % 360) + 360) % 360, mps: Mth.max(0, mps) };
+  }
+  // the wind triangle: along-track ground speed when the drone holds a straight GROUND track (it crabs into a crosswind); never below 0.5 m/s (a guard, not physics)
+  function windTriangle(vAir, hdgDeg, wind) {
+    var to = (wind.deg + 180) * DEG, wE = wind.mps * Mth.sin(to), wN = wind.mps * Mth.cos(to), h = hdgDeg * DEG, tE = Mth.sin(h), tN = Mth.cos(h), along = wE * tE + wN * tN, cross = wE * tN - wN * tE, s2 = vAir * vAir - cross * cross;
+    if (s2 <= 0) return 0.5;
+    return Mth.max(0.5, Mth.sqrt(s2) + along);
+  }
+  function solarAt(nat, t, lon, lat) { var ci = clockInfo(nat.start, t); return solarFactor(ci.doy, ci.hour, lon, lat); }
+  function groundC(nat, airC, solar) { return airC + nat.P.droneGroundSunC * solar - 2 * (1 - solar); }      // sun-baked ground is far hotter than the air; at night it cools just below it
+  function cruiseOf(nat, d) { var v = nat.P.droneCruiseMps; return d.optSpeed ? Mth.min(v, d.optSpeed) : v; }
+  function altOf(nat, d) { return d.optAlt || nat.P.droneAltM; }
+  // flight conditions of a drone at a time and place (heading null = no wind effect): temperature, heat derating, wind, air speed, ground speed, battery drain per second
+  function droneCond(nat, d, t, lon, lat, hdg, vCap) {
+    var P = nat.P, airC = droneAirC(nat, t, lon, lat) + fireHeatC(nat, lon, lat), battC = airC + P.droneBattSunC * solarAt(nat, t, lon, lat), over = Mth.max(0, battC - P.droneTempC), tdB = clamp(over * P.droneDerateBattPerC / 100, 0, 0.8), tdS = clamp(over * P.droneDerateSpeedPerC / 100, 0, 0.6);
+    var w = droneWind(nat, t, lon, lat), v0 = cruiseOf(nat, d), vAir = (vCap ? Mth.min(vCap, v0) : v0) * (1 - tdS), gs = hdg === null || hdg === undefined ? vAir : windTriangle(vAir, hdg, w);
+    return { tempC: airC, battC: battC, derateBatt: tdB, derateSpeed: tdS, wind: w, vAir: vAir, gs: gs, drainPerSec: 1 / (P.droneEnduranceMin * 60 * (1 - tdB)) };
+  }
+  function envAt(nat, t, lon, lat) {                      // what the cameras face at a place: air / ground temperature, sun, dust (relative visibility)
+    var airC = droneAirC(nat, t, lon, lat), solar = solarAt(nat, t, lon, lat), pm = nat.dust.on ? dustAt(nat, t, lon, lat, 0.5) : nat.P.dustBackground, vis = Mth.min(1, visIndex(pm) / visIndex(nat.P.dustBackground));
+    return { airC: airC, solar: solar, groundC: groundC(nat, airC, solar), pm10: pm, visFactor: vis };
+  }
+  function sceneContext(nat, lon, lat) {                  // what the camera will see: industrial / coast / urban / desert / road (from the data: industrial places, coast distance, urban weight, road distance)
+    var W = nat.W, g = W.grid, c = cellIndex(nat, lon, lat), u = W.urbanAt(lon, lat), best = INF, i, dd;
+    for (i = 0; i < W.industrial.length; i++) { dd = haversineM(lon, lat, W.industrial[i].lon, W.industrial[i].lat); if (dd < best) best = dd; }
+    if (best < 4500) return 'industrial';
+    if (c >= 0 && g.land[c] && g.coastKm[c] < 0.6) return 'coast';
+    if (u > 0.55) return 'urban';
+    if (u < 0.12 && c >= 0 && g.roadKm[c] > 2) return 'desert';
+    return u > 0.3 ? 'urban' : 'road';
+  }
+  function linkQuality(nat, d, t) {                       // 0..1: falls with the distance from the dock (a labelled assumption), a small seeded wobble
+    var R = nat.P.droneLinkRangeKm * 1000, q = 1 - Mth.pow(haversineM(d.pos.lon, d.pos.lat, d.dock.lon, d.dock.lat) / R, 2);
+    return clamp(q * (0.97 + 0.03 * Mth.sin(t / 37 + d.idx)), 0, 1);
+  }
+
+  // ---- building the fleet: one drone per fire / Civil Defence station (P.droneStationDocks) + roof docks on selected hospitals (the ED-verified ones, each the farthest from the docks already chosen)
+  function makeSector(nat, d) {
+    var W = nat.W, P = nat.P, K = 6, loop = [], phase = hr(nat.seed, D.DSECTOR, d.idx, 0) * 2 * Mth.PI, k, r, ang, ll, tries, rr;
+    for (k = 0; k < K; k++) {
+      ang = phase + k * 2 * Mth.PI / K; r = P.dronePatrolRadiusM * (0.55 + 0.45 * hr(nat.seed, D.DSECTOR, d.idx, k + 1));
+      for (tries = 0, rr = r; tries < 6; tries++, rr *= 0.65) {
+        ll = offsetLL(d.dock.lon, d.dock.lat, rr * Mth.sin(ang), rr * Mth.cos(ang));
+        if (W.geo.inLand(ll[0], ll[1])) break;
+      }
+      if (tries >= 6) ll = offsetLL(d.dock.lon, d.dock.lat, 150 * Mth.sin(ang), 150 * Mth.cos(ang));
+      loop.push([r5(ll[0]), r5(ll[1])]);
+    }
+    return { centre: { lon: d.dock.lon, lat: d.dock.lat }, radiusM: P.dronePatrolRadiusM, loop: loop, idx: 0 };
+  }
+  function initDrones(nat) {
+    var W = nat.W, P = nat.P, list = [], byId = {}, docks = [], seen = {}, eligible = [], perSt = P.droneStationDocks | 0, i, k, fr, dk;
+    if (perSt > 0) nat.fleet.units.forEach(function (u) { if (u.kind === 'fire' && !seen[u.fac] && W.facById[u.fac]) { seen[u.fac] = 1; docks.push({ fr: W.facById[u.fac], role: 'station', per: perSt }); } });
+    W.facs.forEach(function (rec) {
+      var f = rec.f, caps = f.caps || [];
+      if (!isHospitalLike(f) || f.ed !== 'yes' || isRestricted(f) || caps.indexOf('obstetric') >= 0 || (caps.indexOf('paedED') >= 0 && caps.indexOf('ed') < 0)) return;
+      eligible.push(rec);
+    });
+    var nH = Mth.min(P.droneHospitalDocks | 0, eligible.length), chosen = [], best, bestD, dmin, pts;
+    while (chosen.length < nH) {
+      best = null; bestD = -1;
+      eligible.forEach(function (rec) {
+        if (chosen.indexOf(rec) >= 0) return;
+        dmin = INF; pts = docks.map(function (x) { return x.fr; }).concat(chosen);
+        for (var j = 0; j < pts.length; j++) { var dd = haversineM(rec.lon, rec.lat, pts[j].lon, pts[j].lat); if (dd < dmin) dmin = dd; }
+        if (dmin > bestD || (dmin === bestD && best && rec.id < best.id)) { bestD = dmin; best = rec; }
+      });
+      if (!best) break;
+      chosen.push(best); docks.push({ fr: best, role: 'hospital', per: 1 });
+    }
+    docks.forEach(function (dk0) {
+      for (k = 0; k < dk0.per; k++) {
+        var idx = list.length, lab = facLabel(W, dk0.fr), cs = 'DR-' + pad2(idx + 1), d = {
+          id: 'drone:' + dk0.fr.id + (dk0.per > 1 ? '#' + (k + 1) : ''), idx: idx, callsign: cs, fac: dk0.fr.id, role: dk0.role,
+          name: T('مسيّرة ' + cs + ' — ' + lab.ar, 'Drone ' + cs + ' — ' + lab.en), dock: { lon: dk0.fr.lon, lat: dk0.fr.lat }, pos: { lon: dk0.fr.lon, lat: dk0.fr.lat },
+          altM: 0, headingDeg: 0, speedMps: 0, groundMps: 0, state: 'docked', stateT: nat.t, left: 0, battery: 0.92 + 0.08 * hr(nat.seed, D.DAVAIL, idx, 777), mission: null, last: null,
+          sortie: 0, sorties: 0, flightSec: 0, sortieSec: 0, faultAt: null, fault: null, repairLeft: 0, trail: [], optPatrol: true, optSpeed: null, optAlt: null, light: false,
+          aed: dk0.role === 'hospital' && P.droneAedAtHospitals > 0, excluded: null };
+        d.sector = makeSector(nat, d);
+        list.push(d); byId[d.id] = d;
+      }
+    });
+    nat.drones = { list: list, byId: byId };
+    nat.alerts = []; nat.droneAlerts = []; nat.comms = []; nat.alertSeq = 0; nat.daSeq = 0; nat.commSeq = 0; nat.missionSeq = 0;
+    nat.dstats = { sorties: 0, patrolSorties: 0, launched: 0, faults: 0, lowBattery: 0, relaunches: 0, patrolDetections: 0, falsePositives: 0, bystander: 0, missed: 0 };
+  }
+
+  // ---- availability, cost and ranking: straight-line flight, battery needed for out + hover + back, the reserve that must remain
+  function droneBlock(nat, d, t) {                        // why a drone cannot take a mission now (null = it can)
+    var P = nat.P, c;
+    if (d.fault || d.state === 'fault') return 'fault';
+    if (d.state === 'launching' || d.state === 'en-route' || d.state === 'on-station' || d.state === 'verifying' || d.state === 'returning') return 'busy';
+    if (d.battery < P.droneMinLaunchPct / 100) return 'battery';
+    if (d.state !== 'patrol') {
+      if (hr(nat.seed, D.DAVAIL, d.idx, Mth.floor(t / (P.busyBlockMin * 60))) < P.droneUnavailPct / 100) return 'unavailable';
+      c = droneCond(nat, d, t, d.dock.lon, d.dock.lat, null);
+      if (c.battC > P.droneTempMaxC) return 'heat';
+      if (c.wind.mps > P.droneMaxWindMps) return 'wind';
+    } else if (droneWind(nat, t, d.pos.lon, d.pos.lat).mps > P.droneMaxWindMps) return 'wind';
+    return null;
+  }
+  function standoffOf(nat, hazard, lon, lat, t) {         // where the drone holds: upwind of the hazard (people on the ground: closer)
+    var w = droneWind(nat, t, lon, lat), s = (hazard === 'sos' || hazard === 'heat') ? Mth.min(nat.P.droneStandoffM, 60) : nat.P.droneStandoffM, p = offsetLL(lon, lat, s * Mth.sin(w.deg * DEG), s * Mth.cos(w.deg * DEG));
+    return { lon: p[0], lat: p[1], wind: w, standoffM: s };
+  }
+  // cost of a sortie for drone d to a target: out (straight line, wind + heat from the conditions at the middle of the leg), settle + verify at the hover drain, back home
+  function sortieCost(nat, d, target, t) {
+    var P = nat.P, from = d.state === 'patrol' ? d.pos : d.dock, so = standoffOf(nat, target.hazard, target.lon, target.lat, t), outM = haversineM(from.lon, from.lat, so.lon, so.lat), hdg = bearingDeg(from.lon, from.lat, so.lon, so.lat);
+    var mid = [(from.lon + so.lon) / 2, (from.lat + so.lat) / 2], c1 = droneCond(nat, d, t, mid[0], mid[1], hdg), backM = haversineM(so.lon, so.lat, d.dock.lon, d.dock.lat), c2 = droneCond(nat, d, t, mid[0], mid[1], (hdg + 180) % 360);
+    var outSec = outM / c1.gs, backSec = backM / c2.gs, holdSec = P.droneSettleSec + P.droneVerifySec, launch = d.state === 'patrol' ? 0 : P.droneLaunchSec;
+    var need = c1.drainPerSec * outSec + c1.drainPerSec * P.droneHoverDrainX * (holdSec + (d.state === 'patrol' ? 0 : P.droneLaunchSec)) + c2.drainPerSec * backSec;
+    return { etaSec: launch + outSec, outM: outM, outSec: outSec, backM: backM, battNeed: need, feasible: need <= d.battery - P.droneReservePct / 100, standoff: so, hdg: hdg, derateBatt: c1.derateBatt, derateSpeed: c1.derateSpeed, tempC: c1.tempC };
+  }
+  function droneRank(nat, target, t, o) {                 // every drone that can take the mission, fastest to be on station first (nearest by straight line, derated by heat and wind)
+    o = o || {};
+    var list = nat.drones.list, out = [], i, d, c;
+    for (i = 0; i < list.length; i++) {
+      d = list[i];
+      if (o.exclude && o.exclude[d.id]) continue;
+      if (droneBlock(nat, d, t)) continue;
+      c = sortieCost(nat, d, target, t);
+      if (!c.feasible) continue;
+      out.push({ d: d, etaSec: c.etaSec, distM: c.outM, battNeed: c.battNeed, cost: c });
+    }
+    out.sort(function (a, b) { return a.etaSec - b.etaSec || a.d.idx - b.d.idx; });
+    return out;
+  }
+  // PURE: the fastest drone that could be on station at a point, with the seeded availability of the docked fleet (A/B and recommendations); {droneId, etaSec, distM, candidates, runnerUp} or null
+  function droneEtaFor(nat, lon, lat, t, hazard) {
+    var rank = droneRank(nat, { lon: lon, lat: lat, hazard: hazard || 'fire' }, t === undefined ? nat.t : t, {});
+    if (!rank.length) return null;
+    return { droneId: rank[0].d.id, name: rank[0].d.name, etaSec: Mth.round(rank[0].etaSec), distM: Mth.round(rank[0].distM), candidates: rank.length,
+      runnerUp: rank[1] ? { droneId: rank[1].d.id, etaSec: Mth.round(rank[1].etaSec), distM: Mth.round(rank[1].distM) } : null };
+  }
+  function droneRangeKm(nat, d, t) {                      // one-way radius (km) a drone can still serve: usable charge, heat-derated endurance and speed, no wind
+    t = t === undefined ? nat.t : t;
+    var P = nat.P, c = droneCond(nat, d, t, d.pos.lon, d.pos.lat, null), usable = Mth.max(0, d.battery - P.droneReservePct / 100);
+    return usable * P.droneEnduranceMin * 60 * (1 - c.derateBatt) * c.vAir / 2 / 1000;
+  }
+
+  // ---- the comms log (who said / sent what, when) and the alert queue
+  function comm(nat, kind, from, to, text, extra) {
+    var c = { id: 'C' + (++nat.commSeq), t: nat.t, clock: clockInfo(nat.start, nat.t).clock, kind: kind, from: from, to: to || null, text: text, sim: true }, k;
+    if (extra) for (k in extra) c[k] = extra[k];
+    nat.comms.push(c);
+    if (nat.comms.length > 500) nat.comms.splice(0, 100);
+    return c;
+  }
+  function getAlert(nat, id) { for (var i = 0; i < nat.alerts.length; i++) if (nat.alerts[i].id === id) return nat.alerts[i]; return null; }
+  function alertFinal(al) { return al.state === 'RESOLVED' || al.state === 'DISMISSED'; }
+  function setAlertState(nat, al, st, t) {
+    if (al.state === st || alertFinal(al)) return false;
+    if (st !== 'DISMISSED' && ALERT_RANK[st] <= ALERT_RANK[al.state]) return false;
+    al.state = st; al.tState[st] = t === undefined ? nat.t : t;
+    return true;
+  }
+  function raiseAlert(nat, o) {
+    var seq = ++nat.alertSeq, t = nat.t, inc = o.inc || null, place = nearestPlace(nat.W, o.lon, o.lat), hn = HAZARD_NAME[o.hazard] || HAZARD_NAME.sos, srcN = SOURCE_NAME[o.source], pl = place ? place.name : T('قطر', 'Qatar');
+    var al = { id: 'AL-' + seq, seq: seq, t: t, source: o.source, via: o.via || o.source, hazard: o.hazard, conf: r2(o.conf), state: 'SUSPECT', tState: { SUSPECT: t }, lon: r5(o.lon), lat: r5(o.lat),
+      place: place ? { id: place.id, name: place.name, distKm: r1(place.distM / 1000) } : null, muni: nat.W.geo.municipalityAt(o.lon, o.lat) || null, incident: inc ? inc.id : null, droneId: o.droneId || null,
+      droneAlerts: [], sensorKey: !!o.sensorKey, evidence: { sensor: o.sensorKey ? { seen: true, via: o.via || o.source } : null, vision: null, thermal: null }, thermal: null, frame: null,
+      verdict: null, tVerified: null, tConfirmed: null, needDrone: false, nextTry: 0, relaunches: 0, excluded: null, escalated: false, tApproved: null, dismissAt: null, dismissReason: null, dismissedBy: null,
+      sim: { truth: inc ? 'real' : 'false', decoy: o.decoy || null, hazardTrue: inc ? inc.hazard : null } };
+    nat.alerts.push(al);
+    if (nat.alerts.length > 400) nat.alerts = nat.alerts.filter(function (x, i) { return !alertFinal(x) || i >= nat.alerts.length - 200; });
+    if (inc) inc.alertId = al.id;
+    var ar = 'إنذار جديد ' + al.id + ' (' + srcN.ar + '): ' + hn.ar + ' قرب ' + pl.ar, en = 'New alert ' + al.id + ' (' + srcN.en + '): ' + hn.en + ' near ' + pl.en;
+    evt(nat, 'alert-raised', { alert: al.id, source: o.source, hazard: o.hazard, incident: al.incident }, ar, en);
+    comm(nat, 'alert-raised', { role: o.source === 'drone' ? 'drone' : o.source, id: o.droneId || null }, { role: 'control-room' }, T(ar, en), { alert: al.id, incident: al.incident });
+    return al;
+  }
+  function alertPriority(nat, al, t) {                    // 0..100: hazard weight × confidence + source weight + age (an old unanswered alert rises)
+    var base = HAZ_PRIO[al.hazard] || 50, ageMin = Mth.max(0, t - al.t) / 60, p = base * (0.6 + 0.4 * al.conf) + (al.source === 'citizen' ? 8 : 0) + (al.state === 'CONFIRMED' ? 6 : 0) + (al.escalated ? 15 : 0) + Mth.min(15, ageMin * 1.5);
+    if (alertFinal(al)) p = 0;
+    return clamp(Mth.round(p), 0, 100);
+  }
+
+  // ---- missions (a launch to verify, or a patrol sortie) and the flight state machine
+  function wantPatrol(nat, d, t) { var P = nat.P; return P.dronePatrolPct > 0 && hr(nat.seed, D.DPATROL, d.idx, Mth.floor(t / (P.dronePatrolBlockMin * 60))) < P.dronePatrolPct / 100; }
+  function startMission(nat, d, m, fromPatrol) {
+    var P = nat.P, t = m.t === undefined ? nat.t : m.t, so = m.type === 'patrol' ? null : standoffOf(nat, m.hazard, m.target.lon, m.target.lat, t), fr = hr(nat.seed, D.DFAULT, d.idx, d.sortie + 1);
+    d.sortie++; d.sortieSec = 0; d.trail = [];
+    d.faultAt = fr < P.droneFaultPct / 100 ? 20 + 580 * hr(nat.seed, D.DFAULT, d.idx, d.sortie + 100000) : null;
+    d.mission = { id: 'M' + (++nat.missionSeq), type: m.type, trigger: m.trigger || null, hazard: m.hazard || null, target: m.target ? { lon: m.target.lon, lat: m.target.lat } : null, dest: so ? { lon: so.lon, lat: so.lat } : null,
+      standoffM: so ? so.standoffM : 0, incId: m.incId || null, alertId: m.alertId || null, tLaunch: t, etaSec: m.etaSec || null, settleLeft: P.droneSettleSec, verifyLeft: P.droneVerifySec,
+      holdLeft: Mth.max(P.droneHoldSec, P.droneVerifySec + 1), resultDone: false, tArrive: null, tVerified: null, endReason: null, tReturn: null, relaunchOf: m.relaunchOf || null };
+    if (fromPatrol) { d.state = 'en-route'; d.altM = altOf(nat, d); } else { d.state = 'launching'; d.left = P.droneLaunchSec; d.altM = 0; }
+    d.stateT = t;
+    nat.dstats.sorties++;
+    if (m.type === 'patrol') nat.dstats.patrolSorties++; else nat.dstats.launched++;
+    return d.mission;
+  }
+  function hoverDrain(nat, d, tc) { return nat.P.droneHoverDrainX / (nat.P.droneEnduranceMin * 60 * (1 - droneCond(nat, d, tc, d.pos.lon, d.pos.lat, null).derateBatt)); }
+  function flyTo(nat, d, rem, dest, tc, vCap) {
+    var hdg = bearingDeg(d.pos.lon, d.pos.lat, dest.lon, dest.lat), c = droneCond(nat, d, tc, d.pos.lon, d.pos.lat, hdg, vCap), dist = haversineM(d.pos.lon, d.pos.lat, dest.lon, dest.lat), step = c.gs * rem, used, arrived, f;
+    if (dist > 1) d.headingDeg = hdg;
+    d.groundMps = c.gs; d.speedMps = c.vAir; d.cond = { tempC: r1(c.tempC), derateBatt: r2(c.derateBatt), derateSpeed: r2(c.derateSpeed), windMps: r1(c.wind.mps), windDeg: Mth.round(c.wind.deg) };
+    if (dist <= step + 1e-6) { used = dist / c.gs; d.pos = { lon: dest.lon, lat: dest.lat }; arrived = true; }
+    else { f = step / dist; used = rem; d.pos = { lon: lerp(d.pos.lon, dest.lon, f), lat: lerp(d.pos.lat, dest.lat, f) }; arrived = false; }
+    d.battery = Mth.max(0, d.battery - c.drainPerSec * used); d.flightSec += used; d.sortieSec += used;
+    if (!d.trail.length || used > 0) { d.trail.push([r5(d.pos.lon), r5(d.pos.lat)]); if (d.trail.length > 60) d.trail.shift(); }
+    return { used: used, arrived: arrived };
+  }
+  function lowBattery(nat, d, tc) {                       // true when the charge left on landing at home would fall to the reserve
+    var hdg = bearingDeg(d.pos.lon, d.pos.lat, d.dock.lon, d.dock.lat), dist = haversineM(d.pos.lon, d.pos.lat, d.dock.lon, d.dock.lat), c = droneCond(nat, d, tc, d.pos.lon, d.pos.lat, hdg);
+    return d.battery - c.drainPerSec * dist / c.gs <= nat.P.droneReservePct / 100;
+  }
+  function missionObsolete(nat, m) {
+    if (m.type === 'patrol') return false;
+    var inc = m.incId ? getIncident(nat, m.incId) : null, al = m.alertId ? getAlert(nat, m.alertId) : null;
+    return !!((inc && (inc.status === 'cleared' || inc.status === 'cancelled')) || (al && alertFinal(al)));
+  }
+  function beginReturn(nat, d, reason, tc) {
+    var m = d.mission;
+    if (m) { m.endReason = reason; m.tReturn = tc; }
+    d.state = 'returning'; d.stateT = tc;
+    if (m && m.type !== 'patrol') evt(nat, 'drone-returning', { drone: d.id, reason: reason, alert: m.alertId }, d.name.ar + ' تعود إلى المحطة', d.name.en + ' is returning to its dock');
+  }
+  function abortMission(nat, d, reason, tc, relaunch) {
+    var m = d.mission, al = m && m.alertId ? getAlert(nat, m.alertId) : null;
+    beginReturn(nat, d, reason, tc);
+    if (relaunch && m && al && !alertFinal(al) && !m.resultDone && al.relaunches < 2) {
+      al.needDrone = true; al.nextTry = nat.t; al.relaunches++; (al.excluded = al.excluded || {})[d.id] = nat.t + 900; nat.dstats.relaunches++;
+      evt(nat, 'drone-relaunch', { alert: al.id, from: d.id, reason: reason }, 'إعادة إطلاق مسيّرة بديلة للإنذار ' + al.id + ' (' + reason + ')', 'Launching a replacement drone for alert ' + al.id + ' (' + reason + ')');
+    }
+  }
+  function triggerFault(nat, d, tc) {
+    var kinds = [['link-loss', T('فقدان وصلة التحكم', 'Control-link loss')], ['motor', T('خلل في محرك', 'Motor fault')], ['gps', T('فقدان GPS', 'GPS loss')]], k = kinds[Mth.floor(hr(nat.seed, D.DFAULT, d.idx, d.sortie + 200000) * 3) % 3];
+    d.fault = { kind: k[0], text: k[1], t: nat.t }; d.faultAt = null; nat.dstats.faults++;
+    var ar = 'عطل في ' + d.name.ar + ': ' + k[1].ar + ' — تعود تلقائياً', en = 'Fault on ' + d.name.en + ': ' + k[1].en + ' — returning by itself';
+    evt(nat, 'drone-fault', { drone: d.id, kind: k[0] }, ar, en);
+    comm(nat, 'drone-status', { role: 'drone', id: d.id }, { role: 'control-room' }, T(ar, en), { drone: d.id });
+    abortMission(nat, d, 'fault', tc, true);
+  }
+  function dockDrone(nat, d, tc) {
+    var P = nat.P, m = d.mission;
+    d.pos = { lon: d.dock.lon, lat: d.dock.lat }; d.altM = 0; d.speedMps = 0; d.groundMps = 0; d.sorties++;
+    if (m) { d.last = { id: m.id, type: m.type, alertId: m.alertId, incId: m.incId, tLaunch: m.tLaunch, tArrive: m.tArrive, tVerified: m.tVerified, endReason: m.endReason, tDock: tc }; }
+    d.mission = null; d.stateT = tc;
+    if (d.fault) { d.state = 'fault'; d.repairLeft = P.droneRepairMin * 60; }
+    else d.state = d.battery >= P.droneReadyPct / 100 ? 'docked' : 'charging';
+    if (m && m.type !== 'patrol') comm(nat, 'drone-status', { role: 'drone', id: d.id }, { role: 'control-room' }, T(d.name.ar + ' عادت إلى المحطة (شحن ' + Mth.round(d.battery * 100) + '٪)', d.name.en + ' is back in its dock (battery ' + Mth.round(d.battery * 100) + ' %)'), { drone: d.id });
+  }
+  function forcedLanding(nat, d, tc) {
+    var P = nat.P, m = d.mission;
+    d.fault = { kind: 'battery-exhausted', text: T('نفاد البطارية — هبوط اضطراري', 'Battery exhausted — forced landing'), t: nat.t }; d.state = 'fault'; d.repairLeft = P.droneRepairMin * 60 + 1800; d.stateT = tc; d.altM = 0; d.speedMps = 0; d.groundMps = 0;
+    nat.dstats.faults++;
+    evt(nat, 'drone-fault', { drone: d.id, kind: 'battery-exhausted' }, 'هبوط اضطراري لـ ' + d.name.ar + ' (نفدت البطارية)', 'Forced landing of ' + d.name.en + ' (battery exhausted)');
+    if (m && m.alertId) { var al = getAlert(nat, m.alertId); if (al && !alertFinal(al) && !m.resultDone) { al.needDrone = true; al.nextTry = nat.t; (al.excluded = al.excluded || {})[d.id] = nat.t + 3600; } }
+    d.mission = null;
+  }
+  function arriveOnStation(nat, d, m, tA) {
+    var inc = m.incId ? getIncident(nat, m.incId) : null, al = m.alertId ? getAlert(nat, m.alertId) : null, since = al ? tA - al.t : null;
+    d.state = 'on-station'; d.stateT = tA; d.altM = altOf(nat, d); m.tArrive = tA;
+    if (inc && inc.eyes && inc.eyes.droneT === null) { inc.eyes.droneT = tA; inc.eyes.droneId = d.id; }
+    var ar = 'وصلت ' + d.name.ar + ' إلى الموقع' + (since === null ? '' : ' بعد ' + mmss(since) + ' من الإنذار'), en = d.name.en + ' is on station' + (since === null ? '' : ', ' + mmss(since) + ' after the alert');
+    evt(nat, 'drone-on-station', { drone: d.id, alert: m.alertId, incident: m.incId, sinceAlertSec: since === null ? null : Mth.round(since) }, ar, en);
+    comm(nat, 'drone-arrived', { role: 'drone', id: d.id }, { role: 'control-room' }, T(ar, en), { alert: m.alertId, incident: m.incId, drone: d.id });
+  }
+  function stepDrone(nat, d, dt) {
+    var P = nat.P, rem = dt, guard = 0, tc, m, r, u, st, wp;
+    while (rem > 1e-9 && guard++ < 24) {
+      tc = nat.t - rem; m = d.mission; st = d.state;
+      if ((st === 'en-route' || st === 'patrol' || st === 'on-station' || st === 'verifying' || st === 'returning' || st === 'launching') && d.battery <= 0.0005) { forcedLanding(nat, d, tc); continue; }
+      if (st === 'docked') {
+        d.battery = Mth.min(1, d.battery + P.droneChargePctPerMin / 100 / 60 * rem);
+        if (!m && d.optPatrol && d.battery >= P.droneReadyPct / 100 - 1e-9 && wantPatrol(nat, d, tc) && !droneBlock(nat, d, tc)) { startMission(nat, d, { type: 'patrol', t: tc }, false); continue; }
+        rem = 0;
+      } else if (st === 'charging') {
+        u = (P.droneReadyPct / 100 - d.battery) / (P.droneChargePctPerMin / 100 / 60);
+        if (u <= 1e-9) { d.state = 'docked'; d.stateT = tc; }
+        else if (u <= rem) { d.battery = P.droneReadyPct / 100; rem -= u; d.state = 'docked'; d.stateT = nat.t - rem; }
+        else { d.battery = Mth.min(1, d.battery + P.droneChargePctPerMin / 100 / 60 * rem); rem = 0; }
+      } else if (st === 'fault') {
+        d.repairLeft -= rem;
+        if (d.repairLeft <= 0) { rem = -d.repairLeft; d.repairLeft = 0; d.fault = null; d.pos = { lon: d.dock.lon, lat: d.dock.lat }; d.state = 'charging'; d.stateT = nat.t - rem; } else rem = 0;
+      } else if (st === 'launching') {
+        u = Mth.min(rem, d.left); d.battery = Mth.max(0, d.battery - hoverDrain(nat, d, tc) * u); d.left -= u; rem -= u; d.altM = altOf(nat, d) * (1 - d.left / Mth.max(1, P.droneLaunchSec));
+        if (d.left <= 1e-9) { d.state = m && m.type === 'patrol' ? 'patrol' : 'en-route'; d.stateT = nat.t - rem; d.altM = altOf(nat, d); }
+      } else if (st === 'en-route') {
+        if (!m) { beginReturn(nat, d, 'no-mission', tc); continue; }
+        if (missionObsolete(nat, m)) { beginReturn(nat, d, 'obsolete', tc); continue; }
+        if (d.faultAt !== null && d.sortieSec >= d.faultAt) { triggerFault(nat, d, tc); continue; }
+        if (lowBattery(nat, d, tc)) { nat.dstats.lowBattery++; evt(nat, 'drone-low-battery', { drone: d.id }, 'بطارية ' + d.name.ar + ' عند الاحتياطي — تعود', 'Battery of ' + d.name.en + ' is at the reserve — returning'); abortMission(nat, d, 'low-battery', tc, true); continue; }
+        r = flyTo(nat, d, rem, m.dest, tc); rem -= r.used;
+        if (r.arrived) arriveOnStation(nat, d, m, nat.t - rem);
+      } else if (st === 'patrol') {
+        if (!m || !d.optPatrol || !wantPatrol(nat, d, tc)) { beginReturn(nat, d, 'patrol-end', tc); continue; }
+        if (d.faultAt !== null && d.sortieSec >= d.faultAt) { triggerFault(nat, d, tc); continue; }
+        if (lowBattery(nat, d, tc)) { beginReturn(nat, d, 'patrol-low-battery', tc); continue; }
+        wp = d.sector.loop[d.sector.idx];
+        r = flyTo(nat, d, rem, { lon: wp[0], lat: wp[1] }, tc, P.dronePatrolMps); rem -= r.used;
+        if (r.arrived) d.sector.idx = (d.sector.idx + 1) % d.sector.loop.length;
+      } else if (st === 'on-station') {
+        if (!m || missionObsolete(nat, m)) { beginReturn(nat, d, 'obsolete', tc); continue; }
+        u = Mth.min(rem, m.settleLeft); d.battery = Mth.max(0, d.battery - hoverDrain(nat, d, tc) * u); m.settleLeft -= u; rem -= u;
+        if (m.settleLeft <= 1e-9) { d.state = 'verifying'; d.stateT = nat.t - rem; }
+      } else if (st === 'verifying') {
+        if (!m || missionObsolete(nat, m)) { beginReturn(nat, d, 'obsolete', tc); continue; }
+        if (d.faultAt !== null && d.sortieSec >= d.faultAt) { triggerFault(nat, d, tc); continue; }
+        if (lowBattery(nat, d, tc)) { nat.dstats.lowBattery++; evt(nat, 'drone-low-battery', { drone: d.id }, 'بطارية ' + d.name.ar + ' عند الاحتياطي — تعود', 'Battery of ' + d.name.en + ' is at the reserve — returning'); abortMission(nat, d, 'low-battery', tc, true); continue; }
+        u = Mth.min(rem, m.resultDone ? m.holdLeft : Mth.min(m.verifyLeft, m.holdLeft));
+        d.battery = Mth.max(0, d.battery - hoverDrain(nat, d, tc) * u); d.sortieSec += u; d.flightSec += u; m.holdLeft -= u; if (!m.resultDone) m.verifyLeft -= u; rem -= u;
+        if (!m.resultDone && m.verifyLeft <= 1e-9) completeVerification(nat, d, m, nat.t - rem);
+        if (m.holdLeft <= 1e-9) beginReturn(nat, d, 'hold-complete', nat.t - rem);
+      } else if (st === 'returning') {
+        r = flyTo(nat, d, rem, d.dock, tc); rem -= r.used;
+        if (r.arrived) dockDrone(nat, d, nat.t - rem);
+      } else rem = 0;
+    }
+  }
+
+  // ---- what the two cameras can see: the chance of each evidence key for a REAL hazard (heat, night, dust change it) and the thermal reading of the scene
+  function keyProbs(nat, hz, sev, env) {
+    var P = nat.P, m = DRONE_MODALITY[hz] || DRONE_MODALITY.sos, sevF = 0.75 + 0.125 * sev, night = 1 - smooth(0, 0.25, env.solar), dayV = 1 - night * (1 - (hz === 'fire' ? 0.85 : 0.35)), pV, pT;
+    pV = clamp(P.droneVisionTprPct / 100 * m.v * env.visFactor * sevF * dayV, 0, 0.99);
+    if (hz === 'heat' || hz === 'sos') pT = P.dronePeopleThermalTprPct / 100 * (0.08 + 0.92 * smooth(-6, 8, 35 - env.groundC));       // a person (~35 °C) must be warmer than the ground: hot midday ground hides them
+    else if (hz === 'gas') pT = P.droneGasThermalTprPct / 100 * (0.7 + 0.3 * env.visFactor);
+    else pT = P.droneThermalTprPct / 100 * m.t * sevF * (0.7 + 0.3 * env.visFactor);
+    return { pV: pV, pT: clamp(pT, 0, 0.99) };
+  }
+  function thermalSummary(nat, decoy, hz, sev, env, al) {
+    var P = nat.P, u = hr(nat.seed, D.DKEY, al.seq, 5), g = env.groundC, cap = P.droneThermalCapC, kind = 'none', maxC = g + 4 + 4 * u, minC = g - 3, lon = al.lon, lat = al.lat, jit = offsetLL(al.lon, al.lat, 25 * (hr(nat.seed, D.DKEY, al.seq, 6) - 0.5), 25 * (hr(nat.seed, D.DKEY, al.seq, 7) - 0.5));
+    if (decoy === 'machinery') { kind = 'hot-object'; maxC = 70 + 30 * u; }
+    else if (decoy) { kind = 'none'; }
+    else if (hz === 'fire') { kind = 'hotspot'; maxC = Mth.min(cap, 200 + 250 * sev * (0.6 + 0.4 * u)); }
+    else if (hz === 'gas') { kind = 'cold-plume'; maxC = g + 2; minC = g - (4 + 3 * sev * (0.5 + 0.5 * u)); }
+    else if (hz === 'heat' || hz === 'sos') { kind = 'people'; maxC = 35.5 + u; }
+    else if (hz === 'flood') { kind = 'cool-water'; maxC = g + 3; minC = g - 6 - 4 * u; }
+    var hot = kind === 'hotspot' || kind === 'hot-object' || kind === 'people';
+    if (kind === 'hotspot' && maxC < P.droneFireC) kind = 'hot-object';
+    return { kind: kind, maxC: r1(maxC), minC: r1(minC), bgC: r1(g), contrastC: r1(kind === 'cold-plume' || kind === 'cool-water' ? minC - g : maxC - g), capC: cap, saturated: maxC >= cap - 1e-9,
+      hotspot: hot ? { lon: r5(jit[0]), lat: r5(jit[1]), tC: r1(maxC) } : null };
+  }
+  var VISION_LABEL = { fire: T('ألسنة لهب ودخان', 'Flames and smoke'), gas: T('لا شيء مرئي', 'Nothing visible'), flood: T('مياه فوق الطريق', 'Water over the road'), dust: T('غبار يحجب الرؤية', 'Dust haze'), heat: T('شخص ممدّد', 'A person lying down'), sos: T('شخص ممدّد', 'A person lying down'),
+    decoy: T('منطقة بلون النار (ثابتة)', 'A fire-coloured region (static)') };
+  function frameDescriptor(nat, d, al, view, t) {         // everything ManaraDroneScene needs to draw what this drone's camera sees (scene seed, hazard, severity, camera pose, time of day, thermal inputs)
+    var inc = al.incident ? getIncident(nat, al.incident) : null, decoy = al.sim.decoy, tgt = d.mission && d.mission.target ? d.mission.target : { lon: al.lon, lat: al.lat }, env = envAt(nat, t, tgt.lon, tgt.lat), wind = droneWind(nat, t, tgt.lon, tgt.lat);
+    var dist = haversineM(d.pos.lon, d.pos.lat, tgt.lon, tgt.lat), hdg = dist > 1 ? bearingDeg(d.pos.lon, d.pos.lat, tgt.lon, tgt.lat) : d.headingDeg, alt = d.altM || altOf(nat, d), ci = clockInfo(nat.start, t), hz = decoy ? 'none' : (inc ? inc.hazard : 'none'), sev = inc ? inc.severity : 1;
+    var fov = 62, foot = 2 * alt * Mth.tan(fov / 2 * DEG), off = view === 'station' ? 0 : Mth.min(dist, 0.4 * foot);
+    return { v: 1, sceneSeed: hash32((nat.seed ^ Mth.imul(al.seq, 0x9e3779b1)) | 0), hazard: hz, decoy: decoy || null, severity: sev, sev: inc ? r2(inc.sev) : 0.3, flames: !(hz === 'fire' && sev === 1 && hr(nat.seed, D.DKEY, al.seq, 9) < 0.25),
+      camera: { altM: Mth.round(alt), headingDeg: Mth.round(hdg), pitchDeg: view === 'station' ? 58 : 80, fovDeg: fov, distM: Mth.round(dist), offsetE: r1(off * Mth.sin(hdg * DEG)), offsetN: r1(off * Mth.cos(hdg * DEG)) },
+      timeOfDay: r2(ci.hour), context: sceneContext(nat, tgt.lon, tgt.lat), wind: { deg: Mth.round(wind.deg), mps: r1(wind.mps) }, ambientC: r1(env.airC), groundC: r1(env.groundC), solar: r2(env.solar), visFactor: r2(env.visFactor), thermalCapC: nat.P.droneThermalCapC,
+      t0: Mth.round(t), view: view, width: 320, height: 240 };
+  }
+  // DRONE ALERT object (the thing the drone sends to the control room): see the API header
+  function makeDroneAlert(nat, d, al, stage, o) {
+    var t = o.t === undefined ? nat.t : o.t, id = 'DA-' + (++nat.daSeq), c = droneCond(nat, d, t, d.pos.lon, d.pos.lat, null), hn = HAZARD_NAME[o.hazard] || HAZARD_NAME.sos, tgt = d.mission && d.mission.target ? d.mission.target : { lon: al.lon, lat: al.lat };
+    var da = { id: id, source: 'drone', droneId: d.id, callsign: d.callsign, droneName: d.name, alert: al.id, incident: al.incident, stage: stage, via: al.via, hazard: o.hazard, hazardName: hn, confidence: r2(o.conf), outcome: o.outcome,
+      lon: r5(d.pos.lon), lat: r5(d.pos.lat), target: { lon: r5(tgt.lon), lat: r5(tgt.lat) }, headingDeg: Mth.round(d.headingDeg), altM: Mth.round(d.altM), wind: { deg: Mth.round(c.wind.deg), mps: r1(c.wind.mps) },
+      batteryPct: Mth.round(d.battery * 100), link: r2(linkQuality(nat, d, t)), thermal: o.thermal, evidence: o.evidence, frame: o.frame, state: al.state, t: t, clock: clockInfo(nat.start, t).clock, text: o.text, sim: true };
+    nat.droneAlerts.push(da); if (nat.droneAlerts.length > 200) nat.droneAlerts.splice(0, 50);
+    al.droneAlerts.push(id);
+    return da;
+  }
+  function completeVerification(nat, d, m, tV) {
+    var P = nat.P, al = m.alertId ? getAlert(nat, m.alertId) : null;
+    m.resultDone = true; m.tVerified = tV;
+    if (!al || alertFinal(al)) return;
+    var inc = al.incident ? getIncident(nat, al.incident) : null, decoy = al.sim.decoy, hz = decoy ? 'fire' : (inc ? inc.hazard : al.hazard), sev = inc ? inc.severity : 1, env = envAt(nat, tV, m.target.lon, m.target.lat), pv, pt, kp;
+    if (decoy || !inc) { pv = P.droneVisionFprPct / 100; pt = decoy === 'machinery' ? 0.95 : P.droneThermalFprPct / 100; }
+    else { kp = keyProbs(nat, hz, sev, env); pv = kp.pV; pt = kp.pT; }
+    var vision = hr(nat.seed, D.DKEY, al.seq, 1) < pv, thermal = hr(nat.seed, D.DKEY, al.seq, 2) < pt;
+    var cV = vision ? 0.6 + 0.35 * hr(nat.seed, D.DKEY, al.seq, 3) : 0.1 * hr(nat.seed, D.DKEY, al.seq, 3), cT = thermal ? 0.6 + 0.35 * hr(nat.seed, D.DKEY, al.seq, 4) : 0.1 * hr(nat.seed, D.DKEY, al.seq, 4);
+    var sensor = al.sensorKey ? 1 : 0, total = sensor + (vision ? 1 : 0) + (thermal ? 1 : 0), verdict = total >= P.droneKeysNeeded ? 'confirmed' : total >= 1 ? 'downgraded' : 'dismissed';
+    var th = thermalSummary(nat, decoy, hz, sev, env, al), conf = clamp(0.08 + (sensor ? 0.28 : 0) + (vision ? 0.3 * (0.6 + 0.4 * cV) : 0) + (thermal ? 0.28 * (0.6 + 0.4 * cT) : 0), 0, 0.98);
+    if (verdict === 'confirmed') conf = Mth.max(conf, 0.62); else if (verdict === 'downgraded') conf = Mth.min(conf, 0.55); else conf = Mth.min(conf, 0.15);
+    var ev = { sensor: al.evidence.sensor, vision: { seen: vision, conf: r2(cV), label: vision ? (decoy || !inc ? VISION_LABEL.decoy : VISION_LABEL[hz]) : null }, thermal: { seen: thermal, conf: r2(cT), kind: th.kind } };
+    var hot = th.kind === 'hot-object' && thermal && !vision, vName = { confirmed: T('مؤكَّد', 'confirmed'), downgraded: T('خُفِّض', 'downgraded'), dismissed: T('لا دليل', 'no evidence') }[verdict], hn = HAZARD_NAME[hz] || HAZARD_NAME.sos;
+    var why = verdict === 'confirmed' ? T('مفتاحان مستقلان على الأقل يتفقان', 'at least two independent keys agree')
+      : verdict === 'downgraded' ? (hot ? T('جسم ساخن ثابت دون لهب أو دخان (ليس حريقاً على الأرجح)', 'a static hot object with no flames or smoke (probably not a fire)') : T('مفتاح واحد فقط — لا يكفي للتأكيد', 'only one key — not enough to confirm'))
+      : T('لا رؤية ولا حرارة غير عادية في الموقع', 'no vision and nothing unusually hot at the scene');
+    var ar = 'نتيجة تحقق ' + d.name.ar + ' للإنذار ' + al.id + ': ' + vName.ar + ' — ' + why.ar + ' (ثقة ' + Mth.round(conf * 100) + '٪)', en = 'Verification by ' + d.name.en + ' for ' + al.id + ': ' + vName.en + ' — ' + why.en + ' (confidence ' + Mth.round(conf * 100) + ' %)';
+    var frame = frameDescriptor(nat, d, al, 'station', tV);
+    var da = makeDroneAlert(nat, d, al, 'verified', { hazard: hz, conf: conf, outcome: verdict, thermal: th, evidence: ev, frame: frame, t: tV, text: T(ar, en) });
+    al.verdict = verdict; al.conf = r2(conf); al.hazard = verdict === 'dismissed' ? al.hazard : hz; al.evidence = ev; al.thermal = th; al.frame = frame; al.tVerified = tV; al.droneId = d.id; al.needDrone = false; al.hot = hot;
+    if (verdict === 'confirmed') al.tConfirmed = tV;
+    if (verdict === 'confirmed') { if (setAlertState(nat, al, 'CONFIRMED', tV)) evt(nat, 'alert-confirmed', { alert: al.id, incident: al.incident, drone: d.id }, 'تأكَّد الإنذار ' + al.id + ' بتحقق ' + d.name.ar, 'Alert ' + al.id + ' confirmed by ' + d.name.en); }
+    evt(nat, 'drone-verified', { alert: al.id, drone: d.id, outcome: verdict, confidence: al.conf, incident: al.incident, tV: tV }, ar, en);
+    comm(nat, 'drone-result', { role: 'drone', id: d.id }, { role: 'control-room' }, T(ar, en), { alert: al.id, incident: al.incident, drone: d.id, droneAlert: da.id, outcome: verdict });
+    // the simulated operator (automatic mode) dismisses what the drone itself raised when the evidence is absent, a static hot object, or a single key with nothing real behind it; a sensor / citizen report is never dismissed by a drone
+    if (P.droneAutoDismiss && nat.autoApprove && !al.sensorKey) {
+      if (verdict === 'dismissed' || hot) { al.dismissAt = tV + P.droneDismissSec; al.dismissReason = verdict === 'dismissed' ? 'no-evidence' : 'hot-object'; }
+      else if (verdict === 'downgraded' && !inc) { al.dismissAt = tV + P.droneGateTimeoutSec; al.dismissReason = 'one-key-only'; }
+    }
+    if (verdict === 'dismissed' && inc && !decoy) nat.dstats.missed++;
+  }
+
+  // ---- patrol: a drone on its sector loop sees real events with a seeded probability (and mistakes look-alikes for hazards: false alerts the control room dismisses)
+  function patrolWatch(nat, d, dt) {
+    var P = nat.P, ti = Mth.floor(nat.t / nat.tick), R = P.droneCoverageM, i, inc, dist, env, kp, pMin, p, rate;
+    for (i = 0; i < nat.incidents.length; i++) {                          // 1. real events nobody knows about yet
+      inc = nat.incidents[i]; if (inc.status !== 'unseen') continue;
+      dist = haversineM(d.pos.lon, d.pos.lat, inc.lon, inc.lat); if (dist > R) continue;
+      env = envAt(nat, nat.t, inc.lon, inc.lat); kp = keyProbs(nat, inc.hazard, inc.severity, env);
+      pMin = clamp(P.dronePatrolDetectPct / 100 * (1 - (dist / R) * (dist / R)) * (1 - (1 - kp.pV) * (1 - kp.pT)), 0, 0.999);
+      p = 1 - Mth.pow(1 - pMin, dt / 60);
+      if (hr(nat.seed, D.DDET, d.idx * 997 + inc.seq, ti) < p) { onPatrolDetection(nat, d, inc); return; }
+    }
+    rate = P.droneFalsePerHour / 3600;                                    // 2. look-alikes
+    if (rate > 0 && hr(nat.seed, D.DFP, d.idx, ti) < 1 - Mth.exp(-rate * dt)) onFalsePositive(nat, d, ti);
+  }
+  function sightingAlert(nat, d, al, hz, sev, decoy) {                    // the first DRONE ALERT: what the drone saw while on patrol (before it flies in to verify)
+    var t = nat.t, env = envAt(nat, t, al.lon, al.lat), th = thermalSummary(nat, decoy, hz, sev, env, al), primary = hz === 'gas' && !decoy ? 'thermal' : 'vision', hn = HAZARD_NAME[hz] || HAZARD_NAME.sos;
+    var ev = { sensor: null, vision: { seen: primary === 'vision', conf: r2(al.conf), label: primary === 'vision' ? (decoy ? VISION_LABEL.decoy : VISION_LABEL[hz]) : null }, thermal: { seen: primary === 'thermal', conf: primary === 'thermal' ? r2(al.conf) : 0, kind: primary === 'thermal' ? th.kind : 'pending', pending: primary !== 'thermal' } };
+    var ar = 'رصدت ' + d.name.ar + ' أثناء الدورية ما يشبه ' + hn.ar + ' (ثقة ' + Mth.round(al.conf * 100) + '٪) — تتجه للتحقق', en = d.name.en + ' spotted what looks like ' + hn.en.toLowerCase() + ' on patrol (confidence ' + Mth.round(al.conf * 100) + ' %) — flying in to verify';
+    var da = makeDroneAlert(nat, d, al, 'sighting', { hazard: hz, conf: al.conf, outcome: 'pending', thermal: th, evidence: ev, frame: frameDescriptor(nat, d, al, 'sighting', t), t: t, text: T(ar, en) });
+    al.frame = da.frame; al.thermal = th;
+    evt(nat, 'drone-patrol-detect', { drone: d.id, alert: al.id, incident: al.incident, hazard: hz }, ar, en);
+    comm(nat, 'drone-sighting', { role: 'drone', id: d.id }, { role: 'control-room' }, T(ar, en), { alert: al.id, incident: al.incident, drone: d.id, droneAlert: da.id });
+    return da;
+  }
+  function onPatrolDetection(nat, d, inc) {
+    var t = nat.t, conf = 0.35 + 0.2 * hr(nat.seed, D.DDET, d.idx, inc.seq + 5000), al;
+    nat.dstats.patrolDetections++;
+    inc.eyes.droneT = t; inc.eyes.droneId = d.id; inc.detectedAt = t; inc.detect = 'patrol';
+    evtIncident(nat, inc, { by: 'patrol', drone: d.id });
+    startResponse(nat, inc);
+    al = raiseAlert(nat, { source: 'drone', via: 'patrol', hazard: inc.hazard, conf: conf, lon: inc.lon, lat: inc.lat, inc: inc, droneId: d.id, sensorKey: false });
+    startMission(nat, d, { type: 'verify', trigger: 'patrol', hazard: inc.hazard, target: { lon: inc.lon, lat: inc.lat }, incId: inc.id, alertId: al.id }, true);
+    sightingAlert(nat, d, al, inc.hazard, inc.severity, null);
+  }
+  function onFalsePositive(nat, d, ti) {
+    var P = nat.P, sol = solarAt(nat, nat.t, d.pos.lon, d.pos.lat), wG = sol > 0.03 && sol < 0.35 ? 1 : 0, wR = sol > 0.1 ? 1 : 0.1, wM = 1, u = hr(nat.seed, D.DFP, d.idx * 7 + 1, ti) * (wG + wR + wM), kind, r, ang, ll, al;
+    kind = u < wG ? 'glare' : u < wG + wR ? 'red-truck' : 'machinery';
+    r = P.droneCoverageM * (0.25 + 0.65 * hr(nat.seed, D.DFP, d.idx * 7 + 2, ti)); ang = hr(nat.seed, D.DFP, d.idx * 7 + 3, ti) * 2 * Mth.PI;
+    ll = offsetLL(d.pos.lon, d.pos.lat, r * Mth.sin(ang), r * Mth.cos(ang));
+    if (!nat.W.geo.inLand(ll[0], ll[1])) return;
+    nat.dstats.falsePositives++;
+    al = raiseAlert(nat, { source: 'drone', via: 'patrol', hazard: 'fire', conf: 0.35 + 0.2 * hr(nat.seed, D.DFP, d.idx * 7 + 4, ti), lon: ll[0], lat: ll[1], inc: null, droneId: d.id, sensorKey: false, decoy: kind });
+    startMission(nat, d, { type: 'verify', trigger: 'patrol', hazard: 'fire', target: { lon: ll[0], lat: ll[1] }, incId: null, alertId: al.id }, true);
+    sightingAlert(nat, d, al, 'fire', 1, kind);
+  }
+  function tickDrones(nat, dt) {
+    var list = nat.drones.list, i;
+    for (i = 0; i < list.length; i++) stepDrone(nat, list[i], dt);
+    for (i = 0; i < list.length; i++) if (list[i].state === 'patrol') patrolWatch(nat, list[i], dt);
+  }
+
+  // ---- launching, recalling, announcing, dropping an AED kit (SOS only, authority-operated), dismissing / escalating / approving an alert: the operator actions
+  function nearbyRealIncident(nat, lon, lat) {
+    var best = null, bd = 500, i, inc, d;
+    for (i = 0; i < nat.incidents.length; i++) {
+      inc = nat.incidents[i]; if (inc.status === 'cleared' || inc.status === 'cancelled' || inc.status === 'unseen' || inc.falseAlarm) continue;
+      d = haversineM(lon, lat, inc.lon, inc.lat); if (d < bd) { bd = d; best = inc; }
+    }
+    return best;
+  }
+  function droneBrief(d) { return { id: d.id, callsign: d.callsign, name: d.name, state: d.state }; }
+  // launchDrone(nat, droneId | 'nearest', target {lon, lat, hazard?, incident?, alert?}, {exclude?, by: 'operator'|'auto'}) → {ok, drone, droneId, alert, incident, etaSec, etaMin, distM, why, runnerUp, candidates, mission} | {ok:false, reason}
+  function launchDrone(nat, which, target, o) {
+    o = o || {};
+    var P = nat.P, t = nat.t, al = null, inc = null, rank, pick, dd, hazard, purpose, by = o.by || 'operator', tg;
+    if (!target || !isNum(target.lon) || !isNum(target.lat)) return { ok: false, reason: 'bad-target' };
+    if (target.alert) { al = getAlert(nat, target.alert); if (!al) return { ok: false, reason: 'unknown-alert' }; if (alertFinal(al)) return { ok: false, reason: 'alert-closed' }; }
+    if (target.incident) { inc = getIncident(nat, target.incident); if (!inc) return { ok: false, reason: 'unknown-incident' }; }
+    if (al && !inc && al.incident) inc = getIncident(nat, al.incident);
+    hazard = target.hazard || (al && al.hazard) || (inc && inc.hazard) || 'fire'; if (HAZARDS.indexOf(hazard) < 0) hazard = 'fire';
+    purpose = hazard === 'sos' ? 'sos' : 'verify'; tg = { lon: target.lon, lat: target.lat, hazard: hazard };
+    rank = droneRank(nat, tg, t, { exclude: o.exclude });
+    if (which && which !== 'nearest') {
+      dd = nat.drones.byId[which]; if (!dd) return { ok: false, reason: 'unknown-drone' };
+      pick = rank.filter(function (x) { return x.d === dd; })[0];
+      if (!pick) return { ok: false, reason: droneBlock(nat, dd, t) || 'out-of-range', drone: dd.id };
+    } else {
+      pick = rank[0] || null;
+      if (pick && purpose === 'sos') { var aed = rank.filter(function (x) { return x.d.aed && x.etaSec <= rank[0].etaSec + P.droneAedPreferSec; })[0]; if (aed) pick = aed; }
+    }
+    if (!pick) { var tally = {}, bi, bk; for (bi = 0; bi < nat.drones.list.length; bi++) { bk = droneBlock(nat, nat.drones.list[bi], t) || (o.exclude && o.exclude[nat.drones.list[bi].id] ? 'excluded' : 'out-of-range'); tally[bk] = (tally[bk] || 0) + 1; } return { ok: false, reason: 'none-available', blocked: tally }; }
+    if (!al) {
+      if (!inc) inc = nearbyRealIncident(nat, target.lon, target.lat);
+      if (inc && inc.alertId) al = getAlert(nat, inc.alertId);
+      if (!al) al = raiseAlert(nat, { source: 'operator', via: 'operator', hazard: hazard, conf: 0.3, lon: target.lon, lat: target.lat, inc: inc || null, sensorKey: false });
+      else if (alertFinal(al)) return { ok: false, reason: 'alert-closed' };
+    }
+    var d = pick.d, wasPatrol = d.state === 'patrol', m = startMission(nat, d, { type: 'verify', trigger: al.via, hazard: hazard, target: { lon: target.lon, lat: target.lat }, incId: inc ? inc.id : null, alertId: al.id, etaSec: pick.etaSec }, wasPatrol), run = rank.filter(function (x) { return x.d !== d; })[0];
+    m.purpose = purpose; al.droneId = d.id; al.needDrone = false; if (inc && inc.eyes) inc.eyes.launchT = t;
+    var why = T(d.name.ar + ' أقرب مسيّرة متاحة (طيران بخط مستقيم): ' + km1(pick.distM) + ' كم، وصول بعد ' + mmss(pick.etaSec) + (run ? ' (التالية: ' + run.d.callsign + ' بعد ' + mmss(run.etaSec) + ')' : ''),
+      d.name.en + ' is the nearest available drone (straight-line flight): ' + km1(pick.distM) + ' km, on station in ' + mmss(pick.etaSec) + (run ? ' (next: ' + run.d.callsign + ' at ' + mmss(run.etaSec) + ')' : ''));
+    var ar = (by === 'auto' ? 'أُطلقت ' : 'أطلق المشغّل ') + d.name.ar + ' للتحقق من ' + al.id + ' — وصول بعد ' + mmss(pick.etaSec) + (by === 'auto' ? ' (تُطلَق وحدها للتحقق؛ التنبيه العام والإرسال بمفتاح بشري)' : ''),
+      en = (by === 'auto' ? '' : 'Operator launched ') + d.name.en + (by === 'auto' ? ' launched by itself to verify ' : ' to verify ') + al.id + ' — on station in ' + mmss(pick.etaSec) + (by === 'auto' ? ' (a drone may launch to verify on its own; the public alert and dispatch still need the human key)' : '');
+    evt(nat, 'drone-launched', { drone: d.id, alert: al.id, incident: inc ? inc.id : null, etaSec: Mth.round(pick.etaSec), by: by, purpose: purpose }, ar, en);
+    comm(nat, 'drone-launch', by === 'auto' ? { role: 'system' } : { role: 'operator' }, { role: 'drone', id: d.id }, T(ar, en), { alert: al.id, incident: inc ? inc.id : null, drone: d.id });
+    return { ok: true, drone: droneBrief(d), droneId: d.id, alert: al.id, incident: inc ? inc.id : null, etaSec: Mth.round(pick.etaSec), etaMin: r1(pick.etaSec / 60), distM: Mth.round(pick.distM), why: why,
+      runnerUp: run ? { droneId: run.d.id, etaSec: Mth.round(run.etaSec), distM: Mth.round(run.distM) } : null, candidates: rank.length, mission: m.id, purpose: purpose };
+  }
+  function attemptDroneLaunch(nat, al, by) {
+    var t = nat.t, ex = {}, k, r;
+    if (al.excluded) for (k in al.excluded) if (al.excluded[k] > t) ex[k] = true;
+    r = launchDrone(nat, 'nearest', { lon: al.lon, lat: al.lat, hazard: al.hazard, incident: al.incident, alert: al.id }, { exclude: ex, by: by || 'auto' });
+    if (r.ok) { al.needDrone = false; return r; }
+    if (!al.needDrone) comm(nat, 'drone-launch', { role: 'system' }, { role: 'control-room' }, T('لا توجد مسيّرة متاحة للإنذار ' + al.id + ' الآن (' + r.reason + ') — تُعاد المحاولة', 'No drone is available for alert ' + al.id + ' right now (' + r.reason + ') — retrying'), { alert: al.id, reason: r.reason });
+    al.needDrone = true; al.nextTry = t + 15;
+    return r;
+  }
+  function recallDrone(nat, id) {
+    var d = nat.drones.byId[id], t = nat.t, m, al;
+    if (!d || d.state === 'docked' || d.state === 'charging' || d.state === 'fault' || d.state === 'returning') return false;
+    m = d.mission; al = m && m.alertId ? getAlert(nat, m.alertId) : null;
+    if (d.state === 'launching') { d.mission = null; d.state = d.battery >= nat.P.droneReadyPct / 100 ? 'docked' : 'charging'; d.left = 0; d.altM = 0; d.stateT = t; }
+    else beginReturn(nat, d, 'operator-recall', t);
+    if (al) al.needDrone = false;
+    evt(nat, 'drone-recalled', { drone: d.id, alert: m ? m.alertId : null }, 'استدعى المشغّل ' + d.name.ar + ' إلى المحطة', 'Operator recalled ' + d.name.en + ' to its dock');
+    comm(nat, 'operator', { role: 'operator' }, { role: 'drone', id: d.id }, T('استدعاء ' + d.name.ar + ' إلى المحطة', 'Recall ' + d.name.en + ' to its dock'), { drone: d.id, alert: m ? m.alertId : null });
+    return true;
+  }
+  // setDroneParam(nat, droneId, 'patrol' | 'altM' | 'speedMps' | 'light', value) per drone, or setDroneParam(nat, paramKey, value) for a fleet-wide drone assumption (group 'drone')
+  function setDroneParam(nat, a, b, c) {
+    var d = nat.drones.byId[a], def0;
+    if (d) {
+      if (b === 'patrol') d.optPatrol = !!c;
+      else if (b === 'altM' && isNum(c)) d.optAlt = clamp(c, 30, 120);
+      else if (b === 'speedMps' && isNum(c)) d.optSpeed = clamp(c, 3, 40);
+      else if (b === 'light') d.light = !!c;
+      else return false;
+      comm(nat, 'operator', { role: 'operator' }, { role: 'drone', id: d.id }, T('ضبط ' + d.callsign + ': ' + b + ' = ' + String(c), 'Set ' + d.callsign + ': ' + b + ' = ' + String(c)), { drone: d.id });
+      return true;
+    }
+    def0 = PARAM_BY_KEY[a];
+    if (!def0 || def0.group !== 'drone') return false;
+    return setParam(nat, a, b);
+  }
+  function announce(nat, droneId, key, lang) {
+    var d = nat.drones.byId[droneId], k = MSG[key] && /^nat\.drone\.say\./.test(key) ? key : MSG['nat.drone.say.' + key] ? 'nat.drone.say.' + key : null, lg = lang === 'ar' || lang === 'en' ? lang : 'en', m, c;
+    if (!d) return { ok: false, reason: 'unknown-drone' };
+    if (!k) return { ok: false, reason: 'unknown-message' };
+    if (d.state !== 'on-station' && d.state !== 'verifying') return { ok: false, reason: 'not-on-station' };
+    m = d.mission;
+    c = comm(nat, 'drone-announce', { role: 'operator' }, { role: 'drone', id: d.id }, MSG[k], { drone: d.id, key: k, lang: lg, langAsked: lang || null, fallback: !(lang === 'ar' || lang === 'en'), spoken: MSG[k][lg], alert: m ? m.alertId : null, incident: m ? m.incId : null });
+    evt(nat, 'drone-announce', { drone: d.id, key: k, lang: lg }, 'إعلان صوتي من ' + d.name.ar + ' (' + (lg === 'ar' ? 'العربية' : 'الإنجليزية') + '): ' + MSG[k].ar, 'Voice announcement from ' + d.name.en + ' (' + (lg === 'ar' ? 'Arabic' : 'English') + '): ' + MSG[k].en);
+    return { ok: true, comm: c, text: MSG[k], lang: lg, fallback: c.fallback };
+  }
+  // The AED drop is a CONCEPT: only for "someone needs help" (SOS), only for a confirmed alert, only by a drone that carries a kit and is on station, and only as a step the AUTHORITY operates ({authority: '<who>'}).
+  function dropAed(nat, droneId, alertId, o) {
+    o = o || {};
+    var d = nat.drones.byId[droneId], al = alertId ? getAlert(nat, alertId) : null, inc, hz;
+    if (!d) return { ok: false, reason: 'unknown-drone' };
+    if (!al) return { ok: false, reason: 'unknown-alert' };
+    inc = al.incident ? getIncident(nat, al.incident) : null; hz = inc ? inc.hazard : al.hazard;
+    if (hz !== 'sos') return { ok: false, reason: 'not-sos' };
+    if (!o.authority) return { ok: false, reason: 'authority-required' };
+    if (!d.aed) return { ok: false, reason: 'no-aed' };
+    if (d.state !== 'on-station' && d.state !== 'verifying') return { ok: false, reason: 'not-on-station' };
+    if (!d.mission || d.mission.alertId !== al.id) return { ok: false, reason: 'wrong-alert' };
+    if (al.state === 'SUSPECT' || alertFinal(al)) return { ok: false, reason: 'not-confirmed' };
+    d.aed = false; al.aedDropped = nat.t;
+    var au = typeof o.authority === 'object' ? T(String(o.authority.ar || o.authority.en || ''), String(o.authority.en || o.authority.ar || '')) : T(String(o.authority), String(o.authority));
+    var ar = 'أمرت ' + au.ar + ' بإسقاط مجموعة الإسعاف من ' + d.name.ar + ' للإنذار ' + al.id + ' (مفهوم؛ لا إسقاط حقيقي)', en = au.en + ' ordered the first-aid kit dropped from ' + d.name.en + ' for ' + al.id + ' (concept; no real drop)';
+    evt(nat, 'aed-drop', { drone: d.id, alert: al.id, authority: au }, ar, en);
+    return { ok: true, comm: comm(nat, 'aed', { role: 'operator', authority: au }, { role: 'drone', id: d.id }, T(ar, en), { drone: d.id, alert: al.id, incident: al.incident }) };
+  }
+  function dismissAlert(nat, id, o) {
+    o = o || {};
+    var al = getAlert(nat, id), inc, truth, ar, en;
+    if (!al || alertFinal(al) || ALERT_RANK[al.state] >= ALERT_RANK.APPROVED) return false;
+    al.dismissedBy = o.by || 'operator'; al.dismissReason = o.reason || al.dismissReason || 'operator';
+    setAlertState(nat, al, 'DISMISSED', nat.t);
+    inc = al.incident ? getIncident(nat, al.incident) : null;
+    if (inc && inc.status !== 'cleared' && inc.status !== 'cancelled') cancelIncident(nat, inc.id);
+    truth = al.sim.truth;
+    ar = 'رفض المشغّل الإنذار ' + al.id + ' (' + (al.dismissReason === 'no-evidence' ? 'لا دليل' : al.dismissReason === 'hot-object' ? 'جسم ساخن ثابت' : al.dismissReason === 'one-key-only' ? 'مفتاح واحد فقط' : 'قرار المشغّل') + ')';
+    en = 'Operator dismissed alert ' + al.id + ' (' + (al.dismissReason === 'no-evidence' ? 'no evidence' : al.dismissReason === 'hot-object' ? 'a static hot object' : al.dismissReason === 'one-key-only' ? 'only one key' : 'operator decision') + ')';
+    evt(nat, 'alert-dismissed', { alert: al.id, by: al.dismissedBy, reason: al.dismissReason, truth: truth, incident: al.incident }, ar, en);
+    comm(nat, 'operator', { role: 'operator' }, { role: 'control-room' }, T(ar, en), { alert: al.id, incident: al.incident, truth: truth });
+    return true;
+  }
+  function escalateAlert(nat, id) {
+    var al = getAlert(nat, id), ar, en;
+    if (!al || alertFinal(al)) return false;
+    al.escalated = true;
+    if (al.state === 'SUSPECT') { setAlertState(nat, al, 'CONFIRMED', nat.t); al.confirmedBy = 'operator'; }
+    ar = 'صعّد المشغّل الإنذار ' + al.id + ' إلى أولوية قصوى (تأكيد بقرار بشري)'; en = 'Operator escalated alert ' + al.id + ' to top priority (confirmed by a human decision)';
+    evt(nat, 'alert-escalated', { alert: al.id, incident: al.incident }, ar, en);
+    comm(nat, 'operator', { role: 'operator' }, { role: 'control-room' }, T(ar, en), { alert: al.id, incident: al.incident });
+    return true;
+  }
+  // approveAlert(nat, alertId): the human key for an alert. An alert with a real incident approves its dispatch plan; one with NOTHING behind it sends units to a place where nothing is going on (the cost of a false alarm).
+  function approveAlert(nat, id) {
+    var al = getAlert(nat, id), inc, ok;
+    if (!al || alertFinal(al)) return false;
+    inc = al.incident ? getIncident(nat, al.incident) : null;
+    if (!inc) {
+      inc = createIncident(nat, { hazard: al.hazard, lon: al.lon, lat: al.lat, severity: 1, trigger: 'drone', alertId: al.id, falseAlarm: true });
+      if (inc.status === 'cancelled') return false;
+      al.incident = inc.id;
+      evt(nat, 'false-alarm-dispatch', { alert: al.id, incident: inc.id }, 'اعتُمد الإنذار ' + al.id + ' فأُرسلت وحدات إلى موقع قد لا يكون فيه شيء', 'Alert ' + al.id + ' was approved: units are sent to a place where there may be nothing');
+    }
+    if (inc.status === 'unseen' || !inc.plan) return false;
+    ok = approve(nat, inc.id);
+    if (ok) { if (al.tApproved === null) al.tApproved = nat.t; comm(nat, 'operator', { role: 'operator' }, { role: 'control-room' }, T('اعتمد المشغّل الإنذار ' + al.id + ' (المفتاح البشري)', 'Operator approved alert ' + al.id + ' (the human key)'), { alert: al.id, incident: inc.id }); }
+    return ok;
+  }
+  function droneIntake(nat, inc, trigger) {               // the control room learns of a real incident from a sentinel, a citizen or an operator: raise the alert and launch the nearest drone to verify (it may launch on its own)
+    var al = raiseAlert(nat, { source: trigger, via: trigger, hazard: inc.hazard, conf: { sentinel: 0.5, citizen: 0.4, operator: 0.35 }[trigger] || 0.4, lon: inc.lon, lat: inc.lat, inc: inc, sensorKey: trigger !== 'operator' });
+    attemptDroneLaunch(nat, al, trigger === 'operator' ? 'operator' : 'auto');
+    return al;
+  }
+  function bystanderReport(nat, inc) {                    // nobody's patrol found it in time: a bystander calls 999
+    nat.dstats.bystander++; inc.detect = 'bystander'; inc.trigger = 'citizen';
+    evtIncident(nat, inc, { by: 'bystander' }); startResponse(nat, inc);
+    droneIntake(nat, inc, 'citizen');
+  }
+  function tickAlerts(nat) {
+    var P = nat.P, t = nat.t, i, al, inc, pl;
+    for (i = 0; i < nat.incidents.length; i++) { inc = nat.incidents[i]; if (inc.status === 'unseen' && t - inc.tStart >= P.droneUnseenMin * 60) bystanderReport(nat, inc); }
+    for (i = 0; i < nat.alerts.length; i++) {
+      al = nat.alerts[i]; if (alertFinal(al)) continue;
+      inc = al.incident ? getIncident(nat, al.incident) : null;
+      if (inc) {
+        if (inc.status === 'cancelled') { al.dismissedBy = al.dismissedBy || 'incident-cancelled'; al.dismissReason = al.dismissReason || 'incident-cancelled'; setAlertState(nat, al, 'DISMISSED', t); continue; }
+        pl = inc.plan;
+        if (pl) {
+          if (pl.t.approved !== undefined) { if (al.tApproved === null) al.tApproved = pl.t.approved; if (al.state === 'SUSPECT') al.unverifiedApproval = true; setAlertState(nat, al, 'APPROVED', pl.t.approved); }
+          if (pl.t.dispatched !== undefined) setAlertState(nat, al, 'DISPATCHED', pl.t.dispatched);
+          if (pl.t['on-scene'] !== undefined) setAlertState(nat, al, 'ON-SCENE', pl.t['on-scene']);
+          if (pl.state === 'cleared') setAlertState(nat, al, 'RESOLVED', pl.t.cleared !== undefined ? pl.t.cleared : t);
+        }
+        if (inc.faAt && t >= inc.faAt && inc.status !== 'cancelled' && inc.status !== 'cleared') {
+          inc.faAt = 0; al.note = 'false-alarm-on-scene';
+          evt(nat, 'false-alarm-on-scene', { alert: al.id, incident: inc.id }, 'وصلت أول وحدة ولم تجد خطراً — الإنذار ' + al.id + ' كاذب وأُلغي الحادث', 'The first unit arrived and found no hazard — alert ' + al.id + ' was a false alarm and the incident is cancelled');
+          cancelIncident(nat, inc.id); setAlertState(nat, al, 'RESOLVED', t);
+          continue;
+        }
+      } else if (nat.autoApprove && al.state === 'CONFIRMED' && t - (al.tState.CONFIRMED || t) >= P.approveSec) { approveAlert(nat, al.id); continue; }
+      if (al.needDrone && t >= al.nextTry) attemptDroneLaunch(nat, al, 'auto');
+      if (al.dismissAt !== null && t >= al.dismissAt && ALERT_RANK[al.state] < ALERT_RANK.APPROVED) dismissAlert(nat, al.id, { by: 'operator', reason: al.dismissReason });
+    }
+  }
+
+  // ---- the fleet board, the alert queue, the comms log, KPIs and the bus messages
+  function droneEta(nat, d, t) {
+    var m = d.mission, dest = null, gs = d.groundMps > 0 ? d.groundMps : droneCond(nat, d, t, d.pos.lon, d.pos.lat, null).vAir, extra = 0;
+    if (d.state === 'launching') { extra = d.left; dest = m && m.dest ? m.dest : null; gs = droneCond(nat, d, t, d.pos.lon, d.pos.lat, null).vAir; }
+    else if (d.state === 'en-route' && m && m.dest) dest = m.dest;
+    else if (d.state === 'returning') dest = d.dock;
+    if (!dest) return null;
+    return Mth.round(extra + haversineM(d.pos.lon, d.pos.lat, dest.lon, dest.lat) / Mth.max(0.5, gs));
+  }
+  function droneRow(nat, d, t, o) {
+    var P = nat.P, m = d.mission, c = droneCond(nat, d, t, d.pos.lon, d.pos.lat, null), eta = droneEta(nat, d, t), blk = droneBlock(nat, d, t), w = droneWind(nat, t, d.pos.lon, d.pos.lat);
+    var row = { id: d.id, callsign: d.callsign, kind: 'drone', name: d.name, role: d.role, facility: d.fac, dock: { lon: d.dock.lon, lat: d.dock.lat }, lon: r5(d.pos.lon), lat: r5(d.pos.lat), altM: Mth.round(d.altM), headingDeg: Mth.round(d.headingDeg),
+      speedMps: r1(d.groundMps), airSpeedMps: r1(d.speedMps), state: d.state, stateText: DRONE_STATE[d.state], batteryPct: Mth.round(d.battery * 100), etaSec: eta, etaMin: eta === null ? null : r1(eta / 60),
+      incident: m ? m.incId : null, alert: m ? m.alertId : null, mission: m ? { id: m.id, type: m.type, trigger: m.trigger, hazard: m.hazard, target: m.target, tLaunch: m.tLaunch, tArrive: m.tArrive, tVerified: m.tVerified, etaAtLaunchSec: m.etaSec === null ? null : Mth.round(m.etaSec), resultDone: m.resultDone, endReason: m.endReason } : null,
+      sortie: d.sortie, sorties: d.sorties, flightMin: r1(d.flightSec / 60), fault: d.fault ? { kind: d.fault.kind, text: d.fault.text, t: d.fault.t } : null, blocked: blk,
+      derate: { tempC: r1(c.tempC), batteryC: r1(c.battC), enduranceLostPct: Mth.round(c.derateBatt * 100), speedLostPct: Mth.round(c.derateSpeed * 100), enduranceMin: r1(P.droneEnduranceMin * (1 - c.derateBatt)), cruiseMps: r1(c.vAir), rangeKm: r1(droneRangeKm(nat, d, t)), active: c.derateBatt > 0 || c.derateSpeed > 0 },
+      wind: { deg: Mth.round(w.deg), mps: r1(w.mps) }, coverageM: P.droneCoverageM, aed: d.aed, link: r2(linkQuality(nat, d, t)), light: d.light, patrolOn: d.optPatrol, optAltM: d.optAlt, optSpeedMps: d.optSpeed };
+    if (!o || o.trails !== false) row.trail = d.trail.slice(-40);
+    if (o && o.sectors) row.sector = { centre: d.sector.centre, radiusM: d.sector.radiusM, loop: d.sector.loop };
+    return row;
+  }
+  function alertRow(nat, al, t) {
+    var pr = alertPriority(nat, al, t), hn = HAZARD_NAME[al.hazard] || HAZARD_NAME.sos, level = pr >= 80 ? 'critical' : pr >= 60 ? 'high' : pr >= 40 ? 'medium' : 'low', pl = al.place ? al.place.name : T('قطر', 'Qatar');
+    var vt = al.verdict ? { confirmed: T('تحقق المسيّرة: مؤكَّد', 'Drone verification: confirmed'), downgraded: T('تحقق المسيّرة: خُفِّض', 'Drone verification: downgraded'), dismissed: T('تحقق المسيّرة: لا دليل', 'Drone verification: no evidence') }[al.verdict] : null;
+    return { id: al.id, source: al.source, via: al.via, sourceName: SOURCE_NAME[al.source], trigger: TRIGGER_NAME[al.via] || null, hazard: al.hazard, hazardName: hn, confidence: al.conf, state: al.state, stateName: ALERT_STATE_NAME[al.state], priority: pr, level: level,
+      ageSec: Mth.round(Mth.max(0, (alertFinal(al) ? (al.tState.RESOLVED !== undefined ? al.tState.RESOLVED : al.tState.DISMISSED !== undefined ? al.tState.DISMISSED : t) : t) - al.t)), t: al.t, clock: clockInfo(nat.start, al.t).clock,
+      lon: al.lon, lat: al.lat, place: al.place, muni: al.muni, incident: al.incident, droneId: al.droneId, droneAlerts: al.droneAlerts.slice(), evidence: al.evidence, thermal: al.thermal, frame: al.frame, verdict: al.verdict, verdictText: vt,
+      tState: al.tState, escalated: al.escalated, needDrone: al.needDrone, unverifiedApproval: !!al.unverifiedApproval, dismissedBy: al.dismissedBy, dismissReason: al.dismissReason, note: al.note || null, aedDropped: al.aedDropped || null,
+      text: T(hn.ar + ' — ' + pl.ar + ' (' + SOURCE_NAME[al.source].ar + ')', hn.en + ' — ' + pl.en + ' (' + SOURCE_NAME[al.source].en + ')'),
+      sim: { truth: al.sim.truth, decoy: al.sim.decoy, decoyName: al.sim.decoy ? DECOYS[al.sim.decoy] : null, hazardTrue: al.sim.hazardTrue, note: T('الحقيقة المخفية للمحاكاة — لا تراها غرفة التحكم', 'Hidden simulation truth — the control room cannot see it') } };
+  }
+  function alertQueue(nat, o) {                           // the priority-sorted queue the control room works from (open alerts; {all:true} adds the closed ones)
+    o = o || {};
+    var t = o.t === undefined ? nat.t : o.t, rows = [], i;
+    for (i = 0; i < nat.alerts.length; i++) if (o.all || !alertFinal(nat.alerts[i])) rows.push(alertRow(nat, nat.alerts[i], t));
+    rows.sort(function (a, b) { return b.priority - a.priority || a.t - b.t || (a.id < b.id ? -1 : 1); });
+    return rows;
+  }
+  function commsLog(nat, o) {
+    o = o || {};
+    var out = nat.comms.filter(function (c) { return (!o.kind || c.kind === o.kind) && (!o.alert || c.alert === o.alert) && (!o.incident || c.incident === o.incident) && (!o.drone || c.drone === o.drone) && (o.since === undefined || c.t >= o.since); });
+    return o.limit ? out.slice(-o.limit) : out;
+  }
+  function firstEyesKpis(nat) {
+    var dr = [], gr = [], fe = [], lead = [], both = 0, first = 0, pend = 0, i, inc, dT, gT;
+    for (i = 0; i < nat.incidents.length; i++) {
+      inc = nat.incidents[i]; if (!inc.eyes || inc.falseAlarm) continue;
+      dT = inc.eyes.droneT === null ? null : inc.eyes.droneT - inc.tStart; gT = inc.eyes.groundT === null ? null : inc.eyes.groundT - inc.tStart;
+      if (dT !== null) dr.push(dT); if (gT !== null) gr.push(gT);
+      if (dT !== null && gT !== null) { both++; fe.push(Mth.min(dT, gT)); lead.push(gT - dT); if (dT <= gT) first++; } else if (dT !== null || gT !== null) pend++;
+    }
+    var fs = stats(fe);
+    return { label: SIM_LABEL, n: both, pending: pend, droneFirstPct: both ? r1(100 * first / both) : null, droneArrivalSec: stats(dr), groundArrivalSec: stats(gr), firstEyesSec: fs, leadSec: stats(lead),
+      firstEyesMin: { mean: fs.mean === null ? null : r1(fs.mean / 60), p50: fs.p50 === null ? null : r1(fs.p50 / 60), p90: fs.p90 === null ? null : r1(fs.p90 / 60) } };
+  }
+  function droneKpis(nat, t) {
+    var P = nat.P, by = { docked: 0, launching: 0, 'en-route': 0, patrol: 0, 'on-station': 0, verifying: 0, returning: 0, charging: 0, fault: 0 }, avail = 0, batt = 0, maxTemp = -99, minSpeed = 1, i, d, c, blk;
+    for (i = 0; i < nat.drones.list.length; i++) {
+      d = nat.drones.list[i]; by[d.state]++; batt += d.battery; blk = droneBlock(nat, d, t); if (!blk) avail++;
+      c = droneCond(nat, d, t, d.pos.lon, d.pos.lat, null); if (c.tempC > maxTemp) maxTemp = c.tempC; if (1 - c.derateSpeed < minSpeed) minSpeed = 1 - c.derateSpeed;
+    }
+    var A = { total: nat.alerts.length, open: 0, byState: {}, bySource: {}, droneRaised: 0, falseRaised: 0, falseDismissed: 0, falseDispatched: 0, realMissed: nat.dstats.missed, confirmed: 0, downgraded: 0, dismissedByVerdict: 0 }, tta = [], ttv = [], ttc = [];
+    nat.alerts.forEach(function (al) {
+      A.byState[al.state] = (A.byState[al.state] || 0) + 1; A.bySource[al.source] = (A.bySource[al.source] || 0) + 1; if (!alertFinal(al)) A.open++;
+      if (al.verdict === 'confirmed') A.confirmed++; else if (al.verdict === 'downgraded') A.downgraded++; else if (al.verdict === 'dismissed') A.dismissedByVerdict++;
+      if (al.source === 'drone') { A.droneRaised++; if (al.sim.truth === 'false') { A.falseRaised++; if (al.tApproved !== null) A.falseDispatched++; else if (al.state === 'DISMISSED') A.falseDismissed++; } }
+      if (al.tApproved !== null) tta.push(al.tApproved - al.t);
+      if (al.tVerified !== null) ttv.push(al.tVerified - al.t);
+      if (al.tConfirmed !== null) ttc.push(al.tConfirmed - al.t);
+    });
+    var decided = A.falseDismissed + A.falseDispatched;
+    return { total: nat.drones.list.length, byState: by, available: avail, enRoute: by.launching + by['en-route'], onStation: by['on-station'] + by.verifying, charging: by.charging, patrolling: by.patrol, docked: by.docked, fault: by.fault,
+      batteryMeanPct: Mth.round(100 * batt / nat.drones.list.length), maxAirC: r1(maxTemp), minSpeedFactor: r2(minSpeed),
+      alerts: { total: A.total, open: A.open, byState: A.byState, bySource: A.bySource, droneRaised: A.droneRaised, falseAlarmsRaised: A.falseRaised, falseAlarmsDismissed: A.falseDismissed, falseAlarmsDispatched: A.falseDispatched,
+        falseAlarmRatePct: A.droneRaised ? r1(100 * A.falseRaised / A.droneRaised) : null, falseDismissedPct: decided ? r1(100 * A.falseDismissed / decided) : null, realEventsMissed: A.realMissed, confirmed: A.confirmed, downgraded: A.downgraded, dismissedByVerdict: A.dismissedByVerdict,
+        timeToApproveSec: stats(tta), timeToVerifySec: stats(ttv), timeToConfirmSec: stats(ttc) },
+      firstEyes: firstEyesKpis(nat), stats: { sorties: nat.dstats.sorties, patrolSorties: nat.dstats.patrolSorties, launched: nat.dstats.launched, faults: nat.dstats.faults, lowBattery: nat.dstats.lowBattery, relaunches: nat.dstats.relaunches,
+        patrolDetections: nat.dstats.patrolDetections, falsePositives: nat.dstats.falsePositives, bystander: nat.dstats.bystander } };
+  }
+  function fleetBoard(nat, o) {                           // the control room's fleet board: every drone with state, battery, ETA, heat derating and its incident (robots are listed by the building-scale simulation)
+    o = o || {};
+    var t = o.t === undefined ? nat.t : o.t, rows = nat.drones.list.map(function (d) { return droneRow(nat, d, t, { trails: o.trails, sectors: o.sectors }); }), counts = {}, k = droneKpis(nat, t);
+    rows.forEach(function (r) { counts[r.state] = (counts[r.state] || 0) + 1; });
+    return { label: SIM_LABEL, t: t, clock: clockInfo(nat.start, t).clock, drones: rows, counts: counts, available: k.available, enRoute: k.enRoute, charging: k.charging, onStation: k.onStation, patrolling: k.patrolling, fault: k.fault,
+      note: T('المسيّرات مفهوم بنموذج أولي محاكى: لم تُطِر أي مسيّرة حقيقية ولا حصلت على موافقة أي جهة', 'Drones are a concept with a simulated prototype: no real drone has been flown or approved by any authority'), robots: [] };
+  }
+  function busDroneAlert(nat, id) {
+    var da = null, al, i;
+    if (/^AL-/.test(id)) { al = getAlert(nat, id); if (!al || !al.droneAlerts.length) return null; id = al.droneAlerts[al.droneAlerts.length - 1]; }
+    for (i = nat.droneAlerts.length - 1; i >= 0; i--) if (nat.droneAlerts[i].id === id) { da = nat.droneAlerts[i]; break; }
+    if (!da) return null;
+    al = getAlert(nat, da.alert);
+    return { type: 'drone-alert', scope: 'national', id: da.id, alert: da.alert, incident: da.incident, source: 'drone', via: da.via, stage: da.stage, droneId: da.droneId, droneName: da.droneName, hazard: da.hazard, hazardName: da.hazardName, confidence: da.confidence, outcome: da.outcome,
+      state: al ? al.state : da.state, priority: al ? alertPriority(nat, al, nat.t) : null, lon: da.lon, lat: da.lat, target: da.target, headingDeg: da.headingDeg, altM: da.altM, wind: da.wind, batteryPct: da.batteryPct, link: da.link, thermal: da.thermal, evidence: da.evidence, frame: da.frame,
+      t: da.t, clock: da.clock, text: da.text, sim: true };
+  }
+  function busDroneStatus(nat, droneId) {
+    var t = nat.t, list = droneId ? (nat.drones.byId[droneId] ? [nat.drones.byId[droneId]] : []) : nat.drones.list, rows = list.map(function (d) { return droneRow(nat, d, t, { trails: false }); }), counts = {};
+    if (droneId && !rows.length) return null;
+    rows.forEach(function (r) { counts[r.state] = (counts[r.state] || 0) + 1; });
+    return { type: 'drone-status', scope: 'national', id: 'DS-' + Mth.floor(t), clock: clockInfo(nat.start, t).clock, drones: rows.map(function (r) { return { id: r.id, callsign: r.callsign, name: r.name, state: r.state, stateText: r.stateText, lon: r.lon, lat: r.lat, altM: r.altM, headingDeg: r.headingDeg, speedMps: r.speedMps,
+      batteryPct: r.batteryPct, etaSec: r.etaSec, incident: r.incident, alert: r.alert, link: r.link, derate: { tempC: r.derate.tempC, speedLostPct: r.derate.speedLostPct, enduranceLostPct: r.derate.enduranceLostPct }, fault: r.fault ? r.fault.kind : null }; }), counts: counts, sim: true };
+  }
+
+  /* ====================================================================================
+   * 17. PUBLIC API
    * ==================================================================================== */
   function worldInfo(nat) {
     var W = nat.W, G = W.G, g = W.grid;
@@ -2351,6 +3299,15 @@
     fields: hazardFields, heatField: heatField, dustField: dustField, rainField: rainField, visibility: visIndex, wbgtEstimate: wbgtEstimate, heatExposure: heatExposure, kpis: kpis, municipalities: municipalityStatus, advisories: advisories, renderMsg: renderMsg, middayBan: function (nat, t) { return inMiddayBan(clockInfo(nat.start, t === undefined ? nat.t : t)); },
     // phones
     nearestFacilities: nearestFacilities,
+    // the drone fleet (a CONCEPT, SIMULATED): operator actions, accessors, bus messages (see the header and docs/MANARA.md "Drone fleet")
+    launchDrone: launchDrone, recallDrone: recallDrone, setDroneParam: setDroneParam, dismissAlert: dismissAlert, escalateAlert: escalateAlert, approveAlert: approveAlert, announce: announce, dropAed: dropAed,
+    drones: function (nat, t) { t = t === undefined ? nat.t : t; return nat.drones.list.map(function (d) { return droneRow(nat, d, t, { trails: false }); }); },
+    fleetBoard: fleetBoard, alertQueue: alertQueue, alert: function (nat, id) { var al = getAlert(nat, id); return al ? alertRow(nat, al, nat.t) : null; }, droneAlert: function (nat, id) { return busDroneAlert(nat, id); },
+    commsLog: commsLog, busDroneAlert: busDroneAlert, busDroneStatus: busDroneStatus, droneEta: function (nat, lon, lat, t, hazard) { return droneEtaFor(nat, lon, lat, t, hazard); },
+    droneRank: function (nat, target, t) { return droneRank(nat, target, t === undefined ? nat.t : t, {}).map(function (r) { return { droneId: r.d.id, name: r.d.name, etaSec: Mth.round(r.etaSec), distM: Mth.round(r.distM), batteryNeed: r2(r.battNeed) }; }); },
+    droneRange: function (nat, droneId, t) { var d = nat.drones.byId[droneId]; return d ? r1(droneRangeKm(nat, d, t)) : null; },
+    droneEnv: function (nat, lon, lat, t) { t = t === undefined ? nat.t : t; var d = nat.drones.list[0], c = droneCond(nat, d, t, lon, lat, null), e = envAt(nat, t, lon, lat); return { tempC: r1(c.tempC), enduranceLostPct: Mth.round(c.derateBatt * 100), speedLostPct: Mth.round(c.derateSpeed * 100), wind: { deg: Mth.round(c.wind.deg), mps: r1(c.wind.mps) }, groundC: r1(e.groundC), solar: r2(e.solar), visFactor: r2(e.visFactor), context: sceneContext(nat, lon, lat) }; },
+    DRONE_STATE: DRONE_STATE, ALERT_STATES: ALERT_STATES, TRIGGERS: TRIGGERS, DECOYS: DECOYS, DRONE_MODALITY: DRONE_MODALITY,
     // display labels of the facilities (never '(unnamed in OSM)'): {id, ar, en, sub, generic, verified, hasAr, hasEn, raw, place, type, cls 'ed'|'hospital'|'minor'|'other', edVerified}
     facilityLabel: function (nat, id) { var W = nat.W; if (!W.labels) buildLabels(W); return W.labels[id] || null; },
     facilityLabels: function (nat) { var W = nat.W; if (!W.labels) buildLabels(W); return W.labels; },
