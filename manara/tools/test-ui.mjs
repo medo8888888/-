@@ -26,8 +26,11 @@ const argv = process.argv.slice(2);
 const argOf = (n, d) => { const i = argv.findIndex(a => a === '--' + n || a.startsWith('--' + n + '=')); if (i < 0) return d; const a = argv[i]; return a.includes('=') ? a.split('=')[1] : (argv[i + 1] || d); };
 const SUITE = argOf('suite', 'all');
 const want = s => SUITE === 'all' || SUITE === s;
-const ALL_PAGES = ['index', 'mission', 'detect', 'alert', 'build', 'pitch', 'report', 'poster', '404'];
+// Every page of the site. control.html (the Control Room) and robot.html (the Robot Rescue Lab) are first-class pages: they go through every matrix below.
+const ALL_PAGES = ['index', 'mission', 'control', 'detect', 'alert', 'robot', 'build', 'pitch', 'report', 'poster', '404'];
 const PAGES = (argOf('pages', '') ? argOf('pages', '').split(',') : ALL_PAGES);
+// The pages in the nav bar (and the mobile menu) are READ from core.js (PAGES = [...] before EXTRA), so adding a page to the nav never needs an edit here.
+const NAV_PAGES = (() => { const t = fs.readFileSync(path.join(SITE, 'js/core.js'), 'utf8'); const m = /var PAGES = \[([\s\S]*?)\];/.exec(t); return m ? [...m[1].matchAll(/\['([a-z0-9]+\.html)',\s*'nav\./g)].map(x => x[1].replace('.html', '')) : []; })();
 const section = t => console.log('\n' + t);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const snip = (s, n = 90) => String(s).replace(/\s+/g, ' ').trim().slice(0, n);
@@ -107,10 +110,13 @@ if (want('lint')) {
       'js/detect.js': ['tpl', 'stageTemplate', 'fool', 'p', 'P', 'st.playing', 'L', 'T2', 'A.paused', 'hz.icon', 'HELD_REF.ok', 'HELD_REF.n', 'HELD_REF.acc', 'HELD_REF.fireFound', 'HELD_REF.falseFire', 'HELD_REF.smokeFound'],  // authored {{ar|en}} templates + benchmark constants
       'js/home.js': ['html', 'h.icon', 'STAGE_ICONS', 'i', 'st.playing', 'st.hz.night', 'iconInner', 'kd.icon', 'spec', 'mn', 'b2', 'g', 'b', 'unitIcon', 'kind', 'PLUS_SVG', 'S.layer'],   // setStaticHTML(node, html): only M.icon()/M.logo() of authored tables (HZ, STAGE_ICONS, kd, FMT) and regex literals; reviewed at every call site (unitIcon(kind) = M.icon/PLUS_SVG of the authored UNIT_K table; S.layer only selects between literal icon names)
       'js/mission.js': ['name', 'cls', 'NS_SVG', 'XICON'],
+      // robot.js (robot.html): two sinks, both reviewed. ic(): `Manara.icon(name, cls)`, a static SVG string that core.js builds from its ICONS table (an unknown name falls back to the "help" icon); icon(): the authored XICON table of
+      // path strings inside an <svg xmlns=NS_SVG> wrapper, reached only for a name that is a key of XICON. Every caller passes an authored literal or an authored table field (TABS, seg items, btn()), never bus / user / uploaded text.
+      'js/robot.js': ['name', 'cls', 'NS_SVG', 'XICON'],
       'js/pitch.js': ['ICON', 'name', 'svgIcon', 'cls'],
       'js/build.js': ['ic'],
       'js/report.js': [],
-      'js/national.js': [], 'js/alert.js': [], 'js/poster.js': [], 'js/sim.js': [], 'js/fire.js': [], 'js/messages.js': [],
+      'js/national.js': [], 'js/alert.js': [], 'js/poster.js': [], 'js/sim.js': [], 'js/fire.js': [], 'js/messages.js': [], 'js/drone-scene.js': [],
     };
     const stmtEnd = (t, i) => { let q = null, d = 0; for (let j = i; j < t.length; j++) { const c = t[j]; if (q) { if (c === '\\') j++; else if (c === q) q = null; continue; } if (c === '"' || c === "'" || c === '`') { q = c; continue; } if ('([{'.includes(c)) d++; else if (')]}'.includes(c)) { d--; if (d < 0) return j; } else if (c === ';' && d === 0) return j; } return t.length; };
     const IGNORE_ID = /^(return|function|true|false|null|undefined|replace|slice|map|join|new|typeof)$/;
@@ -136,8 +142,8 @@ if (want('lint')) {
     check(`${hits.length} innerHTML/insertAdjacentHTML/setStaticHTML sinks, all in reviewed files`, unknownFile.length === 0, first(unknownFile.map(h => `${h.f}:${h.ln}`)));
     const unrev = hits.filter(h => h.known && (h.ids.length || h.tpl));
     check('every identifier flowing into a sink is on the reviewed authored-data list (no bus/user/upload variable reaches innerHTML)', unrev.length === 0, first(unrev.map(h => `${h.f}:${h.ln} ${h.tpl ? '`template literal` ' : ''}${h.ids.join(',')}`)));
-    const noSink = ['js/alert.js', 'js/poster.js', 'js/national.js', 'js/messages.js', 'js/sim.js', 'js/fire.js'].flatMap(x => hits.filter(h => h.f === x));
-    check('alert.js (renders bus text) and the engines/poster/national code have zero innerHTML-type sinks', noSink.length === 0, first(noSink.map(h => `${h.f}:${h.ln}`)));
+    const noSink = ['js/alert.js', 'js/poster.js', 'js/national.js', 'js/messages.js', 'js/sim.js', 'js/fire.js', 'js/drone-scene.js'].flatMap(x => hits.filter(h => h.f === x));
+    check('alert.js (renders bus text) and the engines/poster/national/drone-scene code have zero innerHTML-type sinks', noSink.length === 0, first(noSink.map(h => `${h.f}:${h.ln}`)));
   }
 
   // ---- L4. CSS: parse rules once
@@ -301,7 +307,7 @@ if (want('lint')) {
     for (const f of JS.filter(x => !/samples-data\.js$/.test(x))) {
       const t = read(f);
       for (const m of t.matchAll(/['"`]((?:assets|data|kit|css|js)\/[\w./-]+\.(?:png|jpe?g|svg|js|css|json|webp|gif|mp4|webm|txt|md|ino|py|html))['"`]/g)) if (!exists(path.join(SITE, 'x.html'), m[1])) miss.push(`${rel(f)}:${lineOf(t, m.index)} ${m[1]}`);
-      for (const m of t.matchAll(/['"`]((?:index|mission|detect|alert|build|pitch|report|poster|404)\.html)(?:[#?][^'"`]*)?['"`]/g)) if (!fs.existsSync(path.join(SITE, m[1]))) miss.push(`${rel(f)}:${lineOf(t, m.index)} ${m[1]}`);
+      for (const m of t.matchAll(/['"`]((?:index|mission|control|detect|alert|robot|build|pitch|report|poster|404)\.html)(?:[#?][^'"`]*)?['"`]/g)) if (!fs.existsSync(path.join(SITE, m[1]))) miss.push(`${rel(f)}:${lineOf(t, m.index)} ${m[1]}`);
     }
     check(`every src/href/poster/srcset/url()/asset string in ${HTML.length} html + ${CSS.length} css + ${JS.length} js files resolves to an existing file`, miss.length === 0, first(miss, 6));
     // core.js nav + footer targets
@@ -343,6 +349,24 @@ if (want('lint')) {
       const srcs = [...t.matchAll(/<script\b[^>]*\bsrc="([^"]+)"/g)].map(m => m[1]); if (srcs[0] !== 'js/core.js') bad.push(`${n}.html: core.js must be the first script (got ${srcs[0]})`);
     }
     check(`${ALL_PAGES.length} pages follow the skeleton in manara/docs/MANARA.md (lang/dir, bilingual title, skip link, #main, data-page, deferred scripts, bootstrap identical)`, bad.length === 0, first(bad, 6));
+  }
+
+  // ---- L9. the test harness itself: every suite is registered in run-all.sh, and the "N checks" numbers the pages print are generated, not typed
+  {
+    const runAll = read(path.join(ROOT, 'tools/run-all.sh'));
+    const suites = fs.readdirSync(path.join(ROOT, 'tools')).filter(f => /^test[-_].+\.(mjs|py)$/.test(f));
+    const unreg = suites.filter(f => !runAll.includes(f));
+    check(`run-all.sh names all ${suites.length} test suites in manara/tools (${suites.map(f => f.replace(/^test[-_]/, '').replace(/\.(mjs|py)$/, '')).join(', ')})`, unreg.length === 0, 'not in run-all.sh: ' + unreg.join(', '));
+    const tcFile = path.join(SITE, 'data/test-counts.js');
+    let tc = null; try { const ctx = { window: {} }; vm.runInNewContext(read(tcFile), ctx); tc = ctx.window.MANARA_TEST_COUNTS; } catch (e) { /* reported below */ }
+    const need = ['fire', 'msg', 'qatar-data', 'kit', 'national', 'drone-scene', 'sim'];
+    check(`data/test-counts.js (generated by tools/update-counts.mjs) parses and holds a count for ${need.join(', ')}`, !!tc && need.every(n => tc.suites && tc.suites[n] && tc.suites[n].passed > 0), tc ? 'missing: ' + need.filter(n => !(tc.suites && tc.suites[n])).join(',') : 'file missing or not a classic script');
+    // the pages that print counts must load the generated file (and carry a static fallback, so the page works without it)
+    const noLoad = ['pitch', 'report', 'poster'].filter(n => !/<script src="data\/test-counts\.js" defer><\/script>/.test(read(pageFile(n))));
+    check('pitch.html, report.html and poster.html load data/test-counts.js (the numbers are read from it, never typed)', noLoad.length === 0, noLoad.join(', '));
+    // no page script may type the old suite counts any more
+    const stale = []; for (const f of ['js/pitch.js', 'js/report.js', 'js/poster.js', 'report.html', 'pitch.html', 'poster.html']) { const t = read(path.join(SITE, f)); for (const m of t.matchAll(/\b(?:test-national\.mjs|test-sim\.mjs|test-msg\.mjs|test-fire\.mjs|test_kit\.py|test-qatar-data\.mjs|test-drone-scene\.mjs)\b[^.\n]{0,60}?\b(\d{2,4})\s*(?:checks|فحص)/g)) { if (tc && tc.suites) { const nm = m[0].match(/test[-_]([a-z-]+)\.(?:mjs|py)/)[1].replace(/^qatar-data$/, 'qatar-data'); const key = nm === 'sim' ? 'sim' : nm; if (tc.suites[key] && tc.suites[key].passed !== +m[1] && !/data-tc=/.test(t.slice(Math.max(0, m.index - 40), m.index + m[0].length + 40))) stale.push(`${f}: "${m[0].slice(0, 70)}" but the file says ${tc.suites[key].passed}`); } } }
+    check('no page types a suite count that disagrees with data/test-counts.js (pitch, report, poster)', stale.length === 0, first(stale));
   }
 }
 
@@ -680,7 +704,9 @@ if (want('pages')) {
   const bctx = await browser.newContext(); const bp = await bctx.newPage(); await bp.goto('about:blank');
   const baseline = await bp.evaluate(() => Object.fromEntries(Object.getOwnPropertyNames(window).map(k => [k, 1]))); await bctx.close();
   const P = { load: [], lang: [], title: [], overflow: [], dup: [], alt: [], axname: [], contrast: [], arspace: [], leak: [], misc: [], nav: [], brand: [], globals: [], links: new Map(), contrastN: 0 };
-  const combos = []; for (const n of PAGES) for (const lang of ['ar', 'en']) for (const theme of ['dark', 'light']) for (const width of [390, 1440]) combos.push({ n, lang, theme, width });
+  const missingPages = PAGES.filter(n => !fs.existsSync(path.join(SITE, n + '.html')));
+  const PAGES_OK = PAGES.filter(n => !missingPages.includes(n));
+  const combos = []; for (const n of PAGES_OK) for (const lang of ['ar', 'en']) for (const theme of ['dark', 'light']) for (const width of [390, 1440]) combos.push({ n, lang, theme, width });
   const AXROLES = new Set(['button', 'link', 'textbox', 'searchbox', 'combobox', 'checkbox', 'radio', 'switch', 'slider', 'spinbutton', 'tab', 'menuitem', 'menuitemcheckbox', 'menuitemradio', 'option', 'treeitem']);
   async function runCombo({ n, lang, theme, width }) {
     const tag = `${n} ${lang}/${theme} ${width}px`;
@@ -705,8 +731,8 @@ if (want('pages')) {
       if (a.mains !== 1 || a.skip !== '#main') P.misc.push(`${tag}: main×${a.mains}, skip href ${a.skip}`);
       if (!a.metaViewport) P.misc.push(`${tag}: viewport meta`);
       if (a.h1.length < 1) P.misc.push(`${tag}: no visible h1`);
-      if (a.navLinks.length !== 7 || a.menuLinks !== 7) P.nav.push(`${tag}: ${a.navLinks.length} nav links, ${a.menuLinks} menu links (expected 7)`);
-      const cur = a.navLinks.filter(l => l.cur === 'page').map(l => l.href); const shouldCur = ['index', 'mission', 'detect', 'alert', 'build', 'pitch', 'report'].includes(n) ? [n + '.html'] : [];
+      if (a.navLinks.length !== NAV_PAGES.length || a.menuLinks !== NAV_PAGES.length) P.nav.push(`${tag}: ${a.navLinks.length} nav links, ${a.menuLinks} menu links (expected ${NAV_PAGES.length}, read from core.js)`);
+      const cur = a.navLinks.filter(l => l.cur === 'page').map(l => l.href); const shouldCur = NAV_PAGES.includes(n) ? [n + '.html'] : [];
       if (cur.join() !== shouldCur.join()) P.nav.push(`${tag}: aria-current=${cur.join() || 'none'} expected ${shouldCur.join() || 'none'}`);
       if (width >= 1100 && a.brandSide && a.brandSide !== (lang === 'ar' ? 'right' : 'left')) P.brand.push(`${tag}: brand on the ${a.brandSide} (layout did not mirror)`);
       for (const l of a.links) { const k = l.href; if (!P.links.has(k)) P.links.set(k, n); }
@@ -729,6 +755,7 @@ if (want('pages')) {
   async function pool(items, size, fn) { let i = 0; await Promise.all(Array.from({ length: size }, async () => { while (i < items.length) { const it = items[i++]; await fn(it); } })); }
   await pool(combos, 3, runCombo);
   const N = combos.length;
+  check(`all ${PAGES.length} registered pages exist (${PAGES.join(', ')})`, missingPages.length === 0, 'missing: ' + missingPages.map(x => x + '.html').join(', '));
   check(`${N} loads from file:// without console errors, page errors or failed local requests`, P.load.length === 0, first(P.load));
   check('<html lang/dir/data-lang> and body direction match the language, data-theme matches the colour scheme (every load)', P.lang.length === 0, first(P.lang));
   check('<title> is bilingual: Arabic in ar, English in en, data-en present (every load)', P.title.length === 0, first(P.title));
@@ -739,7 +766,7 @@ if (want('pages')) {
   check(`WCAG contrast of ${P.contrastN} rendered text runs: >= 4.5:1 (>= 3:1 large) on --bg/--surface/... in both themes`, P.contrast.length === 0, first(P.contrast, 6));
   check('letter-spacing is normal/0 on every Arabic text run (ar loads)', P.arspace.length === 0, first(P.arspace));
   check('one <main>, skip link href="#main", viewport meta, a visible h1 on every page', P.misc.length === 0, first(P.misc));
-  check('nav: 7 links in the bar and 7 in the mobile menu, aria-current marks the current page only', P.nav.length === 0, first(P.nav));
+  check(`nav: ${NAV_PAGES.length} links in the bar and ${NAV_PAGES.length} in the mobile menu (the PAGES list of core.js), aria-current marks the current page only`, P.nav.length === 0, first(P.nav));
   check('RTL/LTR mirroring: the brand sits on the right in Arabic and on the left in English (desktop)', P.brand.length === 0, first(P.brand));
   check('scripts leak no globals except Manara*/MANARA*/MissionControl (IIFE law)', P.globals.length === 0, first(P.globals));
   if (P.leak.length) console.log('  info language leakage (not a failure): ' + first(P.leak, 6));
@@ -758,7 +785,7 @@ if (want('pages')) {
     }
     check(`all ${P.links.size} distinct hrefs found in the rendered pages resolve to an existing file (and existing #id)`, miss.length === 0, first(miss));
     const inPage = [];
-    for (const n of PAGES) {
+    for (const n of PAGES_OK) {
       const { ctx, page } = await openPage(browser, n + '.html', { width: 1440, height: 900, lang: 'en' });
       const bad = await page.evaluate(() => [...document.querySelectorAll('a[href^="#"]')].map(a => a.getAttribute('href')).filter(h => h.length > 1 && !document.getElementById(decodeURIComponent(h.slice(1))) && !document.getElementsByName(decodeURIComponent(h.slice(1))).length && !/=/.test(h)));
       if (bad.length) inPage.push(`${n}: ${first([...new Set(bad)], 4)}`); await ctx.close();
@@ -769,7 +796,7 @@ if (want('pages')) {
   // ---- keyboard: skip link + focus order (desktop and phone)
   {
     const probs = [];
-    for (const n of PAGES) for (const [width, lang] of [[1440, 'en'], [390, 'ar']]) {
+    for (const n of PAGES_OK) for (const [width, lang] of [[1440, 'en'], [390, 'ar']]) {
       const { ctx, page } = await openPage(browser, n + '.html', { width, height: width > 600 ? 900 : 844, lang }); await page.waitForTimeout(400);
       const stops = [];
       for (let i = 0; i < 28; i++) {
@@ -807,11 +834,11 @@ if (want('pages')) {
   // ---- mobile menu, language toggle, theme toggle, ?lang=en
   {
     const probs = [];
-    for (const n of PAGES) {
+    for (const n of PAGES_OK) {
       const { ctx, page, errors } = await openPage(browser, n + '.html', { width: 390, height: 844, lang: 'ar', theme: 'dark' }); await page.waitForTimeout(300);
       const mb = page.locator('.menu-btn'); await mb.click(); await page.waitForTimeout(100);
       const st1 = await page.evaluate(() => ({ exp: document.querySelector('.menu-btn').getAttribute('aria-expanded'), open: document.querySelector('.menu').classList.contains('open'), links: [...document.querySelectorAll('.menu a')].filter(a => a.getClientRects().length).length }));
-      if (st1.exp !== 'true' || !st1.open || st1.links !== 7) probs.push(`${n}: menu open state ${JSON.stringify(st1)}`);
+      if (st1.exp !== 'true' || !st1.open || st1.links !== NAV_PAGES.length) probs.push(`${n}: menu open state ${JSON.stringify(st1)}`);
       await page.keyboard.press('Escape'); await page.waitForTimeout(100);
       const st2 = await page.evaluate(() => ({ open: document.querySelector('.menu').classList.contains('open'), focus: document.activeElement.className }));
       if (st2.open || !/menu-btn/.test(st2.focus)) probs.push(`${n}: Escape should close the menu and return focus to the button (${JSON.stringify(st2)})`);
@@ -840,7 +867,7 @@ if (want('pages')) {
   // ---- prefers-reduced-motion
   {
     const probs = []; let infiniteWhenMotionOK = 0;
-    for (const n of PAGES) {
+    for (const n of PAGES_OK) {
       for (const rm of ['reduce', 'no-preference']) {
         const { ctx, page } = await openPage(browser, n + '.html', { width: 1440, height: 900, lang: 'en', reducedMotion: rm }); await page.waitForTimeout(900);
         const r = await page.evaluate(() => {

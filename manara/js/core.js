@@ -67,7 +67,8 @@
     access: '<circle cx="12" cy="4" r="2"/><path d="M4 8l8 1 8-1M12 9v5l-3 7M12 14l3 7"/>',
     signal: '<path d="M5 12a7 7 0 0 1 14 0M8.5 12a3.5 3.5 0 0 1 7 0"/><circle cx="12" cy="12" r="1"/><path d="M12 13v8"/>',
     external: '<path d="M14 4h6v6M20 4l-9 9M18 14v6H4V6h6"/>',
-    full: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>'
+    full: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
+    robot: '<rect x="4" y="8" width="16" height="9" rx="2.5"/><path d="M12 8V4.5M9.5 4.5h5"/><circle cx="9" cy="12.5" r="1.4"/><circle cx="15" cy="12.5" r="1.4"/><path d="M3 20h18"/>'
   };
   function icon(name, cls) {
     return '<svg class="i' + (cls ? ' ' + cls : '') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
@@ -91,9 +92,11 @@
   /* ---------------- strings (i18n) ---------------- */
   var STR = {
     'nav.home': { ar: 'الرئيسية', en: 'Home' },
+    'nav.control': { ar: 'غرفة التحكم', en: 'Control Room' },
     'nav.mission': { ar: 'غرفة العمليات', en: 'Mission Control' },
     'nav.detect': { ar: 'مختبر الأدلة', en: 'Evidence Lab' },
     'nav.alert': { ar: 'هواتف السكان', en: 'Resident Phones' },
+    'nav.robot': { ar: 'مختبر الروبوت', en: 'Robot Lab' },
     'nav.build': { ar: 'بناء النموذج', en: 'Build It' },
     'nav.pitch': { ar: 'العرض التقديمي', en: 'Pitch' },
     'nav.report': { ar: 'التقرير العلمي', en: 'Report' },
@@ -177,9 +180,11 @@
   /* ---------------- nav + footer ---------------- */
   var PAGES = [
     ['index.html', 'nav.home', 'home'],
+    ['control.html', 'nav.control', 'radar'],
     ['mission.html', 'nav.mission', 'radar'],
     ['detect.html', 'nav.detect', 'eye'],
     ['alert.html', 'nav.alert', 'phone'],
+    ['robot.html', 'nav.robot', 'robot'],
     ['build.html', 'nav.build', 'wrench'],
     ['pitch.html', 'nav.pitch', 'slides'],
     ['report.html', 'nav.report', 'chart']
@@ -190,6 +195,10 @@
     return PAGES.map(function (p) {
       return '<a href="' + p[0] + '"' + (p[0] === current() ? ' aria-current="page"' : '') + (cls ? ' class="' + cls + '"' : '') + '>' + icon(p[2]) + '<span>' + s(p[1]) + '</span></a>';
     }).join('');
+  }
+  function footLinks(files) {                                         // footer columns are picked by file name, so adding a page never shifts them
+    var all = PAGES.concat(EXTRA);
+    return files.map(function (f) { var p = all.filter(function (q) { return q[0] === f; })[0]; return p ? '<a href="' + p[0] + '">' + s(p[1]) + '</a>' : ''; }).join('');
   }
   function brand() {
     return '<a class="brand" href="index.html" aria-label="' + L(NAME) + ' — ' + s('nav.home') + '">' + logo(38) +
@@ -225,8 +234,8 @@
       foot.innerHTML =
         '<div class="wrap"><div class="foot-grid">' +
         '<div>' + brand() + '<p>' + s('foot.about') + '</p></div>' +
-        '<div><h4>' + s('foot.demo') + '</h4>' + PAGES.slice(1, 4).map(function (p) { return '<a href="' + p[0] + '">' + s(p[1]) + '</a>'; }).join('') + '</div>' +
-        '<div><h4>' + s('foot.project') + '</h4>' + [PAGES[0], PAGES[4], PAGES[5], PAGES[6], EXTRA[0]].map(function (p) { return '<a href="' + p[0] + '">' + s(p[1]) + '</a>'; }).join('') + '</div>' +
+        '<div><h4>' + s('foot.demo') + '</h4>' + footLinks(['control.html', 'mission.html', 'detect.html', 'alert.html', 'robot.html']) + '</div>' +
+        '<div><h4>' + s('foot.project') + '</h4>' + footLinks(['index.html', 'build.html', 'pitch.html', 'report.html', 'poster.html']) + '</div>' +
         '</div><div class="foot-bottom"><span>' + s('foot.made') + ' — ' + L(NAME) + '</span><span>' + s('foot.offline') + '</span></div></div>';
     }
     var skip = $('.skip');
