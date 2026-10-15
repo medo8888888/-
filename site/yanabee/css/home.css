@@ -6,7 +6,7 @@
 /* ---------- hero ---------- */
 .hero-home{min-height:min(100svh,940px);display:grid;align-items:center;padding:calc(var(--nav-h) + 44px) 0 72px}
 .hero-home .hero-grid{grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr);gap:24px}
-.hero-home h1{font-size:clamp(2.9rem,7.4vw,5.6rem);line-height:1.12;margin:22px 0 14px;font-weight:700}
+.hero-home h1{font-size:clamp(2.9rem,7.4vw,5.6rem);line-height:1.12;margin:22px 0 26px;font-weight:700}
 .grad-text{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;padding-inline:.04em}
 .hero-sub{font-family:var(--font-h);font-weight:500;font-size:clamp(1.12rem,2vw,1.42rem);line-height:1.7;color:var(--ink-2);max-width:600px;margin-bottom:30px;text-wrap:balance}
 .team-dots{text-decoration:none;transition:border-color .2s,transform .2s}

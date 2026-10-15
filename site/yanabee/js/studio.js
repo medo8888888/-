@@ -206,7 +206,8 @@
       const k = b.dataset.i;
       b.setAttribute('aria-current', S.step === k ? 'step' : 'false');
       const lock = k !== 'found' && !S.team.launched;
-      b.disabled = lock;
+      b.setAttribute('aria-disabled', lock ? 'true' : 'false'); // soft lock: still pressable, the click explains what to do first
+      b.classList.toggle('is-locked', lock);
       b.title = lock ? 'أسّس الفريق أولاً' : '';
       b.classList.toggle('is-done', !!done[k]);
     });
@@ -250,7 +251,7 @@
     if (tm.launched && !S.edit) return foundSummary();
     const rail = ['التخصص', 'الأعضاء', 'الأدوار والشعار'].map((l, i) => {
       const dis = (i > 0 && !tm.id) || (tm.launched && i === 0);
-      return `<li><button type="button" class="sd-rail-b" data-act="sub" data-i="${i}" aria-current="${S.sub === i ? 'step' : 'false'}"${dis ? ' disabled' : ''}><span class="sd-rail-n">${i + 1}</span>${l}</button></li>`;
+      return `<li><button type="button" class="sd-rail-b${dis ? ' is-locked' : ''}" data-act="sub" data-i="${i}" aria-current="${S.sub === i ? 'step' : 'false'}"${dis ? ' aria-disabled="true"' : ''}><span class="sd-rail-n">${i + 1}</span>${l}</button></li>`;
     }).join('');
     const body = S.sub === 0 ? subSpec() : S.sub === 1 ? subMembers() : subRoles();
     return `<h2 class="sd-h" tabindex="-1">${ic('users')}تأسيس الفريق</h2><ol class="sd-rail">${rail}</ol>${body}`;
@@ -267,7 +268,7 @@
 <h4>${esc(t.bodLabel)} <small>(الجهة الراعية)</small></h4><ul class="sd-bodies">${t.bodies.map(b => `<li>${ic('landmark')}<span>${b}</span></li>`).join('')}</ul></section>`;
     return `<p class="sd-p">يتألف الفريق في ينابيع من أعضاء يتنافسون <b>معاً</b> لا فرادى. اختاروا أحد التخصصات السبعة: ${src('teams', 'الفرق السبع')}</p>
 <div class="sd-teams" role="group" aria-label="التخصصات السبعة">${cards}</div>${detail}
-<div class="sd-nav"><span></span><button type="button" class="btn btn-primary" data-act="sub" data-i="1"${sel ? '' : ' disabled'}>التالي: الأعضاء ${ic('arrow-left')}</button></div>`;
+<div class="sd-nav"><span></span><button type="button" class="btn btn-primary" data-act="sub" data-i="1"${sel ? '' : ' aria-disabled="true"'}>التالي: الأعضاء ${ic('arrow-left')}</button></div>`;
   }
   function subMembers() {
     const t = T(), tm = S.team;
@@ -734,8 +735,11 @@ ${newMonth ? `<div class="sd-dlg-rot"><h3>${ic('crown')}بداية شهر جدي
     const d = a.dataset, tm = S.team;
     const stop = () => { e.preventDefault(); };
     switch (d.act) {
-      case 'go': stop(); goStep(d.i); break;
-      case 'sub': stop(); if (a.disabled) break; S.sub = +d.i; save(); renderPanel(); focusStage(); break;
+      case 'go':
+        stop();
+        if (d.i !== 'found' && !tm.launched) { toast('أسّس فريقك أولاً: اختر التخصص ثم الأعضاء ثم اضغط «أطلق الفريق»', 3200); if (S.step !== 'found') goStep('found'); break; }
+        goStep(d.i); break;
+      case 'sub': stop(); if (a.disabled) break; if (a.getAttribute('aria-disabled') === 'true') { toast('اختر تخصص الفريق أولاً', 2400); break; } S.sub = +d.i; save(); renderPanel(); focusStage(); break;
       case 'pick': {
         const first = tm.id !== d.i; tm.id = d.i; tm.name = first && !tm.name ? '' : tm.name;
         if (tm.size === 7 || tm.size === 5) { /* keep */ } else if (d.i !== 't1') tm.size = 5;

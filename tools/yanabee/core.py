@@ -161,6 +161,9 @@ def logo(size=40, uid='a', cls='logo'):
 </svg>'''
 
 
+# the stock "sparkles" glyph reads as generic AI decoration: every use shows the brand droplet instead
+ICONS['sparkles'] = ICONS['droplet']
+
 # ------------------------------------------------------------- structure ---
 # file, nav label (UI chrome), icon
 PAGES = [
@@ -308,7 +311,7 @@ FONTS = ('https://fonts.googleapis.com/css2?family=Readex+Pro:wght@400;500;600;7
 SITE_NAME = 'مشروع «ينابيع»'
 
 
-def page(fn, title, body, desc, css=(), js=(), base=None):
+def page(fn, title, body, desc, css=(), js=(), base=None, head=''):
     """Write site/yanabee/<fn>. `title` is plain text; `body` is HTML for <main>."""
     P = PLATFORM
     links = ''.join(
@@ -350,7 +353,8 @@ def page(fn, title, body, desc, css=(), js=(), base=None):
 <meta property="og:image" content="assets/og.png">
 <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/icon-180.png">
-<script>(function(){{var t;try{{t=localStorage.getItem('yanabee-theme')}}catch(e){{}}if(t!=='light'&&t!=='dark'){{t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}}var d=document.documentElement;d.dataset.theme=t;d.classList.add('js');setTimeout(function(){{if(!window.__yanabeeReady)d.classList.remove('js')}},2500)}})();</script>
+<script>(function(){{var t;try{{t=localStorage.getItem('yanabee-theme')}}catch(e){{}}if(t!=='light'&&t!=='dark'){{t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}}var d=document.documentElement;d.dataset.theme=t;d.classList.add('js');var k='forward',v=function(e,x){{try{{e.viewTransition.types.add(x)}}catch(z){{}}}},c=function(a){{var n=a&&a.navigationType;return n=='reload'?'reload':n=='traverse'&&a.from&&a.entry&&a.entry.index<a.from.index?'back':'forward'}};addEventListener('pageswap',function(e){{v(e,c(e.activation))}});addEventListener('pagereveal',function(e){{v(e,k=='reload'?'forward':k)}});try{{var A=window.navigation&&navigation.activation;if(A)k=c(A);else{{var S=sessionStorage,i=history.state&&history.state.yi,o=+S.getItem('yb-idx')||0;if(i==null){{i=o+1;history.replaceState({{yi:i}},'')}}k=i<o?'back':i>o?'forward':'reload';S.setItem('yb-idx',i)}}}}catch(e){{}}d.dataset.nav=k;setTimeout(function(){{if(!window.__yanabeeReady)d.classList.remove('js')}},2500)}})();</script>
+{head}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="{FONTS}" rel="stylesheet">
@@ -359,12 +363,14 @@ def page(fn, title, body, desc, css=(), js=(), base=None):
 <link rel="stylesheet" href="css/art.css">
 {extra_css}<link rel="stylesheet" href="css/fx.css">
 <link rel="stylesheet" href="css/play.css">
+<link rel="stylesheet" href="css/wow.css">
 <script src="data/kb.js" defer></script>
 <script src="js/main.js" defer></script>
 <script src="js/search.js" defer></script>
 <script src="js/chat.js" defer></script>
 <script src="js/fx.js" defer></script>
 <script src="js/play.js" defer></script>
+<script src="js/wow.js" defer></script>
 {extra_js}</head>
 <body data-page="{fn}">
 <div class="progress" aria-hidden="true"></div>

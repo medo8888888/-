@@ -1,0 +1,228 @@
+/* ==========================================================================
+   Landing page sections (index.html): how it works, what is behind it, roadmap,
+   Quran initiative, try-it tiles and the folded document text.
+   Plain blocks, real UI (cards, lists), one accent each. Tokens only.
+   ========================================================================== */
+
+.brand-word{color:var(--brand)}
+[data-theme=dark] .brand-word{color:var(--accent)}
+
+.more-link{margin-top:22px}
+.more-link a{display:inline-flex;align-items:center;gap:8px;font-weight:600;color:var(--brand);text-decoration:none;font-family:var(--font-h)}
+.more-link a:hover{text-decoration:underline}
+.more-link .i{width:18px;height:18px}
+
+/* ---------- how it works ---------- */
+.how-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;list-style:none;margin:0;padding:0}
+.how-step{position:relative;padding:22px 20px 22px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow-sm)}
+.how-n{position:absolute;inset-block-start:14px;inset-inline-end:16px;font:700 1.9rem/1 var(--font-h);color:color-mix(in oklab,var(--brand) 26%,transparent)}
+.how-ic{display:grid;place-items:center;width:46px;height:46px;border-radius:14px;background:color-mix(in oklab,var(--brand) 14%,var(--surface));color:var(--brand);margin-bottom:14px}
+.how-ic .i{width:24px;height:24px}
+.how-step h3{font-size:1.1rem;margin:0 0 8px;color:var(--head)}
+.how-step p{margin:0;color:var(--ink-2);line-height:1.8;font-size:.97rem}
+
+/* ---------- what is behind it ---------- */
+.pl-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;list-style:none;margin:0;padding:0}
+.pl-card{--sc:var(--brand);padding:22px 22px 24px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line);
+  border-block-start:3px solid var(--sc)}
+.pl-ic{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:color-mix(in oklab,var(--sc) 15%,var(--surface));color:var(--sc);margin-bottom:12px}
+.pl-ic .i{width:22px;height:22px}
+.pl-card h3{font-size:1.08rem;margin:0 0 8px;color:var(--head)}
+.pl-card p{margin:0;color:var(--ink-2);line-height:1.85;font-size:.96rem}
+
+/* ---------- roadmap ---------- */
+.road-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;list-style:none;margin:0 0 26px;padding:0;position:relative}
+.road-step{position:relative;padding:22px 22px 24px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line)}
+.road-dot{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:color-mix(in oklab,var(--brand) 20%,var(--surface));margin-bottom:12px}
+.road-dot i{width:9px;height:9px;border-radius:50%;background:var(--brand)}
+.road-step small{display:block;font:600 .82rem/1.4 var(--font-h);color:var(--muted);margin-bottom:2px}
+.road-step h3{font-size:1.15rem;margin:0 0 8px;color:var(--head)}
+.road-step p{margin:0;color:var(--ink-2);line-height:1.85;font-size:.97rem}
+.road-nums{display:flex;flex-wrap:wrap;gap:10px 22px;margin-top:14px}
+.road-nums span{font-size:.92rem;color:var(--muted)}
+.road-nums b{font:700 1.7rem/1.1 var(--font-h);color:var(--head);margin-inline-end:4px}
+.measure{display:flex;gap:14px;align-items:flex-start;padding:18px 20px;border-radius:var(--r);background:color-mix(in oklab,var(--sky) 10%,var(--surface));border:1px solid var(--line)}
+.measure-ic{flex:none;display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:color-mix(in oklab,var(--sky) 20%,var(--surface));color:var(--head)}
+.measure p{margin:0;color:var(--ink-2);line-height:1.85}
+.measure b{color:var(--head)}
+
+/* ---------- Quran initiative ---------- */
+.q-card{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,.7fr);gap:24px;align-items:center;padding:30px;border-radius:var(--r-lg);
+  background:color-mix(in oklab,var(--t1) 12%,var(--surface));border:1px solid color-mix(in oklab,var(--t1) 30%,var(--line))}
+.q-copy h2{font-family:var(--font-q);font-size:clamp(1.8rem,4vw,2.6rem);margin:8px 0 10px;color:var(--head)}
+.q-copy p{margin:0 0 18px;color:var(--ink-2);line-height:1.9;max-width:34rem}
+.q-words{display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+.q-words b{font-family:var(--font-q);font-size:clamp(1.6rem,3.6vw,2.4rem);font-weight:700;color:var(--t1);line-height:1.3}
+.q-words b:nth-child(2){opacity:.75}.q-words b:nth-child(3){opacity:.5}
+
+/* ---------- try it ---------- */
+.try-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.try-card{--sc:var(--brand);display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:start;padding:22px;border-radius:var(--r);
+  background:var(--surface);border:1px solid var(--line);color:inherit;text-decoration:none;font:inherit;cursor:pointer;
+  transition:border-color .18s,box-shadow .18s}
+.try-card:hover{border-color:var(--sc);box-shadow:var(--shadow-sm)}
+.try-ic{display:grid;place-items:center;width:46px;height:46px;border-radius:14px;background:color-mix(in oklab,var(--sc) 18%,var(--surface));color:var(--head);margin-bottom:6px}
+.try-ic .i{width:24px;height:24px}
+.try-card h3{margin:0;font-size:1.15rem;color:var(--head)}
+.try-card p{margin:0;color:var(--ink-2);line-height:1.8;font-size:.96rem}
+.try-go{margin-top:auto;padding-top:10px;display:inline-flex;align-items:center;gap:6px;font:600 .95rem/1 var(--font-h);color:var(--brand)}
+.try-go .i{width:16px;height:16px}
+
+/* ---------- the document, folded ---------- */
+.doc-sec{padding-block:8px 36px}
+.doc{border-radius:var(--r);background:var(--surface);border:1px solid var(--line)}
+.doc summary{display:flex;align-items:center;gap:14px;padding:16px 20px;cursor:pointer;list-style:none}
+.doc summary::-webkit-details-marker{display:none}
+.doc-ic{display:grid;place-items:center;width:42px;height:42px;border-radius:12px;background:color-mix(in oklab,var(--brand) 12%,var(--surface));color:var(--brand);flex:none}
+.doc summary b{display:block;color:var(--head);font-family:var(--font-h)}
+.doc summary small{display:block;color:var(--muted);font-size:.85rem;margin-top:2px}
+.doc-chev{margin-inline-start:auto;color:var(--muted);transition:transform .2s}
+.doc[open] .doc-chev{transform:rotate(180deg)}
+.doc-body{padding:4px 22px 22px;color:var(--ink-2);line-height:1.95;border-top:1px solid var(--line)}
+.doc-body h3{font-size:1.15rem;color:var(--head);margin:20px 0 4px}
+.doc-body h4{font-size:1rem;color:var(--brand);margin:14px 0 4px}
+.doc-body p,.doc-body ul{margin:0}
+.doc-body ul{padding-inline-start:1.3em}
+
+@media(max-width:1000px){
+  .how-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .pl-grid,.try-grid,.road-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .road-grid .road-step:last-child{grid-column:1/-1}
+}
+@media(max-width:640px){
+  .how-grid,.pl-grid,.try-grid,.road-grid{grid-template-columns:1fr}
+  .q-card{grid-template-columns:1fr;padding:22px}
+  .q-words{flex-direction:row;gap:14px;align-items:baseline}
+}
+
+/* ---------- hero entrance: a quick stagger (4 items, 55 ms apart, 220 ms each, opacity + 8 px) once the splash is gone ---------- */
+.js .hero-home .hero-copy>.rv{transform:translateY(8px);transition:opacity 220ms ease-out,transform 220ms cubic-bezier(.22,.8,.24,1),
+  translate 150ms ease-out,border-color 150ms;transition-delay:calc(var(--hi,0) * 55ms)}
+.js .hero-home .hero-copy>.rv.in{transform:none}
+@media(prefers-reduced-motion:reduce){.js .hero-home .hero-copy>.rv{transform:none}}
+.hero-home .hero-copy>:nth-child(2){--hi:1}.hero-home .hero-copy>:nth-child(3){--hi:2}.hero-home .hero-copy>:nth-child(4){--hi:3}
+html.intro-on .hero-home .hero-copy>.rv,html.intro-on .hero-home .hero-copy>.rv.in{opacity:0;transform:translateY(8px);transition:none}
+html.intro-on .hero-home .hero-visual{opacity:0;transition:none}
+.hero-home .hero-visual{transition:opacity 280ms ease-out}
+
+/* ==========================================================================
+   Photo-led first screen: a real photo that slowly changes teams, a short promise,
+   three plain points and the numbers, so the project is understood without scrolling.
+   ========================================================================== */
+.hero.hero-photo{min-height:min(100svh,880px);display:flex;flex-direction:column;justify-content:flex-end;padding:calc(var(--nav-h) + 36px) 0 0;
+  position:relative;isolation:isolate;overflow:hidden;color:#fff}
+.hp-slides{position:absolute;inset:0;z-index:-4;background:#0b2a30}
+.hp-slide{position:absolute;inset:0;opacity:0}
+.hp-slide:first-child{opacity:1}
+.hp-slide .ph{width:100%;height:100%;object-fit:cover;display:block}
+@media(prefers-reduced-motion:no-preference){
+  .hp-slide{animation:hp-fade 45s linear infinite both;animation-delay:calc(var(--k) * 9s - .9s)}
+  .hp-slide .ph{animation:hp-drift 45s linear infinite both;animation-delay:calc(var(--k) * 9s - .9s)}
+}
+@keyframes hp-fade{0%{opacity:0}4%{opacity:1}20%{opacity:1}24%{opacity:0}100%{opacity:0}}
+@keyframes hp-drift{0%{transform:scale(1.0)}24%{transform:scale(1.07)}100%{transform:scale(1.07)}}
+.hero-photo .hero-bg,.hero-photo .hero-art{display:none}
+.hp-scrim{position:absolute;inset:0;z-index:-2;pointer-events:none;
+  background:linear-gradient(to left,rgba(3,22,28,.86) 0%,rgba(3,22,28,.66) 42%,rgba(3,22,28,.22) 100%),
+             linear-gradient(to top,rgba(3,22,28,.72) 0%,rgba(3,22,28,0) 38%)}
+.hp-inner{display:grid;gap:26px;padding-bottom:26px}
+.hp-copy{max-width:640px}
+.hero-photo .eyebrow{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.28);color:#fff;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.hero-photo h1{color:#fff;margin:16px 0 14px;text-shadow:0 2px 24px rgba(0,0,0,.35)}
+.hero-photo .brand-word{color:#7fe9dc}
+.hero-photo .hero-sub{color:rgba(255,255,255,.94);margin-bottom:24px;max-width:34rem;text-shadow:0 1px 16px rgba(0,0,0,.4)}
+.hero-photo .btn-ghost{color:#fff;border-color:rgba(255,255,255,.6);background:rgba(255,255,255,.08)}
+.hero-photo .btn-ghost:hover{background:rgba(255,255,255,.18)}
+.hp-what{display:flex;flex-wrap:wrap;gap:12px;list-style:none;margin:0;padding:0}
+.hp-what li{display:flex;align-items:center;gap:12px;padding:12px 18px 12px 20px;border-radius:16px;background:rgba(255,255,255,.12);
+  border:1px solid rgba(255,255,255,.22);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);min-width:15rem}
+.hp-ic{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:rgba(127,233,220,.2);color:#9ff3e8;flex:none}
+.hp-ic .i{width:22px;height:22px}
+.hp-what b{display:block;font:700 1rem/1.4 var(--font-h);color:#fff}
+.hp-what small{display:block;font-size:.86rem;line-height:1.5;color:rgba(255,255,255,.82)}
+@media(max-width:900px){
+  .hero.hero-photo{min-height:0;padding-top:calc(var(--nav-h) + 28px)}
+  .hp-what li{min-width:0;flex:1 1 100%}
+}
+
+/* ---------- photos on the four steps ---------- */
+.how-step{padding:0;overflow:hidden}
+.how-photo{position:relative;aspect-ratio:16/10;overflow:hidden;background:var(--surface-2)}
+.how-photo .ph{width:100%;height:100%;object-fit:cover;display:block}
+.how-photo .how-n{inset-block-start:12px;inset-inline-start:12px;inset-inline-end:auto;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;
+  background:var(--brand);color:var(--on-brand,#fff);font:700 1rem/1 var(--font-h)}
+.how-body{padding:16px 20px 22px}
+.how-body .how-ic{width:40px;height:40px;margin-bottom:10px}
+.how-body .how-ic .i{width:21px;height:21px}
+
+/* ---------- Quran card on a photo ---------- */
+.q-card{position:relative;overflow:hidden;isolation:isolate;border:0;background:#0b2a30;color:#fff}
+.q-bg{position:absolute;inset:0;z-index:-2}
+.q-bg .ph{width:100%;height:100%;object-fit:cover;display:block}
+.q-card::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(to left,rgba(3,28,22,.88),rgba(3,28,22,.55))}
+.q-card .kicker{background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.3)}
+.q-copy h2,.q-copy p{color:#fff}
+.q-words b{color:#fff}
+
+/* «ادخل من بابك»: four entry doors float above the passport chip as a rounded glass card; calmer, tighter phone layout */
+.hp-join{margin:0 auto 64px;width:min(calc(100% - 2 * var(--gut,24px)),1100px);padding:14px 14px 14px;border-radius:20px;border:1px solid rgba(255,255,255,.18);
+  background:rgba(3,22,28,.58);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.hp-join-h{margin:0 6px 10px;font:700 .92rem/1.4 var(--font-h);color:rgba(255,255,255,.86)}
+.hp-doors{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.hp-door{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;color:#fff;text-decoration:none;background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.14);transition:background-color .25s,transform .25s var(--ease),border-color .25s}
+.hp-door:hover{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.34);transform:translateY(-2px)}
+.hp-door:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.hp-door .hp-ic{flex:none}
+.hp-door-t{flex:1;min-width:0}
+.hp-door b{display:block;font:700 .98rem/1.4 var(--font-h)}
+.hp-door small{display:block;font-size:.8rem;line-height:1.45;color:rgba(255,255,255,.78)}
+.hp-door>.i{flex:none;width:18px;height:18px;opacity:.8;transition:transform .25s var(--ease)}
+.hp-door:hover>.i{transform:translateX(-4px)}
+@media(max-width:1000px){.hp-doors{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){
+  .hp-join{padding:10px}
+  .hp-join-h{margin-bottom:8px;font-size:.86rem}
+  .hp-doors{gap:8px}
+  .hp-door{flex-direction:column;align-items:flex-start;gap:6px;padding:10px 12px}
+  .hp-door>.i{display:none}
+  .hp-door small{display:none}
+}
+@media(max-width:900px){
+  .hp-join{margin-bottom:84px}
+  .hp-inner{gap:16px}
+  .hero-photo .eyebrow{display:none}
+  .hero-photo h1{font-size:clamp(2.4rem,11vw,3.4rem);margin:6px 0 10px}
+  .hero-photo .hero-sub{font-size:1.05rem;margin-bottom:16px}
+  .hero-photo .btns{flex-wrap:nowrap;gap:10px}
+  .hero-photo .btns .btn{flex:1 1 0;justify-content:center;padding:12px 12px;font-size:.95rem;min-height:46px}
+  .hp-what{gap:8px}
+  .hp-what li{padding:9px 14px;gap:10px}
+  .hp-ic{width:34px;height:34px;border-radius:10px}
+  .hp-ic .i{width:19px;height:19px}
+  .hp-what small{font-size:.8rem}
+}
+
+/* ---------- Quran initiative on the home page: banner, three pillars, features, numbers ---------- */
+.qp-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;list-style:none;margin:18px 0 0;padding:0}
+.qp-card{--sc:var(--brand);padding:22px 22px 24px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line);border-block-start:4px solid var(--sc);box-shadow:var(--shadow-sm)}
+.qp-ic{display:grid;place-items:center;width:46px;height:46px;border-radius:50%;background:color-mix(in oklab,var(--sc) 15%,var(--surface));color:var(--sc);margin-bottom:10px}
+.qp-ic .i{width:22px;height:22px}
+.qp-card h3{font-family:var(--font-q);font-size:1.7rem;margin:0 0 6px;color:var(--head);line-height:1.3}
+.qp-card p{margin:0;color:var(--ink-2);line-height:1.9;font-size:.98rem}
+.q-sub{margin:34px 0 14px;font-size:1.25rem;color:var(--head)}
+.q-nums{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;list-style:none;margin:22px 0 0;padding:18px 10px;border-radius:var(--r);background:var(--surface-2);border:1px solid var(--line)}
+.q-nums li{display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center}
+.q-nums b{font-size:clamp(1.5rem,3.4vw,2.2rem);color:var(--brand);line-height:1.2;font-variant-numeric:tabular-nums}
+.q-nums span{color:var(--ink-2);font-size:.92rem}
+@media(max-width:900px){.qp-grid{grid-template-columns:1fr}.q-nums{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:18px}}
+@media(min-width:1100px){.quran-home .pl-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+
+/* the explorer-passport chip is not shown on the home page (it still collects on the teams page and lives on learn.html) */
+.yb-pass{display:none!important}
+.hp-join{margin-bottom:40px}
+@media(max-width:900px){
+  .hp-join{margin-bottom:40px}
+  .hp-what li:nth-child(n+4){display:none}  /* phone: the first three points; the rest are on the page below */
+}
+@media(min-width:901px){.hp-what{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}.hp-what li{min-width:0}}

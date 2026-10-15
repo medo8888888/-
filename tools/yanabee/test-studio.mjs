@@ -29,7 +29,7 @@ console.log('studio: founding');
 {
   const { ctx, p, errs } = await open();
   check('studio panel is the first tab and visible', await p.isVisible('#panel-studio #studio'));
-  check('later steps are locked before the team exists', await p.$$eval('.sd-step-b', bs => bs.filter(b => b.dataset.i !== 'found').every(b => b.disabled)));
+  check('later steps are locked before the team exists', await p.$$eval('.sd-step-b', bs => bs.filter(b => b.dataset.i !== 'found').every(b => b.getAttribute('aria-disabled') === 'true')));
   check('steps are real buttons with aria-current', await p.$$eval('.sd-step-b', bs => bs.every(b => b.tagName === 'BUTTON') && bs.filter(b => b.getAttribute('aria-current') === 'step').length === 1));
   check('no role=tab leaked into the lab tablist logic', await p.$$eval('#studio [role=tab]', e => e.length === 0));
   check('seven specialisation cards with photos', (await p.$$('.sd-team')).length === 7);
@@ -63,7 +63,7 @@ console.log('studio: founding');
   await click(p, '[data-act=launch]');
   s = await st(p);
   check('team launched', s.team.launched && s.team.size === 7);
-  check('later steps unlocked', await p.$$eval('.sd-step-b', bs => bs.every(b => !b.disabled)));
+  check('later steps unlocked', await p.$$eval('.sd-step-b', bs => bs.every(b => b.getAttribute('aria-disabled') !== 'true')));
   check('focus moved to the step heading', await p.evaluate(() => document.activeElement.classList.contains('sd-h')));
   check('no console errors', errs.length === 0, errs.join(' | '));
 

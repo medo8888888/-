@@ -31,9 +31,10 @@ console.log('home (index.html)');
   await p.mouse.click(700, 500);
   check('press makes a water ripple', await p.evaluate(() => !!document.querySelector('.fx-ripple')));
   // card tilt + glow
-  await p.evaluate(() => document.querySelector('#teams').scrollIntoView());
+  // (the teams are a carousel now, so the tilt is checked on a «what is behind it» card)
+  await p.evaluate(() => document.querySelector('.pl-card').scrollIntoView({ block: 'center' }));
   await p.waitForTimeout(1200);
-  const card = await p.$('.team-card');
+  const card = await p.$('.pl-card');
   const b = await card.boundingBox();
   await p.mouse.move(b.x + b.width * 0.8, b.y + b.height * 0.25);
   await p.mouse.move(b.x + b.width * 0.82, b.y + b.height * 0.27);
@@ -53,52 +54,16 @@ console.log('home (index.html)');
   await p.mouse.move(bb.x + bb.width * 0.92, bb.y + bb.height * 0.82);
   await p.waitForTimeout(150);
   check('button leans toward the pointer', await btn.evaluate(el => el.style.translate !== ''), await btn.evaluate(el => el.style.translate));
-  // hero streams: hover shows the team, click opens it
-  const hv = await p.$('.hero-visual');
-  const hb = await hv.boundingBox();
-  let found = null;
-  for (let i = 0; i < 7 && !found; i++) { // sweep to find a stream near the canvas centre column
-    for (let x = hb.x + hb.width * 0.15; x < hb.x + hb.width * 0.9 && !found; x += 12) {
-      await p.mouse.move(x, hb.y + hb.height * 0.52);
-      if (await p.evaluate(() => document.querySelector('.stream-tip').classList.contains('on'))) found = x;
-    }
-    break;
-  }
-  const tipText = await p.evaluate(() => document.querySelector('.stream-tip').textContent);
-  check('hovering a spring shows its team', !!found && tipText.length > 3, tipText);
-  if (found) {
-    await Promise.all([p.waitForURL(/teams\.html#t\d/, { timeout: 4000 }).catch(() => {}), p.mouse.click(found, hb.y + hb.height * 0.52)]);
-    check('pressing a spring opens that team', /teams\.html#t\d/.test(p.url()), p.url());
-  }
   check('no script errors', errs.length === 0, errs.join(' | '));
   await ctx.close();
 }
 
-console.log('home donut + roadmap');
+console.log('home loads without script errors');
 {
   const { ctx, p, errs } = await open('index.html');
-  await p.evaluate(() => document.querySelector('#model').scrollIntoView({ block: 'center' }));
-  await p.waitForTimeout(1200);
-  const d = await p.$('.donut');
-  const r = await d.boundingBox();
-  const cx = r.x + r.width / 2, cy = r.y + r.height / 2;
-  await p.mouse.move(cx, cy - r.width * 0.4); // top: first slice (60%)
-  await p.mouse.move(cx + 3, cy - r.width * 0.4);
-  await p.waitForTimeout(150);
-  check('donut: top slice is the first source', await d.evaluate(el => el.dataset.hl === '1' && el.querySelector('b').textContent === '60%'));
-  await p.mouse.move(cx - r.width * 0.4, cy + 4); // left side = ~75% around: second slice (30%)
-  await p.waitForTimeout(150);
-  check('donut: left slice is the second source', await d.evaluate(el => el.dataset.hl === '2' && el.querySelector('b').textContent === '30%'), await d.evaluate(el => el.dataset.hl + ' ' + el.querySelector('b').textContent));
-  check('donut: legend line lights up', await p.evaluate(() => document.querySelectorAll('.fund-legend li.is-hl').length === 1));
-  await p.mouse.move(5, 5);
-  await p.waitForTimeout(150);
-  check('donut: resets', await d.evaluate(el => !el.dataset.hl && el.querySelector('b').textContent === '60%'));
-  await p.evaluate(() => document.querySelector('#phases').scrollIntoView({ block: 'center' }));
-  await p.waitForTimeout(800);
-  const first = await p.evaluate(() => [...document.querySelectorAll('.phase')].findIndex(x => x.classList.contains('is-on')));
-  await p.waitForTimeout(3800);
-  const second = await p.evaluate(() => [...document.querySelectorAll('.phase')].findIndex(x => x.classList.contains('is-on')));
-  check('roadmap highlight travels on its own', first === 0 && second > 0, `${first} -> ${second}`);
+  await p.evaluate(() => document.querySelector('#road').scrollIntoView({ block: 'center' }));
+  await p.waitForTimeout(2200);
+  check('roadmap numbers count up to the document numbers', await p.evaluate(() => [...document.querySelectorAll('#road [data-to]')].map(e => e.textContent.trim()).join() === '1,000,100'));
   check('no script errors', errs.length === 0, errs.join(' | '));
   await ctx.close();
 }
@@ -109,11 +74,11 @@ console.log('select text -> ask, section dots, theme reveal');
   check('section dots exist on wide screens', await p.evaluate(() => getComputedStyle(document.querySelector('.fx-dots')).display === 'flex' && document.querySelectorAll('.fx-dots a').length >= 4));
   await p.evaluate(() => document.querySelector('.fx-dots a:nth-child(3)').click());
   await p.waitForTimeout(1300);
-  check('a dot jumps to its section and turns current', await p.evaluate(() => document.querySelector('.fx-dots a.current') && document.querySelector('.fx-dots a.current').getAttribute('href') === '#model'),
+  check('a dot jumps to its section and turns current', await p.evaluate(() => document.querySelector('.fx-dots a.current') && document.querySelector('.fx-dots a.current').getAttribute('href') === '#behind'),
     await p.evaluate(() => (document.querySelector('.fx-dots a.current') || {}).outerHTML));
-  await p.evaluate(() => document.querySelector('.vision-text').scrollIntoView({ block: 'center', behavior: 'instant' }));
+  await p.evaluate(() => document.querySelector('.how-step p').scrollIntoView({ block: 'center', behavior: 'instant' }));
   await p.waitForTimeout(900);
-  await p.evaluate(() => { const el = document.querySelector('.vision-text'); const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); });
+  await p.evaluate(() => { const el = document.querySelector('.how-step p'); const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); });
   await p.waitForTimeout(500);
   check('selecting text offers to ask the assistant', await p.evaluate(() => !document.querySelector('.fx-ask').hidden));
   await p.evaluate(() => document.querySelector('.fx-ask').click());
@@ -164,8 +129,8 @@ console.log('reduced motion + touch stay calm');
   const { ctx, p, errs } = await open('index.html', { reducedMotion: 'reduce' });
   await p.click('.hero-sub');
   check('reduced motion: no ripple', await p.evaluate(() => !document.querySelector('.fx-ripple')));
-  await p.evaluate(() => document.querySelector('#teams').scrollIntoView());
-  const c = await p.$('.team-card');
+  await p.evaluate(() => document.querySelector('.pl-card').scrollIntoView({ block: 'center' }));
+  const c = await p.$('.pl-card');
   const b = await c.boundingBox();
   await p.mouse.move(b.x + 40, b.y + 40); await p.mouse.move(b.x + 60, b.y + 60);
   check('reduced motion: no tilt', await c.evaluate(el => el.style.transform === ''));

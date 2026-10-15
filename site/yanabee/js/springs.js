@@ -71,7 +71,7 @@
   };
 
   function frame(now) {
-    const t = (now - t0) / 1000;
+    const t = Math.max(0, (now - t0) / 1000); // a frame timestamp can predate the clock reads taken in scripts/handlers: never negative
     pointer.k += (pointer.tk - pointer.k) * 0.06;
     ctx.clearRect(0, 0, W, H);
     const sx = W * 0.5, sy = H * 0.86;
@@ -88,7 +88,7 @@
       ctx.beginPath(); ctx.ellipse(sx, sy, 20 + p * W * 0.32, (20 + p * W * 0.32) * 0.17, 0, 0, Math.PI * 2); ctx.stroke();
     });
     for (let i = ripples.length - 1; i >= 0; i--) { // click ripples
-      const r = ripples[i], p = (now - r.t) / 1400;
+      const r = ripples[i], p = Math.max(0, (now - r.t) / 1400);
       if (p >= 1) { ripples.splice(i, 1); continue; }
       ctx.strokeStyle = alpha(accent, (1 - p) * 0.6);
       ctx.beginPath(); ctx.ellipse(r.x, r.y, 8 + p * 90, (8 + p * 90) * 0.45, 0, 0, Math.PI * 2); ctx.stroke();
@@ -150,13 +150,21 @@
     } else tip.classList.remove('on');
     if (!running) frame(performance.now());
   };
+  // open a team through the shell's page transition when it is there (YanabeeApp, then the older YanabeeWow), else a plain navigation
+  const go = (href, x, y) => {
+    const app = window.YanabeeApp;
+    if (app && typeof app.go === 'function') return app.go(href, x, y);
+    const wow = window.YanabeeWow;
+    if (wow && typeof wow.go === 'function') return wow.go(href, x, y);
+    location.href = href;
+  };
   if (teams.length) {
     const local = e => { const r = canvas.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
     canvas.addEventListener('pointermove', e => { const [x, y] = local(e); setHover(hit(x, y, e.pointerType === 'touch' ? 34 : 26)); });
     canvas.addEventListener('pointerleave', () => setHover(-1));
     canvas.addEventListener('click', e => {
       const [x, y] = local(e), i = hit(x, y, e.pointerType === 'touch' ? 38 : 28);
-      if (i >= 0 && teams[i]) location.href = teams[i].href;
+      if (i >= 0 && teams[i]) go(teams[i].href, e.clientX, e.clientY);
     });
   }
 
