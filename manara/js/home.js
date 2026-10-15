@@ -440,9 +440,9 @@
       suspect: T('اشتباه: مفتاح واحد لا يكفي لإنذار عام، فيبقى «اشتباهًا».', 'SUSPECT: one key is not enough for a public alert, so it stays a suspicion.'),
       confirmed: T('مؤكَّد: مفتاحان مستقلان، رؤية حاسوبية وحرارة.', 'CONFIRMED: two independent keys, computer vision and thermal.'),
       sent: T('وصل إنذار المسيّرة إلى غرفة التحكم وينتظر موافقة إنسان. صافرة الموقع المحلية لا تنتظر.', 'The drone alert reached the control room and waits for a human Approve. The local siren never waits.'),
-      reach: T('بعد «موافق» تُرسم مسارات الوحدات الأسرع وصولًا بحسب المرور وتنطلق (محاكاة تخطيطية؛ 999 يبقى المرسِل).', 'After Approve, the routes of the fastest-arriving units are drawn given traffic and the units roll (a schematic simulation; 999 stays the dispatcher).'),
+      reach: T('بعد «موافق» تُرسم مسارات الأسرع وصولًا بحسب المرور (محاكاة تخطيطية؛ 999 يبقى المرسِل).', 'After Approve, the fastest units’ routes are drawn given traffic (schematic SIM; 999 stays the dispatcher).'),
       guide: T('آخر مئة متر: تضيء المسيّرة مسارًا إلى مخرج مفتوح فعلًا، ويخرج الناس.', 'The last 100 metres: the drone lights a path to an exit that is really open, and people walk out.'),
-      count: T('الروبوت يدخل ويجد مَن لا يستطيع الخروج، والعدّاد يقابل الخارجين بالسجلّ.', 'The robot rolls in and finds those who cannot get out; the counter checks everyone against the register.'),
+      count: T('الروبوت يجد مَن لا يستطيع الخروج، والعدّاد يقابل الخارجين بالسجلّ.', 'The robot finds those who cannot get out; the counter checks everyone against the register.'),
       hand: T('بطاقة موثّقة تُسلَّم لقائد الإنقاذ: أين الخطر، ومَن لم يُحصَ، ومَن يحتاج مساعدة.', 'A verified card goes to the rescue lead: where the danger is, who is unaccounted, who needs help.')
     };
     var STATE_TXT = {

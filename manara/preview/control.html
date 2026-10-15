@@ -11,7 +11,7 @@
 <meta property="og:type" content="website">
 <meta name="theme-color" content="#0a0e15">
 <meta name="color-scheme" content="light dark">
-<script>(function(){var d=document.documentElement,t,l;try{t=localStorage.getItem('manara-theme');l=localStorage.getItem('manara-lang')}catch(e){}var q=/[?&]lang=(ar|en)/.exec(location.search);if(q)l=q[1];var qt=/[?&]theme=(dark|light)/.exec(location.search);if(qt)t=qt[1];if(t!=='light'&&t!=='dark')t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';if(l!=='en')l='ar';d.dataset.theme=t;d.dataset.lang=l;d.lang=l;d.dir=l==='ar'?'rtl':'ltr';d.classList.add('js');setTimeout(function(){if(!window.__manaraReady)d.classList.remove('js')},2500)})();</script>
+<script>(function(){var d=document.documentElement,t,l;try{t=localStorage.getItem('manara-theme');l=localStorage.getItem('manara-lang')}catch(e){}var q=/[?&]lang=(ar|en)/.exec(location.search);if(q)l=q[1];if(t!=='light'&&t!=='dark')t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';if(l!=='en')l='ar';d.dataset.theme=t;d.dataset.lang=l;d.lang=l;d.dir=l==='ar'?'rtl':'ltr';d.classList.add('js');setTimeout(function(){if(!window.__manaraReady)d.classList.remove('js')},2500)})();</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -597,7 +597,7 @@ body.control .toasts .toast:nth-last-child(n+4){display:none}
 .cr-demo-steps li.done .i{width:13px;height:13px}
 .cr-demo-steps li.now{border-color:var(--brand);color:var(--head);box-shadow:0 0 0 4px color-mix(in oklab,var(--brand) 20%,transparent)}
 .cr-demo-n{font-size:.8em;color:var(--muted);white-space:nowrap}
-.cr-demo-t{font-family:var(--font-h);font-weight:700;font-size:1.05em;color:var(--head);flex:1;min-width:0}
+.cr-demo-t{font-family:var(--font-h);font-weight:700;font-size:1.05em;color:var(--head);flex:1 1 13em;min-width:min(13em,100%)}
 .cr-demo-p{color:var(--ink-2);font-size:.9em;line-height:1.5}
 .cr-demo-p b{color:var(--head)}
 .cr-demo-why{font-size:.84em;color:var(--ink-2);padding:6px 10px;border-radius:8px;background:color-mix(in oklab,var(--accent) 9%,var(--surface));border:1px solid color-mix(in oklab,var(--accent) 30%,var(--line))}
@@ -17546,7 +17546,7 @@ P7G1CJ0T7LgThNqCU0U_ExCf3SyFrV8I5TsMGsDmCmBiDb1lBgrB9V8UhFmK-C8C7EhB7DwB0kBrfkgB
         if (seen.verdict !== a.verdict && a.verdict) {
           seen.verdict = a.verdict;
           var vt = a.verdictText ? nm(a.verdictText) : a.verdict;
-          toast({ ar: 'تحقق المسيّرة للإنذار ' + a.id + ': ' + (a.verdictText ? a.verdictText.ar : a.verdict), en: 'Drone verification for ' + a.id + ': ' + (a.verdictText ? a.verdictText.en : a.verdict) }, a.verdict === 'confirmed' ? 'danger' : 'warn', 4800);
+          toast({ ar: a.id + ' — ' + (a.verdictText ? a.verdictText.ar : 'تحقق المسيّرة: ' + a.verdict), en: a.id + ' — ' + (a.verdictText ? a.verdictText.en : 'Drone verification: ' + a.verdict) }, a.verdict === 'confirmed' ? 'danger' : 'warn', 4800);
           chime(a.verdict === 'confirmed' ? 'critical' : 'warn'); live(vt + ' — ' + a.id);
           CR.emit('verdict', a);
         }
@@ -20625,7 +20625,10 @@ P7G1CJ0T7LgThNqCU0U_ExCf3SyFrV8I5TsMGsDmCmBiDb1lBgrB9V8UhFmK-C8C7EhB7DwB0kBrfkgB
   function twShow(el) { var t = el._tw, v = Math.round(t.cur); if (t.shown !== v) { t.shown = v; setT(el, N(v)); } }
   function stepTws(dt) {
     var kk = 1 - Math.exp(-dt * 4.2), i, t, d;
-    for (i = 0; i < R.tws.length; i++) { t = R.tws[i]._tw; d = t.tgt - t.cur; if (Math.abs(d) < 0.5) t.cur = t.tgt; else t.cur += d * kk + (d > 0 ? 0.04 : -0.04); twShow(R.tws[i]); }
+    for (i = R.tws.length - 1; i >= 0; i--) {
+      t = R.tws[i]._tw; if (!t) { R.tws.splice(i, 1); continue; }                  // a counter that was switched off ('–') leaves the list
+      d = t.tgt - t.cur; if (Math.abs(d) < 0.5) t.cur = t.tgt; else t.cur += d * kk + (d > 0 ? 0.04 : -0.04); twShow(R.tws[i]);
+    }
   }
 
   /* ---- painting the DOM panels (about 4 times a second) ---- */

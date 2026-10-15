@@ -95,6 +95,8 @@ console.log('\n2. the feed wall');
   check('patrol drones get feeds too', st.feeds.some(f => f.kind === 'patrol'));
   check('a tile (a section with a canvas) is drawn for every shown feed', (await W(page, () => document.querySelectorAll('.crf-wall .crf-cell').length)) === st.shown.length && st.shown.length >= 2, String(st.shown.length));
   check('the detector ran on the pictures (analysis steps happened)', st.steps >= 2, String(st.steps));
+  // the detector is temporal (it needs several frames): wait for the verdict instead of a fixed sleep, so a loaded machine does not flake
+  await page.waitForFunction(() => { const f = ControlRoom.mods.feeds.shown()[0]; return f && f.verdict === 'fire'; }, null, { timeout: 15000 }).catch(() => {});
   const fire = await W(page, () => { const M = ControlRoom.mods.feeds, f = M.shown()[0]; return f; });
   check('the alert feed: the real ManaraFire + thermal detectors say FIRE on the simulated picture (flicker proven over frames)', fire.verdict === 'fire' && fire.conf > 0.5, JSON.stringify(fire));
   check('overlays: detector boxes exist and are drawn on the overlay canvas', fire.boxes >= 1 && (await inkOf(page, '.crf-cell:first-child canvas.crf-ov')) > 5, String(fire.boxes));

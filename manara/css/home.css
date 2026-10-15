@@ -63,7 +63,7 @@
 .cam-live{display:inline-flex;align-items:center;gap:8px;min-width:0}
 .cam-live b{color:var(--head)}
 .cam-sector{color:var(--muted)}
-.cam-tele{margin-inline-start:auto;color:var(--muted);font-size:.76rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.cam-tele{flex:1;text-align:end;color:var(--muted);font-size:.76rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .cam-view{position:relative;border-radius:14px;overflow:hidden;aspect-ratio:16/10;background:var(--bg-2);isolation:isolate;container-type:inline-size}
 .cam-view canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .cam-view .cam-rgb{filter:saturate(1.06) contrast(1.05)}
@@ -463,6 +463,11 @@ html[data-lang=ar] .hz-res{font-family:var(--font)}
   .con-stages{padding-inline:10px}
   .con-stages span{font-size:.66rem;padding:5px 2px}
   .closing-cta .btn{flex:1 1 140px}
+}
+@media(max-width:620px){
+  .cam-ctl{display:grid;grid-template-columns:44px minmax(0,1fr);align-items:start;gap:8px 10px}
+  .cam-ctl .icon-btn{grid-column:1}
+  .cam-capw{grid-column:2;grid-row:1/3}
 }
 @media(max-width:400px){
   .wrap{padding-inline:16px}

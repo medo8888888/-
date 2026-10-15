@@ -308,7 +308,7 @@ body.control .toasts .toast:nth-last-child(n+4){display:none}
 .cr-demo-steps li.done .i{width:13px;height:13px}
 .cr-demo-steps li.now{border-color:var(--brand);color:var(--head);box-shadow:0 0 0 4px color-mix(in oklab,var(--brand) 20%,transparent)}
 .cr-demo-n{font-size:.8em;color:var(--muted);white-space:nowrap}
-.cr-demo-t{font-family:var(--font-h);font-weight:700;font-size:1.05em;color:var(--head);flex:1;min-width:0}
+.cr-demo-t{font-family:var(--font-h);font-weight:700;font-size:1.05em;color:var(--head);flex:1 1 13em;min-width:min(13em,100%)}
 .cr-demo-p{color:var(--ink-2);font-size:.9em;line-height:1.5}
 .cr-demo-p b{color:var(--head)}
 .cr-demo-why{font-size:.84em;color:var(--ink-2);padding:6px 10px;border-radius:8px;background:color-mix(in oklab,var(--accent) 9%,var(--surface));border:1px solid color-mix(in oklab,var(--accent) 30%,var(--line))}
