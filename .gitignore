@@ -5,3 +5,6 @@ node_modules/
 __pycache__/
 *.pyc
 .claude/worktrees/
+# MANARA lives in manara/ (ONE folder). site/manara/ is a GENERATED copy of its public parts for the Cloudflare Worker: `npm run sync:manara`
+site/manara/
+manara/tools/__pycache__/
