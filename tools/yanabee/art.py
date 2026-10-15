@@ -80,8 +80,8 @@ def gear(cx, cy, r, teeth, cls, hole=True, d=0, rev=False):
 def person(x, y, s=1, skin='sk1', top='tc', bot='nk', hair='hr1', kind='boy', arms=(8, 8), legs=(0, 0),
            sit=False, scarf=None, hat='', salute=False, tie='', hold_l='', hold_r=''):
     """Faceless friendly character, feet at (x, y). kind: boy | girl | hijab."""
-    if kind == 'girl':  # no uncovered hair anywhere on the site: girls are drawn in a long dress and a scarf
-        kind = 'hijab'
+    if kind in ('girl', 'hijab'):  # no women or girls anywhere on the site (photos or drawings): every character is a boy
+        kind = 'boy'
     sh = '<ellipse cx="0" cy="1" rx="19" ry="4.2" class="sh"/>'
     up = 12 if sit else 0
     g = [sh]
@@ -653,9 +653,9 @@ def frame(svg, cls=''):
 
 # ============================================================ PHOTOS ===
 PHOTOS = {  # file: (width, height, default object-position)
-    'team-t1': (1200, 1500, '50% 72%'), 'team-t2': (1200, 800, '50% 38%'), 'team-t3': (1200, 675, '50% 55%'),
-    'team-t4': (1200, 1830, '50% 38%'), 'team-t5': (1200, 1800, '50% 58%'), 'team-t6': (1200, 801, '68% 40%'),
-    'team-t7': (1200, 800, '45% 50%'), 'inclusion': (1200, 801, '50% 45%'), 'hero-home': (1200, 800, '50% 28%'),
+    'team-t1': (1200, 1800, '50% 35%'), 'team-t2': (1200, 1800, '50% 22%'), 'team-t3': (1200, 800, '50% 45%'),
+    'team-t4': (1200, 800, '50% 50%'), 'team-t5': (1200, 800, '50% 50%'), 'team-t6': (1200, 800, '50% 40%'),
+    'team-t7': (1200, 800, '50% 45%'), 'inclusion': (1200, 800, '60% 45%'), 'hero-home': (1200, 800, '45% 50%'),
     'hero-operations': (1200, 800, '55% 45%'), 'hero-quran': (1200, 1800, '50% 55%'), 'quran-dark': (1200, 800, '50% 50%'),
 }
 
