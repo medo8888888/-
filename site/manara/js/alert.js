@@ -2108,7 +2108,11 @@
     var box = $('#near-card'); if (!box || !M) return;
     var ae = D.activeElement, fid = ae && box.contains(ae) ? ae.getAttribute('data-fid') : null;
     empty(box);
-    nearbyKids(Mn.lang(), { page: true, ui: App.pageUi }).forEach(function (k) { box.appendChild(k); });
+    // two columns on wide screens: where + map on the left, the list, the call button and the controls on the right (one column on a phone, same order)
+    var kidsAll = nearbyKids(Mn.lang(), { page: true, ui: App.pageUi }), left = [], right = [];
+    kidsAll.forEach(function (k) { (k.classList && (k.classList.contains('nb-where') || k.classList.contains('nb-map')) ? left : right).push(k); });
+    if (left.length) { box.appendChild(h('div', { class: 'near-l' }, left)); box.appendChild(h('div', { class: 'near-r' }, right)); box.classList.add('has-l'); }
+    else { box.classList.remove('has-l'); right.forEach(function (k) { box.appendChild(k); }); }
     box.setAttribute('data-state', App.nb.state);
     if (fid) { var back = $('[data-fid="' + fid + '"]', box) || (fid === 'call-cancel' ? $('[data-fid="call"]', box) : null); if (back) { try { back.focus({ preventScroll: true }); } catch (x) { back.focus(); } } }
   }
@@ -2137,9 +2141,11 @@
     return {
       id: id, hazard: hz, level: lv === 'all-clear' ? null : lv, lon: pos.lon, lat: pos.lat, radiusM: clampNum(toNum(m.radiusM, NAT_RADIUS_DEFAULT_M), 50, 50000),
       area: cleanText(m.area), place: cleanText(inc.place) || cleanText(m.place), muni: typeof (inc.muni || m.muni) === 'string' ? String(inc.muni || m.muni).slice(0, 30) : null,
-      hour: isFinite(+m.hour) ? +m.hour : hourOfClock(m.clock), ts: isFinite(+m.ts) ? +m.ts : now(), demo: !!m.demo, cleared: false
+      hour: isFinite(+m.hour) && m.hour !== null ? +m.hour : (hourOfClock(m.clock) != null ? hourOfClock(m.clock) : localHour()), ts: isFinite(+m.ts) ? +m.ts : now(), demo: !!m.demo, cleared: false
     };
   }
+  // a national alert that carries no clock: the phone's own time of day decides whether people are asleep (never the demo's night switch)
+  function localHour() { var d = new Date(); return d.getHours() + d.getMinutes() / 60; }
   function normDispatchNat(m) {
     var base = normDispatch(m); if (!base) return null;
     var inc = m.incident && typeof m.incident === 'object' ? m.incident : {};

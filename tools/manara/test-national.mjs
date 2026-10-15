@@ -715,6 +715,51 @@ section('12  robustness: bad input never throws, never poisons the state');
 }
 
 // ---------------------------------------------------------------------------------------------------------------- end
+// ---------------------------------------------------------------------------------------------------------------- 13  judge-panel fixes
+section('13  display labels, data-gap caveats, modelled ambulances, the opening demo, ETA monotone in congestion');
+{
+  const nat = N.create({ seed: 7, date: N.DEMO.date, hour: N.DEMO.hour });
+  const labels = N.facilityLabels(nat), L = Object.values(labels);
+  check('every facility has a bilingual display label', L.length === 138 && L.every(l => l.ar && l.en));
+  check('no label says "unnamed in OSM" (the raw gap never reaches a person)', !L.some(l => /unnamed|بلا اسم/i.test(l.ar + ' ' + l.en + ' ' + (l.sub.ar || '') + ' ' + (l.sub.en || ''))));
+  const unnamed = FAC.filter(f => !f.name.ar && !f.name.en);
+  check('the 31 unnamed facilities get "<type> — <place>" labels and are marked unverified', unnamed.length === 31 && unnamed.every(f => { const l = labels[f.id]; return l && l.generic && !l.verified && / — /.test(l.en) && / — /.test(l.ar); }), unnamed.length + ' unnamed');
+  const odd = FAC.filter(f => /Fire Police Department|Preventitive|Departement/i.test(f.name.en));
+  check('odd OSM names (Fire Police Department, Preventitive Security Section, Departement) are not the main label; the raw name stays as the secondary line', odd.length >= 3 && odd.every(f => { const l = labels[f.id]; return !/Preventitive|Departement|^Fire Police Department$/i.test(l.en) && !l.verified && (l.sub.en || '').length > 0; }), odd.map(f => f.name.en).join(' | '));
+  const withAr = FAC.filter(f => /[؀-ۿ]/.test(f.name.ar));
+  check('a facility with a real Arabic name shows it as the Arabic label; one without never shows its English OSM name as the Arabic label', withAr.every(f => labels[f.id].ar === f.name.ar.replace(/\s+/g, ' ').trim() || labels[f.id].generic) && L.filter(l => !l.hasAr && l.raw.en).every(l => l.ar !== l.raw.en));
+  check('map classes: ED-confirmed hospitals, other hospitals and minor centres (clinics, psychiatry, bone and joint) are separated; ED badge only when an official list confirms it', L.filter(l => l.cls === 'ed').length >= 10 && L.filter(l => l.cls === 'minor').length >= 5 && /Psychiatry/i.test(FAC.find(f => /Psychiatry/i.test(f.name.en)).name.en) && labels[FAC.find(f => /Psychiatry/i.test(f.name.en)).id].cls === 'minor' && labels[FAC.find(f => /Bone & Joint/i.test(f.name.en)).id].cls === 'minor' && L.every(l => !l.edVerified || l.cls === 'ed'));
+  const names = N.units(nat).map(u => u.name.en + ' ' + u.name.ar).join(' | ');
+  check('no unit name in the fleet says "unnamed" and ambulances based at hospitals say so ("modelled at")', !/unnamed|بلا اسم/i.test(names) && /Ambulance \(modelled at /.test(names) && /إسعاف \(مُنمذَج في /.test(names));
+  // remote regions: a fire in Ash Shamal gets an ambulance from far away; the plan must say it is a data gap, never present it as a normal recommendation
+  const far = N.dispatchNational(nat, { hazard: 'fire', lon: 51.2, lat: 26.12, severity: 2 });
+  const farAmb = far.units.find(u => u.kind === 'ambulance');
+  check('Ash Shamal: the far ambulance is flagged as a data gap with a bilingual explanation, and the plan carries the banner text', farAmb.etaAtRec / 60 > far.dataGap.thresholdMin && far.dataGap.items.some(i => i.kind === 'ambulance') && far.dataGap.text.ar && far.dataGap.text.en && far.dataGap.items.every(i => i.text.ar && i.text.en), JSON.stringify(far.dataGap.items.map(i => [i.kind, i.etaMin, i.km])));
+  const inc = N.createIncident(nat, { hazard: 'fire', lon: 51.2, lat: 26.12, severity: 2 }), sn = N.snapshot(nat).incidents.find(i => i.id === inc.id);
+  check('the snapshot carries dataGap, per-unit gap flags, and `modelled` for hospital-based ambulances', sn.plan.dataGap.items.length >= 1 && sn.plan.units.some(u => u.gap) && sn.plan.units.every(u => 'modelled' in u && 'unverified' in u));
+  const doha = N.dispatchNational(nat, { hazard: 'heat', lon: 51.5264, lat: 25.2856, severity: 2 });
+  check('central Doha: no data gap, the ambulance is modelled at a named hospital and a destination hospital is shown separately', doha.dataGap.items.length === 0 && /modelled at/.test(doha.units[0].name.en) && doha.hospital && doha.hospital.chosen && /modelled at/.test(doha.notes.map(n => n.en).join(' ')) === true);
+  for (const hz of ['heat', 'sos']) { const q = N.dispatchNational(nat, { hazard: hz, lon: 51.5497, lat: 24.9954, severity: 2 }); check(`${hz}: an ambulance AND a destination hospital`, q.units.some(u => u.kind === 'ambulance' && u.unitId) && q.hospital && q.hospital.chosen); }
+  // the opening demo of Mission Control: fastest is NOT nearest, because of traffic
+  const nd = N.create({ seed: N.DEMO.seed, date: N.DEMO.date, hour: N.DEMO.hour });
+  const dp = N.dispatchNational(nd, { hazard: N.DEMO.hazard, lon: N.DEMO.lon, lat: N.DEMO.lat, severity: N.DEMO.severity });
+  const df = dp.units.find(u => u.kind === 'fire'), wd = df.whyData;
+  check('opening demo: the fastest fire unit is farther by straight line but arrives first, and the reason is traffic (never "nearest and fastest")', wd.farButFaster === true && wd.reason === 'traffic' && wd.gainSec >= 60 && wd.extraStraightM >= 500 && /farther/.test(df.why.en), `gain ${wd.gainSec} s, +${wd.extraStraightM} m, ${wd.reason}`);
+  // ETA is monotone in congestion: more traffic never makes the fastest route or the fastest first responder quicker
+  const loads = [0, 0.5, 1, 1.5, 2], pairs = [[[51.45, 25.30], [51.60, 25.20]], [[51.40, 25.15], [51.55, 25.40]], [[51.50, 25.68], [51.10, 25.40]]];
+  let mono = true, detail = [];
+  for (const [a, b] of pairs) {
+    const secs = loads.map(l => N.route(N.create({ seed: 7, date: N.DEMO.date, hour: N.DEMO.hour, params: { trafficLoad: l } }), { lon: a[0], lat: a[1] }, { lon: b[0], lat: b[1] }).sec);
+    for (let i = 1; i < secs.length; i++) if (secs[i] < secs[i - 1] - 1e-6) mono = false;
+    detail.push(secs.map(x => Math.round(x / 6) / 10).join('/'));
+  }
+  const firsts = loads.map(l => { const q = N.dispatchNational(N.create({ seed: 7, date: N.DEMO.date, hour: N.DEMO.hour, params: { trafficLoad: l } }), { hazard: 'fire', lon: N.DEMO.lon, lat: N.DEMO.lat, severity: 2 }); return Math.min(...q.units.filter(u => u.unitId && !u.optional).map(u => u.etaSec)); });
+  for (let i = 1; i < firsts.length; i++) if (firsts[i] < firsts[i - 1] - 1e-6) mono = false;
+  check('ETA is monotone in congestion (route time and first-responder ETA at traffic multipliers 0, 0.5, 1, 1.5, 2)', mono, detail.join(' ; ') + ' min | first ' + firsts.join('/') + ' s');
+  const ab = N.ab({ seed: 7, n: 40 });
+  check('A/B result exposes median and 90th-percentile gain and the share of incidents where the choice differs', ab.savedSec.all.p50 !== undefined && ab.savedSec.all.p90 !== undefined && typeof ab.differs.incidentsPct === 'number' && ab.differs.unitChoicesPct !== undefined);
+}
+
 console.log('\nTIMINGS (ms): ' + Object.entries(timings).map(([k, v]) => `${k} ${v.toFixed(1)}`).join(', '));
 console.log(`\n${passed} passed, ${failures.length} failed`);
 if (failures.length) { console.log('\nFAILED:\n - ' + failures.join('\n - ')); process.exit(1); }

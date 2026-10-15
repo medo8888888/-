@@ -534,6 +534,99 @@ html[dir=rtl] .cost{text-align:end}
 .nf-logo{display:inline-grid;width:76px;height:76px;margin-bottom:14px}
 .nf-logo svg{width:100%;height:100%}
 
+/* ======================================================= national layer: stage tabs, the real map, the dispatch board */
+[hidden]{display:none!important}
+.stage-tabs{display:flex;gap:6px;margin-bottom:10px;padding:4px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line)}
+.stage-tab{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:36px;padding:5px 12px;border-radius:999px;border:1px solid transparent;color:var(--muted);font:600 .86rem/1.2 var(--font-h);transition:background-color .2s,color .2s,border-color .2s}
+.stage-tab .i{width:17px;height:17px}
+.stage-tab:hover{color:var(--head)}
+.stage-tab[aria-selected=true]{background:var(--surface);color:var(--head);border-color:color-mix(in oklab,var(--brand) 55%,var(--line));box-shadow:var(--shadow-sm)}
+.stage-tab[aria-selected=true] .i{color:var(--brand-t)}
+.stage-panel{min-width:0}
+.stage-canvas canvas{display:block;width:100%;height:auto;aspect-ratio:4/3}
+.map-loading{position:absolute;inset:0;display:grid;place-items:center;margin:0;padding:12px;text-align:center;font:600 .92rem var(--font-h);color:var(--ink-2);background:color-mix(in oklab,var(--bg-2) 82%,transparent)}
+.stage-actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 14px;margin-top:10px}
+.stage-open-link{display:inline-flex;align-items:center;gap:7px;font-size:.88rem;font-weight:600;color:var(--brand-t)}
+.stage-open-link .i{width:16px;height:16px}
+.stage-open-link:hover{text-decoration:underline}
+.stage-credit{margin:4px 0 0;font-size:.78rem;line-height:1.6}
+.stage-zoomnote{margin:8px 0 0;font-size:.84rem;color:var(--ink-2)}
+.nboard{display:grid;gap:6px;margin:10px 0 0;padding:0;list-style:none}
+.nb-row{--sc:var(--accent);display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:2px 10px;align-items:center;padding:7px 10px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2);transition:border-color .2s,background-color .2s}
+.nb-row.far{border-color:color-mix(in oklab,var(--sc) 55%,var(--line))}
+.nb-row.done{background:color-mix(in oklab,var(--safe) 8%,var(--surface-2))}
+.nb-ic{grid-row:1/3;display:grid;place-items:center;width:32px;height:32px;border-radius:10px;background:color-mix(in oklab,var(--sc) 15%,transparent);color:color-mix(in oklab,var(--sc) var(--tx-mix),var(--head))}
+.nb-ic .i{width:18px;height:18px}
+.nb-main{display:grid;min-width:0;line-height:1.35}
+.nb-k{font:600 .82rem var(--font-h);color:var(--head)}
+.nb-n{font-size:.76rem;color:var(--muted);overflow-wrap:anywhere}
+.nb-tag{font-size:.76rem;font-weight:600;color:var(--safe-t)}
+.nb-eta{grid-row:1/3;grid-column:3;font:700 1.05rem var(--font-m);color:var(--head);direction:ltr;text-align:end;min-width:3.4em}
+html[data-lang=ar] .nb-eta{font-size:.95rem}
+.hero-stage .stage-note{margin-top:10px}
+
+/* ======================================================= 05 fastest, on the real map */
+.fast-map{position:static}
+.fast-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;flex:1 1 100%}
+.fast-lab{font:600 .86rem var(--font-h);color:var(--head);min-width:5.5em}
+.fast-btns{justify-content:space-between}
+.fast-canvas{margin-top:2px;touch-action:manipulation}
+.fast-canvas canvas{cursor:crosshair}
+.fast-legend .lg.alt{background:repeating-linear-gradient(90deg,var(--ink) 0 3px,transparent 3px 8px)}
+.fast-legend .lg.route{background:var(--accent)}
+.fr-bars{grid-column:1/-1;display:grid;gap:3px;margin-top:8px}
+.fr-bl{font-size:.76rem;color:var(--muted)}
+.fr-bar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}
+.fr-bar i{display:block;height:9px;border-radius:99px;width:var(--v);min-width:4px;background:var(--line-2)}
+.fr-bar.fa i{background:var(--sc)}
+.fr-bar span{font:600 .78rem var(--font-m);color:var(--head);direction:ltr}
+.fr-hosp{grid-column:1/-1;margin:6px 0 0;font-size:.84rem;color:var(--ink-2)}
+.fast-facts,.fast-roads{padding:14px 16px}
+.facts th,.facts td{padding:6px 10px;font-size:.84rem}
+.facts td{overflow-wrap:anywhere}
+.road-list{display:grid;gap:6px;margin:6px 0 0;padding:0;list-style:none}
+.road-btn{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:7px 12px;border-radius:12px;border:1px solid var(--line);background:var(--surface);text-align:start;font-size:.86rem;min-height:36px}
+.road-btn b{font-weight:600;color:var(--head);overflow-wrap:anywhere}
+.road-btn .rs{flex:none;font-size:.78rem;font-weight:700;color:var(--muted)}
+.road-btn[data-state="1"]{border-color:var(--danger)}.road-btn[data-state="1"] .rs{color:var(--danger-t)}
+.road-btn[data-state="2"]{border-style:dashed;border-color:var(--ink-2)}.road-btn[data-state="2"] .rs{color:var(--head)}
+.road-btn:hover{border-color:var(--brand)}
+
+/* ======================================================= 06 Qatar-wide */
+.qa-kpis{margin-bottom:clamp(16px,2.4vw,26px)}
+.qa-kpis .kpi b small{font-size:.8rem;color:var(--muted);font-weight:500}
+.qa{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:clamp(16px,2.4vw,28px);align-items:start}
+@media(max-width:980px){.qa{grid-template-columns:minmax(0,1fr)}}
+.qa-map{padding:clamp(12px,2vw,20px);min-width:0}
+.qa-map .stage-canvas{max-width:460px;margin-inline:auto}
+.qa-map .stage-canvas canvas{aspect-ratio:4/5}
+.qa-legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:10px;font-size:.8rem;color:var(--muted);justify-content:center}
+.qa-legend span{display:inline-flex;align-items:center;gap:6px}
+.lgd{display:inline-block;width:12px;height:12px;border-radius:4px;background:var(--c);border:1px solid color-mix(in oklab,var(--c) 60%,var(--line))}
+.qa-read{margin:10px 0 0;min-height:3.4em;font-size:.92rem;color:var(--ink);line-height:1.7}
+.qa-side{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;min-width:0}
+.qa-table th:first-child,.qa-table td:first-child{white-space:nowrap}
+.qa-table td.v{font-weight:700}
+.qa-table td.lv-warn{color:var(--warn-t)}.qa-table td.lv-stop,.qa-table td.lv-danger,.qa-table td.lv-crit{color:var(--danger-t)}
+.qa-table tr.total th,.qa-table tr.total td{background:var(--surface-2);font-weight:700}
+.qa-adv h3{font-size:1rem}
+.qa-gaps b{color:var(--head)}
+.qa-gaps .plain-list{margin-top:8px}
+
+/* ======================================================= evidence (national) + data credits */
+.ev-nat{margin-top:clamp(16px,2.4vw,26px)}
+.ev-nat .ab{margin:14px 0}
+.cr-attr{margin:6px 0 14px;padding:12px 14px;border-radius:var(--r-sm);background:var(--surface-2);border:1px solid var(--line);font-size:.92rem;color:var(--head);overflow-wrap:anywhere;text-align:start}
+.cr-attr a{color:var(--brand-t);text-decoration:underline}
+.kv{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.6fr);gap:8px 14px;margin:0;font-size:.9rem}
+.kv dt{color:var(--muted);font-weight:600}
+.kv dd{margin:0;color:var(--ink);overflow-wrap:anywhere}
+@media(max-width:520px){.kv{grid-template-columns:1fr}.kv dd{margin-bottom:6px}}
+
+#nat-steps button{font-size:.66rem;padding-inline:0}
+#sp-nat .stage-cap{min-height:3.4em}
+html[data-lang=en] #sp-nat .stage-cap{min-height:3.1em}
+@media(min-width:1000px){.hero-grid{align-items:start}.hero-copy{position:sticky;top:calc(var(--nav-h) + 24px)}#sp-nat .stage-canvas canvas{aspect-ratio:3/2}}
 /* ======================================================= motion + print */
 @media(prefers-reduced-motion:reduce){
   .route{animation:none}
@@ -546,7 +639,7 @@ html[dir=rtl] .cost{text-align:end}
   :root,:root[data-theme=dark]{color-scheme:light;--bg:#fff;--bg-2:#fff;--surface:#fff;--surface-2:#f7f4f0;--surface-3:#ece7e0;--ink:#191c23;--ink-2:#353b47;--muted:#5f6673;--line:#d9d2c8;--line-2:#bdb4a8;--head:#11141a;
     --brand:#c0560b;--brand-2:#9a4308;--on-brand:#fff;--accent:#0b8fa3;--accent-2:#076b7a;--safe:#15803d;--warn:#b45309;--danger:#c81e1e;--info:#1d4ed8;--glass:#fff;--glass-line:#d9d2c8}
   *,*::before,*::after{animation:none!important;transition:none!important}
-  .nav,.subnav,.hz-switch,.stage-ctl,.steps,.stage-open,.fast-ctl,.proof-presets,.print-hide,.closing-cta,.truth-filter,.persona-hz,.hz-links,.persona-link,.seg,.hw-cta .btn,.btns .btn-sm{display:none!important}
+  .nav,.subnav,.hz-switch,.stage-ctl,.steps,.stage-open,.stage-tabs,.stage-actions,.stage-zoomnote,#sp-zoom,.map-loading,.fast-ctl .chips,.fast-ctl,.proof-presets,.print-hide,.closing-cta,.truth-filter,.persona-hz,.hz-links,.persona-link,.seg,.hw-cta .btn,.btns .btn-sm{display:none!important}
   .hero{padding-block:12px;background:none}
   .hero::before{display:none}
   .hero-grid{grid-template-columns:1fr}

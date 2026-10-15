@@ -446,6 +446,10 @@ Al Wakrah ↔ Al Shamal ↔ Mesaieed ↔ Hamad International Airport routes) tha
 7. **A facility with no road within 250 m** would be flagged; the largest snap distance is in the generated table above.
 8. **Not shipped on purpose:** bed counts, ED capacity, ambulance positions, any national statistic.
 
+### Display of names, ambulances and gaps (what the product shows, not what the files contain)
+
+The files above are not changed by the display layer. `ManaraNational.facilityLabel()` (see `docs/MANARA.md`) turns them into labels: 31 of the 138 entries have no name in OSM (12 hospitals, 7 fire, 10 police, 2 ambulance points) and several others carry odd names (`Fire Police Department`, `Preventitive Security Section Ministry of Internal Affairs`, `…Departement`). They are shown as "<type> — <nearest place>" with an *unverified* badge, never as "(unnamed in OSM)". Because OSM has only 3 ambulance points, ambulances are **modelled at hospital emergency departments** and labelled so; for remote municipalities (Ash Shamal, Dukhan) the nearest unit in the data can be 50+ km away, and the dispatch says "data gap" instead of presenting it as a normal recommendation. Real HMC ambulance stations and Civil Defence centres missing from OSM are not invented: adding one needs a source and an entry flagged `manually-added` in `build-qatar-data.py`.
+
 ## 9. Rebuild and test
 
 ```bash

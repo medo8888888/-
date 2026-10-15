@@ -319,12 +319,10 @@ body.m-phone #solo{order:2}body.m-phone .al-ctl-sec{order:3}
 /* the page-level card: three columns when there is room */
 .near-box{padding:clamp(14px,2.4vw,24px);container-type:inline-size;max-inline-size:100%}
 .near-card{display:grid;gap:14px;min-inline-size:0}
+.near-l,.near-r{display:grid;gap:14px;min-inline-size:0;align-content:start}
 @container (min-width:640px){
-  .near-card{grid-template-columns:minmax(0,5fr) minmax(0,7fr);align-items:start;column-gap:28px}
-  .near-card>.nb-map,.near-card>.nb-list,.near-card>.nb-where{grid-column:1}
-  .near-card>.nb-intro,.near-card>.nb-msg,.near-card>.al-note,.near-card>.nb-callrow,.near-card>.nb-label,.near-card>.nb-acts,.near-card>.nb-pick,.near-card>.nb-credit{grid-column:2}
-  .near-card>.nb-map{grid-row:2/span 4}
-  .near-card>.nb-list{grid-column:2}
+  .near-card.has-l{grid-template-columns:minmax(0,5fr) minmax(0,7fr);align-items:start;column-gap:28px}
+  .near-card.has-l>.near-l{position:sticky;inset-block-start:calc(var(--nav-h,64px) + 16px)}
 }
 
 /* where is it (national) */
@@ -481,3 +479,6 @@ canvas[hidden],.p-flash[hidden]{display:none}
 [data-theme=light] .al-draft b{color:color-mix(in oklab,var(--warn) 68%,black)}
 [data-theme=light] .p-ex{color:color-mix(in oklab,var(--info) 70%,black)}
 [data-theme=dark] .tag.danger{color:color-mix(in oklab,var(--danger) 78%,white)}
+
+/* the phone wall is built by alert.js right after boot: keep the page invisible (but in place) until it exists, so the first paint never jumps; 3 s fallback if the script never finishes */
+html:not([data-alert-ready]) body[data-page="alert.html"] main{visibility:hidden;animation:mn-unveil 0s 3s forwards}

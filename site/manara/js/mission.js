@@ -229,7 +229,7 @@
   var FRAME = { x: -7, y: -7, w: WI.w + 14, h: WI.h + 14 };   // the map plus a margin for the responders at the map edge
   var MC = {
     scope: htmlEl.getAttribute('data-scope') === 'local' ? 'local' : 'national', zoomCtx: null, wasPlaying: false,
-    preset: 'fire-night', seed: 7, params: {}, origin: null, autoApprove: false,
+    preset: 'fire-night', seed: 7, params: {}, origin: null, autoApprove: false, hourOv: null,
     sim: null, snap: null, hc: null, W: WI,
     playing: true, speed: 4, debt: 0, last: 0, seekTarget: null, seeking: false,
     actions: [], ai: 0, cps: [], cpEvery: 20, maxT: 0, ended: false,
@@ -270,7 +270,9 @@
     return id;
   }
   function newSim() {
-    return Sim.create({ preset: originPresetId(MC.preset, MC.origin), seed: MC.seed, params: MC.params, autoApprove: MC.autoApprove });
+    var o = { preset: originPresetId(MC.preset, MC.origin), seed: MC.seed, params: MC.params, autoApprove: MC.autoApprove };
+    if (MC.hourOv != null) o.hour = MC.hourOv;                  // the clock handed over by the national view: one clock for the whole story
+    return Sim.create(o);
   }
   function addCheckpoint() {
     var sim = MC.sim;
@@ -355,6 +357,7 @@
     if (o.preset && Sim.PRESETS[presetBase(o.preset)]) { if (presetBase(o.preset) !== MC.preset) MC.origin = null; MC.preset = presetBase(o.preset); }
     if (o.seed != null && isFinite(+o.seed)) MC.seed = Math.max(1, Math.floor(+o.seed) >>> 0) || 1;
     if (o.origin !== undefined) MC.origin = o.origin;
+    if (o.hour !== undefined) MC.hourOv = isNum(o.hour) ? o.hour : null; else if (o.preset) MC.hourOv = null;
     if (o.params) MC.params = o.params;
     if (o.autoApprove != null) MC.autoApprove = !!o.autoApprove;
     busClear();
@@ -1820,8 +1823,10 @@
     });
     p.body.appendChild(list);
     p.body.appendChild(h('p', { class: 'pn-foot' }, bi('اضغط على سيناريو لإعادة التشغيل. البذرة نفسها تعطي النتيجة نفسها.', 'Pick a scenario to restart. The same seed gives the same run.')));
+    var cur = h('small', { class: 'pn-cur muted' }); p.head.appendChild(cur); addFoldButton(p);
     PANEL_UPDATERS.push(function () {
       $$('.sc-card', list).forEach(function (b) { var on = b.getAttribute('data-id') === MC.preset; b.setAttribute('aria-checked', on ? 'true' : 'false'); b.tabIndex = on ? 0 : -1; });
+      var pr = Sim.PRESETS[MC.preset]; if (pr) setText(cur, LL({ ar: pr.name.ar.replace(/\s*\([^)]*\)\s*$/, ''), en: pr.name.en.replace(/\s*\([^)]*\)\s*$/, '') }));
     });
     return p;
   }
@@ -1908,6 +1913,7 @@
     var gTwin = details('twin', 'لوحة التوأم (اختياري)', 'Twin board (optional hardware)', [J.twinBox], false);
     [gExit, gWind, gOrigin, gFault, gSos, gOp, gTwin].forEach(function (g) { p.body.appendChild(g); });
     PANEL_UPDATERS.push(updateJudge);
+    addFoldButton(p);
     return p;
   }
   function updateJudge() {
@@ -3095,6 +3101,7 @@
   }
   function handleCitizen(m) {
     if (!MC.sim || (m.status !== 'ack' && m.status !== 'safe' && m.status !== 'help')) return;
+    if (typeof m.id === 'string' && /^nat-/.test(m.id)) return;                // an answer to a NATIONAL alert: js/mission-national.js counts it
     var al = MC.sim.alert;
     if (m.id && al && m.id !== al.id) { addNote('people', T('رسالة من هاتف لتنبيه قديم (' + String(m.id).slice(0, 12) + ') — تم تجاهلها.', 'Message from a phone for an old alert (' + String(m.id).slice(0, 12) + ') — ignored.')); return; }
     var p = findResident(m);
@@ -3275,7 +3282,17 @@
     if (hs0.scope === 'local' || hs0.preset) { MC.scope = 'local'; htmlEl.setAttribute('data-scope', 'local'); }
     main.setAttribute('data-scope', MC.scope);
     if (MC.scope === 'local') initLocal();
-    else { MC.pendingInit = true; setTimeout(function () { if (MC.pendingInit) initLocal(); }, 1600); }   // the national view paints first; the neighbourhood simulation is built when idle (or on demand)
+    else {                                                           // the national view paints first; the neighbourhood simulation is built when the browser is idle (or on demand)
+      MC.pendingInit = true;
+      var tries = 0, later = function () {                         // wait for a quiet moment on the national map (no pointer / key input for 1.5 s), then build when idle
+        if (!MC.pendingInit || MC.inited) return;
+        var nat = window.MissionNational, quiet = !nat || !nat.lastInput || (now() - nat.lastInput() > 1500);
+        if (!quiet && tries++ < 25) { setTimeout(later, 1000); return; }
+        var go = function () { if (MC.pendingInit && !MC.inited) initLocal(); };
+        if (window.requestIdleCallback) requestIdleCallback(go, { timeout: 3000 }); else go();
+      };
+      setTimeout(later, 2500);
+    }
     renderScopeStrip();
   }
 
@@ -3300,11 +3317,39 @@
     z.hidden = !(local && zc); pur.classList.toggle('has-zoom', local && !!zc);
     z.replaceChildren();
     if (local && zc) {
+      // a persistent breadcrumb: Qatar › municipality › place › last 100 m, then what the scenario is (hazard, the national clock, simulated)
+      var crumbs = [], mu = zc.muni && zc.muni.name, pl = zc.place && zc.place.name;
+      var home = h('button', { type: 'button', class: 'zc-home', onclick: function () { setScope('national'); } }, bi('قطر', 'Qatar')); lab(home, 'title', 'العودة إلى الخريطة الوطنية', 'Back to the national map');
+      crumbs.push(h('li', null, home));
+      if (mu) crumbs.push(h('li', null, bi(mu.ar || mu.en, mu.en || mu.ar)));
+      if (pl && (!mu || (pl.en || pl.ar) !== (mu.en || mu.ar))) crumbs.push(h('li', null, bi(pl.ar || pl.en, pl.en || pl.ar)));
+      crumbs.push(h('li', { 'aria-current': 'page' }, h('b', null, bi('آخر ١٠٠ متر', 'Last 100 m'))));
+      var nav = h('nav', { class: 'zc-nav', 'aria-label': 'مكانك في المحاكاة / Where you are' }, h('ol', { class: 'zc-crumbs' }, crumbs));
+      var meta = [];
+      if (zc.hazardName) meta.push(bi(zc.hazardName.ar, zc.hazardName.en));
+      if (zc.clock) meta.push(bi(zc.clock.ar, zc.clock.en));
       var a = zc.area || { ar: '', en: '' };
-      z.appendChild(icon('pin'));
-      z.appendChild(h('span', { class: 'zc-t' }, h('b', null, bi('تكبير من الخريطة الوطنية', 'Zoomed in from the national map')), ' ', h('span', { class: 'zc-a' }, bi(a.ar, a.en))));
+      z.appendChild(icon('pin')); z.appendChild(nav);
       if (zc.incidentId) z.appendChild(h('span', { class: 'tag cool' }, zc.incidentId));
+      z.appendChild(h('span', { class: 'zc-meta' }, meta.map(function (m, i) { return i ? [' · ', m] : [m]; }).reduce(function (x, y) { return x.concat(y); }, []), ' · ', h('span', { class: 'zc-a' }, bi(a.ar, a.en))));
     }
+    foldPanels();
+  }
+  // arriving from the national map shows a calmer screen: the scenario list and the judge controls start folded (a person can open them)
+  function foldPanels() {
+    var compact = MC.scope === 'local' && !!MC.zoomCtx;
+    ['scenario', 'judge'].forEach(function (id) {
+      var P = PANELS[id]; if (!P) return;
+      if (compact && !P.userSet) setFold(P, true); else if (!compact && !P.userSet) setFold(P, false);
+    });
+  }
+  function setFold(P, on) {
+    P.el.classList.toggle('collapsed', !!on);
+    if (P.foldBtn) P.foldBtn.setAttribute('aria-expanded', on ? 'false' : 'true');
+  }
+  function addFoldButton(P) {
+    var b = h('button', { type: 'button', class: 'pn-fold', 'aria-expanded': 'true', 'aria-controls': 'pn-' + P.id + '-b', onclick: function () { P.userSet = true; setFold(P, !P.el.classList.contains('collapsed')); } }, h('span', { class: 'sr-only' }, bi('إظهار أو إخفاء اللوحة', 'Show or hide this panel')));
+    P.body.id = 'pn-' + P.id + '-b'; P.foldBtn = b; P.head.appendChild(b);
   }
   function setScope(s, opts) {
     s = s === 'local' ? 'local' : 'national'; opts = opts || {};
@@ -3334,7 +3379,7 @@
     ctx.area = pn ? { ar: 'قرب ' + (pn.ar || pn.en) + ' — سيناريو محاكى وليس مبنى حقيقيًا', en: 'near ' + (pn.en || pn.ar) + ' — simulated scenario, not a real building' }
       : { ar: 'في قطر — سيناريو محاكى وليس مبنى حقيقيًا', en: 'in Qatar — simulated scenario, not a real building' };
     MC.zoomCtx = ctx;
-    startRun({ preset: preset });
+    startRun({ preset: preset, hour: isNum(ctx.hour) ? ctx.hour : undefined });
     setScope('local', { force: true });
     return { preset: preset, area: ctx.area };
   }

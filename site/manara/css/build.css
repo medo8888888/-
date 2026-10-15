@@ -174,9 +174,9 @@ html[dir=rtl] .build-hero::after{--fade:right}
 html[dir=rtl] .table tr.add td:first-child{box-shadow:inset -3px 0 0 var(--brand)}
 .parts-foot-note{margin-top:12px}
 .tier-badge{display:inline-grid;place-items:center;min-width:24px;height:24px;padding:0 6px;border-radius:8px;font:700 .78rem var(--font-m);background:var(--surface-3);color:var(--head)}
-.tier-badge.t1{background:color-mix(in oklab,var(--brand) 18%,var(--surface));color:var(--brand)}
-.tier-badge.t2{background:color-mix(in oklab,var(--accent) 18%,var(--surface));color:var(--accent)}
-.tier-badge.t3{background:color-mix(in oklab,var(--info) 18%,var(--surface));color:var(--info)}
+.tier-badge.t1{background:color-mix(in oklab,var(--brand) 18%,var(--surface));color:var(--brand-t)}
+.tier-badge.t2{background:color-mix(in oklab,var(--accent) 18%,var(--surface));color:var(--accent-t)}
+.tier-badge.t3{background:color-mix(in oklab,var(--info) 18%,var(--surface));color:var(--info-t)}
 @media(max-width:700px){
   .rtable,.rtable tbody,.rtable tfoot,.rtable tr,.rtable td{display:block;width:100%}
   .rtable thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
@@ -266,7 +266,7 @@ html[dir=rtl] .table tr.add td:first-child{box-shadow:inset -3px 0 0 var(--brand
 .bt-judge-t{fill:var(--muted);font:600 11px var(--font);text-anchor:middle}
 .touch-list{display:grid;gap:10px;counter-reset:tl}
 .touch-list li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;padding:12px 14px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-sm)}
-.touch-list .tn{display:grid;place-items:center;width:30px;height:30px;border-radius:10px;font:700 .9rem var(--font-m);background:color-mix(in oklab,var(--sc,var(--accent)) 16%,var(--surface));color:var(--sc,var(--accent))}
+.touch-list .tn{display:grid;place-items:center;width:30px;height:30px;border-radius:10px;font:700 .9rem var(--font-m);background:color-mix(in oklab,var(--sc,var(--accent)) 16%,var(--surface));color:color-mix(in oklab,var(--sc,var(--accent)) var(--tx-mix),var(--head))}
 .touch-list b{color:var(--head)}
 .touch-list span.d{display:block;color:var(--ink-2);font-size:.92rem}
 .time-cell{font-family:var(--font-m);white-space:nowrap;font-weight:600;color:var(--head)}

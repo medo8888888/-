@@ -11,6 +11,8 @@
  *
  * Numbers: the measured results in RESULTS were copied from real runs on 2026-10-08
  *   node tools/manara/test-fire.mjs  (43 checks passed)     node tools/manara/test-sim.mjs  (253 checks passed, seed 1)
+ *   node tools/manara/test-qatar-data.mjs (91 checks)        node tools/manara/test-national.mjs (212 checks); the whole-of-Qatar map (module 09) is drawn from
+ *   data/qatar-*.js (OpenStreetMap snapshot, ODbL) and the farther-but-faster example is ManaraNational.findFartherButFaster(7)
  * and tools/manara/test-poster.mjs re-computes them (fire detector + simulation) and fails if they drift.
  * Every simulated figure is labelled SIM; the detector is "rule-based computer vision", never "AI".
  * Safety: no user text is ever assigned to innerHTML (textContent / DOM nodes only). Classic script, no libraries.
@@ -55,7 +57,8 @@
           name: { ar: 'حريق مدرسة نهارًا', en: 'School fire by day' }, metric: { ar: 'وصول الوحدات إلى الموقع', en: 'Units on scene' } }
       ],
       dispatch: { nearM: 500, farM: 1118, nearS: 181, farS: 118, hour: '07:30' }
-    }
+    },
+    national: {"cmd":"ManaraNational.findFartherButFaster(7) · ManaraNational.ab({seed: 7, n: 150})","seed":7,"snapshot":"2026-10-08","data":{"facilities":138,"roadKm":6116,"officialNames":73,"missingInOsm":23,"dataChecks":91,"engineChecks":212},"ab":{"n":150,"differsPct":64.7,"meanSavedSec":63,"medianSavedSec":0,"p90SavedSec":242},"ex":{"seed":7,"clock":"17:45:00","dow":{"ar":"الأحد","en":"Sunday"},"date":"2026-07-12","kind":"fire","incident":{"lon":51.52418,"lat":25.23645,"place":{"ar":"نعيجة","en":"Nuaija"},"muni":"doha"},"fastest":{"unitId":"fire:fire-w492127496","name":{"ar":"مركز إطفاء — (بلا اسم في OSM) — الوكرة","en":"Fire station — (unnamed in OSM) — Al Wakrah"},"etaSec":754,"freeFlowEtaSec":549,"roadKm":13.5,"straightKm":10,"congestedSegments":63,"worst":{"ar":"طريق الوكرة","en":"Al Wakra Road"},"base":[51.602522,25.180508],"route":[[51.6026,25.1805],[51.6026,25.1805],[51.6029,25.1805],[51.604,25.1783],[51.6043,25.1776],[51.6045,25.1772],[51.6046,25.1771],[51.6047,25.1772],[51.6048,25.1773],[51.6046,25.1776],[51.6037,25.1793],[51.6029,25.1807],[51.6017,25.183],[51.6012,25.184],[51.6002,25.186],[51.5976,25.1909],[51.5972,25.1918],[51.5971,25.192],[51.5971,25.192],[51.5968,25.1919],[51.5959,25.1916],[51.5917,25.19],[51.5904,25.1895],[51.5881,25.1886],[51.587,25.1883],[51.5868,25.1883],[51.5868,25.1882],[51.5853,25.1877],[51.5852,25.1877],[51.5834,25.1872],[51.5832,25.1872],[51.5815,25.187],[51.5794,25.1869],[51.5769,25.1869],[51.5761,25.1869],[51.5759,25.1869],[51.5749,25.1869],[51.5705,25.1869],[51.5687,25.1869],[51.5686,25.1869],[51.5677,25.1869],[51.5664,25.1869],[51.5658,25.1869],[51.5656,25.1869],[51.5647,25.1869],[51.5632,25.1869],[51.5608,25.1869],[51.56,25.1869],[51.5599,25.1869],[51.5563,25.1865],[51.5522,25.1854],[51.5512,25.1853],[51.5503,25.1855],[51.5491,25.1864],[51.5474,25.188],[51.5463,25.1898],[51.5445,25.1946],[51.5439,25.1964],[51.5424,25.2011],[51.541,25.2053],[51.5393,25.2107],[51.5391,25.2115],[51.5356,25.2181],[51.5337,25.2244],[51.5332,25.226],[51.5321,25.2283],[51.5307,25.2305],[51.5267,25.2346],[51.5256,25.2354],[51.5241,25.2364]]},"nearest":{"unitId":"fire:fire-n11533985781","name":{"ar":"مركز إطفاء — Fire Police Department","en":"Fire station — Fire Police Department"},"etaSec":840,"freeFlowEtaSec":485,"roadKm":10.2,"straightKm":5.7,"congestedSegments":58,"worst":{"ar":"شارع روضة الخيل","en":"Rawdat Al Khail Street"},"base":[51.533203,25.286667],"route":[[51.5334,25.286],[51.5315,25.2856],[51.5311,25.2854],[51.5311,25.2853],[51.5312,25.2852],[51.532,25.2843],[51.5323,25.2839],[51.5324,25.283],[51.5324,25.2828],[51.5319,25.2812],[51.5318,25.281],[51.5317,25.2802],[51.5314,25.2797],[51.5311,25.2796],[51.5306,25.2796],[51.5287,25.2796],[51.5285,25.2795],[51.5285,25.2791],[51.5284,25.2781],[51.5281,25.2753],[51.528,25.275],[51.5279,25.2749],[51.5279,25.2747],[51.5278,25.2745],[51.5276,25.2738],[51.5269,25.2709],[51.5264,25.2691],[51.5264,25.269],[51.5249,25.2646],[51.5248,25.2642],[51.5247,25.2639],[51.5245,25.2632],[51.5245,25.2631],[51.5245,25.2631],[51.5244,25.263],[51.5242,25.262],[51.5242,25.2599],[51.5242,25.2585],[51.5242,25.2572],[51.5241,25.2556],[51.5241,25.255],[51.5241,25.2545],[51.5241,25.2542],[51.5241,25.2539],[51.5241,25.2533],[51.5242,25.2438],[51.524,25.2409],[51.523,25.2383],[51.5221,25.2371],[51.5213,25.2365],[51.5206,25.2366],[51.5203,25.2374],[51.5207,25.2378],[51.5213,25.2379],[51.522,25.2376],[51.526,25.2348],[51.5264,25.2346],[51.5287,25.2325],[51.5324,25.2273],[51.5324,25.2258],[51.5322,25.2255],[51.5313,25.2259],[51.5317,25.2273],[51.5311,25.2278],[51.5324,25.2295],[51.5316,25.2298],[51.5302,25.2316],[51.5284,25.2331],[51.5256,25.2354],[51.5241,25.2364]]},"gainSec":86,"extraStraightKm":4.4,"extraRoadKm":3.3,"reason":"traffic","flips":true}}
   };
   var TIERS = [
     { n: 1, lo: 2, hi: 10, name: { ar: 'حاسوب فقط', en: 'Laptop only' } },
@@ -317,30 +320,110 @@
     L1(svg, { ar: 'وصول الدفاع المدني إلى البلاغات (قطر، 2017)', en: 'Civil Defence reaches incidents (Qatar, 2017)' }, lab, 122, { size: 13, anchor: an, cls: 't-h', w: 548 });
   }
 
-  // 07 — farther but faster: the nearer unit loses to the farther one when traffic is heavy (SIM, hand-built test road graph).
-  function drawFast() {
-    var svg = fig('fast'); if (!svg) return;
-    var c = ctx(), W = 600, dd = RESULTS.sim.dispatch; svgReset(svg, W, 134);
-    var X = function (x, w) { return c.rtl ? W - x - w : x; };
-    var panels = [
-      { x: 0, t: { ar: 'المسافة', en: 'Distance' }, a: dd.nearM, b: dd.farM, max: dd.farM, fm: function (v) { return ltrNum(fmt(v)) + (c.l === 'ar' ? ' م' : ' m'); }, win: null },
-      { x: 320, t: { ar: 'زمن الوصول وقت الذروة (SIM)', en: 'Arrival time at rush hour (SIM)' }, a: dd.nearS, b: dd.farS, max: dd.nearS, fm: function (v) { return ltrNum(String(v)) + ' ' + unitS(); }, win: 'b' }
-    ];
-    panels.forEach(function (p) {
-      var x0 = X(p.x, 280), barMax = 186, bx = c.rtl ? x0 + 280 - 32 : x0 + 32;
-      L1(svg, p.t, x0 + (c.rtl ? 280 : 0), 13, { size: 13, anchor: c.rtl ? 'r' : 'l', cls: 't-h', w: 280 });
-      [['A', p.a, 'bar-near', 32], ['B', p.b, 'bar-man', 68]].forEach(function (row) {
-        var len = row[1] / p.max * barMax, y = row[3];
-        var bcx = c.rtl ? x0 + 280 - 12 : x0 + 12;
-        mk('circle', { cx: bcx, cy: y + 14, r: 11, 'class': row[0] === 'A' ? 'badge-a' : 'badge' }, svg);
-        T(svg, row[0], 'en', bcx, y + 18.5, { size: 13, cls: 't-b t-w' });
-        mk('rect', { x: c.rtl ? bx - len : bx, y: y, width: len, height: 28, rx: 5, 'class': row[2] + (p.win && row[0].toLowerCase() === p.win ? ' win-bar' : '') }, svg);
-        var vx = c.rtl ? bx - len - 7 : bx + len + 7;
-        T(svg, p.fm(row[1]), c.l, vx, y + 19, { size: 15, anchor: c.rtl ? 'r' : 'l', cls: 'v', w: 62 });
-        if (p.win && row[0].toLowerCase() === p.win) icon(svg, 'check', c.rtl ? vx - 66 : vx + 62, y + 3, 22, 'c-safe win');
-      });
+  // 09 — the whole of Qatar: the REAL OpenStreetMap snapshot (outline, roads, facilities) and the real farther-but-faster example (seed 7).
+  // Roads, facilities and the route geometry are real as mapped; traffic and the position / availability of units are simulated (SIM).
+  var NATP = {};
+  function natFit(b, x0, y0, W, H, pad) {
+    var k = Math.cos(25.3 * Math.PI / 180), w = (b.lon1 - b.lon0) * k, hh = b.lat1 - b.lat0, sc = Math.min((W - 2 * pad) / w, (H - 2 * pad) / hh), ox = x0 + (W - w * sc) / 2, oy = y0 + (H - hh * sc) / 2;
+    return { x: function (lon) { return ox + (lon - b.lon0) * k * sc; }, y: function (lat) { return oy + (b.lat1 - lat) * sc; }, sc: sc, mPerPx: 111195 / sc,
+      vis: { lon0: b.lon0 - (ox - x0) / (k * sc), lon1: b.lon1 + (ox - x0) / (k * sc), lat0: b.lat0 - (oy - y0) / sc, lat1: b.lat1 + (oy - y0) / sc } };
+  }
+  function natRing(ring, p, minPx) {
+    var d = '', lx = 1e9, ly = 1e9, i, x, y;
+    for (i = 0; i < ring.length; i++) { x = p.x(ring[i][0]); y = p.y(ring[i][1]); if (i && i < ring.length - 1 && Math.abs(x - lx) + Math.abs(y - ly) < minPx) continue; d += (d ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1); lx = x; ly = y; }
+    return d + 'Z';
+  }
+  function natRoads(p, classMax, minPx) {
+    var out = ['', '', ''], R = window.MANARA_QATAR_ROADS; if (!R || !R.decode) return out;
+    var g = R.decode(), v = p.vis, e, m, a, b, pl, d, lx, ly, i, x, y, cls;
+    for (e = 0; e < g.e; e++) {
+      cls = g.eCls[e]; if (cls > classMax || (g.eFlags[e] & 256)) continue;
+      m = g.eLen[e] / 100000; a = g.eFrom[e]; b = g.eTo[e];
+      if (!((g.lon[a] > v.lon0 - m && g.lon[a] < v.lon1 + m && g.lat[a] > v.lat0 - m && g.lat[a] < v.lat1 + m) || (g.lon[b] > v.lon0 - m && g.lon[b] < v.lon1 + m && g.lat[b] > v.lat0 - m && g.lat[b] < v.lat1 + m))) continue;
+      if (Math.abs(p.x(g.lon[a]) - p.x(g.lon[b])) + Math.abs(p.y(g.lat[a]) - p.y(g.lat[b])) < minPx * 1.6 && g.eLen[e] / p.mPerPx < minPx * 2) continue;   // too short to see at this scale
+      pl = g.polyline(e); d = ''; lx = 1e9; ly = 1e9;
+      for (i = 0; i < pl.length; i += 2) { x = p.x(pl[i]); y = p.y(pl[i + 1]); if (i && i < pl.length - 2 && Math.abs(x - lx) + Math.abs(y - ly) < minPx) continue; d += (d ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1); lx = x; ly = y; }
+      out[cls <= 1 ? 0 : cls <= 3 ? 1 : 2] += d;
+    }
+    return out;
+  }
+  function natLabelName(nm, l) { var parts = String(nm[l]).split(' — '); return parts.length > 1 ? parts.slice(1).join(' — ') : parts[0]; }
+  function drawNat() {
+    var svg = fig('nat'); if (!svg) return;
+    var c0 = ctx(), W = 600, H = 236, ex = RESULTS.national.ex;
+    svgReset(svg, W, H);
+    if (NATP.tpl === undefined) NATP.tpl = natStatic(svg);
+    if (!NATP.tpl) { L1(svg, { ar: 'ملفات بيانات الخريطة (data/) غير محمَّلة', en: 'The map data files (data/) did not load' }, 300, 118, { size: 15, cls: 't-h' }); return; }
+    NATP.tpl.nodes.forEach(function (n) { svg.appendChild(n.cloneNode(true)); });
+    natLabels(svg, NATP.tpl);
+  }
+  // everything that does not depend on the language is built once and cloned (the road paths are large)
+  function natStatic(svg0) {
+    var tmp = mk('svg', null), svg = tmp;
+    var G = window.MANARA_QATAR_GEO, F = window.MANARA_QATAR_FACILITIES, R = window.MANARA_QATAR_ROADS, W = 600, H = 236, ex = RESULTS.national.ex;
+    if (!G || !F || !R) return null;
+    var defs = mk('defs', null, svg), pad = 6;
+    [['pt-nat-z', 156, 0, 444, H], ['pt-nat-l', 0, 0, 148, H]].forEach(function (r) { var cp = mk('clipPath', { id: r[0] }, defs); mk('rect', { x: r[1], y: r[2], width: r[3], height: r[4], rx: 8 }, cp); });
+    var pts = ex.fastest.route.concat(ex.nearest.route, [[ex.incident.lon, ex.incident.lat], ex.fastest.base, ex.nearest.base]), b = { lon0: 1e9, lon1: -1e9, lat0: 1e9, lat1: -1e9 };
+    pts.forEach(function (q) { b.lon0 = Math.min(b.lon0, q[0]); b.lon1 = Math.max(b.lon1, q[0]); b.lat0 = Math.min(b.lat0, q[1]); b.lat1 = Math.max(b.lat1, q[1]); });
+    var dx = (b.lon1 - b.lon0) * 0.12, dy = (b.lat1 - b.lat0) * 0.12; b.lon0 -= dx; b.lon1 += dx; b.lat0 -= dy; b.lat1 += dy;
+    var pz = natFit(b, 156, 0, 444, H, pad), bb = G.bbox, pl = natFit({ lon0: bb.lonMin, lon1: bb.lonMax, lat0: bb.latMin, lat1: bb.latMax }, 0, 0, 148, H, pad);
+    var land = function (p) { var d = ''; G.outline.rings.forEach(function (r) { d += natRing(r, p, 0.7); }); (G.outline.holes || []).forEach(function (r) { d += natRing(r, p, 0.7); }); return d; };
+    var col = { fire: 'n-f', police: 'n-p', hospital: 'n-h', ambulance: 'n-a' };
+    // locator
+    var gl = mk('g', { 'clip-path': 'url(#pt-nat-l)' }, svg);
+    mk('rect', { x: 0, y: 0, width: 148, height: H, 'class': 'n-sea' }, gl);
+    mk('path', { d: land(pl), 'class': 'n-land', 'fill-rule': 'evenodd' }, gl);
+    var md = ''; G.municipalities.forEach(function (m) { m.polygons.forEach(function (poly) { md += natRing(poly[0], pl, 0.8); }); });
+    mk('path', { d: md, 'class': 'n-muni' }, gl);
+    if (!NATP.loc) NATP.loc = natRoads(pl, 1, 2.2);
+    mk('path', { d: NATP.loc[0], 'class': 'n-r1 n-thin' }, gl);
+    F.forEach(function (f) { if (f.kind === 'clinic-ed') return; mk('circle', { cx: pl.x(f.lon).toFixed(1), cy: pl.y(f.lat).toFixed(1), r: 1.5, 'class': 'n-fac ' + (col[f.kind] || '') }, gl); });
+    var wz = pz.vis; mk('rect', { x: pl.x(wz.lon0).toFixed(1), y: pl.y(wz.lat1).toFixed(1), width: ((wz.lon1 - wz.lon0) * Math.cos(25.3 * Math.PI / 180) * pl.sc).toFixed(1), height: ((wz.lat1 - wz.lat0) * pl.sc).toFixed(1), 'class': 'n-win' }, gl);
+    mk('circle', { cx: pl.x(ex.incident.lon).toFixed(1), cy: pl.y(ex.incident.lat).toFixed(1), r: 3.2, 'class': 'n-inc' }, gl);
+    mk('rect', { x: 0.5, y: 0.5, width: 147, height: H - 1, rx: 8, 'class': 'n-frame' }, svg);
+    // zoom
+    var gz = mk('g', { 'clip-path': 'url(#pt-nat-z)' }, svg), key = ex.fastest.unitId + ex.nearest.unitId;
+    mk('rect', { x: 156, y: 0, width: 444, height: H, 'class': 'n-sea' }, gz);
+    mk('path', { d: land(pz), 'class': 'n-land', 'fill-rule': 'evenodd' }, gz);
+    if (!NATP[key]) NATP[key] = natRoads(pz, 4, 1.6);
+    mk('path', { d: NATP[key][2], 'class': 'n-r3' }, gz); mk('path', { d: NATP[key][1], 'class': 'n-r2' }, gz); mk('path', { d: NATP[key][0], 'class': 'n-r1' }, gz);
+    F.forEach(function (f) { if (f.kind === 'clinic-ed' || f.lon < pz.vis.lon0 || f.lon > pz.vis.lon1 || f.lat < pz.vis.lat0 || f.lat > pz.vis.lat1) return; mk('circle', { cx: pz.x(f.lon).toFixed(1), cy: pz.y(f.lat).toFixed(1), r: 3, 'class': 'n-fac ' + (col[f.kind] || '') }, gz); });
+    var line = function (route) { var d = ''; route.forEach(function (q, i) { d += (i ? 'L' : 'M') + pz.x(q[0]).toFixed(1) + ' ' + pz.y(q[1]).toFixed(1); }); return d; };
+    var I = [pz.x(ex.incident.lon), pz.y(ex.incident.lat)], FA = [pz.x(ex.fastest.base[0]), pz.y(ex.fastest.base[1])], NE = [pz.x(ex.nearest.base[0]), pz.y(ex.nearest.base[1])];
+    [[NE, ex.nearest.straightKm], [FA, ex.fastest.straightKm]].forEach(function (r) {
+      mk('line', { x1: I[0].toFixed(1), y1: I[1].toFixed(1), x2: r[0][0].toFixed(1), y2: r[0][1].toFixed(1), 'class': 'n-ruler' }, gz);
+      T(gz, ltrNum(r[1].toFixed(1)) + ' km', 'en', ((I[0] + r[0][0]) / 2).toFixed(1), ((I[1] + r[0][1]) / 2).toFixed(1), { size: 12.5, cls: 'n-km' });
     });
-    L1(svg, { ar: 'أ = الأقرب مسافةً · ب = الأبعد لكنه الأسرع (SIM، ساعة الذروة ' + dd.hour + ')', en: 'A = nearest · B = farther but fastest (SIM, rush hour ' + dd.hour + ')' }, 300, 124, { size: 12.5, cls: 't-b', w: 576 });
+    mk('path', { d: line(ex.nearest.route), 'class': 'n-route n-near' }, gz);
+    mk('path', { d: line(ex.fastest.route), 'class': 'n-case' }, gz); mk('path', { d: line(ex.fastest.route), 'class': 'n-route n-fast' }, gz);
+    mk('circle', { cx: I[0].toFixed(1), cy: I[1].toFixed(1), r: 7, 'class': 'n-inc' }, gz);
+    [[FA, 'n-ufast'], [NE, 'n-unear']].forEach(function (u) {
+      mk('circle', { cx: u[0][0].toFixed(1), cy: u[0][1].toFixed(1), r: 8.5, 'class': u[1] }, gz);
+      T(gz, 'F', 'en', u[0][0].toFixed(1), (u[0][1] + 4).toFixed(1), { size: 12, cls: 't-b t-w' });
+    });
+    var px2 = 2000 / pz.mPerPx; mk('path', { d: 'M164 ' + (H - 16) + 'V' + (H - 10) + 'H' + (164 + px2).toFixed(1) + 'V' + (H - 16), 'class': 'n-scale' }, gz);
+    T(gz, '2 km', 'en', 164 + px2 / 2, H - 18, { size: 12, cls: 'n-km' });
+    mk('rect', { x: 156.5, y: 0.5, width: 443, height: H - 1, rx: 8, 'class': 'n-frame' }, svg);
+    return { nodes: Array.prototype.slice.call(tmp.childNodes), I: I, FA: FA, NE: NE };
+  }
+  function natLabels(svg, t) {
+    var ex = RESULTS.national.ex, W = 600, H = 236, gz = mk('g', { 'clip-path': 'url(#pt-nat-z)' }, svg), I = t.I, FA = t.FA, NE = t.NE;
+    [[FA, ex.fastest, 'r'], [NE, ex.nearest, 'l']].forEach(function (u) {
+      var name = { ar: natLabelName(u[1].name, 'ar') + '  ' + ltrNum(mmss(u[1].etaSec)), en: natLabelName(u[1].name, 'en') + '  ' + mmss(u[1].etaSec) };
+      LB(gz, name, u[2] === 'r' ? u[0][0] - 14 : u[0][0] + 14, u[0][1] + (u[2] === 'r' ? 1 : -4), { size: 13, ssize: 11.5, anchor: u[2], w: 205, cls: 't-h n-halo', scls: 't-m n-halo', min: 10, smin: 10 });
+    });
+    LB(gz, { ar: 'حريق (محاكى) · ' + ex.incident.place.ar, en: 'Fire (simulated) · ' + ex.incident.place.en }, I[0] + 14, I[1] - 6, { size: 13, ssize: 11.5, anchor: 'l', w: 200, cls: 't-h n-halo', scls: 't-m n-halo', min: 10, smin: 10 });
+    LB(gz, { ar: 'محاكاة SIM · الأسرع أبكر بـ ' + ltrNum(String(ex.gainSec)) + ' ث', en: 'SIM · the fastest is ' + ex.gainSec + ' s sooner' }, 592, H - 24, { size: 13, ssize: 11.5, anchor: 'r', w: 250, cls: 't-h n-halo', scls: 't-m n-halo', min: 10, smin: 10 });
+  }
+  function mmss(sec) { var m = Math.floor(sec / 60), s2 = sec % 60; return (m < 10 ? '0' : '') + m + ':' + (s2 < 10 ? '0' : '') + s2; }
+  function buildNatSrc() {
+    var p = $('#nat-src'); if (!p) return;
+    emptyNode(p);
+    var n = RESULTS.national, d = n.data, a = el('span', null, null, p), e = el('span', null, null, p);
+    a.setAttribute('data-l', 'ar'); e.setAttribute('data-l', 'en');
+    mixed(a, ['الخرائط: لقطة OpenStreetMap بتاريخ ' + n.snapshot + ': ' + d.facilities + ' منشأة، ' + fmt(d.roadKm) + ' كم طرق؛ ' + d.missingInOsm + ' من ' + d.officialNames + ' اسمًا رسميًا غائبة عن OSM (معلَّمة). Contains data © OpenStreetMap contributors, ODbL 1.0.']);
+    mixed(e, ['Maps: OpenStreetMap snapshot ' + n.snapshot + ': ' + d.facilities + ' facilities, ' + fmt(d.roadKm) + ' km of roads; ' + d.missingInOsm + ' of ' + d.officialNames + ' official names missing from OSM (flagged). Contains data © OpenStreetMap contributors, ODbL 1.0.']);
   }
 
   // 09 — the still-photo detector: honest bars (tuned-on sets are optimistic; the held-out set is the real number).
@@ -376,7 +459,7 @@
     var labW = 232, trackX = 244, trackW = 262;
     rows.forEach(function (r, i) {
       var top = 2 + i * 33;
-      LB(svg, r.t, c.rtl ? W : 0, top + 15, { size: 14, ssize: 11, anchor: c.rtl ? 'r' : 'l', w: labW, cls: 't-h', min: 9.5, step: 14 });
+      LB(svg, r.t, c.rtl ? W - 3 : 0, top + 15, { size: 14, ssize: 11, anchor: c.rtl ? 'r' : 'l', w: labW, cls: 't-h', min: 9.5, step: 14 });
       var tx = X(trackX, trackW);
       [[0, 'bar-ord'], [1, 'bar-man']].forEach(function (q) {
         var y = top + 1 + q[0] * 15, len = Math.max(4, r.v[q[0]] / r.v[0] * trackW);
@@ -405,7 +488,7 @@
     }
     TIERS.forEach(function (t, i) {
       var y = 2 + i * 31, x1 = vx(t.lo), x2 = Math.max(x1 + 8, vx(t.hi));
-      LB(svg, { ar: t.n + ' · ' + t.name.ar, en: t.n + ' · ' + t.name.en }, c.rtl ? W : 0, y + 14, { size: 14, ssize: 11, anchor: c.rtl ? 'r' : 'l', w: 206, cls: 't-h', min: 9.5, step: 14 });
+      LB(svg, { ar: t.n + ' · ' + t.name.ar, en: t.n + ' · ' + t.name.en }, c.rtl ? W - 3 : 0, y + 14, { size: 14, ssize: 11, anchor: c.rtl ? 'r' : 'l', w: 206, cls: 't-h', min: 9.5, step: 14 });
       var bx = c.rtl ? W - x2 : x1;
       mk('rect', { x: bx, y: y + 3, width: x2 - x1, height: 22, rx: 6, 'class': 'bar-man' }, svg);
       var label = 'US$ ' + t.lo + '–' + t.hi, rightRoom = x2 + 84 <= W - 2;
@@ -450,8 +533,8 @@
     emptyNode(p);
     var r = RESULTS, a = el('span', null, null, p), e = el('span', null, null, p);
     a.setAttribute('data-l', 'ar'); e.setAttribute('data-l', 'en');
-    mixed(a, ['قِيست بتاريخ ' + r.date + ': ', { code: 'test-fire.mjs' }, ' (' + r.fire.checks + ' فحصًا) و', { code: 'test-sim.mjs' }, ' (' + r.sim.checks + ' فحصًا، بذرة ' + r.sim.seed + ') في tools/manara. أعد التشغيل لتتحقق.']);
-    mixed(e, ['Measured ' + r.date + ': ', { code: 'test-fire.mjs' }, ' (' + r.fire.checks + ' checks) and ', { code: 'test-sim.mjs' }, ' (' + r.sim.checks + ' checks, seed ' + r.sim.seed + ') in tools/manara. Re-run to verify.']);
+    mixed(a, ['قِيست بتاريخ ' + r.date + ': ', { code: 'test-fire.mjs' }, ' (' + r.fire.checks + ' فحصًا) و', { code: 'test-sim.mjs' }, ' (' + r.sim.checks + ' فحصًا، بذرة ' + r.sim.seed + ') و', { code: 'test-qatar-data.mjs' }, ' (' + r.national.data.dataChecks + ') و', { code: 'test-national.mjs' }, ' (' + r.national.data.engineChecks + ') في tools/manara. أعد التشغيل لتتحقق.']);
+    mixed(e, ['Measured ' + r.date + ': ', { code: 'test-fire.mjs' }, ' (' + r.fire.checks + ' checks) and ', { code: 'test-sim.mjs' }, ' (' + r.sim.checks + ' checks, seed ' + r.sim.seed + '), ', { code: 'test-qatar-data.mjs' }, ' (' + r.national.data.dataChecks + ') and ', { code: 'test-national.mjs' }, ' (' + r.national.data.engineChecks + ') in tools/manara. Re-run to verify.']);
   }
 
   /* ======================================================================= QR encoder (byte mode, versions 1–10, levels L/M/Q/H)
@@ -737,6 +820,10 @@
   }
   function setK(k) { K = k; $$('.panel', board).forEach(function (p) { p.style.setProperty('--k', k.toFixed(4)); }); }
   function autoFit() {
+    board.classList.add('fitting');   // the large map layers are hidden while the scale is searched (they cannot change any height)
+    try { return autoFit0(); } finally { board.classList.remove('fitting'); }
+  }
+  function autoFit0() {
     var lo = 0.5, hi = 1.2, i, mid;
     setK(hi);
     if (!overflowing().length) return K;
@@ -758,8 +845,8 @@
     pageRule.textContent = '@page{size:' + pg.w + 'mm ' + pg.h + 'mm;margin:0}';
   }
   function drawAll() {
-    drawGap(); drawArch(); drawProof(); drawFast(); drawDet(); drawAB(); drawHW();
-    buildDetChips(); buildHzRes(); buildResSrc();
+    drawGap(); drawArch(); drawProof(); drawNat(); drawDet(); drawAB(); drawHW();
+    buildDetChips(); buildHzRes(); buildResSrc(); buildNatSrc();
   }
   function fmtMM(w, h) { return Math.round(w) + ' × ' + Math.round(h) + ' mm'; }
   function updateUI() {

@@ -1171,7 +1171,7 @@
           '<div class="ctl-grid">' +
             '<label class="field"><span>τ — {{عتبة اللون|colour threshold}}: <b class="mono" id="{p}-tau-v">40</b></span><input type="range" id="{p}-tau" min="25" max="55" step="1" value="40"><small class="muted">|Cb−Cr| ≥ τ · {{الحساسية|sensitivity}} <span class="mono" id="{p}-sens-v">0.50</span></small></label>' +
             '<div class="field"><span id="{p}-conf-l">{{إطارات التأكيد|Confirm frames}}</span>' +
-              '<div class="stepper" role="group" aria-labelledby="{p}-conf-l"><button type="button" class="icon-btn" id="{p}-conf-dn" aria-label="−">−</button><input type="number" class="input mono" id="{p}-conf" min="3" max="20" step="1" value="8" inputmode="numeric"><button type="button" class="icon-btn" id="{p}-conf-up" aria-label="+">+</button></div></div>' +
+              '<div class="stepper" role="group" aria-labelledby="{p}-conf-l"><button type="button" class="icon-btn" id="{p}-conf-dn" aria-label="−">−</button><input type="number" class="input mono" id="{p}-conf" aria-labelledby="{p}-conf-l" min="3" max="20" step="1" value="8" inputmode="numeric"><button type="button" class="icon-btn" id="{p}-conf-up" aria-label="+">+</button></div></div>' +
           '</div>' +
           '<div class="switches">' +
             '<label class="switch"><input type="checkbox" id="{p}-ov-fire" checked><span>{{قناع النار|Fire mask}}</span></label>' +
@@ -1200,7 +1200,7 @@
       '<div class="lab-side">' +
         '<div class="card verdict" id="{p}-verdict" data-state="clear">' +
           '<div class="v-top"><div class="v-state"><span class="dot"></span><b id="{p}-vstate">–</b></div>' +
-            '<div class="v-conf"><span class="muted small">{{ثقة الرؤية|Vision confidence}}</span><div class="meter"><i id="{p}-confbar"></i></div><b class="mono" id="{p}-confnum">0%</b></div></div>' +
+            '<div class="v-conf"><span class="muted small">{{ثقة الرؤية|Vision confidence}}</span><div class="meter"><i id="{p}-confbar"></i></div><b class="mono" id="{p}-confnum">0%</b><small class="v-conf-note muted">{{درجة على هذا المشهد وليست دقة. الدقة الصادقة على صور حقيقية محجوزة: 66.7% (12 من 18).|A score on this scene, not accuracy. The honest accuracy on held-out real photos: 66.7% (12 of 18).}}</small></div></div>' +
           '<p class="why" id="{p}-why"></p>' +
           '<p class="muted small" id="{p}-engine"></p>' +
           '<span class="sr-only" id="{p}-sr" role="status" aria-live="polite"></span>' +

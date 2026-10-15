@@ -227,6 +227,9 @@ section('5. Honesty scan (phrases, AI wording, numbers, SIM labels, our source r
   add(['626', '317', '225', '47', '339', '161', '39', '33369', '3024', '245', '89', '291', '98', '425', '682'], 'measured: test-sim.mjs seed 1 (ordinary vs MANARA)');
   add(['500', '1118', '181', '118'], 'measured: test-sim.mjs §11 hand-built road graph (A 500 m / 181 s, B 1,118 m / 118 s at 07:30)');
   add(['80', '227', '95', '270'], 'estimates from the Build It parts table (US$ 2–10, 80–227, 95–270)');
+  add(['138', '6116', '73', '23', '1.0', '2026'], 'OpenStreetMap snapshot 2026-10-08 (docs/MANARA-DATA.md): 138 facilities, 6,116 km of roads, 23 of 73 official names missing, ODbL 1.0');
+  add(['5.7', '10.0', '00', '34', '86', '17', '45', '150', '7'], 'ManaraNational.findFartherButFaster(7): 5.7 vs 10.0 km straight, 14:00 vs 12:34, 86 s, Sunday 17:45; ManaraNational.ab({seed: 7, n: 150})');
+  add(['64.7', '63', '91', '212'], 'ManaraNational.ab seed 7: 64.7 % of incidents differ, mean saving 63 s; test-qatar-data.mjs 91 checks, test-national.mjs 212 checks');
   const toks = [];
   for (const t of texts) for (const m of t.matchAll(/\d[\d,.]*\d|\d/g)) toks.push(m[0].replace(/,/g, ''));
   const unknown = [...new Set(toks.filter(t => !(t in OK)))];
@@ -290,6 +293,25 @@ section('6. Provenance: the board equals a fresh run of the detector test and th
     check('the results module prints the 682 vs 0 trade-off and the "mechanism check, not proof of impact" caveat', /682/.test(text) && /mechanism check, not proof of impact/.test(text));
   }
   check('hardware tiers on the board equal the landing page tiers (US$ 2–10, 80–227, 95–270)', R.sim && await page.evaluate(() => JSON.stringify(ManaraPoster.TIERS.map(t => [t.lo, t.hi]))) === '[[2,10],[80,227],[95,270]]' && /US\$ 2–10/.test(fs.readFileSync(path.join(SITE, 'index.html'), 'utf8')) && /US\$ 80–227/.test(fs.readFileSync(path.join(SITE, 'index.html'), 'utf8')) && /US\$ 95–270/.test(fs.readFileSync(path.join(SITE, 'index.html'), 'utf8')));
+  // (c) the whole-of-Qatar module: the bundled data, the real example and the national A/B, all recomputed now
+  {
+    const nctx = vm.createContext({ console });
+    for (const f of ['data/qatar-geo.js', 'data/qatar-facilities.js', 'data/qatar-roads.js', 'js/national.js']) vm.runInContext(fs.readFileSync(path.join(SITE, f), 'utf8'), nctx);
+    const N = nctx.ManaraNational, NR = R.national, ex = NR.ex, F = nctx.MANARA_QATAR_FACILITIES, G = nctx.MANARA_QATAR_ROADS.decode();
+    check(`data counts on the board: ${NR.data.facilities} facilities, ${NR.data.roadKm} km of roads, snapshot ${NR.snapshot}  ← bundled files`, F.length === NR.data.facilities && Math.round(Array.from(G.eLen).reduce((a, b) => a + b, 0) / 1000) === NR.data.roadKm && F.meta.snapshotDate === NR.snapshot, `${F.length} / ${F.meta.snapshotDate}`);
+    const r = N.findFartherButFaster(NR.seed), pick = x => [x.unitId, x.etaSec, x.freeFlowEtaSec, x.roadKm, x.straightKm, x.congestedSegments];
+    check('the drawn example equals ManaraNational.findFartherButFaster(7) now (units, ETAs, distances, gain, reason)', JSON.stringify([ex.gainSec, ex.extraStraightKm, ex.reason, ex.clock, ...pick(ex.fastest), ...pick(ex.nearest)]) === JSON.stringify([r.gainSec, r.extraStraightKm, r.reason, r.clock, ...pick(r.fastest), ...pick(r.nearest)]), JSON.stringify(pick(r.fastest)));
+    const ab = N.ab({ seed: NR.seed, n: NR.ab.n }), mean = ab.savedSec.all.mean;
+    check(`national A/B (150 incidents, seed 7): differs ${NR.ab.differsPct}%, mean saving ${NR.ab.meanSavedSec} s, median ${NR.ab.medianSavedSec}, p90 ${NR.ab.p90SavedSec}  ← fresh run`, ab.differs.incidentsPct === NR.ab.differsPct && Math.round(mean) === NR.ab.meanSavedSec && ab.savedSec.all.p50 === NR.ab.medianSavedSec && Math.round(ab.savedSec.all.p90) === NR.ab.p90SavedSec, JSON.stringify([ab.differs, mean, ab.savedSec.all.p50, ab.savedSec.all.p90]));
+    const nd = spawnSync(process.execPath, [path.join(ROOT, 'tools/manara/test-qatar-data.mjs')], { encoding: 'utf8', timeout: 120000 });
+    check(`test-qatar-data.mjs passes with the ${NR.data.dataChecks} checks the board prints`, nd.status === 0 && new RegExp(`${NR.data.dataChecks} passed, 0 failed`).test(nd.stdout || ''), (nd.stdout || '').match(/\d+ passed, \d+ failed/)?.[0]);
+    if (process.env.POSTER_SKIP_NATIONAL !== '1') {
+      const nn = spawnSync(process.execPath, [path.join(ROOT, 'tools/manara/test-national.mjs')], { encoding: 'utf8', timeout: 300000 });
+      check(`test-national.mjs passes with the ${NR.data.engineChecks} checks the board prints`, nn.status === 0 && new RegExp(`${NR.data.engineChecks} passed, 0 failed`).test(nn.stdout || ''), (nn.stdout || '').match(/\d+ passed, \d+ failed/)?.[0]);
+    }
+    const bt = await page.evaluate(() => document.getElementById('m-fast').textContent + ' ' + document.getElementById('m-results').textContent);
+    check('the board carries the attribution, the snapshot date, SIM and "999 stays the dispatcher" next to the map', /Contains data © OpenStreetMap contributors, ODbL 1\.0/.test(bt) && /2026-10-08/.test(bt) && /SIM/.test(bt) && /999 stays the dispatcher/.test(bt));
+  }
   await ctx.close();
 }
 
@@ -385,10 +407,12 @@ section('8. Team fields ({{PLACEHOLDERS}}) · textContent only · persisted');
   check('counter goes to 6 of 8 and the values are saved in this browser', /6/.test(r.left) && r.saved.STUDENT_NAME === evil && r.school === 'مدرسة قطر الثانوية', r.left);
   const fit = await page.evaluate(() => ManaraPoster.check().fits);
   check('a long name does not push the panel past its edge (auto-fit re-runs)', fit);
+  await page.waitForTimeout(600);   // the fields are saved on a debounce
   await page.reload({ waitUntil: 'load' });
   await page.waitForFunction(() => window.__posterReady === true);
+  await page.waitForTimeout(300);
   await page.evaluate(() => { document.getElementById('details').open = true; });
-  check('after a reload the values are still there', await page.evaluate(() => document.querySelector('[data-ph=SCHOOL_NAME]').textContent === 'مدرسة قطر الثانوية' && document.querySelector('[data-field=SCHOOL_NAME]').value === 'مدرسة قطر الثانوية'));
+  { const rl = await page.evaluate(() => ({ ph: document.querySelector('[data-ph=SCHOOL_NAME]').textContent, v: document.querySelector('[data-field=SCHOOL_NAME]').value, ls: (localStorage.getItem('manara-poster') || '').slice(0, 160) })); check('after a reload the values are still there', rl.ph === 'مدرسة قطر الثانوية' && rl.v === 'مدرسة قطر الثانوية', JSON.stringify(rl)); }
   await page.fill('[data-field=SCHOOL_NAME]', '');
   await page.waitForTimeout(150);
   check('clearing a field brings the {{SCHOOL_NAME}} reminder back', await page.evaluate(() => document.querySelector('[data-ph=SCHOOL_NAME]').textContent === '{{SCHOOL_NAME}}'));

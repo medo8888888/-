@@ -1,11 +1,12 @@
 // Pitch (pitch.html) tests — Playwright + Chromium, file:// URLs:  node tools/manara/test-pitch.mjs
 //
 //  1. Loads clean in ar/en × dark/light at 390 and 1440, no horizontal overflow on any tab or slide, one h1, ARIA tabs
-//  2. Data: 12 slides, the strict path adds up to exactly 3:00 and the extended path to exactly 7:00, one live moment of 55 s
+//  2. Data: 13 slides, the strict path adds up to exactly 3:00 and the extended path to exactly 7:00, one live moment of 55 s
 //  3. Deck: keyboard (direction-aware arrows, Home/End, digits, F, N, O, ?, L, S, Esc), path skipping, swipe, overview, notes, timer
-//  4. Slide modules: proof (two keys + human), building section, dispatch (live ManaraSim: farther-but-faster, jam, close), evidence (static baseline = live engine)
+//  4. Slide modules: proof (two keys + human), building section, dispatch (live ManaraSim: farther-but-faster, jam, close), the whole of Qatar (real OSM map + the real
+//     farther-but-faster example: static baseline = live ManaraNational.findFartherButFaster(7); another seed; without the engine/data), evidence (static baseline = live engine)
 //  5. Script tab: timestamps, one live moment with 5 steps, pace, fallback levels, 7-minute path, mirror toggle
-//  6. Q&A: 30+ questions in six groups, both languages each, weak spots with a "say it first" line, search (Arabic + English), filters, deep link
+//  6. Q&A: 50+ questions in seven groups (13 on Qatar-wide data), both languages each, weak spots with a "say it first" line, search (Arabic + English), filters, deep link
 //  7. Booth: checklist (persisted), rehearsal timer (saves a run), ten risks, numbers sheet, personal fields (textContent only)
 //  8. Print: A4 PDF page counts for slides / script / Q&A / booth
 //  9. Honesty scan: banned phrases, every number on the numbers sheet has a source, contrast of slide text
@@ -54,7 +55,7 @@ for (const lang of ['ar', 'en']) for (const theme of ['dark', 'light']) for (con
     }
     return out;
   });
-  check(`${tag}: all 12 slides fit (no clipped content)`, fit.length === 0, fit.join('; '));
+  check(`${tag}: all 13 slides fit (no clipped content)`, fit.length === 0, fit.join('; '));
   await ctx.close();
 }
 
@@ -67,7 +68,7 @@ section('2. Data: budgets, paths, the one live moment');
     return { n: S.length, t3: sum('t3'), t7: sum('t7'), live: S.filter(s => s.live).length, liveT: ManaraPitch.live.reduce((a, s) => a + (s.t1 - s.t0), 0), liveEnd: ManaraPitch.live[ManaraPitch.live.length - 1].t1, liveB: S.find(s => s.live).t3,
       dom: document.querySelectorAll('.slide').length, say3: S.filter(s => s.t3 > 0).every(s => s.say3 && s.say3.ar && s.say3.en), say7: S.every(s => (s.say3 || s.more7)), skipped: S.filter(s => s.t3 === 0).map(s => s.id) };
   });
-  check('12 slides in the data and in the page', d.n === 12 && d.dom === 12, JSON.stringify(d));
+  check('13 slides in the data and in the page', d.n === 13 && d.dom === 13, JSON.stringify(d));
   check('strict path = exactly 3:00 (180 s)', d.t3 === 180, String(d.t3));
   check('extended path = exactly 7:00 (420 s)', d.t7 === 420, String(d.t7));
   check('exactly ONE live moment, 55 s, five steps that add up', d.live === 1 && d.liveT === 55 && d.liveB === 55 && d.liveEnd === 55, JSON.stringify(d));
@@ -82,11 +83,11 @@ section('3. Deck: keyboard · skipping · swipe · overview · notes · timer ·
   const { page, errors } = await open({ lang: 'ar', width: 1440, height: 1000 });
   await page.click('#t-slides');
   await page.evaluate(() => { document.activeElement && document.activeElement.blur(); });
-  check('opens on slide 1 with 12 progress segments', (await idx(page)) === 0 && (await page.$$eval('.db-seg', e => e.length)) === 12);
+  check('opens on slide 1 with 13 progress segments', (await idx(page)) === 0 && (await page.$$eval('.db-seg', e => e.length)) === 13);
   // Arabic = RTL: ArrowLeft goes forward, ArrowRight back
   await key(page, 'ArrowLeft'); check('RTL: ArrowLeft = next slide', (await idx(page)) === 1);
   await key(page, 'ArrowRight'); check('RTL: ArrowRight = previous slide', (await idx(page)) === 0);
-  await key(page, 'End'); check('End goes to the last slide', (await idx(page)) === 11);
+  await key(page, 'End'); check('End goes to the last slide', (await idx(page)) === 12);
   await key(page, 'Home'); check('Home goes to the first slide', (await idx(page)) === 0);
   await key(page, '5'); await sleep(900); check('digit 5 goes to slide 5', (await idx(page)) === 4);
   await key(page, '1'); await key(page, '0'); await sleep(100); check('digits 1 then 0 go to slide 10', (await idx(page)) === 9);
@@ -105,7 +106,7 @@ section('3. Deck: keyboard · skipping · swipe · overview · notes · timer ·
   await key(page, 'ArrowLeft'); check('LTR: ArrowLeft = previous slide', (await idx(page)) === 0);
   // progress + aria-live
   await page.evaluate(() => ManaraPitch.goTo(2, { force: true }));
-  check('live region announces the slide', /Slide 3 of 12/.test(await page.$eval('#deck-live', e => e.textContent)));
+  check('live region announces the slide', /Slide 3 of 13/.test(await page.$eval('#deck-live', e => e.textContent)));
   check('exactly one slide is visible to AT', (await page.$$eval('.slide[aria-hidden=false]', e => e.length)) === 1);
   check('progress segment marks the current slide', (await page.$$eval('.db-seg[aria-current=true]', e => e.length)) === 1);
   // swipe (touch pointer events)
@@ -118,8 +119,8 @@ section('3. Deck: keyboard · skipping · swipe · overview · notes · timer ·
   await swipe(-120); check('RTL swipe left = previous', (await idx(page)) === 1);
   // overview
   await key(page, 'o'); await sleep(200);
-  check('O opens the overview with 12 thumbnails', (await page.$$eval('.ov-item', e => e.length)) === 12 && await page.$eval('#overview', e => !e.hidden));
-  check('overview thumbnails are inert clones (no duplicate ids inside the deck)', await page.evaluate(() => { const ids = [...document.querySelectorAll('#deck [id]')].map(e => e.id); return ids.length === new Set(ids).size && [...document.querySelectorAll('.ov-item [inert]')].length === 12; }));
+  check('O opens the overview with 13 thumbnails', (await page.$$eval('.ov-item', e => e.length)) === 13 && await page.$eval('#overview', e => !e.hidden));
+  check('overview thumbnails are inert clones (no duplicate ids inside the deck)', await page.evaluate(() => { const ids = [...document.querySelectorAll('#deck [id]')].map(e => e.id); return ids.length === new Set(ids).size && [...document.querySelectorAll('.ov-item [inert]')].length === 13; }));
   check('overview marks the skipped slides', (await page.$$eval('.ov-item.skipped', e => e.length)) === 2);
   await page.click('.ov-item[data-i="6"]'); await sleep(150);
   check('clicking a thumbnail jumps and closes', (await idx(page)) === 6 && await page.$eval('#overview', e => e.hidden));
@@ -221,7 +222,7 @@ section('4. Slide modules: proof · building · dispatch · evidence');
   check('dispatch: clicking a road on the map jams it', click === 1);
   await page.click('#dp-clear');
   // evidence: the static baseline equals what the engine computes now
-  await page.evaluate(() => ManaraPitch.goTo(9, { force: true }));
+  await page.evaluate(() => ManaraPitch.goTo(10, { force: true }));
   const live = await page.evaluate(() => { const b = ManaraPitch.EV_BASE, l = ManaraPitch.evSummarise(ManaraSim.ab({ preset: b.preset, seed: b.seed })); const r = x => x == null ? null : Math.round(x * 10) / 10; return { b: [r(b.head.ord), r(b.head.man), ...b.inj, ...b.disp, b.siren, b.personal], l: [r(l.head.ord), r(l.head.man), ...l.inj, ...l.disp, l.siren, l.personal] }; });
   check('evidence: the static fire-night seed-1 baseline equals the live ManaraSim.ab() result (not stale)', JSON.stringify(live.b) === JSON.stringify(live.l), JSON.stringify(live));
   check('evidence: shows ordinary vs MANARA bars labelled SIM and a mechanism-check note', await page.$eval('.s-evidence', e => (e.querySelectorAll('.ev-pair').length === 6) && /SIM/.test(e.textContent) && /mechanism check/i.test(e.textContent)));
@@ -247,7 +248,7 @@ section('4b. Presenter window (second window kept in step over Manara.link)');
   check('moving the main window moves the presenter window', (await idx(A.page)) === 1 && (await idx(B.page)) === 1, `${await idx(A.page)} / ${await idx(B.page)}`);
   await B.page.keyboard.press('ArrowRight'); await sleep(500);
   check('moving the presenter window moves the main window', (await idx(A.page)) === 2 && (await idx(B.page)) === 2, `${await idx(A.page)} / ${await idx(B.page)}`);
-  check('the presenter window shows the NEXT slide of the path (not the skipped one)', await B.page.evaluate(() => { ManaraPitch.goTo(6, { force: true }); const t = document.querySelector('#notes .nt-preview .slide'); return t && t.dataset.slide === 'evidence'; }));
+  check('the presenter window shows the NEXT slide of the path (not the skipped one)', await B.page.evaluate(() => { ManaraPitch.goTo(6, { force: true }); const t = document.querySelector('#notes .nt-preview .slide'); return t && t.dataset.slide === 'national'; }));
   check('the main window offers "Open the presenter window"', await A.page.$eval('#notes', e => /presenter window/i.test(e.textContent)));
   check('no console errors in either window', A.errors.length === 0 && B.errors.length === 0, A.errors.concat(B.errors).join(' | '));
   await ctx.close();
@@ -265,8 +266,77 @@ section('4c. Without sim.js (engine missing): the pitch still works and says so'
   await page.evaluate(() => { ManaraPitch.state.skip = false; ManaraPitch.goTo(8, { force: true }); });
   check('no script errors when ManaraSim is missing', errs.length === 0, errs.join(' | '));
   check('dispatch slide explains that the live map needs the engine', await page.$eval('#dp-map', e => /engine did not load|محرّك المحاكاة غير محمَّل/.test(e.textContent)));
-  await page.evaluate(() => ManaraPitch.goTo(9, { force: true }));
+  await page.evaluate(() => ManaraPitch.goTo(10, { force: true }));
   check('evidence slide still shows the static baseline (626 vs 317) and hides the run controls', await page.evaluate(() => /626/.test(document.querySelector('#ev-bars').textContent) && /317/.test(document.querySelector('#ev-bars').textContent) && document.querySelector('.ev-run').hidden));
+  await ctx.close();
+}
+
+// ======================================================================= 4d. the whole of Qatar (slide 10)
+section('4d. The whole of Qatar: the real OSM map + the real farther-but-faster example');
+{
+  const { page, errors } = await open({ lang: 'en', width: 1440, height: 1000 });
+  await page.click('#t-slides');
+  await page.evaluate(() => { ManaraPitch.state.skip = false; ManaraPitch.goTo(9, { force: true }); });
+  await sleep(300);
+  const sl = await page.evaluate(() => ({ id: document.querySelector('.slide.is-active').dataset.slide, ids: ManaraPitch.slides.map(s => s.id).join(), t3: ManaraPitch.slides[9].t3, t7: ManaraPitch.slides[9].t7 }));
+  check('slide 10 is "national", in the strict path (15 s) and the extended path (45 s)', sl.id === 'national' && sl.t3 === 15 && sl.t7 === 45, JSON.stringify(sl));
+  const m = await page.evaluate(() => ({
+    zoom: !!document.querySelector('#na-zoom svg'), loc: !!document.querySelector('#na-loc svg'),
+    fast: !!document.querySelector('#na-zoom .na-route.fast'), near: !!document.querySelector('#na-zoom .na-route.near'),
+    facZoom: document.querySelectorAll('#na-zoom .na-fac').length, facLoc: document.querySelectorAll('#na-loc .na-fac').length,
+    land: (document.querySelector('#na-zoom .na-land') || {}).getAttribute ? document.querySelector('#na-zoom .na-land').getAttribute('d').length : 0,
+    roads: ['na-r1', 'na-r2', 'na-r3'].map(c => (document.querySelector('#na-zoom .' + c) || { getAttribute: () => '' }).getAttribute('d').length),
+    locRoads: (document.querySelector('#na-loc .na-r1') || { getAttribute: () => '' }).getAttribute('d').length,
+    muni: (document.querySelector('#na-loc .na-muni') || { getAttribute: () => '' }).getAttribute('d').split('M').length - 1,
+    labels: document.querySelectorAll('#na-zoom .na-lab').length, aria: [...document.querySelectorAll('#na-zoom svg,#na-loc svg')].every(x => x.getAttribute('role') === 'img' && x.getAttribute('aria-label').length > 40),
+    ids: new Set([...document.querySelectorAll('#deck [id]')].map(e => e.id)).size === [...document.querySelectorAll('#deck [id]')].length }));
+  check('the map is drawn from the REAL data: outline, roads of all classes, facilities (zoom + whole-Qatar locator), municipalities', m.zoom && m.loc && m.land > 2000 && m.roads.every(x => x > 500) && m.locRoads > 2000 && m.facZoom >= 10 && m.facLoc >= 120 && m.muni >= 8, JSON.stringify(m));
+  check('both routes are drawn (orange = fastest, grey dashed = nearest), labelled in both languages, with accessible names', m.fast && m.near && m.labels === 6 && m.aria && m.ids, JSON.stringify(m));
+  const t = await page.$eval('.s-national', e => e.innerText);
+  check('the slide shows the real numbers: 86 s sooner, 4.4 km farther, 14:00 vs 12:34, 5.7 vs 10.0 km', /86\s*s sooner/.test(t) && /4\.4 km farther/.test(t) && /14:00/.test(t) && /12:34/.test(t) && /5\.7/.test(t) && /10\.0/.test(t) && /free flow\s*08:05/.test(t) && /free flow\s*09:09/.test(t), t.slice(0, 400));
+  check('it is labelled SIM, names the OSM snapshot date and licence, says the roads are real and the traffic simulated, and that 999 dispatches', /SIM/.test(t) && /2026-10-08/.test(t) && /Contains data © OpenStreetMap contributors, ODbL 1\.0/.test(t) && /traffic and the position and availability of units are simulated/.test(t) && /999 stays the dispatcher/.test(t), t);
+  check('it is candid about the OSM gaps (21 fire stations on the map against 23 official) and the station that has no name in OSM', /21 fire stations[\s\S]*23 official/.test(t) && /unnamed in OSM/.test(t));
+  check('a link opens the national view of Mission Control', (await page.$eval('#na-open', a => a.getAttribute('href') + '|' + a.target)) === 'mission.html#scope=national|_blank');
+  // the static baseline equals the live engine (not stale)
+  const live = await page.evaluate(() => {
+    const r = ManaraNational.findFartherButFaster(7), b = ManaraPitch.NA_BASE, pick = x => [x.unitId, x.etaSec, x.freeFlowEtaSec, x.roadKm, x.straightKm, x.congestedSegments];
+    return { b: [b.seed, b.clock, b.gainSec, b.extraStraightKm, b.reason, b.flips, b.incident.lon, b.incident.lat, ...pick(b.fastest), ...pick(b.nearest), b.nearest.worst.en],
+             l: [r.seed, r.clock, r.gainSec, r.extraStraightKm, r.reason, r.trafficAloneFlipsOrder, r.incident.lon, r.incident.lat, ...pick(r.fastest), ...pick(r.nearest), r.nearest.slowest[0].name.en],
+             routeOK: b.fastest.route.length > 40 && Math.abs(b.fastest.route[0][0] - r.fastest.route[0][0]) < 1e-3 && Math.abs(b.nearest.route[b.nearest.route.length - 1][1] - r.nearest.route[r.nearest.route.length - 1][1]) < 1e-3 };
+  });
+  check('the embedded seed-7 baseline equals ManaraNational.findFartherButFaster(7) computed now (numbers, units, reason)', JSON.stringify(live.b) === JSON.stringify(live.l) && live.routeOK, JSON.stringify(live));
+  // another seed, live
+  await page.fill('#na-seed', '4'); await page.click('#na-go');
+  const busy = await page.$eval('#na-go', e => e.getAttribute('data-busy') + '|' + e.disabled);
+  check('"Find another real example" shows a busy state while it searches the real roads', busy === 'true|true', busy);
+  await page.waitForFunction(() => /seed 4/.test(document.querySelector('#na-gain').textContent), null, { timeout: 20000 });
+  const t4 = await page.$eval('.s-national', e => e.innerText);
+  const live4 = await page.evaluate(() => { const r = ManaraNational.findFartherButFaster(4); return { gain: r.gainSec, reason: r.reason, name: r.fastest.name.en, eta: r.fastest.etaSec }; });
+  check('seed 4 re-runs live: the numbers on the slide are the engine\'s (gain, arrival), and it says "computed just now"', new RegExp(live4.gain + '\\s*s sooner').test(t4) && /computed just now/.test(t4) && t4.includes(live4.name.split(' — ').slice(1).join(' — ')), t4.slice(0, 300) + JSON.stringify(live4));
+  check('seed 4 is a NETWORK case (traffic does not decide) and the explanation says so instead of blaming traffic', live4.reason === 'network' && /road network, not traffic, decides/.test(t4), live4.reason);
+  check('the map redrew for the new example (a different incident and stations)', await page.evaluate(() => ManaraPitch.NA.res.seed === 4 && ManaraPitch.NA.live && document.querySelectorAll('#na-zoom .na-lab').length === 6));
+  await page.fill('#na-seed', '7'); await page.click('#na-go'); await page.waitForFunction(() => /seed 7/.test(document.querySelector('#na-gain').textContent), null, { timeout: 20000 });
+  check('seed 7 brings the baseline numbers back', /86\s*s sooner/.test(await page.$eval('#na-gain', e => e.innerText)) && /12:34/.test(await page.$eval('#na-cmp', e => e.innerText)));
+  // Arabic
+  await page.evaluate(() => Manara.setLang('ar')); await sleep(250);
+  const ar = await page.$eval('.s-national', e => ({ t: e.innerText, rtl: getComputedStyle(e).direction }));
+  check('Arabic: title, tags, numbers and the attribution are all there (RTL)', /الأسرع وصولًا بحسب الازدحام/.test(ar.t) && /خريطة حقيقية/.test(ar.t) && /ثواني|ث أبكر/.test(ar.t) && /12:34/.test(ar.t) && /OpenStreetMap contributors/.test(ar.t) && ar.rtl === 'rtl', ar.t.slice(0, 200));
+  const lab = await page.evaluate(() => [...document.querySelectorAll('#na-zoom text.na-lab[data-l=ar]')].map(t => { const r = t.getBoundingClientRect(), s = document.querySelector('#na-zoom svg').getBoundingClientRect(); return r.left >= s.left - 1 && r.right <= s.right + 1 && r.top >= s.top - 1 && r.bottom <= s.bottom + 1; }));
+  check('Arabic: every station and incident label sits inside the picture (the anchor flips for right-to-left text)', lab.length === 3 && lab.every(Boolean), lab.join());
+  await page.evaluate(() => Manara.setLang('en'));
+  check('no console errors on the national slide', errors.length === 0, errors.join(' | '));
+}
+{
+  // the data files or the engine missing: the slide still shows the numbers and says why the map is blank
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 1000 }, colorScheme: 'dark', reducedMotion: 'reduce' });
+  const page = await ctx.newPage(); const errs = [];
+  page.on('pageerror', e => errs.push(e.message));
+  await page.route(/qatar-(geo|facilities|roads)\.js|national\.js/, r => r.abort());
+  await page.goto(new URL('../../site/manara/pitch.html', import.meta.url).href);
+  await page.waitForFunction(() => window.__pitchReady === true, null, { timeout: 8000 }).catch(() => errs.push('never ready'));
+  await page.evaluate(() => { ManaraPitch.state.skip = false; ManaraPitch.goTo(9, { force: true }); });
+  check('no script errors when the data files and the engine are missing', errs.length === 0, errs.join(' | '));
+  check('the slide still shows the baseline numbers and explains that the map data did not load; the live button is disabled', await page.evaluate(() => /12:34/.test(document.querySelector('#na-cmp').textContent) && /data files .* did not load|ملفات بيانات الخريطة غير محمَّلة/.test(document.querySelector('#na-zoom').textContent) && document.querySelector('#na-go').disabled));
   await ctx.close();
 }
 
@@ -280,13 +350,13 @@ section('5. Script tab');
     first: document.querySelector('.sc-row .sc-when b').textContent, last: [...document.querySelectorAll('.sc-row .sc-when b')].pop().textContent,
     seg: document.querySelectorAll('.sc-seg').length, fb: document.querySelectorAll('.fb-lv').length, rule: !!document.querySelector('.sc-fallback .note'),
     mirror: document.querySelectorAll('.sc-row [data-lm]').length > 5, pace: document.querySelectorAll('.sc-pace').length, hdr: /3 دقائق|3 min/.test(document.querySelector('.seg-toggle').textContent) }));
-  check('script: 10 timed segments in the strict path', sc.rows === 10 && sc.seg === 10, JSON.stringify(sc));
+  check('script: 11 timed segments in the strict path', sc.rows === 11 && sc.seg === 11, JSON.stringify(sc));
   check('script: starts 00:00 and ends 03:00', /^00:00/.test(sc.first) && /03:00$/.test(sc.last), sc.first + ' … ' + sc.last);
   check('script: ONE live moment with five sub-steps', sc.live === 1 && sc.steps === 5);
   check('script: "if the demo fails" has four levels and the rule', sc.fb === 4 && sc.rule);
   check('script: English mirror under every Arabic line, pace shown', sc.mirror && sc.pace >= 9);
   const stepTimes = await page.$$eval('.sc-live .sc-step > b', e => e.map(x => x.textContent));
-  check('script: live sub-steps carry exact timestamps (01:20–01:30 … 02:05–02:15)', stepTimes[0] === '01:20–01:30' && stepTimes[4] === '02:05–02:15', stepTimes.join(' '));
+  check('script: live sub-steps carry exact timestamps (01:13–01:23 … 01:58–02:08)', stepTimes[0] === '01:13–01:23' && stepTimes[4] === '01:58–02:08', stepTimes.join(' '));
   const wpm = await page.$$eval('.sc-pace', e => e.map(x => +(x.textContent.match(/(\d+)\s*(?:كلمة\/دقيقة|wpm)/) || [])[1]).filter(Boolean));
   check('script: spoken pace of every segment is humanly possible (≤ 180 wpm outside the live block)', wpm.every(w => w <= 180), wpm.join());
   // each language is paced on its OWN word count (the Arabic line on Arabic words, the English mirror on English words)
@@ -300,7 +370,7 @@ section('5. Script tab');
   check('a11y: the deck stage has an accessible name; buttons keep their button role', !!roles.stage && roles.bad === 0 && roles.grp === 'group', JSON.stringify(roles));
   await page.click('.seg-toggle button:last-child'); await sleep(200);
   const r7 = await page.evaluate(() => ({ rows: document.querySelectorAll('.sc-row').length, last: [...document.querySelectorAll('.sc-row .sc-when b')].pop().textContent }));
-  check('script: the 7-minute path has 12 segments and ends at 07:00', r7.rows === 12 && /07:00$/.test(r7.last), JSON.stringify(r7));
+  check('script: the 7-minute path has 13 segments and ends at 07:00', r7.rows === 13 && /07:00$/.test(r7.last), JSON.stringify(r7));
   await page.click('.seg-toggle button:first-child');
   await page.evaluate(() => { const c = document.querySelector('#p-script .switch input'); c.click(); });
   check('script: the mirror can be hidden', await page.$eval('#p-script', e => e.classList.contains('no-mirror')) && await page.$eval('.sc-row .sc-mirror', e => getComputedStyle(e).display === 'none'));
@@ -317,12 +387,13 @@ section('6. Judge Q&A');
     return { n: D.length, groups: Object.keys(g).length, g, bothLangs: D.every(x => x.q.ar && x.q.en && x.a.ar.length > 60 && x.a.en.length > 60), weak: D.filter(x => x.weak).length, weakFirst: D.filter(x => x.weak).every(x => x.first && x.first.ar && x.first.en),
       ids: new Set(D.map(x => x.id)).size, dom: document.querySelectorAll('.qa-item').length, fill: D.filter(x => x.fill).map(x => x.id), opening: ManaraPitch.opening.length };
   });
-  check('Q&A: 30+ questions (43) in six groups', q.n >= 30 && q.groups === 6 && q.dom === q.n && q.ids === q.n, JSON.stringify(q.g));
+  check('Q&A: 50+ questions in seven groups (13 about the whole of Qatar and the data)', q.n >= 50 && q.groups === 7 && q.g.national >= 10 && q.dom === q.n && q.ids === q.n, JSON.stringify(q.g));
   check('Q&A: every question and answer exists in Arabic and English', q.bothLangs);
   check('Q&A: weak spots are flagged and each has a "say it first" line in both languages', q.weak >= 10 && q.weakFirst, String(q.weak));
   check('Q&A: personal answers (built/bought/AI disclosure, ethics) ask the student to edit them', ['B1', 'B2', 'H3'].every(x => q.fill.includes(x)), q.fill.join());
-  check('Q&A: six opening disclosures', q.opening === 6);
-  const must = { D1: /fastest/i, D2: /closes|closed/i, D3: /simulat/i, D4: /999/, R1: /drone/i, R2: /Law No\. 10/, R3: /heat|battery/i, H1: /privacy|camera/i, H2: /data protection/i, H4: /no phone/i, B1: /built/i, B2: /AI tools/i, B3: /cost/i, B4: /scale/i, B5: /maintain/i, B6: /network/i, W3: /cell broadcast/i, W5: /ISEF/i, P2: /66\.7/, P4: /real fires/i, P6: /fatigue/i, H5: /translations/i, H3: /ethics/i, P1: /AI/ };
+  check('Q&A: seven opening disclosures (the seventh is about the OSM snapshot and the simulated traffic)', q.opening === 7);
+  const must = { D1: /fastest/i, D2: /closes|closed/i, D3: /simulat/i, D4: /999/, R1: /drone/i, R2: /Law No\. 10/, R3: /heat|battery/i, H1: /privacy|camera/i, H2: /data protection/i, H4: /no phone/i, B1: /built/i, B2: /AI tools/i, B3: /cost/i, B4: /scale/i, B5: /maintain/i, B6: /network/i, W3: /cell broadcast/i, W5: /ISEF/i, P2: /66\.7/, P4: /real fires/i, P6: /fatigue/i, H5: /translations/i, H3: /ethics/i, P1: /AI/,
+    N1: /OpenStreetMap[\s\S]*(23 are not in OSM|MISSING)/, N2: /simulated[\s\S]*live traffic provider/, N3: /CAD[\s\S]*AVL/, N4: /ODbL[\s\S]*Produced Work/, N5: /attribution[\s\S]*CREDITS/i, N6: /out of date[\s\S]*no name in OSM/, N7: /Gulf[\s\S]*tested only Qatar/, N8: /location[\s\S]*never leaves/, N9: /offline|no internet/i, N10: /no network requests[\s\S]*airplane/i, N11: /three (ambulance )?points[\s\S]*assumption/, N12: /navigation app[\s\S]*blank table/, N13: /median[\s\S]*tail/ };
   const have = await page.evaluate(() => Object.fromEntries(ManaraPitch.qa.map(x => [x.id, x.q.en + ' ' + x.a.en])));
   const missing = Object.entries(must).filter(([k, re]) => !re.test(have[k] || '')).map(([k]) => k);
   check('Q&A: covers the required topics (dispatch/traffic/road closed, who dispatches, drone, legality, heat, privacy, network, cost, ISEF, AI, ethics, scale, maintenance, fatigue, languages, cell broadcast, no phone, data)', missing.length === 0, missing.join());
@@ -346,6 +417,7 @@ section('6. Judge Q&A');
   await page.goto((await page.url()).split('#')[0] + '#q-D1'); await sleep(500);
   check('deep link #q-D1 opens the Q&A tab and that question', await page.evaluate(() => !document.querySelector('#p-qa').hidden && document.querySelector('#q-D1').open));
   check('a slide jump button exists on dispatch answers', await page.$eval('#q-D1', e => /Show slide 9/.test(e.textContent)));
+  check('the national answers jump to slide 10 and every national answer is specific about what is real and what is simulated', await page.evaluate(() => /Show slide 10/.test(document.querySelector('#q-N1').textContent) && ManaraPitch.qa.filter(x => x.g === 'national').every(x => /SIM|simulat|real|OpenStreetMap|OSM|assum|not|no /i.test(x.a.en))));
   check('no console errors in Q&A', errors.length === 0, errors.join(' | '));
 }
 
@@ -365,20 +437,21 @@ section('7. Booth tab');
   check('booth: names the real warm-up facts (≈4 min thermal, ≈3 min MQ, 48 h burn-in) and the offline test', /4 minutes/.test(txt) && /3 minutes|3 for the MQ/.test(txt) && /48 hours/.test(txt) && /airplane mode/i.test(txt));
   await page.click('.ck input >> nth=0'); await page.click('.ck input >> nth=1');
   const prog = await page.$eval('.bt-prog b', e => e.textContent);
+  check('booth: the offline DATA check is on the list (three data files, airplane mode, slide 10, CREDITS)', /Offline data check/.test(txt) && /qatar-geo\.js/.test(txt) && /airplane mode/i.test(txt) && /CREDITS\.txt/.test(txt) && /91 and 212/.test(txt));
   check('booth: ticking items updates the progress', /^2 \/ \d+$/.test(prog), prog);
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('manara-pitch-checks') || '{}'));
   check('booth: ticks are saved in this browser only', Object.keys(saved).length === 2);
-  await page.reload(); await page.waitForFunction(() => window.__pitchReady === true); await page.click('#t-booth'); await page.waitForSelector('.ck input', { state: 'attached' }); await sleep(250);
+  await page.reload(); await page.waitForFunction(() => window.__pitchReady === true); await page.click('#t-booth'); await page.waitForSelector('.ck input', { state: 'attached' }); await page.waitForFunction(() => document.querySelectorAll('.ck input:checked').length === 2, null, { timeout: 4000 }).catch(() => {}); await sleep(250);
   check('booth: ticks survive a reload', (await page.$$eval('.ck input:checked', e => e.length)) === 2);
   // rehearsal
   await page.click('#rh-body .btn-primary'); await sleep(250);
-  check('rehearsal: starts at segment 1 of 10', await page.$eval('#rh-body', e => /1\/10/.test(e.textContent)));
-  for (let i = 0; i < 10; i++) { await page.click('#rh-body .btn-primary'); await sleep(40); }
-  check('rehearsal: finishing shows plan vs you per segment and the total', (await page.$$eval('#rh-body tbody tr', e => e.length)) === 11);
+  check('rehearsal: starts at segment 1 of 11', await page.$eval('#rh-body', e => /1\/11/.test(e.textContent)));
+  for (let i = 0; i < 11; i++) { await page.click('#rh-body .btn-primary'); await sleep(40); }
+  check('rehearsal: finishing shows plan vs you per segment and the total', (await page.$$eval('#rh-body tbody tr', e => e.length)) === 12);
   const runs = await page.evaluate(() => JSON.parse(localStorage.getItem('manara-pitch-rehearsals') || '[]'));
-  check('rehearsal: the run is saved (counts toward "at least 5")', runs.length === 1 && runs[0].splits.length === 10);
+  check('rehearsal: the run is saved (counts toward "at least 5")', runs.length === 1 && runs[0].splits.length === 11);
   await page.click('#rh-body .btn-primary'); await sleep(100); await page.keyboard.press('Space'); await sleep(60);
-  check('rehearsal: Space = next segment', await page.$eval('#rh-body', e => /2\/10/.test(e.textContent)));
+  check('rehearsal: Space = next segment', await page.$eval('#rh-body', e => /2\/11/.test(e.textContent)));
   // my details (textContent only)
   const evil = '<img src=x onerror=window.__xss=1>';
   await page.fill('.mine-grid label:nth-child(2) input', evil); await page.fill('.mine-grid label:nth-child(5) input', '180 ms');
@@ -402,7 +475,7 @@ section('8. Print (A4 PDF)');
     await page.evaluate(() => ManaraPitch.afterPrint());
     return (buf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) || []).length;
   };
-  const ps = await pages('slides'); check('print slides: 12 landscape pages (one per slide)', ps === 12, String(ps));
+  const ps = await pages('slides'); check('print slides: 13 landscape pages (one per slide)', ps === 13, String(ps));
   const pc = await pages('script'); check('print script: a handful of A4 pages (≥ 3, ≤ 12)', pc >= 3 && pc <= 12, String(pc));
   const pq = await pages('qa'); check('print Q&A: A4 pages, answers expanded (≥ 8, ≤ 40)', pq >= 8 && pq <= 40, String(pq));
   const pb = await pages('booth'); check('print booth sheet: A4 pages (≥ 2, ≤ 14)', pb >= 2 && pb <= 14, String(pb));

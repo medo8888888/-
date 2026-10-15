@@ -413,3 +413,24 @@ html[data-lang=ar] .board[data-layout=a0].bi .hero-title .bl>[data-l=en],html[da
 /* code snippets inside the board (test commands, links) */
 .board code{background:none!important;border:0!important;padding:0!important;font:600 max(.9em,var(--fmin)) var(--font-m);line-height:inherit;direction:ltr;unicode-bidi:isolate;overflow-wrap:anywhere}
 .team-dl dt.il{display:flex}
+
+/* ---- module 09: the whole of Qatar (real OpenStreetMap snapshot; traffic is SIM) ---- */
+.sv .n-sea{fill:color-mix(in oklab,var(--accent) 10%,var(--surface-2))}
+.sv .n-land{fill:var(--surface);stroke:var(--line-2);stroke-width:1}
+.sv .n-muni{fill:none;stroke:var(--line-2);stroke-width:.7;stroke-dasharray:3 3}
+.sv .n-r1,.sv .n-r2,.sv .n-r3{fill:none;stroke-linecap:round;stroke-linejoin:round}
+.sv .n-r1{stroke:var(--muted);stroke-width:2;opacity:.8}.sv .n-r1.n-thin{stroke-width:.9}.sv .n-r2{stroke:var(--line-2);stroke-width:1.3}.sv .n-r3{stroke:var(--line);stroke-width:.9}
+.sv .n-fac{stroke:var(--surface);stroke-width:.8}.sv .n-f{fill:var(--danger)}.sv .n-p{fill:var(--info)}.sv .n-h{fill:var(--accent)}.sv .n-a{fill:var(--warn)}
+.sv .n-ruler{stroke:var(--ink-2);stroke-width:1.4;stroke-dasharray:1 6;stroke-linecap:round}
+.sv .n-route{fill:none;stroke-linecap:round;stroke-linejoin:round}
+.sv .n-near{stroke:var(--muted);stroke-width:4;stroke-dasharray:9 7}.sv .n-fast{stroke:var(--brand);stroke-width:5.5}
+.sv .n-case{fill:none;stroke:var(--surface);stroke-width:10;stroke-linecap:round;stroke-linejoin:round;opacity:.92}
+.sv .n-inc{fill:var(--danger);stroke:var(--surface);stroke-width:2}
+.sv .n-ufast{fill:var(--brand);stroke:var(--surface);stroke-width:2.2}.sv .n-unear{fill:var(--muted);stroke:var(--surface);stroke-width:2.2}
+.sv .n-win{fill:none;stroke:var(--brand);stroke-width:1.2;stroke-dasharray:3 2}
+.sv .n-frame{fill:none;stroke:var(--line-2);stroke-width:1}
+.sv .n-scale{fill:none;stroke:var(--ink-2);stroke-width:2}
+.sv .n-halo,.sv .n-km{paint-order:stroke;stroke:var(--surface);stroke-width:4.5px;stroke-linejoin:round}
+.sv .n-km{font-weight:600;fill:var(--ink-2)}
+.nat-res .tag{color:var(--warn-t)}
+.board.fitting .sv .n-land,.board.fitting .sv .n-muni,.board.fitting .sv .n-r1,.board.fitting .sv .n-r2,.board.fitting .sv .n-r3,.board.fitting .sv .n-fac{display:none}

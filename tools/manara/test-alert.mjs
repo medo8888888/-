@@ -679,7 +679,7 @@ if (on(10)) {
   await p1.waitForTimeout(250);
   check('an SOS is private: it is never broadcast to residents', (await phoneState(p1, 'huda')) === 'idle');
   // moving the phones into the incident's neighbourhood
-  await send({ type: 'alert', scope: 'national', id: 'N4', hazard: 'gas', level: 'evacuate', at: { lon: IA.lon + 0.01, lat: IA.lat }, radiusM: 400, incident: { id: 'N4', hazard: 'gas', muni: 'doha', place: { ar: 'الدوحة', en: 'Doha' } } });
+  await send({ type: 'alert', scope: 'national', id: 'N4', hazard: 'gas', level: 'evacuate', at: { lon: IA.lon + 0.01, lat: IA.lat }, radiusM: 400, hour: 10.5, incident: { id: 'N4', hazard: 'gas', muni: 'doha', place: { ar: 'الدوحة', en: 'Doha' } } });
   await p1.waitForTimeout(250);
   const z = await p1.getAttribute('[data-phone="huda"] [data-section="where"]', 'data-zone');
   check('a gas leak about 1 km away puts the phone in the "close to it" band with the stay-in level (warning), not the evacuate message', z === 'near' && (await text(p1, '[data-phone="huda"] .al-title')) === expected('huda', 'gas', { level: 'warning', night: false, lang: 'en' }).headline, z);
@@ -702,7 +702,7 @@ if (on(10)) {
   const heat = await p1.evaluate(() => document.querySelector('[data-phone="huda"] .adv[data-hazard="heat"]')?.innerText || '');
   const dust = await p1.evaluate(() => document.querySelector('[data-phone="huda"] .adv[data-hazard="dust"]')?.innerText || '');
   const flood = await p1.evaluate(() => document.querySelector('[data-phone="huda"] .adv[data-hazard="flood"]')?.innerText || '');
-  const lines = (hz, lv) => expected('huda', hz, { level: lv, night: false, lang: 'ar' }).lines.slice(0, 3);
+  const lines = (hz, lv) => expected('huda', hz, { level: lv, night: false, lang: 'en' }).lines.slice(0, 3);
   check('heat danger: stop work + shade + water from the playbook, flagged SIM and Estimate, a calm card', lines('heat', 'evacuate').every(l => heat.includes(l)) && /SIM/.test(heat) && /Estimate|تقدير/.test(heat) && /Very important|مهم جدًا/.test(heat), heat.slice(0, 200));
   check('dust warning: shelter indoors, windows closed, mask (from the dust playbook)', lines('dust', 'warning').every(l => dust.includes(l)), dust.slice(0, 200));
   check('rain watch: keep away from underpasses and low roads, never "go upstairs" for an advisory', lines('flood', 'watch').every(l => flood.includes(l)) && !/upper floor|go up/i.test(flood), flood.slice(0, 200));
@@ -716,9 +716,11 @@ if (on(10)) {
   await p1.waitForFunction(() => /ETA/.test(document.querySelector('[data-phone="huda"] [data-section="responders"]')?.textContent || ''), null, { timeout: 15000 });
   const rtd = await text(p1, '[data-phone="huda"] [data-section="responders"]');
   check('stand-alone national demo: the real engine places a fire ~250 m away, picks the fastest units (real OSM names), phones show ETA lines, the zone is "inside"', (await phoneState(p1, 'huda')) === 'alert' && /ETA \d+ min/.test(rtd) && (await p1.getAttribute('[data-phone="huda"] [data-section="where"]', 'data-zone')) === 'core', rtd.slice(0, 200));
+  await p1.click('#demo-reset');
+  await p1.waitForTimeout(300);
   await p1.click('#ctl-nat [data-nat="gas-far"]');
-  await p1.waitForTimeout(600);
-  check('…and a gas leak in Al Khor leaves the phones calm (far)', (await phoneState(p1, 'huda')) === 'idle' || (await p1.getAttribute('[data-phone="huda"] [data-section="where"]', 'data-zone')) !== 'core');
+  await p1.waitForTimeout(800);
+  check('…and a gas leak in Al Khor leaves the Doha phones calm (far: no alert, one calm line)', (await phoneState(p1, 'huda')) === 'idle' && /Nothing for you to do/.test(await text(p1, '[data-phone="huda"] [data-section="notices"]').catch(() => '')), await text(p1, '[data-phone="huda"]').then(t => t.slice(0, 160)).catch(() => ''));
   for (const k of ['heat', 'dust', 'flood']) { await p1.click(`#ctl-nat [data-nat="${k}"]`); await p1.waitForTimeout(250); check(`demo advisory "${k}" renders a card`, (await p1.locator(`[data-phone="ravi"] .adv[data-hazard="${k}"]`).count()) >= 1); }
   check('national: no console errors', errors.length === 0, errors.join(' | '));
   await ctx.close();

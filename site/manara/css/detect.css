@@ -103,6 +103,7 @@ html[data-lang=en] .evidence-hero h1{letter-spacing:-.01em}
 .v-state b{font-family:var(--font-h);font-size:clamp(1.6rem,3.2vw,2.2rem);color:var(--sc);line-height:1.2}
 .v-conf{display:grid;grid-template-columns:auto minmax(80px,140px) auto;gap:10px;align-items:center;font-size:.9rem}
 .v-conf b{color:var(--head)}
+.v-conf-note{grid-column:1/-1;font-size:.76rem;line-height:1.45}
 .why{margin-top:10px;color:var(--ink);font-weight:500;min-height:3.2em}
 .verdict .small{margin-top:4px}
 
@@ -118,7 +119,7 @@ html[data-lang=en] .evidence-hero h1{letter-spacing:-.01em}
 .lamp[data-state=na] .bulb{background:transparent;border-style:dashed}
 .lamp-body{min-width:0}
 .lamp-t{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;margin-block-end:6px}
-.lamp-t b{font-family:var(--font-m);font-size:.9rem;color:var(--brand);background:color-mix(in oklab,var(--brand) 12%,transparent);padding:0 8px;border-radius:7px}
+.lamp-t b{font-family:var(--font-m);font-size:.9rem;color:var(--brand-t);background:color-mix(in oklab,var(--brand) 12%,transparent);padding:0 8px;border-radius:7px}
 .lamp-n{font-family:var(--font-h);font-weight:600;color:var(--head)}
 .lamp-flag{margin-inline-start:auto;font-size:.78rem}
 .lamp[data-state=off] .lamp-n,.lamp[data-state=na] .lamp-n{color:var(--ink-2)}

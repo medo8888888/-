@@ -371,7 +371,69 @@
     var sm = el('p', 'small muted'); sm.textContent = L(T('الصفوف من الأعلى: ', 'Rows from the top: ')) + pers.map(function (p) { return L(PE[p] || T(p, p)); }).join(' · ') + L(T('. الأعمدة: ', '. Columns: ')) + langs.join(' ') + '.'; host.appendChild(sm);
   }
 
-  var FIGS = { arch: figArch, proof: figProof, eta: figEta, pw: figPw, wbgt: figWbgt, abl: figAbl, ab: figAb, sweep: figSweep, cov: figCov };
+
+  /* ================================================================== figure: the real map of Qatar and the real farther-but-faster example (OSM snapshot; traffic is SIM) */
+  var NATEX = {"seed":7,"clock":"17:45:00","dow":{"ar":"الأحد","en":"Sunday"},"date":"2026-07-12","kind":"fire","incident":{"lon":51.52418,"lat":25.23645,"place":{"ar":"نعيجة","en":"Nuaija"},"muni":"doha"},"fastest":{"unitId":"fire:fire-w492127496","name":{"ar":"مركز إطفاء — (بلا اسم في OSM) — الوكرة","en":"Fire station — (unnamed in OSM) — Al Wakrah"},"etaSec":754,"freeFlowEtaSec":549,"roadKm":13.5,"straightKm":10,"congestedSegments":63,"worst":{"ar":"طريق الوكرة","en":"Al Wakra Road"},"base":[51.602522,25.180508],"route":[[51.6026,25.1805],[51.6026,25.1805],[51.6029,25.1805],[51.604,25.1783],[51.6043,25.1776],[51.6045,25.1772],[51.6046,25.1771],[51.6047,25.1772],[51.6048,25.1773],[51.6046,25.1776],[51.6037,25.1793],[51.6029,25.1807],[51.6017,25.183],[51.6012,25.184],[51.6002,25.186],[51.5976,25.1909],[51.5972,25.1918],[51.5971,25.192],[51.5971,25.192],[51.5968,25.1919],[51.5959,25.1916],[51.5917,25.19],[51.5904,25.1895],[51.5881,25.1886],[51.587,25.1883],[51.5868,25.1883],[51.5868,25.1882],[51.5853,25.1877],[51.5852,25.1877],[51.5834,25.1872],[51.5832,25.1872],[51.5815,25.187],[51.5794,25.1869],[51.5769,25.1869],[51.5761,25.1869],[51.5759,25.1869],[51.5749,25.1869],[51.5705,25.1869],[51.5687,25.1869],[51.5686,25.1869],[51.5677,25.1869],[51.5664,25.1869],[51.5658,25.1869],[51.5656,25.1869],[51.5647,25.1869],[51.5632,25.1869],[51.5608,25.1869],[51.56,25.1869],[51.5599,25.1869],[51.5563,25.1865],[51.5522,25.1854],[51.5512,25.1853],[51.5503,25.1855],[51.5491,25.1864],[51.5474,25.188],[51.5463,25.1898],[51.5445,25.1946],[51.5439,25.1964],[51.5424,25.2011],[51.541,25.2053],[51.5393,25.2107],[51.5391,25.2115],[51.5356,25.2181],[51.5337,25.2244],[51.5332,25.226],[51.5321,25.2283],[51.5307,25.2305],[51.5267,25.2346],[51.5256,25.2354],[51.5241,25.2364]]},"nearest":{"unitId":"fire:fire-n11533985781","name":{"ar":"مركز إطفاء — Fire Police Department","en":"Fire station — Fire Police Department"},"etaSec":840,"freeFlowEtaSec":485,"roadKm":10.2,"straightKm":5.7,"congestedSegments":58,"worst":{"ar":"شارع روضة الخيل","en":"Rawdat Al Khail Street"},"base":[51.533203,25.286667],"route":[[51.5334,25.286],[51.5315,25.2856],[51.5311,25.2854],[51.5311,25.2853],[51.5312,25.2852],[51.532,25.2843],[51.5323,25.2839],[51.5324,25.283],[51.5324,25.2828],[51.5319,25.2812],[51.5318,25.281],[51.5317,25.2802],[51.5314,25.2797],[51.5311,25.2796],[51.5306,25.2796],[51.5287,25.2796],[51.5285,25.2795],[51.5285,25.2791],[51.5284,25.2781],[51.5281,25.2753],[51.528,25.275],[51.5279,25.2749],[51.5279,25.2747],[51.5278,25.2745],[51.5276,25.2738],[51.5269,25.2709],[51.5264,25.2691],[51.5264,25.269],[51.5249,25.2646],[51.5248,25.2642],[51.5247,25.2639],[51.5245,25.2632],[51.5245,25.2631],[51.5245,25.2631],[51.5244,25.263],[51.5242,25.262],[51.5242,25.2599],[51.5242,25.2585],[51.5242,25.2572],[51.5241,25.2556],[51.5241,25.255],[51.5241,25.2545],[51.5241,25.2542],[51.5241,25.2539],[51.5241,25.2533],[51.5242,25.2438],[51.524,25.2409],[51.523,25.2383],[51.5221,25.2371],[51.5213,25.2365],[51.5206,25.2366],[51.5203,25.2374],[51.5207,25.2378],[51.5213,25.2379],[51.522,25.2376],[51.526,25.2348],[51.5264,25.2346],[51.5287,25.2325],[51.5324,25.2273],[51.5324,25.2258],[51.5322,25.2255],[51.5313,25.2259],[51.5317,25.2273],[51.5311,25.2278],[51.5324,25.2295],[51.5316,25.2298],[51.5302,25.2316],[51.5284,25.2331],[51.5256,25.2354],[51.5241,25.2364]]},"gainSec":86,"extraStraightKm":4.4,"extraRoadKm":3.3,"reason":"traffic","flips":true};
+  function figNat(host, W) {
+    var G = window.MANARA_QATAR_GEO, F = window.MANARA_QATAR_FACILITIES, R = window.MANARA_QATAR_ROADS, ex = NATEX, k = Math.cos(25.3 * Math.PI / 180);
+    host.textContent = '';
+    if (!G || !F || !R) { host.appendChild(el('p', 'small', L(T('ملفات بيانات الخريطة (data/) غير محمَّلة؛ انظر الجدول أدناه.', 'The map data files (data/) did not load; see the table below.')))); return; }
+    var H = Math.round(Math.max(300, Math.min(520, W * 0.62))), locW = Math.round(Math.max(90, Math.min(170, W * 0.2))), gap = 8, zx = locW + gap, zw = W - zx;
+    var svg = svgRoot(host, W, H, L(T('خريطة حقيقية: حريق عند نعيجة في الدوحة؛ المسار الأسرع من مركز الوكرة (12:34) مقابل المركز الأقرب بخط مستقيم (14:00). المرور محاكى.', 'A real map: a fire at Nuaija, Doha; the fastest route from the Al Wakrah station (12:34) against the station nearest in a straight line (14:00). Traffic is simulated.')));
+    function fit(b, x0, w, h, pad) { var ww = (b.lon1 - b.lon0) * k, hh = b.lat1 - b.lat0, sc = Math.min((w - 2 * pad) / ww, (h - 2 * pad) / hh), ox = x0 + (w - ww * sc) / 2, oy = (h - hh * sc) / 2; return { sc: sc, x: function (lo) { return ox + (lo - b.lon0) * k * sc; }, y: function (la) { return oy + (b.lat1 - la) * sc; }, vis: { lon0: b.lon0 - (ox - x0) / (k * sc), lon1: b.lon1 + (ox - x0) / (k * sc), lat0: b.lat0 - oy / sc, lat1: b.lat1 + oy / sc }, mpp: 111195 / sc }; }
+    function ring(r, p, mp) { var d = '', lx = 1e9, ly = 1e9; r.forEach(function (q, i) { var x = p.x(q[0]), y = p.y(q[1]); if (i && i < r.length - 1 && Math.abs(x - lx) + Math.abs(y - ly) < mp) return; d += (d ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1); lx = x; ly = y; }); return d + 'Z'; }
+    function land(p) { var d = ''; G.outline.rings.forEach(function (r) { d += ring(r, p, 0.7); }); (G.outline.holes || []).forEach(function (r) { d += ring(r, p, 0.7); }); return d; }
+    function roads(p, cmax, mp) {
+      var g = R.decode(), v = p.vis, out = ['', '', ''], e, m, a, b, pl, i, d, lx, ly, x, y, c;
+      for (e = 0; e < g.e; e++) {
+        c = g.eCls[e]; if (c > cmax || (g.eFlags[e] & 256)) continue; m = g.eLen[e] / 100000; a = g.eFrom[e]; b = g.eTo[e];
+        if (!((g.lon[a] > v.lon0 - m && g.lon[a] < v.lon1 + m && g.lat[a] > v.lat0 - m && g.lat[a] < v.lat1 + m) || (g.lon[b] > v.lon0 - m && g.lon[b] < v.lon1 + m && g.lat[b] > v.lat0 - m && g.lat[b] < v.lat1 + m))) continue;
+        if (Math.abs(p.x(g.lon[a]) - p.x(g.lon[b])) + Math.abs(p.y(g.lat[a]) - p.y(g.lat[b])) < mp * 1.6 && g.eLen[e] / p.mpp < mp * 2) continue;   // too short to see
+        pl = g.polyline(e); d = ''; lx = 1e9; ly = 1e9;
+        for (i = 0; i < pl.length; i += 2) { x = p.x(pl[i]); y = p.y(pl[i + 1]); if (i && i < pl.length - 2 && Math.abs(x - lx) + Math.abs(y - ly) < mp) continue; d += (d ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1); lx = x; ly = y; }
+        out[c <= 1 ? 0 : c <= 3 ? 1 : 2] += d;
+      }
+      return out;
+    }
+    var defs = S('defs', null, svg);
+    [['rp-nz', zx, zw], ['rp-nl', 0, locW]].forEach(function (r) { var cp = S('clipPath', { id: r[0] }, defs); S('rect', { x: r[1], y: 0, width: r[2], height: H, rx: 8 }, cp); });
+    var pts = ex.fastest.route.concat(ex.nearest.route, [[ex.incident.lon, ex.incident.lat], ex.fastest.base, ex.nearest.base]), b = { lon0: 1e9, lon1: -1e9, lat0: 1e9, lat1: -1e9 };
+    pts.forEach(function (q) { b.lon0 = Math.min(b.lon0, q[0]); b.lon1 = Math.max(b.lon1, q[0]); b.lat0 = Math.min(b.lat0, q[1]); b.lat1 = Math.max(b.lat1, q[1]); });
+    var dx = (b.lon1 - b.lon0) * 0.12, dy = (b.lat1 - b.lat0) * 0.12; b.lon0 -= dx; b.lon1 += dx; b.lat0 -= dy; b.lat1 += dy;
+    var pz = fit(b, zx, zw, H, 8), bb = G.bbox, pl = fit({ lon0: bb.lonMin, lon1: bb.lonMax, lat0: bb.latMin, lat1: bb.latMax }, 0, locW, H, 6);
+    var col = { fire: 'danger', police: 'info', hospital: 'accent', ambulance: 'warn' };
+    // locator
+    var gl = S('g', { 'clip-path': 'url(#rp-nl)', 'aria-hidden': 'true' }, svg);
+    S('rect', { x: 0, y: 0, width: locW, height: H, 'class': 'sv-nsea' }, gl); S('path', { d: land(pl), 'class': 'sv-nland', 'fill-rule': 'evenodd' }, gl);
+    var md = ''; G.municipalities.forEach(function (m) { m.polygons.forEach(function (poly) { md += ring(poly[0], pl, 0.8); }); }); S('path', { d: md, 'class': 'sv-nmuni' }, gl);
+    S('path', { d: roads(pl, 1, 2.2)[0], 'class': 'sv-nr1 thin' }, gl);
+    F.forEach(function (f) { if (f.kind === 'clinic-ed') return; var c = S('circle', { cx: pl.x(f.lon).toFixed(1), cy: pl.y(f.lat).toFixed(1), r: 1.4 }, gl); c.setAttribute('class', 'sv-nfac'); c.style.fill = 'var(--' + (col[f.kind] || 'muted') + ')'; });
+    var v = pz.vis; S('rect', { x: pl.x(v.lon0).toFixed(1), y: pl.y(v.lat1).toFixed(1), width: ((v.lon1 - v.lon0) * k * pl.sc).toFixed(1), height: ((v.lat1 - v.lat0) * pl.sc).toFixed(1), 'class': 'sv-nwin' }, gl);
+    S('circle', { cx: pl.x(ex.incident.lon).toFixed(1), cy: pl.y(ex.incident.lat).toFixed(1), r: 3, 'class': 'sv-ninc' }, gl);
+    S('rect', { x: .5, y: .5, width: locW - 1, height: H - 1, rx: 8, 'class': 'sv-nframe' }, svg);
+    // zoom
+    var gz = S('g', { 'clip-path': 'url(#rp-nz)', 'aria-hidden': 'true' }, svg);
+    S('rect', { x: zx, y: 0, width: zw, height: H, 'class': 'sv-nsea' }, gz); S('path', { d: land(pz), 'class': 'sv-nland', 'fill-rule': 'evenodd' }, gz);
+    var rd = roads(pz, 5, 1.1); S('path', { d: rd[2], 'class': 'sv-nr3' }, gz); S('path', { d: rd[1], 'class': 'sv-nr2' }, gz); S('path', { d: rd[0], 'class': 'sv-nr1' }, gz);
+    F.forEach(function (f) { if (f.kind === 'clinic-ed' || f.lon < v.lon0 || f.lon > v.lon1 || f.lat < v.lat0 || f.lat > v.lat1) return; var c = S('circle', { cx: pz.x(f.lon).toFixed(1), cy: pz.y(f.lat).toFixed(1), r: 3 }, gz); c.setAttribute('class', 'sv-nfac'); c.style.fill = 'var(--' + (col[f.kind] || 'muted') + ')'; });
+    function line(rt) { var d = ''; rt.forEach(function (q, i) { d += (i ? 'L' : 'M') + pz.x(q[0]).toFixed(1) + ' ' + pz.y(q[1]).toFixed(1); }); return d; }
+    var I = [pz.x(ex.incident.lon), pz.y(ex.incident.lat)], FA = [pz.x(ex.fastest.base[0]), pz.y(ex.fastest.base[1])], NE = [pz.x(ex.nearest.base[0]), pz.y(ex.nearest.base[1])];
+    S('path', { d: line(ex.nearest.route), 'class': 'sv-nroute near' }, gz); S('path', { d: line(ex.fastest.route), 'class': 'sv-ncase' }, gz); S('path', { d: line(ex.fastest.route), 'class': 'sv-nroute fast' }, gz);
+    [[NE, ex.nearest.straightKm], [FA, ex.fastest.straightKm]].forEach(function (r) { S('line', { x1: I[0].toFixed(1), y1: I[1].toFixed(1), x2: r[0][0].toFixed(1), y2: r[0][1].toFixed(1), 'class': 'sv-nruler' }, gz); txt(gz, ((I[0] + r[0][0]) / 2).toFixed(1), ((I[1] + r[0][1]) / 2).toFixed(1), r[1].toFixed(1) + ' km', 'sv-nlab km', 'c'); });
+    S('circle', { cx: I[0].toFixed(1), cy: I[1].toFixed(1), r: 7, 'class': 'sv-ninc' }, gz);
+    function mm(sec) { var m = Math.floor(sec / 60), s2 = sec % 60; return (m < 10 ? '0' : '') + m + ':' + (s2 < 10 ? '0' : '') + s2; }
+    [[FA, 'fast', ex.fastest, 'r'], [NE, 'near', ex.nearest, 'l']].forEach(function (u) {
+      S('circle', { cx: u[0][0].toFixed(1), cy: u[0][1].toFixed(1), r: 8, 'class': 'sv-nunit ' + u[1] }, gz);
+      var nm = L(u[2].name).split(' — '), label = (zw < 330 ? '' : (nm.length > 1 ? nm.slice(1).join(' — ') : nm[0]) + '  ') + mm(u[2].etaSec);
+      txt(gz, (u[0][0] + (u[3] === 'r' ? -13 : 13)).toFixed(1), (u[0][1] + 4).toFixed(1), label, 'sv-nlab', u[3]);
+    });
+    txt(gz, (I[0] + 14).toFixed(1), (I[1] - 6).toFixed(1), (zw < 330 ? '' : L(T('حريق (محاكى) · ', 'Fire (simulated) · '))) + L(ex.incident.place), 'sv-nlab inc', 'l');
+    var px2 = 2000 / pz.mpp; S('path', { d: 'M' + (zx + 10) + ' ' + (H - 16) + 'V' + (H - 10) + 'H' + (zx + 10 + px2).toFixed(1) + 'V' + (H - 16), 'class': 'sv-nscale' }, gz); txt(gz, (zx + 10 + px2 / 2).toFixed(1), H - 19, '2 km', 'sv-nlab km', 'c');
+    S('rect', { x: zx + .5, y: .5, width: zw - 1, height: H - 1, rx: 8, 'class': 'sv-nframe' }, svg);
+    legend(host, [{ color: C.brand, text: L(T('الأسرع بحسب الازدحام', 'fastest given traffic')) }, { color: C.muted, text: L(T('الأقرب بخط مستقيم', 'nearest in a straight line')) }, { color: 'var(--danger)', text: L(T('إطفاء', 'fire')) }, { color: 'var(--info)', text: L(T('شرطة', 'police')) }, { color: 'var(--accent)', text: L(T('مستشفى', 'hospital')) }, { color: 'var(--warn)', text: L(T('إسعاف', 'ambulance')) }]);
+  }
+
+  var FIGS = { nat: figNat, arch: figArch, proof: figProof, eta: figEta, pw: figPw, wbgt: figWbgt, abl: figAbl, ab: figAb, sweep: figSweep, cov: figCov };
   function renderFigures() {
     $$('.fig-body[data-fig]').forEach(function (host) {
       var fn = FIGS[host.getAttribute('data-fig')]; if (!fn) return;
@@ -581,6 +643,19 @@
     ana: T('نسبة الصحيح لكل نسخة مع فاصل ويلسون؛ والفرق بينهما. قل بصراحة إن n صغير وإن الفاصلين يتداخلان.', 'Proportion correct per version with Wilson intervals, and the difference. Say plainly if n is small and the intervals overlap.'),
     cols: [{ k: 'p', ar: 'المشارك', en: 'Participant', t: 1 }, { k: 'age', ar: 'الفئة العمرية', en: 'Age group', t: 1 }, { k: 'lang', ar: 'اللغة', en: 'Language', t: 1 }, { k: 'ver', ar: 'النسخة', en: 'Version', t: 1 }, { k: 'hz', ar: 'الخطر', en: 'Hazard', t: 1 }, { k: 'ok', ar: 'صحيح؟', en: 'Correct?', u: '0/1', stat: 1, sum: 1 }, { k: 'time', ar: 'زمن الإجابة', en: 'Time to answer', u: 's', stat: 1 }, { k: 'conf', ar: 'الثقة', en: 'Confidence', u: '1–5' }, { k: 'note', ar: 'تعليق', en: 'Comment', t: 1 }], rows: 24 });
 
+  ex({ id: 'T10', title: T('أزمنة الوصول المحاكاة مقابل تطبيق ملاحة', 'Simulated arrival times against a navigation app'), hyp: 'F18',
+    q: T('كم يبعد زمن الطريق الذي تحسبه دالة التكلفة الوطنية (F18) عن الزمن المعتاد في تطبيق ملاحة، عند ساعات ثابتة؟ (لم نقارن بعد؛ نعرف الآلية لا الدقة.)', 'How far is the road time computed by the national cost function (F18) from the typical time in a navigation app, at fixed hours? (We have not compared yet: we know the mechanism, not the accuracy.)'),
+    mat: [T('حاسوب يشغّل ManaraNational.route(nat, from, to, t) أو صفحة غرفة العمليات الوطنية', 'A computer running ManaraNational.route(nat, from, to, t) or the national Mission Control page'), T('تطبيق ملاحة على هاتف (أي تطبيق) يعرض «الزمن المعتاد» لساعة ويوم محدّدين', 'A navigation app on a phone (any app) that shows the “typical time” for a chosen hour and weekday'), T('10 مسارات على الأقل بين أماكن معروفة (مثل الدوحة–الوكرة، الدوحة–الخور، الدوحة–المطار، داخل الدوحة، وطرقًا ريفية)، وثلاث ساعات: 03:00 و07:30 و17:45', 'At least 10 routes between known places (for example Doha–Al Wakrah, Doha–Al Khor, Doha–the airport, inside Doha, and rural roads) and three hours: 03:00, 07:30 and 17:45')],
+    safe: T('لا قيادة ولا تجربة على الطريق: كل شيء على الشاشة. لا تُدخل مواقع شخصية؛ استعمل أسماء أماكن عامة فقط. سجّل اسم التطبيق وإصداره وتاريخ القراءة، ولا تنسخ بيانات التطبيق خارج جدولك.', 'No driving and no road test: everything is on screen. Do not enter personal locations; use public place names only. Record the app, its version and the date of the reading, and do not copy the app’s data beyond your table.'),
+    steps: [T('اكتب قاعدة النجاح قبل البدء (مثلًا: «الوسيط المطلق للخطأ أقل من 25%» أو غيره، ولماذا اخترته). لا تغيّرها بعد رؤية النتائج.', 'Write the pass rule before starting (for example: “the median absolute error is below 25%”, or another, and why you chose it). Do not change it after seeing the results.'),
+      T('اختر المسارات والساعات قبل أن ترى أي زمن، ودوّن أن المحاكاة أحد أيام الأسبوع المعتادة (الأحد–الخميس) وليست جمعة أو سبتًا.', 'Choose the routes and the hours before you see any time, and note that the simulation is a regular weekday (Sunday–Thursday), not a Friday or Saturday.'),
+      T('لكل مسار وساعة: احسب زمن المحاكاة (طريق مدني بلا مكافأة طارئة: em بلا قيمة) وسجّله بالدقائق.', 'For each route and hour: compute the simulated time (a civilian route, no emergency bonus: leave em out) and record it in minutes.'),
+      T('اقرأ «الزمن المعتاد» لتطبيق الملاحة للمسار نفسه والساعة نفسها (واليوم المعتاد نفسه)، وسجّله. إن أعطى التطبيق مدى فسجّل منتصفه ودوّن المدى.', 'Read the navigation app’s “typical time” for the same route, hour and weekday, and record it. If the app gives a range, record its middle and note the range.'),
+      T('احسب الخطأ النسبي لكل صف، ثم الوسيط وأسوأ صف. اذكر أين تخطئ المحاكاة أكثر (الطرق الريفية؟ داخل المدينة؟ الذروة؟).', 'Compute the relative error for each row, then the median and the worst row. Say where the simulation is most wrong (rural roads? inside the city? the peak?).')],
+    rec: T('المسار (من → إلى)، الساعة، المسافة (كم) إن عُرفت، زمن المحاكاة (د)، زمن التطبيق (د)، ملاحظات (مدى، اسم التطبيق وإصداره).', 'Route (from → to), hour, distance (km) if known, simulated time (min), app time (min), notes (range, app name and version).'),
+    ana: T('الخطأ النسبي = (محاكاة − تطبيق) ÷ تطبيق. أبلغ عن الوسيط والمدى مهما كانا، ولا تحذف الصفوف السيئة. إن كانت المحاكاة أسرع دائمًا فاذكر الانحياز. لا تدّعِ أن الأزمنة «صحيحة»: ما تُثبته هذه التجربة هو حجم الخطأ فقط.', 'Relative error = (simulation − app) ÷ app. Report the median and the range whatever they are, and do not drop bad rows. If the simulation is always faster, state the bias. Do not claim the times are “right”: all this experiment shows is the size of the error.'),
+    cols: [{ k: 'n', ar: 'الصف', en: 'Row' }, { k: 'route', ar: 'المسار', en: 'Route', t: 1 }, { k: 'hour', ar: 'الساعة', en: 'Hour', t: 1 }, { k: 'km', ar: 'المسافة', en: 'Distance', u: 'km' }, { k: 'sim', ar: 'المحاكاة', en: 'Simulated', u: 'min' }, { k: 'app', ar: 'التطبيق', en: 'App', u: 'min' }, { k: 'err', ar: 'الخطأ النسبي', en: 'Relative error', u: '%', calc: function (r) { return (num(r.sim) - num(r.app)) / num(r.app) * 100; }, stat: 1 }, { k: 'note', ar: 'ملاحظة', en: 'Note', t: 1 }], rows: 12 });
+
   function num(v) { var n = parseFloat(String(v).replace(',', '.')); return isNaN(n) ? NaN : n; }
   function median(a) { var s = a.slice().sort(function (x, y) { return x - y; }), n = s.length; return n ? (n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2) : NaN; }
   function sig(v) { if (isNaN(v)) return '–'; var a = Math.abs(v); return String(Math.round(v * (a >= 100 ? 1 : a >= 10 ? 10 : 100)) / (a >= 100 ? 1 : a >= 10 ? 10 : 100)); }
@@ -775,9 +850,26 @@
     upd(); window.addEventListener('resize', upd); window.addEventListener('langchange', upd);
   }
 
+
+  /* ================================================================== caption numbers: assigned in document order so inserted tables never break the numbering; every xref follows its target */
+  function renumberCaptions() {
+    var kinds = { tab: { n: 0, ar: 'الجدول', en: 'Table' }, fig: { n: 0, ar: 'الشكل', en: 'Figure' } }, num = {};
+    $$('.cap-n').forEach(function (cn) {
+      var host = cn.closest('table,figure'); if (!host) return;
+      var tbl = cn.closest('caption'), k = tbl ? kinds.tab : kinds.fig, target = tbl ? tbl.parentNode : cn.closest('figure');
+      k.n++; var ar = cn.querySelector('[data-l=ar]'), en = cn.querySelector('[data-l=en]');
+      if (ar) ar.textContent = k.ar + ' ' + k.n + '.'; if (en) en.textContent = k.en + ' ' + k.n + '.';
+      if (target && target.id) num[target.id] = { k: k, n: k.n };
+    });
+    $$('a.xref').forEach(function (a) {
+      var id = (a.getAttribute('href') || '').slice(1), t = num[id]; if (!t) return;
+      var ar = a.querySelector('[data-l=ar]'), en = a.querySelector('[data-l=en]'); if (ar) ar.textContent = t.k.ar + ' ' + t.n; if (en) en.textContent = t.k.en + ' ' + t.n;
+    });
+  }
+
   /* ================================================================== boot */
   function boot() {
-    initToc(); initButtons(); initAbstractCount(); initExperiments(); initChecks(); initLogbook(); initRepro(); initScrollables();
+    renumberCaptions(); initToc(); initButtons(); initAbstractCount(); initExperiments(); initChecks(); initLogbook(); initRepro(); initScrollables();
     lastW = window.innerWidth; renderFigures();
     window.addEventListener('resize', onResize);
     window.addEventListener('langchange', function () { renderFigures(); });

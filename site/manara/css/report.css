@@ -470,3 +470,21 @@ html[data-lang=en]{--rp-run:"Scientific report and engineering logbook"}
   .explain-list{grid-template-columns:repeat(2,1fr)}
   .grid.g2{grid-template-columns:repeat(2,1fr)}
 }
+
+/* ---- figure: the real map of Qatar (OpenStreetMap snapshot; traffic is SIM) ---- */
+.sv-nsea{fill:color-mix(in oklab,var(--accent) 10%,var(--surface-2))}
+.sv-nland{fill:var(--surface);stroke:var(--line-2);stroke-width:1}
+.sv-nmuni{fill:none;stroke:var(--line-2);stroke-width:.7;stroke-dasharray:3 3}
+.sv-nr1,.sv-nr2,.sv-nr3{fill:none;stroke-linecap:round;stroke-linejoin:round}
+.sv-nr1{stroke:var(--muted);stroke-width:2;opacity:.8}.sv-nr1.thin{stroke-width:.9}.sv-nr2{stroke:var(--line-2);stroke-width:1.3}.sv-nr3{stroke:var(--line);stroke-width:.9}
+.sv-nfac{stroke:var(--surface);stroke-width:.8}
+.sv-nruler{stroke:var(--ink-2);stroke-width:1.4;stroke-dasharray:1 6;stroke-linecap:round}
+.sv-nroute{fill:none;stroke-linecap:round;stroke-linejoin:round}.sv-nroute.near{stroke:var(--muted);stroke-width:4;stroke-dasharray:9 7}.sv-nroute.fast{stroke:var(--brand);stroke-width:5.5}
+.sv-ncase{fill:none;stroke:var(--surface);stroke-width:10;stroke-linecap:round;stroke-linejoin:round;opacity:.92}
+.sv-ninc{fill:var(--danger);stroke:var(--surface);stroke-width:2}
+.sv-nunit{stroke:var(--surface);stroke-width:2.2}.sv-nunit.fast{fill:var(--brand)}.sv-nunit.near{fill:var(--muted)}
+.sv-nwin{fill:none;stroke:var(--brand);stroke-width:1.2;stroke-dasharray:3 2}
+.sv-nframe{fill:none;stroke:var(--line-2);stroke-width:1}
+.sv-nscale{fill:none;stroke:var(--ink-2);stroke-width:2}
+.sv-nlab{fill:var(--ink);font:600 13px var(--font);paint-order:stroke;stroke:var(--surface);stroke-width:4.5px;stroke-linejoin:round}
+.sv-nlab.inc{fill:var(--head);font-weight:700}.sv-nlab.km{direction:ltr;fill:var(--ink-2);font-family:var(--font-m);font-size:12px}

@@ -104,7 +104,7 @@ if (want('lint')) {
     const FILE_OK = {
       'js/core.js': ['brand', 's', 'links', 'lang', 'dark', 'open', 'PAGES.slice', 'map', 'function', 'p', 'return', 'join', 'PAGES', 'EXTRA', 'L', 'NAME', 'el.getAttribute'],  // nav/footer from authored STR + NAME + icon names in data-icon
       'js/detect.js': ['tpl', 'stageTemplate', 'fool', 'p', 'P', 'st.playing', 'L', 'T2', 'A.paused', 'hz.icon', 'HELD_REF.ok', 'HELD_REF.n', 'HELD_REF.acc', 'HELD_REF.fireFound', 'HELD_REF.falseFire', 'HELD_REF.smokeFound'],  // authored {{ar|en}} templates + benchmark constants
-      'js/home.js': ['html', 'h.icon', 'STAGE_ICONS', 'i', 'st.playing', 'st.hz.night', 'iconInner', 'kd.icon', 'spec', 'mn', 'b2', 'g', 'b'],   // setStaticHTML(node, html): only M.icon()/M.logo() of authored tables (HZ, STAGE_ICONS, kd, FMT) and regex literals; reviewed at all 11 call sites
+      'js/home.js': ['html', 'h.icon', 'STAGE_ICONS', 'i', 'st.playing', 'st.hz.night', 'iconInner', 'kd.icon', 'spec', 'mn', 'b2', 'g', 'b', 'unitIcon', 'kind', 'PLUS_SVG', 'S.layer'],   // setStaticHTML(node, html): only M.icon()/M.logo() of authored tables (HZ, STAGE_ICONS, kd, FMT) and regex literals; reviewed at every call site (unitIcon(kind) = M.icon/PLUS_SVG of the authored UNIT_K table; S.layer only selects between literal icon names)
       'js/mission.js': ['name', 'cls', 'NS_SVG', 'XICON'],
       'js/pitch.js': ['ICON', 'name', 'svgIcon', 'cls'],
       'js/build.js': ['ic'],
@@ -277,6 +277,12 @@ if (want('lint')) {
     const stBad = st.filter(([t, n]) => (bannedHits('self', t).length > 0) !== (n > 0)).map(([t]) => t);
     check(`banned-phrase scanner self-test: ${st.length} sample sentences classified correctly`, stBad.length === 0, first(stBad));
     check('no banned claim phrases ("first"/"world-first", "saves lives", "AI-powered", «ذكاء اصطناعي»/«تعلّم عميق» for the detector) except as quoted/negated mentions', hits.length === 0, first(hits, 6));
+    {
+      // no personal e-mail addresses anywhere in the shipped site (the CAP <sender> placeholder uses the reserved, undeliverable .invalid TLD, RFC 2606)
+      const mails = []; const re = /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/g;
+      for (const f of TEXTUAL) { const t = read(f); let m; while ((m = re.exec(t))) if (!/\.invalid$/.test(m[0])) mails.push(`${rel(f)}:${lineOf(t, m.index)} ${m[0]}`); }
+      check('no e-mail addresses in the site (only the reserved @example.invalid CAP placeholder)', mails.length === 0, first(mails));
+    }
   }
 
   // ---- L7. references exist
@@ -416,7 +422,7 @@ if (want('honesty')) {
     const BLOCK = new Set(['P', 'LI', 'TD', 'TH', 'DD', 'DT', 'FIGCAPTION', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'SUMMARY', 'BLOCKQUOTE', 'DIV', 'SECTION', 'ARTICLE', 'LABEL', 'BUTTON', 'TR', 'UL', 'OL', 'TABLE', 'MAIN', 'HEADER', 'FOOTER', 'NAV', 'FIGURE', 'ASIDE', 'DL', 'PRE', 'OPTION', 'DETAILS']);
     const skip = el => /^(SCRIPT|STYLE|NOSCRIPT|TEMPLATE|HEAD)$/.test(el.tagName);
     const wrongLang = el => el.hasAttribute && el.hasAttribute('data-l') && el.getAttribute('data-l') !== lang;
-    const own = el => { let t = ''; for (const c of el.childNodes) { if (c.nodeType === 3) t += c.textContent; else if (c.nodeType === 1 && !skip(c) && !wrongLang(c)) t += BLOCK.has(c.tagName) ? ' ' : own(c); } return t; };
+    const own = el => { let t = ''; for (const c of el.childNodes) { if (c.nodeType === 3) t += c.textContent; else if (c.nodeType === 1 && !skip(c) && !wrongLang(c)) { const o = own(c); t += BLOCK.has(c.tagName) ? ' ' : (/\p{L}$/u.test(t) && /^\d/.test(o) ? ' ' : '') + o; } } return t; };
     const all = el => { let t = ''; for (const c of el.childNodes) { if (c.nodeType === 3) t += c.textContent; else if (c.nodeType === 1 && !skip(c) && !wrongLang(c)) t += ' ' + all(c); } return t; };
     const units = [];
     (function walk(el) {
@@ -467,7 +473,9 @@ if (want('honesty')) {
     for (const name of ALL_PAGES) {
       for (const lang of ['en', 'ar']) {
         const { page, ctx, errors } = await openPage(b, name + '.html', { width: 1440, height: 900, lang });
-        await page.waitForTimeout(name === 'report' || name === 'pitch' ? 1200 : 700);
+        if (name === 'alert') await page.waitForFunction(() => document.documentElement.getAttribute('data-alert-ready') === '1', null, { timeout: 8000 }).catch(() => {});
+        if (name === 'mission') await page.waitForFunction(() => document.documentElement.querySelector('#main[data-nat-ready="1"]') || !window.MissionNational, null, { timeout: 8000 }).catch(() => {});
+        await page.waitForTimeout(name === 'report' || name === 'pitch' ? 1200 : name === 'alert' ? 1500 : 700);
         const units = await page.evaluate(`(${EXTRACT.toString()})('${lang}')`);
         store[name + ':' + lang] = units; if (errors.length) findings.C.push(`${name} ${lang}: page errors ${first(errors, 2)}`);
         await ctx.close();
@@ -545,6 +553,18 @@ if (want('honesty')) {
     if (onlyEn.length + onlyAr.length) findings.D.push(`${name}: only in EN [${onlyEn.slice(0, 8)}] / only in AR [${onlyAr.slice(0, 8)}]`);
     stats[name] = `${en.length} units, ${nTok} numbers: ${nSrc} sourced, ${nBenign} benign, ${nSim} SIM-labelled, ${nOwn} own-measured, ${nAllow} allowed, ${nExempt} report-tables/own-sections`;
     console.log(`  ${name.padEnd(8)} ${stats[name]}`);
+  }
+  {
+    // every page that draws the OpenStreetMap-derived Qatar data must SHOW the attribution and the snapshot date (ODbL), in both languages
+    const SNAP = (fs.readFileSync(path.join(SITE, 'data/qatar-facilities.js'), 'utf8').match(/snapshot['"]?\s*:\s*['"](\d{4}-\d{2}-\d{2})/) || [])[1] || '2026-10-08';
+    const miss = [];
+    for (const name of ['index', 'mission', 'alert', 'pitch', 'report', 'poster']) for (const lang of ['en', 'ar']) {
+      const txt = (store[name + ':' + lang] || []).map(u => u.text).join(' ');
+      if (!/© OpenStreetMap contributors|© مساهم\S* OpenStreetMap/.test(txt)) miss.push(`${name}/${lang}: no “© OpenStreetMap contributors” (ar: «© مساهمو OpenStreetMap»)`);
+      if (!/ODbL/.test(txt)) miss.push(`${name}/${lang}: no ODbL`);
+      if (!txt.includes(SNAP)) miss.push(`${name}/${lang}: no snapshot date ${SNAP}`);
+    }
+    check(`OSM attribution (© OpenStreetMap contributors, ODbL) and the snapshot date ${SNAP} are visible on index, mission, alert, pitch, report and poster, in ar and en`, miss.length === 0, first(miss, 8));
   }
   check('A. no number outside docs/MANARA-SOURCES.md is shown unless it is a benign count, SIM-labelled, an own measurement, or a reviewed exception', findings.A.length === 0, first(findings.A, 12));
   check('B. every significant sourced figure shows a visible source (S-id, "Source", outlet, organisation or [n]) in its unit, card or section', findings.B.length === 0, first(findings.B, 10));
@@ -730,7 +750,8 @@ if (want('pages')) {
       if (!href || /^(https?:|mailto:|tel:|javascript:|data:|blob:)/i.test(href)) continue;
       if (href === '#') { miss.push(`${from}: href="#"`); continue; }
       if (href.startsWith('#')) continue;
-      const file = href.split('#')[0].split('?')[0]; if (!file) continue;
+      let file = href.split('#')[0].split('?')[0]; if (!file) continue;
+      if (file.startsWith('file://')) { const r = path.relative(SITE, decodeURI(file.slice(7))); if (r.startsWith('..')) { miss.push(`${from}: ${href} (outside site/manara)`); continue; } file = r.split(path.sep).join('/'); }   // a.href of an authored relative link comes back absolute
       if (!fs.existsSync(path.join(SITE, decodeURI(file)))) miss.push(`${from}: ${href}`);
       else if (file.endsWith('.html')) { const h = href.split('#')[1]; if (h && /^[A-Za-z][\w-]*$/.test(h)) { const src = read(path.join(SITE, file)) + (fs.existsSync(path.join(SITE, 'js', path.basename(file, '.html') + '.js')) ? read(path.join(SITE, 'js', path.basename(file, '.html') + '.js')) : ''); if (!src.includes(h)) miss.push(`${from}: ${href} (no #${h} in ${file})`); } }
     }
@@ -751,7 +772,7 @@ if (want('pages')) {
       const { ctx, page } = await openPage(browser, n + '.html', { width, height: width > 600 ? 900 : 844, lang }); await page.waitForTimeout(400);
       const stops = [];
       for (let i = 0; i < 28; i++) {
-        await page.keyboard.press('Tab');
+        await page.keyboard.press('Tab'); await page.waitForTimeout(60);   // let the (reduced-motion, 0.01 ms) outline transition settle
         const s = await page.evaluate(() => {
           const e = document.activeElement; if (!e || e === document.body) return null; const r = e.getBoundingClientRect(), cs = getComputedStyle(e);
           return { tag: e.tagName.toLowerCase(), id: e.id, cls: typeof e.className === 'string' ? e.className.split(' ')[0] : '', name: (e.getAttribute('aria-label') || e.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 24), top: r.top, left: r.left, right: r.right, w: r.width, h: r.height, vw: innerWidth, vh: innerHeight, outline: cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) > 0, shadow: cs.boxShadow !== 'none', vis: cs.visibility !== 'hidden' && cs.display !== 'none', pos: cs.position, inMenu: !!e.closest('.menu:not(.open)'), key: window.__tabKey = (window.__tabKey || 0) + 1 };
@@ -771,7 +792,7 @@ if (want('pages')) {
       const order = await page.evaluate(() => { const els = [...document.querySelectorAll('a[href],button,input,select,textarea,summary,[tabindex="0"]')].filter(e => !e.closest('[hidden],.menu:not(.open)') && e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden' && !e.disabled); return els.slice(0, 3).map(e => e.className); });
       void order;
       // skip link works: Enter -> hash #main and the next Tab lands inside <main>
-      await page.evaluate(() => { document.activeElement && document.activeElement.blur(); window.scrollTo(0, 0); });
+      await page.reload({ waitUntil: 'load' }); await page.waitForTimeout(300);                 // a fresh page: sequential focus starts at the top (blur() alone keeps the old starting point)
       await page.keyboard.press('Tab'); await page.keyboard.press('Enter'); await page.waitForTimeout(150);
       const hash = await page.evaluate(() => location.hash); await page.keyboard.press('Tab'); await page.waitForTimeout(100);
       const inMain = await page.evaluate(() => !!(document.activeElement && document.activeElement.closest('main')));
@@ -913,6 +934,49 @@ if (want('flow')) {
   const cleared = await waitFor(mc, () => !MissionControl.state.detection || MissionControl.state.detection.state === 'clear', null, 6000);
   check('Evidence Lab "stand down" sends clear and Mission Control drops the camera key', cleared);
   check('no console/page errors on mission, alert or detect during the whole flow', errs.every(e => e.length === 0), first(errs.flat()));
+  await ctx.close(); await browser.close();
+}
+
+if (want('flow')) {
+  section('FLOW-NAT  national incident: Mission Control (Qatar map) -> approve -> phones -> nearest units -> "I\'m safe" / "I need help" -> Mission Control (one browser context)');
+  const browser = await launch();
+  const W = (p, fn, ...a) => p.evaluate(fn, ...a);
+  const waitFor = async (page, fn, arg, timeout = 9000) => { try { await page.waitForFunction(fn, arg, { timeout }); return true; } catch (e) { return false; } };
+  const m1 = await openPage(browser, 'mission.html', { width: 1440, height: 900, lang: 'en' });
+  const ctx = m1.ctx, mc = m1.page; const errs = [m1.errors];
+  await mc.waitForSelector('#main[data-nat-ready="1"]', { timeout: 15000 }).catch(() => {});
+  const ph = await openPage(browser, 'alert.html', { context: ctx, width: 1440, height: 900, lang: 'en' }); errs.push(ph.errors);
+  const lab = await openPage(browser, 'detect.html', { context: ctx, width: 1440, height: 900, lang: 'en' }); errs.push(lab.errors);
+  const alertP = ph.page, labP = lab.page;
+  await waitFor(alertP, () => document.documentElement.getAttribute('data-alert-ready') === '1');
+  check('national flow: mission opens on the Qatar map (scope national, engine ready) with alert + detect open in the same context', (await W(mc, () => MissionControl.scope() === 'national' && MissionNational.ready())) && (await W(alertP, () => window.__manaraReady === true)) && (await W(labP, () => window.__manaraReady === true)));
+  // the demo residents live in the Industrial Area (Doha); a gas incident 250 m away is "near" for them
+  const inc = await W(mc, () => { const i = MissionNational.placeIncident({ hazard: 'gas', lon: 51.4445, lat: 25.1755, severity: 2 }); return i && { id: i.id, st: i.plan ? i.plan.state : i.status, units: i.plan ? i.plan.units.filter(u => u.unitId).map(u => u.kind) : [] }; });
+  check('placing a national incident gives a RECOMMENDED plan with a fastest unit per type (fire, ambulance, police ...), nothing sent yet', !!inc && inc.st === 'recommended' && inc.units.length >= 3, JSON.stringify(inc));
+  await sleep(700);
+  const pre = await W(alertP, () => [...document.querySelectorAll('[data-phone]')].filter(e => e.dataset.state === 'alert').length);
+  check('proof before panic: no resident phone alerts before the human approves', pre === 0, 'phones in alert state: ' + pre);
+  await W(mc, id => MissionNational.approve(id), inc.id);
+  check('Approve -> every demo resident phone raises a hazard-correct alert (gas)', await waitFor(alertP, () => ['ravi', 'huda', 'abu-salem', 'lina'].every(k => { const e = document.querySelector('[data-phone="' + k + '"]'); return e && e.dataset.state === 'alert'; }), null, 9000));
+  const huda = await W(alertP, () => { const e = document.querySelector('[data-phone="huda"]'); return e ? { title: (e.querySelector('.al-title') || {}).textContent || '', text: e.textContent.replace(/\s+/g, ' ') } : null; });
+  check('Huda (Arabic) sees a gas-leak headline and the alert is marked exercise/simulation', !!huda && /غاز/.test(huda.title) && /تمرين|محاكاة/.test(huda.text), huda && snip(huda.title, 80));
+  check('the phone lists the fastest unit of each type with ETAs, labelled SIM (nearest facilities, by travel time)', !!huda && /الوصول خلال \d+/.test(huda.text) && /محاكاة/.test(huda.text), huda && snip(huda.text.slice(huda.text.indexOf('الجهات')), 120));
+  // COUNT: "I'm safe" and "I need help" come back to Mission Control's national view
+  await alertP.bringToFront();
+  await waitFor(alertP, () => !!document.querySelector('[data-phone="huda"] .act-safe'), null, 6000);
+  await alertP.click('[data-phone="huda"] .act-safe');
+  check('"I\'m safe" on the phone reaches Mission Control: resident-phone counter and event log show it', await waitFor(mc, id => { const c = MissionNational.state.checkins[id]; return c && c.safe === 1 && MissionNational.state.log.some(e => e.inc === id && /“I’m safe”/.test(e.text.en)); }, inc.id, 8000));
+  if (await alertP.$('[data-phone="abu-salem"] .act-help')) await alertP.click('[data-phone="abu-salem"] .act-help');
+  check('"I need help" reaches Mission Control (counter + log entry that says hand it to 999)', await waitFor(mc, id => { const c = MissionNational.state.checkins[id]; return c && c.help === 1 && MissionNational.state.log.some(e => e.inc === id && /Hand it to 999/.test(e.text.en)); }, inc.id, 8000));
+  await mc.bringToFront(); await W(mc, () => MissionNational.tab('dispatch'));
+  check('the dispatch card shows "Resident phones (exercise, SIM): 1 safe · 1 need help"', await waitFor(mc, () => /1 safe · 1 need help/.test((document.querySelector('.nat-checkins') || {}).textContent || ''), null, 4000));
+  // SENSE -> PROVE: the Evidence Lab detection reaches Mission Control (one key, never an alert by itself)
+  await labP.bringToFront();
+  const labFire = await waitFor(labP, () => document.getElementById('live-ladder') && document.getElementById('live-ladder').getAttribute('data-level') === 'confirmed' && !document.getElementById('live-approve').disabled, null, 15000);
+  if (labFire) { await labP.click('#live-approve'); await sleep(500); }
+  await mc.bringToFront();
+  check('Evidence Lab detection is received by Mission Control (camera key) while the national view is open', labFire && await waitFor(mc, () => !!MissionControl.state.detection && MissionControl.state.detection.state === 'fire', null, 6000));
+  check('no console/page errors on mission, alert or detect during the national flow', errs.every(e => e.length === 0), first(errs.flat()));
   await ctx.close(); await browser.close();
 }
 

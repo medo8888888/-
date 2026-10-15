@@ -1,12 +1,15 @@
 // Mission Control («غرفة العمليات») browser tests — Playwright + Chromium over file:// (no network).
 //   node tools/manara/test-mission.mjs
+// Part A (sections 1-15): the neighbourhood view (#scope=local). Part B (sections N1-N18): the NATIONAL view of the whole of Qatar (default).
 // Covers: clean load (ar/en × dark/light), every scenario starts and advances, approve → 'alert' on the bus (a second page:
 // alert.html) and "I'm awake / I'm safe" there marking the resident safe here, exit lock → re-route, the dispatch rule
 // (FASTEST unit given traffic, not the nearest; re-dispatch on a closed road), A/B panel (checked against ManaraSim.ab) and the
 // 20-seed distribution, CAP export is well-formed XML, determinism of scrubbing, Present mode, share link, twin-board parser,
 // Evidence Lab vision key, keyboard operation, phone layout (bottom sheet) and no horizontal overflow at 390 and 1440.
 import fs from 'node:fs';
-import { launch, openPage, overflow, check, done } from './lib.mjs';
+import { launch, openPage as openPageRaw, overflow, check, done, url } from './lib.mjs';
+// Mission Control opens in the NATIONAL view by default; the original (neighbourhood) tests open the local scope explicitly.
+const openPage = (b, f, o = {}) => openPageRaw(b, f, f === 'mission.html' && !o.query ? { ...o, query: '#scope=local' } : o);
 
 const SHOTS = process.env.MANARA_SHOTS || '';
 const browser = await launch();
@@ -590,6 +593,598 @@ for (const lang of ['en', 'ar']) {
   check(`${lang}: the chart is drawn and a plain-language reading with "simulation" is written under it`, sw.ink > 6 && /(simulation|محاكاة)/.test(sw.txt) && sw.txt.length > 40, sw.txt);
   allErrors.push(...errors); check(`${lang}: sweep: no console errors`, errors.length === 0, errors.join(' | '));
   await ctx.close();
+}
+
+
+/* ================================================================= PART B — the NATIONAL view (the whole of Qatar; the default) */
+console.log('\n=== PART B: national view ===');
+const natReady = (p, t = 20000) => p.waitForSelector('#nat[data-nat-ready="1"]', { timeout: t, state: 'attached' });
+async function openNat(opts = {}) {
+  const r = await openPageRaw(browser, 'mission.html', { width: 1440, height: 900, lang: 'en', query: '#nodemo', ...opts });
+  await natReady(r.page); return r;
+}
+const natInk = page => W(page, () => {
+  const c = document.querySelector('#nat-canvas'); if (!c || !c.width) return 0;
+  const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data, seen = new Set();
+  for (let i = 0; i < d.length; i += 4 * 61) seen.add((d[i] >> 4) + ',' + (d[i + 1] >> 4) + ',' + (d[i + 2] >> 4));
+  return seen.size;
+});
+const clickAt = async (page, lon, lat, exact = false) => {            // clicks the map at (lon, lat), nudging to the nearest spot that is not on an icon (unless exact)
+  const pos = await W(page, ([lo, la, ex]) => { const c = document.querySelector('#nat-canvas').getBoundingClientRect(), m = MissionNational.map(), s = m.toScreen(lo, la); if (ex) return [c.left + s[0], c.top + s[1]];
+    for (const [dx, dy] of [[0, 0], [26, 0], [-26, 0], [0, 26], [0, -26], [26, 26], [-26, -26], [52, 0], [-52, 0], [0, 52], [0, -52]]) { const x = s[0] + dx, y = s[1] + dy; if (!m.hit(x, y)) return [c.left + x, c.top + y]; }
+    return [c.left + s[0], c.top + s[1]]; }, [lon, lat, exact]);
+  await page.mouse.click(pos[0], pos[1]); return pos;
+};
+const incs = page => W(page, () => MissionNational.snap().incidents.map(i => ({ id: i.id, hz: i.hazard, st: i.plan ? i.plan.state : i.status, kinds: i.plan ? i.plan.units.filter(u => u.unitId).map(u => u.kind) : [], eta: i.plan ? i.plan.units.map(u => ({ k: u.kind, id: u.unitId, eta: u.etaSec })) : [] })));
+const AL_KHOR = [51.5055, 25.6839], DOHA = [51.5264, 25.2856], WAKRAH = [51.6034, 25.1715];
+
+/* ---------------------------------------------------------------- N1. loads clean */
+console.log('\nN1. national view loads clean');
+for (const lang of ['ar', 'en']) for (const theme of ['dark', 'light']) for (const width of [1440, 390]) {
+  const t0 = Date.now();
+  const { ctx, page, errors } = await openNat({ width, height: width > 600 ? 900 : 844, theme, lang, query: '' });
+  const tag = `${lang}/${theme}/${width}`;
+  await sleep(500);
+  const info = await W(page, () => ({ scope: document.documentElement.dataset.scope, state: document.querySelector('#nat').dataset.natState, dir: document.documentElement.dir, tabs: document.querySelectorAll('#nat .nat-tabs [role=tab]').length,
+    attrib: document.querySelector('.nat-attrib').textContent, inc: MissionNational.snap().incidents.length, fp: MissionNational.firstPaintMs(), engine: MissionNational.engineMs(), localHidden: getComputedStyle(document.querySelector('#mc-left')).display === 'none', h1: document.querySelector('h1').textContent.trim().length > 3 }));
+  check(`${tag}: no console errors`, errors.length === 0, errors.join(' | '));
+  check(`${tag}: national scope is the default, map ready`, info.scope === 'national' && info.state === 'ready' && info.localHidden, JSON.stringify(info));
+  check(`${tag}: the map of Qatar is drawn on the canvas`, (await natInk(page)) > 12);
+  check(`${tag}: 7 tabs (Incident, Dispatch, Traffic, Hazards, KPIs, A/B, Log); the first frame is the whole of Qatar with NO incident yet (the demo is one press away)`, info.tabs === 7 && info.inc === 0, JSON.stringify(info));
+  check(`${tag}: attribution bar says OpenStreetMap, ODbL, the snapshot date and SIMULATED`, /OpenStreetMap|مساهمو/.test(info.attrib) && /ODbL/.test(info.attrib) && /2026-10-08/.test(info.attrib) && /(SIMULATED|محاكاة)/.test(info.attrib), info.attrib);
+  check(`${tag}: first meaningful paint under 1.5 s (map drawn ${info.fp} ms after navigation start; engine ${info.engine} ms)`, info.fp != null && info.fp < 1500, String(info.fp));
+  const ov = await overflow(page);
+  check(`${tag}: no horizontal overflow`, ov.scrollW <= ov.W && ov.bad.length === 0, JSON.stringify(ov));
+  allErrors.push(...errors); await ctx.close();
+}
+
+/* ---------------------------------------------------------------- N1b. the opening story: whole of Qatar, then ONE press flies into Doha with a farther-but-faster fire */
+console.log('\nN1b. opening story (whole of Qatar -> Place demo incident -> fastest is not nearest)');
+for (const lang of ['en', 'ar']) {
+  const { ctx, page, errors } = await openNat({ width: 1440, height: 900, lang, query: '' });
+  await sleep(500);
+  const a = await W(page, () => { const m = MissionNational.map(), v = m.view(), s = m.size(); return { ppk: Math.round(m.ppk() * 10) / 10, fit: Math.round(m.fitPpk() * 10) / 10, welcome: !document.querySelector('.nat-welcome').hidden, demoBtn: !!document.querySelector('#nat-demo-w'), chips: document.querySelectorAll('.nat-welcome .nat-chipbtn').length, tab: document.querySelector('.nat-tabs [aria-selected=true]').id, h2: document.querySelector('.nat-welcome h2').innerText, lat: v.center[1] }; });
+  check(`${lang}: opens on the whole of Qatar (fit zoom), with a welcome card, one primary "Place demo incident" button and two chips (Farther but faster, Summer noon)`, a.ppk === a.fit && a.welcome && a.demoBtn && a.chips === 2 && a.tab === 'ntab-dispatch' && a.lat > 25.1 && a.lat < 25.5, JSON.stringify(a));
+  await page.click('#nat-demo-w'); await sleep(1500);
+  const b = await W(page, () => { const s = MissionNational.snap(), i = s.incidents[0], f = i && i.plan.units.filter(u => u.kind === 'fire')[0]; return { n: s.incidents.length, st: i && i.plan.state, ffb: f && f.whyData.farButFaster, reason: f && f.whyData.reason, gain: f && f.whyData.gainSec, card: document.querySelector('#npane-dispatch').innerText, ppk: MissionNational.map().ppk(), fit: MissionNational.map().fitPpk(), welcome: !document.querySelector('.nat-welcome').hidden }; });
+  check(`${lang}: one press places the demo fire (awaiting approval), flies into Doha, and the plan says the fastest unit is farther but faster (because of traffic)`, b.n === 1 && b.st === 'recommended' && b.ffb === true && b.reason === 'traffic' && b.gain >= 60 && b.ppk > b.fit * 2 && !b.welcome && /(Farther but faster|أبعد لكن أسرع)/.test(b.card), JSON.stringify({ ...b, card: b.card.length }));
+  check(`${lang}: opening story: no console errors`, errors.length === 0, errors.join(' | ')); allErrors.push(...errors); await ctx.close();
+}
+{
+  const { ctx, page, errors } = await openNat({ width: 1440, height: 900, lang: 'en', query: '#demo' });
+  await sleep(600);
+  const d = await W(page, () => ({ n: MissionNational.snap().incidents.length, ffb: MissionNational.snap().incidents[0].plan.units.find(u => u.kind === 'fire').whyData.farButFaster }));
+  check('#demo opens with the demo incident already placed (used by the other tests and by the booth)', d.n === 1 && d.ffb === true, JSON.stringify(d));
+  allErrors.push(...errors); await ctx.close();
+}
+
+/* ---------------------------------------------------------------- N2. real data on the map */
+console.log('\nN2. real map data');
+{
+  const { ctx, page, errors } = await openNat({});
+  const d = await W(page, () => { const m = MissionNational.map(), w = MissionNational.nat() && ManaraNational.world(MissionNational.nat()); return { fac: m.facilities.length, kinds: m.facilities.reduce((a, f) => (a[f.kind] = (a[f.kind] || 0) + 1, a), {}), munis: m.munis.length, places: m.places.length, w: { nodes: w.nodes, km: w.km, fac: w.facilities } }; });
+  check('138 real facilities on the map (72 hospitals, 1 clinic-ED, 21 fire, 41 police, 3 ambulance), 8 municipalities, places', d.fac === 138 && d.kinds.hospital === 72 && d.kinds.fire === 21 && d.kinds.police === 41 && d.kinds.ambulance === 3 && d.munis === 8 && d.places > 100, JSON.stringify(d));
+  check('the road graph is the real 23k-node network', d.w.nodes > 20000 && d.w.km > 6000, JSON.stringify(d.w));
+  await W(page, () => { document.querySelector('.nat-legend').open = true; });
+  const leg = await W(page, () => document.querySelector('.nat-legend').textContent);
+  check('the legend says what is REAL (OpenStreetMap snapshot) and what is SIM', /REAL|حقيقي/.test(leg) && /SIM|محاكاة/.test(leg) && /ED/.test(leg), leg.slice(0, 120));
+  check('real-data page: no console errors', errors.length === 0, errors.join(' | ')); allErrors.push(...errors); await ctx.close();
+}
+
+console.log('\nN2b. national KPI strip on wide screens');
+{
+  const { ctx, page, errors } = await openNat({ width: 1600, height: 900, query: '#demo' });
+  await sleep(600);
+  const k = await W(page, () => { const s = document.querySelector('.nat-kstrip'), q = s.getBoundingClientRect(), tr = document.querySelector('.nat-tr').getBoundingClientRect(), tl = document.querySelector('.nat-tl').getBoundingClientRect(); return { shown: getComputedStyle(s).display !== 'none', txt: s.textContent, free: q.left > tl.right - 1 && q.right < tr.left + 1 }; });
+  check('a national KPI strip (active incidents, units available, first-unit ETA, traffic speed) sits on the map without colliding with the controls', k.shown && k.free && /1/.test(k.txt) && /\d+\/\d+/.test(k.txt) && /%/.test(k.txt), JSON.stringify(k));
+  await page.click('.nat-kstrip'); await sleep(200);
+  check('pressing the strip opens the KPIs tab', (await W(page, () => document.querySelector('.nat-tabs [aria-selected=true]').id)) === 'ntab-kpi');
+  const k2 = await openNat({ width: 1440, height: 900, query: '' });
+  check('below 1500 px the strip is hidden (the dock has the KPIs tab)', await W(k2.page, () => getComputedStyle(document.querySelector('.nat-kstrip')).display === 'none'));
+  check('KPI strip: no console errors', errors.length === 0 && k2.errors.length === 0, errors.concat(k2.errors).join(' | ')); allErrors.push(...errors, ...k2.errors); await k2.ctx.close(); await ctx.close();
+}
+
+/* ---------------------------------------------------------------- N3-N5. click places an incident; approve → dispatch; jam a road → the ranking / ETA changes */
+console.log('\nN3. click → incident → recommendation (two keys: human approval)');
+{
+  const { ctx, page: mc, errors } = await openNat({});
+  const { page: ph, errors: e3p } = await openPageRaw(browser, 'alert.html', { context: ctx, width: 1100, height: 800, lang: 'en' });
+  await waitFor(ph, () => document.documentElement.getAttribute('data-alert-ready') === '1', null, 8000);
+  await W(ph, () => { window.__got = []; Manara.link.on(m => { if (/^(alert|dispatch|advisory)/.test(m.type)) window.__got.push({ type: m.type, scope: m.scope, hazard: m.hazard, level: m.level, state: m.state, units: m.units && m.units.length, at: m.at, sim: m.sim, id: m.id, items: m.items && m.items.length }); }); });
+  await mc.bringToFront();
+  // choose the Fire hazard in the UI, severity 3, then click the map at Al Khor
+  await mc.click('#ntab-incident'); await mc.click('.nat-hz[data-hz="fire"]');
+  await W(mc, ([lon, lat]) => MissionNational.map().flyTo({ lon, lat, ppk: 14 }, 0), AL_KHOR); await sleep(250);
+  await clickAt(mc, AL_KHOR[0], AL_KHOR[1]); await sleep(400);
+  let L = await incs(mc);
+  check('a click on the map places an incident (N1, fire) and selects it', L.length === 1 && L[0].hz === 'fire' && L[0].id === 'N1', JSON.stringify(L));
+  check('the plan is only a RECOMMENDATION and recommends at least two unit types (fire + ambulance + police …)', L[0].st === 'recommended' && new Set(L[0].kinds).size >= 2 && L[0].kinds.includes('fire') && L[0].kinds.includes('ambulance'), JSON.stringify(L[0]));
+  await sleep(1300);
+  const gotBefore = await W(ph, () => window.__got.filter(m => m.scope === 'national' && (m.type === 'alert' || m.type === 'dispatch')).length);
+  check('proof before panic: nothing reaches the phones before the human approves', gotBefore === 0, String(gotBefore));
+  const ap = await W(mc, () => ({ dis: document.querySelector('#nat-approve2') ? document.querySelector('#nat-approve2').disabled : null, tab: document.querySelector('.nat-tabs [aria-selected=true]').id }));
+  check('Mission Control switched to the Dispatch tab with an enabled Approve button', ap.dis === false && ap.tab === 'ntab-dispatch', JSON.stringify(ap));
+  const txt = await W(mc, () => document.querySelector('#npane-dispatch').textContent);
+  check('every unit card shows an ETA, the road AND straight-line distance and the runner-up', /Fire engine/.test(txt) && /Ambulance/.test(txt) && /Police/.test(txt) && /By road/.test(txt) && /Straight line/.test(txt) && /Runner-up/.test(txt), txt.slice(0, 200));
+  await mc.click('#nat-approve2'); await sleep(500);
+  L = await incs(mc);
+  check('Approve (the human key) moves the plan to approved', ['approved', 'dispatched'].includes(L[0].st), JSON.stringify(L[0]));
+  await W(mc, () => MissionNational.step(60)); await sleep(500);
+  L = await incs(mc);
+  check('after 60 simulated seconds the units are dispatched / en route', ['dispatched', 'en-route'].includes(L[0].st), JSON.stringify(L[0]));
+  const got = await W(ph, () => window.__got);
+  const al = got.find(m => m.type === 'alert' && m.scope === 'national'), di = got.find(m => m.type === 'dispatch' && m.scope === 'national');
+  check('the second page (alert.html) receives the national ALERT after approval (scope national, hazard fire, lon/lat, SIM)', !!al && al.hazard === 'fire' && al.sim === true && Math.abs(al.at.lon - AL_KHOR[0]) < 0.05 && Math.abs(al.at.lat - AL_KHOR[1]) < 0.05, JSON.stringify(got.slice(0, 4)));
+  check('… and the national DISPATCH (approved or later, with the units)', !!di && ['approved', 'dispatched', 'en-route'].includes(di.state) && di.units >= 2, JSON.stringify(di));
+  check('the dispatch card now counts down (ETA text is a m:ss clock)', /\d:\d\d/.test(await W(mc, () => document.querySelector('[data-eta]').textContent)));
+
+  console.log('\nN5. jam a road → ranking / ETA changes');
+  const before = await incs(mc);
+  const route = await W(mc, () => { const i = MissionNational.snap().incidents[0]; const u = i.plan.units.filter(q => q.unitId && q.route && q.route.length > 8)[0]; return u ? { slot: u.slot || u.kind, id: u.unitId, eta: u.etaSec, pts: u.route.slice(2, 12), ahead: u.route.slice(12, 60) } : null; });
+  check('a route is drawn for the chosen unit (polyline from the road graph)', !!route && route.pts.length >= 6, JSON.stringify(route && route.pts.length));
+  await mc.click('.nat-tools [data-id="jam"]');
+  const jam0 = await W(mc, () => MissionNational.snap().traffic.jams);
+  for (const q of route.pts.slice(0, 6)) { await W(mc, ([lo, la]) => MissionNational.map().flyTo({ lon: lo, lat: la, ppk: 60 }, 0), q); await sleep(120); await clickAt(mc, q[0], q[1]); await sleep(150); }
+  const jam1 = await W(mc, () => MissionNational.snap().traffic.jams);
+  check('the Jam tool: clicking roads jams them (the engine counts them) and a marker is drawn', jam1 > jam0, `${jam0} → ${jam1}`);
+  // the clicks above jam the first stretch; a congested corridor ahead of the unit is jammed through the same engine call the tool uses, so the effect does not depend on where exactly a pixel lands
+  await W(mc, pts => pts.forEach(q => MissionNational.jamAt(q[0], q[1], 0.06)), route.ahead);
+  await W(mc, () => MissionNational.step(30)); await sleep(300);
+  const after = await incs(mc);
+  const b0 = before[0].eta.find(u => u.id === route.id), a0 = after[0].eta.find(u => u.id === route.id);
+  const changed = !a0 || Math.abs((a0.eta || 0) - (b0.eta || 0)) > 40 || after[0].eta.map(u => u.id).join() !== before[0].eta.map(u => u.id).join();
+  check('jamming the road changed the ETA or the unit choice (the dispatch reacts to traffic)', changed, JSON.stringify({ b0, a0 }));
+  const logTxt = await W(mc, () => ManaraNational.snapshot(MissionNational.nat(), { full: true }).events.map(e => e.type).join(','));
+  check('the engine logged road-jam events and the log panel shows them', /road-jam/.test(logTxt), logTxt.slice(-200));
+  await mc.click('#ntab-log'); await sleep(150);
+  check('the Log tab lists the events (operator action + engine events)', (await W(mc, () => document.querySelectorAll('#npane-log .nat-ev').length)) >= 3);
+  allErrors.push(...errors, ...e3p); check('click → approve → jam: no console errors', errors.length === 0 && e3p.length === 0, errors.concat(e3p).join(' | ')); await ctx.close();
+}
+
+/* ---------------------------------------------------------------- N6. the real farther-but-faster example */
+console.log('\nN6. real farther-but-faster example');
+{
+  const { ctx, page, errors } = await openNat({});
+  await page.click('#ntab-dispatch');
+  await page.click('#nat-example');
+  const ok = await waitFor(page, () => !!document.querySelector('.nat-example[data-ready="1"]'), null, 30000);
+  const ex = ok && await W(page, () => { const e = MissionNational.state.example.ex; return { f: e.fastest.etaSec, n: e.nearest.etaSec, fs: e.fastest.straightKm, ns: e.nearest.straightKm, extra: e.extraStraightKm, gain: e.gainSec, place: e.incident.place && e.incident.place.name.en, clock: e.clock, scene: !!MissionNational.map().scene.example, routeF: e.fastest.route.length, routeN: e.nearest.route.length, card: document.querySelector('.nat-example').textContent }; });
+  check('the button finds an example on the real map', !!ex, String(ok));
+  check('real numbers: the fastest unit is FARTHER in a straight line yet arrives EARLIER', !!ex && ex.fs > ex.ns && ex.f < ex.n && ex.gain > 0 && ex.extra > 0, JSON.stringify(ex && { f: ex.f, n: ex.n, fs: ex.fs, ns: ex.ns, gain: ex.gain }));
+  check('the card shows both units with km and m:ss, the gain, the SIM tag and the honesty line', !!ex && /Nearest in a straight line/.test(ex.card) && /Fastest given traffic/.test(ex.card) && /\d+\.\d km/.test(ex.card) && /\d+:\d\d/.test(ex.card) && /SIM/.test(ex.card) && /not proof of impact/.test(ex.card), ex && ex.card.slice(0, 160));
+  check('the map jumped there and draws both routes (scene.example, two polylines)', !!ex && ex.scene && ex.routeF > 10 && ex.routeN > 5);
+  await sleep(300);
+  check('the example overlay is drawn (canvas ink)', (await natInk(page)) > 12);
+  check('example: no console errors', errors.length === 0, errors.join(' | ')); allErrors.push(...errors); await ctx.close();
+}
+
+/* ---------------------------------------------------------------- N7. zoom into the last 100 metres and back */
+console.log('\nN7. zoom-in / zoom-out round trip');
+{
+  const { ctx, page, errors } = await openNat({ lang: 'en' });
+  await W(page, ([lon, lat]) => { MissionNational.placeIncident({ hazard: 'gas', lon, lat, severity: 2 }); MissionNational.tab('incident'); }, WAKRAH);
+  await sleep(300);
+  await page.click('#nat-zoomin'); await sleep(900);
+  const z = await W(page, () => ({ scope: MissionControl.scope(), attr: document.documentElement.dataset.scope, preset: MissionControl.state.preset, ctx: document.querySelector('#mc-zoomctx').textContent, zoomVis: !document.querySelector('#mc-zoomctx').hidden, backVis: !document.querySelector('#mc-back').hidden, natHidden: getComputedStyle(document.querySelector('#nat')).display === 'none', hz: MissionControl.snap && MissionControl.snap.hazard, ready: document.querySelector('#main').dataset.ready }));
+  check('"Zoom into the last 100 metres" opens the neighbourhood view with the matching hazard preset (gas → gas-night)', z.scope === 'local' && z.attr === 'local' && z.preset === 'gas-night' && z.hz === 'gas' && z.natHidden, JSON.stringify(z));
+  check('the location label names the nearest REAL place and says it is a simulated scenario, not a real building', z.zoomVis && /near/i.test(z.ctx) && /simulated scenario, not a real building/.test(z.ctx), z.ctx);
+  check('a Back-to-Qatar button is shown', z.backVis);
+  const loc = await W(page, () => { MissionControl.advance(40); return { phase: MissionControl.snap.verification.phase, t: MissionControl.snap.t, people: MissionControl.snap.people.length }; });
+  check('every local feature still works after the zoom-in (the simulation advances, people are present)', loc.t >= 40 && loc.people > 50, JSON.stringify(loc));
+  const ph = await W(page, () => Manara.link.last('alert') && Manara.link.last('alert').area);
+  await page.click('#mc-back'); await sleep(700);
+  const b = await W(page, () => ({ scope: MissionControl.scope(), natShown: getComputedStyle(document.querySelector('#nat')).display !== 'none', sel: MissionNational.selected(), ink: !!document.querySelector('#nat-canvas').width, incs: MissionNational.snap().incidents.length }));
+  check('Back to Qatar returns to the national map with the incident still there and selected', b.scope === 'national' && b.natShown && b.sel === 'N1' && b.incs === 1, JSON.stringify(b));
+  check('the map is drawn again after the round trip', (await natInk(page)) > 12);
+  // presets by hazard
+  const pre = await W(page, () => ['fire', 'gas', 'flood', 'dust', 'heat', 'sos'].map(h => MissionControl.presetFor(h, 22, 5)).join());
+  check('hazard → preset mapping (night): fire-night, gas-night, flood-day, dust-day, heat-day, sos-day', pre === 'fire-night,gas-night,flood-day,dust-day,heat-day,sos-day', pre);
+  const sch = await W(page, () => MissionControl.presetFor('fire', 9, 1));
+  check('a fire on a school-day morning zooms into school-fire-day', sch === 'school-fire-day', sch);
+  // Esc leaves the neighbourhood view too
+  await page.click('#nat-zoomin'); await sleep(600); await page.keyboard.press('Escape'); await sleep(500);
+  check('Escape also returns to Qatar', (await W(page, () => MissionControl.scope())) === 'national');
+  check('zoom round trip: no console errors', errors.length === 0, errors.join(' | ')); allErrors.push(...errors); await ctx.close();
+}
+
+/* ---------------------------------------------------------------- N8. CAP export */
+console.log('\nN8. CAP 1.2 export');
+{
+  const { ctx, page, errors } = await openNat({});
+  await W(page, ([lon, lat]) => { const i = MissionNational.placeIncident({ hazard: 'flood', lon, lat, severity: 2 }); MissionNational.approve(i.id); MissionNational.tab('incident'); }, DOHA);
+  await sleep(300);
+  const x = await W(page, () => MissionNational.cap());
+  const parsed = await W(page, xml => { const d = new DOMParser().parseFromString(xml, 'application/xml'); const r = d.documentElement; const q = t => (d.getElementsByTagName(t)[0] || {}).textContent; return { err: !!d.getElementsByTagName('parsererror').length, root: r.localName, ns: r.namespaceURI, status: q('status'), msgType: q('msgType'), infos: d.getElementsByTagName('info').length, langs: [...d.getElementsByTagName('language')].map(l => l.textContent), id: q('identifier'), circle: !!d.getElementsByTagName('circle').length }; }, x);
+  check('CAP is well-formed XML in the CAP 1.2 namespace, status Exercise, one <info> per language (ar, en) and a circle area', !parsed.err && parsed.root === 'alert' && parsed.ns === 'urn:oasis:names:tc:emergency:cap:1.2' && parsed.status === 'Exercise' && parsed.infos === 2 && parsed.langs.join() === 'ar,en' && parsed.circle, JSON.stringify(parsed));
+  const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 5000 }), page.click('#nat-cap')]);
+  const name = dl.suggestedFilename();
+  check('the Export button downloads manara-cap-N1.xml', name === 'manara-cap-N1.xml', name);
+  await page.click('#npane-incident .nat-cap summary'); await sleep(200);
+  check('the CAP preview shows the XML', /<alert xmlns="urn:oasis:names:tc:emergency:cap:1.2"/.test(await W(page, () => document.querySelector('.nat-capxml').textContent)));
+  check('CAP: no console errors', errors.length === 0, errors.join(' | ')); allErrors.push(...errors); await ctx.close();
+}
+
+/* ---------------------------------------------------------------- N9. hazards, advisories (MANARA_MSG), overlays */
+console.log('\nN9. hazard overlays and advisories');
+{
+  const { ctx, page, errors } = await openNat({ lang: 'en' });
+  const { page: ph } = await openPageRaw(browser, 'alert.html', { context: ctx, width: 1100, height: 800, lang: 'en' });
+  await waitFor(ph, () => document.documentElement.getAttribute('data-alert-ready') === '1', null, 8000);
+  await W(ph, () => { window.__adv = []; Manara.link.on(m => { if (m.type === 'advisory' && m.scope === 'national') window.__adv.push({ items: m.items.length, keys: m.items.map(i => i.key), sim: m.sim }); }); });
+  await mc_front(page);
+  async function mc_front(p) { await p.bringToFront(); }
+  await page.click('#ntab-hazards');
+  const ink0 = await natInk(page);
+  await W(page, () => { MissionNational.setClock({ season: 'summer', dow: 0, hour: 13 }); MissionNational.setLayer('hazard', 'heat'); });
+  await sleep(600);
+  const heat = await W(page, () => ({ layer: MissionNational.map().scene.layers.hazard, adv: [...document.querySelectorAll('#npane-hazards .nat-adv-t')].map(e => e.textContent), lvl: MissionNational.snap().kpis.hazards.heat.level }));
+  check('summer noon: the heat overlay is on and the advisories are rendered from the shared message keys (nat.adv.heat.*)', heat.layer === 'heat' && heat.lvl === 'stop' && heat.adv.length >= 4 && heat.adv.every(t => /WBGT|stop work|heat stress|Outdoor work is banned/i.test(t)) && heat.adv.some(t => /stop work/i.test(t)), JSON.stringify(heat).slice(0, 300));
+  const lg = await W(page, () => document.querySelector('#npane-hazards .z-hzlegend').textContent);
+  check('the heat legend gives the published thresholds with their source ids (28 °C S52, 32.1 °C S19)', /28/.test(lg) && /32\.1/.test(lg) && /S52/.test(lg) && /S19/.test(lg), lg);
+  const advMsgs = await W(ph, () => window.__adv);
+  check('the advisory set is published to the phones (type advisory, scope national, keys nat.adv.*)', advMsgs.length >= 1 && advMsgs[0].keys.every(k => /^nat\.adv\./.test(k)) && advMsgs[0].sim === true, JSON.stringify(advMsgs.slice(0, 2)));
+  await W(page, () => { MissionNational.setLayer('hazard', 'dust'); MissionNational.startDust(315, 12); MissionNational.step(3600 * 2); });
+  await sleep(500);
+  const dust = await W(page, () => ({ on: MissionNational.snap().dust.on, pm: MissionNational.snap().kpis.hazards.dust.pm10Max, front: !!MissionNational.map().scene.dust.front, layer: MissionNational.map().scene.layers.hazard }));
+  check('the dust front advances over Qatar (PM10 estimate rises, front drawn)', dust.on && dust.pm > 150 && dust.front && dust.layer === 'dust', JSON.stringify(dust));
+  await W(page, () => { MissionNational.stopDust(); MissionNational.setLayer('hazard', 'rain'); MissionNational.setRain(35); MissionNational.step(3600 * 3); });
+  await sleep(400);
+  const rain = await W(page, () => ({ closed: MissionNational.snap().kpis.hazards.flood.tunnelsClosed, rain: MissionNational.snap().kpis.hazards.flood.rainMax, adv: [...document.querySelectorAll('#npane-hazards .nat-adv-t')].map(e => e.textContent).join(' | ') }));
+  check('rain fills real underpasses and closes some; the flood advisory is shown with SIMULATED wording', rain.closed >= 1 && /rain .*simulated/i.test(rain.adv), JSON.stringify(rain).slice(0, 300));
+  check('hazards: no console errors', errors.length === 0, errors.join(' | ')); allErrors.push(...errors); await ctx.close();
+}
+
+/* ---------------------------------------------------------------- N10. A/B panel (national dispatch) */
+console.log('\nN10. A/B panel');
+{
+  const { ctx, page, errors } = await openNat({ lang: 'en' });
+  await page.click('#ntab-ab');
+  await page.selectOption('#nat-ab-n', '50');
+  await page.click('#nat-ab-run');
+  const ok = await waitFor(page, () => !!document.querySelector('.nat-abres[data-ready="1"]'), null, 60000);
+  const r = await W(page, () => { const a = MissionNational.state.ab.res; return { hash: a.hash, o: a.firstResponderEtaSec.ordinary.mean, m: a.firstResponderEtaSec.manara.mean, n: a.evaluated, direct: ManaraNational.ab({ seed: 7, n: 50, hazards: ['fire', 'gas', 'flood', 'sos'], hour: 7.75, date: '2026-01-11', day: 0, params: { trafficLoad: 1, unitBusyPct: 10 } }).hash, text: document.querySelector('.nat-abres').textContent, ink: (() => { const c = document.querySelector('.nat-abchart'); if (!c) return 0; const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data, s = new Set(); for (let i = 0; i < d.length; i += 4 * 37) s.add((d[i] >> 4) + ',' + (d[i + 1] >> 4) + ',' + (d[i + 2] >> 4)); return s.size; })() }; });
+  check('A/B runs the same seeded incidents under both policies and shows the result', ok && r.n === 50 && r.m <= r.o, JSON.stringify({ o: r.o, m: r.m, n: r.n }));
+  check('the panel result equals a direct ManaraNational.ab call with the same seed (reproducible, same hash)', r.hash === r.direct, `${r.hash} vs ${r.direct}`);
+  check('it is labelled SIMULATION — a mechanism check, not proof of impact; it names the two policies', /SIMULATION/.test(r.text) && /not proof of impact/.test(r.text) && /Nearest straight line/.test(r.text) && /Fastest given traffic/.test(r.text) && /P90/.test(r.text), r.text.slice(0, 120));
+  check('the distribution chart is drawn on canvas', r.ink > 6, String(r.ink));
+  const ink2 = await W(page, () => { const c = document.querySelector('.nat-abchart2'); if (!c) return 0; const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data, s = new Set(); for (let i = 0; i < d.length; i += 4 * 23) s.add((d[i] >> 4) + ',' + (d[i + 1] >> 4) + ',' + (d[i + 2] >> 4)); return s.size; });
+  check('a second chart shows the time saved (all incidents vs only where the choice differs; the median is honestly zero)', ink2 > 4 && /median is zero/.test(await W(page, () => document.querySelector('.nat-abres').textContent)), String(ink2));
+  await page.click('#nat-ab-sweep');
+  const sw = await waitFor(page, () => document.querySelectorAll('.nat-sweep .nat-heat').length === 15, null, 90000);
+  check('the sensitivity sweep fills a 5 × 3 grid (congestion × busy units)', sw);
+  await W(page, () => { const i = document.querySelector('#nat-ab-load'); i.value = 2; i.dispatchEvent(new Event('change')); const b = document.querySelector('#nat-ab-busy'); b.value = 40; b.dispatchEvent(new Event('change')); });
+  await page.click('#nat-ab-run');
+  const ok2 = await waitFor(page, () => MissionNational.state.ab && MissionNational.state.ab.cfg.trafficLoad === 2 && MissionNational.state.ab.cfg.unitBusyPct === 40 && !MissionNational.state.abRunning, null, 60000);
+  const h2 = await W(page, () => MissionNational.state.ab.res.hash);
+  check('the sensitivity sliders change the run (new assumptions → a different result hash)', ok2 && h2 !== r.hash, `${h2} vs ${r.hash}`);
+  check('the assumptions registry lists every parameter (70) with its source', (await W(page, () => document.querySelectorAll('.nat-ptable tr').length)) >= 60);
+  check('A/B: no console errors', errors.length === 0, errors.join(' | ')); allErrors.push(...errors); await ctx.close();
+}
+
+/* ---------------------------------------------------------------- N11. keyboard, tabs, present mode */
+console.log('\nN11. keyboard operability and present mode');
+for (const lang of ['en', 'ar']) {
+  const { ctx, page, errors } = await openNat({ lang });
+  await page.focus('#nat-canvas');
+  const c0 = await W(page, () => MissionNational.map().view());
+  await page.keyboard.press('ArrowRight'); await page.keyboard.press('ArrowDown'); await sleep(100);
+  const c1 = await W(page, () => MissionNational.map().view());
+  check(`${lang}: arrow keys pan the map`, Math.abs(c1.cx - c0.cx) > 1 && Math.abs(c1.cy - c0.cy) > 1);
+  await page.keyboard.press('+'); await page.keyboard.press('+'); await sleep(100);
+  const c2 = await W(page, () => MissionNational.map().view());
+  check(`${lang}: + zooms in`, c2.ppk > c1.ppk * 1.5, `${c1.ppk} → ${c2.ppk}`);
+  await page.keyboard.press('0'); await sleep(900);
+  const c3 = await W(page, () => MissionNational.map().view());
+  check(`${lang}: 0 shows all of Qatar again`, c3.ppk < c2.ppk * 0.6, `${c2.ppk} → ${c3.ppk}`);
+  await page.keyboard.press('Enter'); await sleep(300);
+  check(`${lang}: Enter places an incident at the map centre with the keyboard`, (await incs(page)).length === 1);
+  await page.keyboard.press('Escape');
+  // tabs: arrow keys move between tabs (direction follows the language)
+  await page.focus('#ntab-incident'); await page.keyboard.press(lang === 'ar' ? 'ArrowLeft' : 'ArrowRight'); await sleep(100);
+  check(`${lang}: arrow keys move between tabs (roving tabindex)`, (await W(page, () => document.querySelector('.nat-tabs [aria-selected=true]').id)) === 'ntab-dispatch');
+  // approve with the keyboard only
+  await page.focus('#nat-approve2'); await page.keyboard.press('Enter'); await sleep(400);
+  check(`${lang}: the human key works from the keyboard (focus the button, Enter)`, ['approved', 'dispatched'].includes((await incs(page))[0].st));
+  // every primary control is a real button/select with an accessible name
+  const bad = await W(page, () => [...document.querySelectorAll('#nat button, #nat select, #nat input, #nat canvas[role]')].filter(e => !e.closest('[hidden]')).filter(e => !(e.getAttribute('aria-label') || e.textContent.trim() || (e.labels && e.labels.length) || e.closest('label'))).map(e => e.outerHTML.slice(0, 80)));
+  check(`${lang}: every visible control has an accessible name`, bad.length === 0, bad.join(' | '));
+  const live = await W(page, () => ({ announce: document.querySelector('#mc-announce').getAttribute('aria-live'), canvasLabel: document.querySelector('#nat-canvas').getAttribute('aria-label'), summary: document.querySelector('#nat-summary').textContent }));
+  check(`${lang}: the map has a label, a text summary and an aria-live announcer`, live.announce === 'polite' && live.canvasLabel.length > 30 && live.summary.length > 20, JSON.stringify(live));
+  // present mode
+  await page.focus('#nat-canvas'); await page.keyboard.press('p'); await sleep(400);
+  const pr = await W(page, () => ({ on: document.querySelector('#nat').dataset.present, dock: getComputedStyle(document.querySelector('.nat-dock')).display, strip: document.querySelector('.nat-pstrip').textContent, navHidden: getComputedStyle(document.querySelector('.nav')).display === 'none' }));
+  check(`${lang}: Present mode (P) hides the dock and the page chrome and shows big ETAs for the projector`, pr.on === '1' && pr.dock === 'none' && pr.navHidden && /\d:\d\d|On scene|في الموقع/.test(pr.strip) && /SIM/.test(pr.strip), JSON.stringify(pr));
+  await page.keyboard.press('Escape'); await sleep(300);
+  check(`${lang}: Escape leaves Present mode`, (await W(page, () => document.querySelector('#nat').dataset.present)) === '0');
+  check(`${lang}: keyboard: no console errors`, errors.length === 0, errors.join(' | ')); allErrors.push(...errors); await ctx.close();
+}
+
+/* ---------------------------------------------------------------- N12. performance: frame times while panning and zooming, first paint */
+console.log('\nN12. frame-time budget');
+{
+  const { ctx, page, errors } = await openNat({ width: 1440, height: 900, query: '#demo', reducedMotion: 'no-preference' });
+  await sleep(1200);
+  await W(page, () => MissionNational.setPlaying(true));
+  const b1 = await W(page, () => MissionNational.benchmark({ frames: 180 }));
+  check(`pan + zoom at 1440×900 with a live incident and animations on: median frame ${b1.p50Ms} ms, p95 ${b1.p95Ms} ms, mean ${b1.meanMs} ms (${b1.fps} fps), max ${b1.maxMs} ms`, b1.p50Ms <= 17.5 && b1.p95Ms <= 50 && b1.meanMs <= 22, JSON.stringify(b1));
+  await W(page, () => MissionNational.map().flyTo({ lon: 51.52, lat: 25.29, ppk: 120 }, 0)); await sleep(300);
+  const b2 = await W(page, () => MissionNational.benchmark({ frames: 120 }));
+  check(`zoomed to street level (roads redrawn per zoom level into the cache): p95 ${b2.p95Ms} ms, mean ${b2.meanMs} ms`, b2.p50Ms <= 17.5 && b2.p95Ms <= 60 && b2.meanMs <= 25, JSON.stringify(b2));
+  await W(page, () => { MissionNational.map().fit(); MissionNational.setSpeed(60); }); await sleep(2500);
+  const f = await W(page, () => MissionNational.fps());
+  check(`idle with the simulation running at 60×: mean frame ${f && f.meanMs} ms`, !!f && f.meanMs <= 20, JSON.stringify(f));
+  check('perf: no console errors', errors.length === 0, errors.join(' | ')); allErrors.push(...errors); await ctx.close();
+}
+
+/* ---------------------------------------------------------------- N13. loading + error states */
+console.log('\nN13. error state when the map data fails to load');
+{
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, colorScheme: 'dark', reducedMotion: 'reduce' });
+  await ctx.route(/qatar-roads\.js/, r => r.abort());
+  const page = await ctx.newPage(); const errors = [];
+  page.on('pageerror', e => errors.push('pageerror: ' + e.message));
+  await page.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
+  await page.goto(url('mission.html'), { waitUntil: 'load' });
+  const ok = await waitFor(page, () => document.querySelector('#nat').dataset.natState === 'error', null, 8000);
+  const e = await W(page, () => ({ txt: document.querySelector('.nat-boot-card.err') ? document.querySelector('.nat-boot-card.err').textContent : '', alert: document.querySelector('.nat-boot-card.err') ? document.querySelector('.nat-boot-card.err').getAttribute('role') : '' }));
+  check('a missing data file shows a clear error state (role=alert) that names the file', ok && e.alert === 'alert' && /qatar-roads\.js/.test(e.txt) && /could not start|تعذّر/.test(e.txt), JSON.stringify(e));
+  const btns = await W(page, () => [...document.querySelectorAll('.nat-boot-card.err button')].map(b => b.textContent.trim()));
+  check('the error state offers "Try again" and "Open the neighbourhood view"', btns.length === 2, btns.join(' | '));
+  await page.click('.nat-boot-card.err .btn-ghost'); await sleep(800);
+  check('the neighbourhood view still works when the national data is missing', (await W(page, () => MissionControl.scope())) === 'local' && !!(await W(page, () => MissionControl.sim)));
+  check('error state: no page errors', errors.length === 0, errors.join(' | ')); allErrors.push(...errors); await ctx.close();
+}
+
+/* ---------------------------------------------------------------- N14. phone layout: bottom sheet with tabs */
+console.log('\nN14. phone layout (390 px)');
+{
+  const { ctx, page, errors } = await openNat({ width: 390, height: 844, lang: 'en', query: '' });
+  const g = await W(page, () => { const r = s => { const q = document.querySelector(s).getBoundingClientRect(); return { top: Math.round(q.top), h: Math.round(q.height), w: Math.round(q.width) }; }; return { stage: r('.nat-stage'), dock: r('.nat-dock'), canvas: r('#nat-canvas'), cvsPx: document.querySelector('#nat-canvas').width, sheet: document.querySelector('.nat-dock').dataset.sheet, vh: innerHeight }; });
+  check('the map is full-width above a bottom sheet (stage ≥ 300 px tall, the sheet below it)', g.stage.w === 390 && g.stage.h >= 300 && g.dock.top >= g.stage.top + g.stage.h - 2 && g.canvas.h === g.stage.h, JSON.stringify(g));
+  const tabs = await W(page, () => [...document.querySelectorAll('#nat .nat-tabs [role=tab]')].map(t => t.textContent.trim()));
+  check('tabs Incident · Dispatch · Traffic · Hazards · KPIs · A/B · Log', tabs.length === 7 && /Incident/.test(tabs[0]) && /Dispatch/.test(tabs[1]) && /Hazards/.test(tabs[3]) && /KPIs/.test(tabs[4]) && /Log/.test(tabs[6]), tabs.join('|'));
+  for (const id of ['incident', 'dispatch', 'traffic', 'hazards', 'kpi', 'ab', 'log']) {
+    await page.click(`#ntab-${id}`, { force: true }); await sleep(250);
+    const vis = await W(page, id => { const p = document.querySelector('#npane-' + id), q = p.getBoundingClientRect(); return { hidden: p.hidden, h: q.height, txt: p.textContent.length, right: q.right }; }, id);
+    const ov = await overflow(page);
+    check(`390 px: the ${id} tab opens, has content and does not overflow`, !vis.hidden && vis.txt > 40 && ov.scrollW <= ov.W && ov.bad.length === 0, JSON.stringify({ vis, ov }));
+  }
+  await page.click('.nat-grab'); await sleep(450);
+  const s2 = await W(page, () => document.querySelector('.nat-dock').dataset.sheet);
+  await page.click('.nat-grab'); await sleep(450);
+  const s3 = await W(page, () => document.querySelector('.nat-dock').dataset.sheet);
+  await page.click('.nat-grab'); await sleep(450);
+  const s4 = await W(page, () => ({ sheet: document.querySelector('.nat-dock').dataset.sheet, stage: document.querySelector('.nat-stage').getBoundingClientRect().height, cvs: document.querySelector('#nat-canvas').style.height }));
+  check('the sheet cycles half → full → peek → half and the map resizes with it', s2 === 'full' && s3 === 'peek' && s4.sheet === 'half' && s4.stage >= 300, `${s2} ${s3} ${JSON.stringify(s4)}`);
+  // touch: place an incident with a tap on the map (tool = incident) and pinch is covered by the wheel/keys on desktop
+  await W(page, () => MissionNational.map().flyTo({ lon: 51.53, lat: 25.29, ppk: 30 }, 0)); await sleep(250);
+  const box = await page.locator('#nat-canvas').boundingBox();
+  const free = await W(page, () => { const m = MissionNational.map(), s = m.size(); for (let fy = 0.55; fy > 0.2; fy -= 0.05) for (let fx = 0.5; fx < 0.9; fx += 0.05) { const x = s.w * fx, y = s.h * fy; if (!m.hit(x, y) && !document.elementsFromPoint(x + document.querySelector('#nat-canvas').getBoundingClientRect().left, y + document.querySelector('#nat-canvas').getBoundingClientRect().top).some(e => e.closest('.nat-hud button, .nat-hud summary, .nat-tl, .nat-kstrip'))) return [x, y]; } return [s.w * 0.6, s.h * 0.4]; });
+  await page.touchscreen.tap(box.x + free[0], box.y + free[1]); await sleep(300);
+  check('a tap on the map places an incident on a phone', (await incs(page)).length >= 1);
+  check('phone: no console errors', errors.length === 0, errors.join(' | ')); allErrors.push(...errors); await ctx.close();
+}
+
+/* ---------------------------------------------------------------- N15. language + theme switching in the national view, traffic clock re-times incidents */
+console.log('\nN15. language, theme, clock');
+{
+  const { ctx, page, errors } = await openNat({ lang: 'en', query: '#demo' });
+  const ink0 = await natInk(page);
+  const l0 = await W(page, () => document.querySelector('#ntab-incident').innerText.trim());
+  await page.click('[data-lang-toggle]'); await sleep(500);
+  const l1 = await W(page, () => ({ tab: document.querySelector('#ntab-incident').innerText.trim(), dir: document.documentElement.dir, label: document.querySelector('#nat-canvas').getAttribute('aria-label'), attrib: document.querySelector('.nat-attrib').innerText, plan: document.querySelector('#npane-dispatch').innerText.slice(0, 60) }));
+  check('switching to Arabic re-renders the national view (tabs, dock, map label, attribution; RTL)', l0 === 'Incident' && l1.tab === 'الحادث' && l1.dir === 'rtl' && /[\u0600-\u06FF]/.test(l1.label) && /OpenStreetMap/.test(l1.attrib) && /[\u0600-\u06FF]/.test(l1.plan), JSON.stringify(l1));
+  const shot = await W(page, () => document.querySelector('#nat-canvas').toDataURL().length);
+  await page.click('.theme-toggle'); await sleep(600);
+  const shot2 = await W(page, () => ({ theme: document.documentElement.dataset.theme, len: document.querySelector('#nat-canvas').toDataURL().length }));
+  check('switching the theme redraws the map from the tokens', shot2.len !== shot, JSON.stringify(shot2));
+  check('the map is still drawn after both switches', (await natInk(page)) > 12);
+  // the clock: same incident, rush hour vs 3 am → the dispatch is recomputed (ETA differs) and the incident is kept
+  const rush = await W(page, () => { MissionNational.setClock({ season: 'winter', dow: 0, hour: 7.75 }); const u = MissionNational.snap().incidents[0].plan.units.filter(q => q.unitId); return u.map(q => q.etaSec); });
+  const night = await W(page, () => { MissionNational.setClock({ season: 'winter', dow: 0, hour: 3 }); const i = MissionNational.snap().incidents; return { n: i.length, eta: i[0].plan.units.filter(q => q.unitId).map(q => q.etaSec), clock: MissionNational.snap().clock }; });
+  check('setting the clock to 03:00 keeps the incident and recomputes the dispatch on lighter traffic (shorter ETAs)', night.n === 1 && /^03:/.test(night.clock) && Math.min(...night.eta) < Math.min(...rush) && night.eta.reduce((a, b) => a + b, 0) < rush.reduce((a, b) => a + b, 0), JSON.stringify({ rush, night }));
+  check('language/theme: no console errors', errors.length === 0, errors.join(' | ')); allErrors.push(...errors); await ctx.close();
+}
+
+/* ---------------------------------------------------------------- N16. re-dispatch banner when a unit becomes busy / a road closes; KPIs and municipalities */
+console.log('\nN16. automatic re-dispatch and KPIs');
+{
+  const { ctx, page, errors } = await openNat({ lang: 'en' });
+  await W(page, ([lon, lat]) => { const i = MissionNational.placeIncident({ hazard: 'fire', lon, lat, severity: 2 }); MissionNational.approve(i.id); MissionNational.step(40); }, DOHA);
+  const chosen = await W(page, () => { const u = MissionNational.snap().incidents[0].plan.units.filter(q => q.kind === 'fire' && q.unitId)[0]; return u && u.unitId; });
+  await W(page, id => MissionNational.setUnitBusy(id, true), chosen); await sleep(300);
+  await W(page, () => MissionNational.step(60)); await sleep(400);
+  const r = await W(page, () => ({ banner: !document.querySelector('.nat-banner').hidden, text: document.querySelector('.nat-banner').textContent, ev: MissionNational.nat().events.filter(e => e.type === 'redispatch').length, now: MissionNational.snap().incidents[0].plan.units.filter(q => q.kind === 'fire')[0].unitId }));
+  check('when the chosen engine becomes busy the engine re-dispatches another unit automatically', r.ev >= 1 && r.now !== chosen, JSON.stringify({ ev: r.ev, chosen, now: r.now }));
+  check('the operator sees a RE-DISPATCH banner (aria-live) saying what changed', r.banner && /re-dispatch/i.test(r.text), r.text);
+  await page.click('#ntab-dispatch');
+  check('the Dispatch tab explains the re-dispatch', /re-dispatch/i.test(await W(page, () => document.querySelector('#npane-dispatch').textContent)));
+  await page.click('#ntab-kpi'); await sleep(300);
+  const k = await W(page, () => ({ tiles: document.querySelectorAll('#npane-kpi .nat-kpi').length, rows: document.querySelectorAll('#npane-kpi .nat-table tbody tr').length, txt: document.querySelector('#npane-kpi').textContent }));
+  check('KPI strip (incidents, units, ETA, traffic, hazards) and the 8 municipalities are shown', k.tiles >= 8 && k.rows === 8 && /Active incidents/.test(k.txt) && /Mean first-unit ETA/.test(k.txt) && /Re-dispatches/.test(k.txt), JSON.stringify({ tiles: k.tiles, rows: k.rows }));
+  check('re-dispatch: no console errors', errors.length === 0, errors.join(' | ')); allErrors.push(...errors); await ctx.close();
+}
+
+
+/* ---------------------------------------------------------------- N17. pointer interaction: drag, wheel, pinch, hover, tools, hold / cancel */
+console.log('\nN17. pointer interaction and operator tools');
+{
+  const { ctx, page, errors } = await openNat({ lang: 'en' });
+  const { page: ph } = await openPageRaw(browser, 'alert.html', { context: ctx, width: 1100, height: 800, lang: 'en' });
+  await waitFor(ph, () => document.documentElement.getAttribute('data-alert-ready') === '1', null, 8000);
+  await W(ph, () => { window.__clr = []; window.__al = []; Manara.link.on(m => { if (m.type === 'alert-clear') window.__clr.push(m.id); if (m.type === 'alert' && m.scope === 'national') window.__al.push(m.id); }); });
+  await page.bringToFront();
+  const box = await page.locator('#nat-canvas').boundingBox();
+  const cx = box.x + box.width / 2, cy = box.y + box.height / 2;
+  const v0 = await W(page, () => MissionNational.map().view());
+  await page.mouse.move(cx, cy); await page.mouse.down(); await page.mouse.move(cx + 120, cy + 60, { steps: 6 }); await page.mouse.up(); await sleep(150);
+  const v1 = await W(page, () => MissionNational.map().view());
+  check('dragging with the mouse pans the map (and does not place an incident)', Math.abs(v1.cx - v0.cx) > 1000 && (await incs(page)).length === 0, JSON.stringify({ v0: v0.cx, v1: v1.cx }));
+  await page.mouse.wheel(0, -400); await sleep(250);
+  const v2 = await W(page, () => MissionNational.map().view());
+  check('the wheel zooms in at the cursor', v2.ppk > v1.ppk * 1.4, `${v1.ppk} → ${v2.ppk}`);
+  // pinch: two touch pointers moving apart (synthetic PointerEvents on the canvas)
+  const pz = await W(page, () => new Promise(res => { const c = document.querySelector('#nat-canvas'), r = c.getBoundingClientRect(), m = MissionNational.map(), p0 = m.view().ppk, x = r.left + r.width / 2, y = r.top + r.height / 2;
+    const ev = (t, id, dx) => c.dispatchEvent(new PointerEvent(t, { pointerId: id, pointerType: 'touch', clientX: x + dx, clientY: y, bubbles: true, isPrimary: id === 1, button: 0 }));
+    ev('pointerdown', 1, -30); ev('pointerdown', 2, 30); for (let k = 1; k <= 6; k++) { ev('pointermove', 1, -30 - k * 14); ev('pointermove', 2, 30 + k * 14); } ev('pointerup', 1, -114); ev('pointerup', 2, 114); res([p0, m.view().ppk]); }));
+  check('a two-finger pinch zooms the map', pz[1] > pz[0] * 1.8, JSON.stringify(pz));
+  // place an incident by clicking, hover its marker → tooltip, hold, cancel
+  await page.keyboard.press('Escape');
+  await W(page, ([lon, lat]) => MissionNational.map().flyTo({ lon, lat, ppk: 20 }, 0), [51.45, 25.40]); await sleep(250);
+  await clickAt(page, 51.45, 25.40); await sleep(300);
+  const inc0 = await incs(page);
+  check('click places the incident after the drag test', inc0.length === 1, JSON.stringify(inc0));
+  const mk = await W(page, () => { const m = MissionNational.map(), h = m.hits.filter(q => q.type === 'incident')[0], r = document.querySelector('#nat-canvas').getBoundingClientRect(); return h ? [r.left + h.x, r.top + h.y] : null; });
+  await page.mouse.move(mk[0] + 1, mk[1] + 1); await sleep(200);
+  const tip = await W(page, () => ({ hid: document.querySelector('.nat-tip').hidden, txt: document.querySelector('.nat-tip').textContent }));
+  check('hovering an incident marker shows a tooltip with its id and place', !tip.hid && /N1/.test(tip.txt), JSON.stringify(tip));
+  await page.mouse.move(box.x + 5, box.y + box.height - 40); await page.click('#ntab-incident');
+  await page.click('#nat-hold'); await sleep(200);
+  const held = await W(page, () => ({ pressed: document.querySelector('#nat-hold').getAttribute('aria-pressed'), st: MissionNational.snap().incidents[0].plan.state, txt: document.querySelector('.nat-incident').textContent }));
+  check('Hold keeps the plan at "recommended", says nothing is sent, and nothing reaches the phones', held.pressed === 'true' && held.st === 'recommended' && /On hold/.test(held.txt) && (await W(ph, () => window.__al.length)) === 0, JSON.stringify(held));
+  await page.click('#nat-approve'); await sleep(500);
+  check('Approve after a hold sends the national alert to the phones page', (await W(ph, () => window.__al.length)) === 1);
+  await page.click('#nat-cancel'); await sleep(500);
+  check('Cancel withdraws the incident and clears the alert on the phones (alert-clear)', (await W(ph, () => window.__clr.includes('A-N1'))) && (await W(page, () => MissionNational.snap().incidents[0].status)) === 'cancelled');
+  // inspect tool: a click on a road shows its facts; the Close tool closes it and the engine knows
+  await page.click('.nat-tools [data-id="inspect"]');
+  await W(page, ([lon, lat]) => MissionNational.map().flyTo({ lon, lat, ppk: 70 }, 0), [51.5, 25.30]); await sleep(250);
+  const rd = await W(page, () => { const m = MissionNational.map(), c = m.view().center, e = MissionNational.edgeNear(c[0], c[1]); return e ? { edge: e.edge, ll: m.edgeMid(e.edge) } : null; });
+  await W(page, ([lon, lat]) => MissionNational.map().flyTo({ lon, lat, ppk: 70 }, 0), rd.ll); await sleep(250);
+  await clickAt(page, rd.ll[0], rd.ll[1]); await sleep(300);
+  const rf = await W(page, () => ({ sel: MissionNational.state.sel, txt: document.querySelector('.nat-sel') ? document.querySelector('.nat-sel').textContent : '' }));
+  check('the Inspect tool shows a road card (class, free-flow speed, current speed as % of free flow, SIM)', !!rf.sel && rf.sel.type === 'road' && /Class/.test(rf.txt) && /Free-flow speed/.test(rf.txt) && /of free flow \(SIM\)/.test(rf.txt), JSON.stringify(rf));
+  await page.click('.nat-tools [data-id="close"]'); await clickAt(page, rd.ll[0], rd.ll[1]); await sleep(300);
+  const cl = await W(page, () => MissionNational.snap().closedEdges.length);
+  check('the Close tool closes the clicked road (the engine removes it from routing; a ✕ marker is drawn)', cl >= 1, String(cl));
+  await W(page, () => MissionNational.clearJams()); await sleep(200);
+  check('"Clear all jams and closures" re-opens it', (await W(page, () => MissionNational.snap().closedEdges.length)) === 0);
+  // clicking a facility selects it and shows its OSM facts + unit availability control
+  await W(page, () => { const m = MissionNational.map(), f = m.facilities.filter(q => q.kind === 'fire')[0]; m.flyTo({ lon: f.lon, lat: f.lat, ppk: 80 }, 0); window.__f = f; }); await sleep(250);
+  await W(page, () => { MissionNational.setTool('inspect'); });
+  const fl = await W(page, () => { const f = window.__f; return [f.lon, f.lat]; });
+  await clickAt(page, fl[0], fl[1], true); await sleep(300);
+  const fi = await W(page, () => ({ sel: MissionNational.state.sel, txt: document.querySelector('.nat-sel') ? document.querySelector('.nat-sel').textContent : '', seg: document.querySelectorAll('.nat-sel .seg').length }));
+  check('clicking a fire station selects it: type, municipality, OSM id, "real" vs "simulated" note and an Auto/Busy/Free control', !!fi.sel && fi.sel.type === 'facility' && /Fire/.test(fi.txt) && /OpenStreetMap/.test(fi.txt) && fi.seg >= 1, JSON.stringify(fi).slice(0, 200));
+  // marking the unit busy is an operator action the engine logs
+  await page.click('.nat-sel .seg-b[data-id="busy"]'); await sleep(300);
+  check('marking a unit busy is logged by the engine (unit-busy)', await W(page, () => MissionNational.nat().events.some(e => e.type === 'unit-busy')));
+  check('pointer tools: no console errors', errors.length === 0, errors.join(' | ')); allErrors.push(...errors); await ctx.close();
+}
+
+
+/* ---------------------------------------------------------------- N18. guided tour, hide-finished, phones toggle */
+console.log('\nN18. guided tour and housekeeping');
+{
+  const { ctx, page, errors } = await openNat({ lang: 'en', query: '' });
+  const { page: ph } = await openPageRaw(browser, 'alert.html', { context: ctx, width: 1100, height: 800, lang: 'en' });
+  await waitFor(ph, () => document.documentElement.getAttribute('data-alert-ready') === '1', null, 8000);
+  await W(ph, () => { window.__al = []; Manara.link.on(m => { if (m.type === 'alert' && m.scope === 'national') window.__al.push(m.id); }); });
+  await page.bringToFront();
+  await W(page, () => MissionNational.startTour(10)); await sleep(500);
+  check('the guided tour shows a caption bar (aria-live announcements) and numbers its steps', await W(page, () => !document.querySelector('.nat-tour').hidden && /\d/.test(document.querySelector('.nat-tour-n').textContent) && document.querySelector('.nat-tour-t').textContent.length > 20));
+  const done = await waitFor(page, () => document.querySelector('.nat-tour').hidden, null, 30000);
+  check('the tour ends by itself', done);
+  const tr = await W(page, () => ({ incs: MissionNational.snap().incidents.map(i => [i.id, i.plan.state]), jams: MissionNational.snap().traffic.jams, ev: MissionNational.nat().events.map(e => e.type).filter((t, i, a) => a.indexOf(t) === i) }));
+  check('the tour placed a fire in Doha, got it approved by "the operator", then jammed the unit\'s road', tr.incs.length === 1 && tr.jams >= 1 && tr.ev.includes('dispatch-approved') && tr.ev.includes('road-jam'), JSON.stringify(tr));
+  check('the tour\'s approval reached the phones page like any other approval', (await W(ph, () => window.__al.length)) >= 1);
+  // Escape stops it
+  await W(page, () => MissionNational.startTour(1)); await sleep(300); await page.focus('#nat-canvas'); await page.keyboard.press('Escape'); await sleep(200);
+  check('Escape stops the tour', await W(page, () => document.querySelector('.nat-tour').hidden));
+  // hide-finished chip and the phones toggle
+  await W(page, () => { const i = MissionNational.placeIncident({ hazard: 'fire', lon: 51.5264, lat: 25.2856, tab: false }); MissionNational.approve(i.id); MissionNational.step(3 * 3600); MissionNational.tab('incident'); }); await sleep(400);
+  const fin = await W(page, () => ({ chip: [...document.querySelectorAll('#npane-incident .chip')].map(c => c.textContent).join('|'), items: document.querySelectorAll('#npane-incident .nat-inc').length }));
+  check('finished incidents are hidden behind a "Show finished (n)" chip', /Show finished/.test(fin.chip), JSON.stringify(fin));
+  await page.click('#nat-pub-phones', { force: true }); await sleep(200);
+  check('the phones switch is off and publishing stops (state.pubPhones false)', (await W(page, () => MissionNational.state.pubPhones)) === false);
+  check('tour: no console errors', errors.length === 0, errors.join(' | ')); allErrors.push(...errors); await ctx.close();
+}
+
+
+/* ---------------------------------------------------------------- N19. hazard controls driven through the UI */
+console.log('\nN19. hazard and traffic controls (UI)');
+{
+  const { ctx, page, errors } = await openNat({ lang: 'en' });
+  await page.click('#ntab-hazards');
+  await page.click('#npane-hazards .seg-b[data-id="dust"]'); await sleep(200);
+  check('the Dust overlay button switches the map layer', (await W(page, () => MissionNational.map().scene.layers.hazard)) === 'dust');
+  await page.click('#nat-dust-start'); await sleep(300); await W(page, () => MissionNational.step(1800)); await sleep(300);
+  check('"Start a dust front" starts it (engine snapshot dust.on, wind from 315°)', await W(page, () => MissionNational.snap().dust.on && MissionNational.snap().dust.deg === 315));
+  check('the dust card reports the PM10 estimate and the front position', /PM10/.test(await W(page, () => document.querySelector('#npane-hazards .z-dust').textContent)));
+  await page.click('#nat-dust-stop'); await sleep(200);
+  check('"Stop the dust" stops it', !(await W(page, () => MissionNational.snap().dust.on)));
+  await W(page, () => { const i = document.querySelector('#nat-rain'); i.value = 30; i.dispatchEvent(new Event('input')); i.dispatchEvent(new Event('change')); }); await sleep(300);
+  check('the rain slider sets the national rain rate and shows the Rain overlay', await W(page, () => MissionNational.nat().P.rainMmHr === 30 && MissionNational.map().scene.layers.hazard === 'rain'));
+  await page.click('#nat-storm'); await sleep(300);
+  check('"Add a storm cell at the map centre" adds a moving rain cell (listed in the snapshot)', await W(page, () => { MissionNational.step(60); return MissionNational.snap().rain.cells.length >= 1; }));
+  await page.click('#nat-rain-clear'); await sleep(200);
+  check('"Clear the rain" clears slider, cells and rate', await W(page, () => MissionNational.nat().P.rainMmHr === 0 && MissionNational.nat().rainCells.length === 0));
+  await page.click('#ntab-traffic');
+  await W(page, () => { const i = document.querySelector('#nat-traffic'); i.value = 2; i.dispatchEvent(new Event('input')); i.dispatchEvent(new Event('change')); }); await sleep(300);
+  const sp = await W(page, () => ({ load: MissionNational.nat().P.trafficLoad, speed: MissionNational.snap().kpis.traffic.meanSpeedRatio }));
+  await W(page, () => { const i = document.querySelector('#nat-traffic'); i.value = 0; i.dispatchEvent(new Event('input')); i.dispatchEvent(new Event('change')); }); await sleep(300);
+  const sp0 = await W(page, () => ({ load: MissionNational.nat().P.trafficLoad, speed: MissionNational.snap().kpis.traffic.meanSpeedRatio }));
+  check('the national congestion slider changes traffic: doubled congestion is slower than none', sp.load === 2 && sp0.load === 0 && sp.speed < sp0.speed, JSON.stringify({ sp, sp0 }));
+  await W(page, () => { document.querySelector('#nat-day').value = '5'; document.querySelector('#nat-day').dispatchEvent(new Event('change')); const h = document.querySelector('#nat-hour'); h.value = 7.75; h.dispatchEvent(new Event('input')); }); await page.click('#nat-setclock'); await sleep(500);
+  const fri = await W(page, () => ({ dow: MissionNational.snap().dowName.en, weekend: MissionNational.snap().weekend, speed: MissionNational.snap().kpis.traffic.meanSpeedRatio }));
+  check('Friday 07:45 is the weekend: lighter traffic than a Sunday rush hour (assumed day profiles, SIM)', fri.dow === 'Friday' && fri.weekend && fri.speed > 0.85, JSON.stringify(fri));
+  check('the 24-hour profile is drawn on a canvas', await W(page, () => { const c = document.querySelector('.nat-prof'); const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0; for (let k = 3; k < d.length; k += 4 * 29) if (d[k] > 0) n++; return n > 40; }));
+  check('hazard/traffic controls: no console errors', errors.length === 0, errors.join(' | ')); allErrors.push(...errors); await ctx.close();
+}
+
+/* ---------------------------------------------------------------- N19. judge-panel round: labels, data gaps, traffic assumptions, A/B result, one story across zoom levels */
+console.log('\nN19. labels, data-gap banner, traffic assumptions, A/B result, breadcrumb');
+for (const lang of ['en', 'ar']) {
+  const { ctx, page, errors } = await openNat({ width: 1440, height: 900, lang, query: '#demo' });
+  await sleep(500);
+  const L = await W(page, () => { const m = MissionNational.map(), N = MissionNational.nat(); const labs = m.facilities.map(f => m.labelFor(f.id)); return { n: labs.length, bad: labs.filter(l => !l || /unnamed|بلا اسم/i.test(l.ar + l.en + (l.sub.ar || '') + (l.sub.en || ''))).length, unverified: labs.filter(l => !l.verified).length, minorOff: m.scene.layers.fac.minor === false, minorBox: !!document.querySelector('#nat-ly-fac-minor'), arLatin: labs.filter(l => l.hasAr && !/[؀-ۿ]/.test(l.ar)).length }; });
+  check(`${lang}: every facility has a display label, none says "unnamed", unnamed/odd ones are marked unverified, clinics and specialist centres are off by default (a switch exists)`, L.n === 138 && L.bad === 0 && L.unverified >= 31 && L.minorOff && L.minorBox && L.arLatin === 0, JSON.stringify(L));
+  const dom = await W(page, () => { MissionNational.tab('dispatch'); return document.querySelector('#npane-dispatch').innerText; });
+  check(`${lang}: the unit cards show no raw "(unnamed in OSM)", the unverified badge and the "named in OSM" secondary line appear where relevant`, !/unnamed|بلا اسم/i.test(dom) && /(unverified|غير موثّق)/.test(dom), dom.slice(0, 140));
+  // Ash Shamal: the far ambulance must carry the data-gap banner
+  const gap = await W(page, () => { MissionNational.placeIncident({ hazard: 'heat', lon: 51.2, lat: 26.12, severity: 2, patients: 1, tab: false }); const i = MissionNational.snap().incidents.slice(-1)[0]; MissionNational.select(i.id); MissionNational.tab('dispatch'); return i.id; });
+  await sleep(500);
+  const g = await W(page, () => { const b = document.querySelector('#npane-dispatch .nat-gap'); return { has: !!b, txt: b ? b.innerText : '', tags: [...document.querySelectorAll('#npane-dispatch .nat-unit .tag')].map(t => t.textContent).join('|'), hosp: document.querySelector('#npane-dispatch .nat-hosp') ? document.querySelector('#npane-dispatch .nat-hosp').innerText : '' }; });
+  check(`${lang}: a fire/heat call in Ash Shamal shows a data-gap banner (never a bare 33-minute ambulance) and a "data gap" tag on the unit`, g.has && /(Data gap|فجوة بيانات)/.test(g.txt) && /(data gap|فجوة بيانات)/.test(g.tags) && /(No verified emergency department|لا يوجد قسم طوارئ مؤكد)/.test(g.txt), g.txt.slice(0, 200) + ' || ' + g.tags);
+  // ambulance modelled + a destination hospital card for heat (also in Doha)
+  await W(page, () => { MissionNational.placeIncident({ hazard: 'heat', lon: 51.5264, lat: 25.2856, severity: 2, patients: 1, tab: false }); const i = MissionNational.snap().incidents.slice(-1)[0]; MissionNational.select(i.id); MissionNational.tab('dispatch'); });
+  await sleep(500);
+  const am = await W(page, () => ({ txt: document.querySelector('#npane-dispatch .nat-unit[data-kind=ambulance]').innerText, hosp: !!document.querySelector('#npane-dispatch .nat-hosp'), gap: !!document.querySelector('#npane-dispatch .nat-gap') }));
+  check(`${lang}: Doha heat call: the ambulance is labelled as modelled at a hospital, a separate destination-hospital card is shown, no data-gap banner`, /(modelled at|مُنمذَج في)/.test(am.txt) && am.hosp && !am.gap, am.txt.slice(0, 160));
+  check(`${lang}: labels and gaps: no console errors`, errors.length === 0, errors.join(' | ')); allErrors.push(...errors); await ctx.close();
+}
+{
+  const { ctx, page, errors } = await openNat({ width: 1440, height: 900, lang: 'en', query: '' });
+  await page.click('#ntab-traffic'); await sleep(300);
+  const t = await W(page, () => { const c = document.querySelector('#npane-traffic .nat-how'); return { has: !!c, asm: c ? c.querySelectorAll('.nat-asm').length : 0, tags: c ? [...c.querySelectorAll('.nat-asm .tag')].map(x => x.textContent).join('|') : '', txt: c ? c.innerText : '', rows: c ? c.querySelectorAll('details table tr').length : 0, first: document.querySelector('#npane-traffic .nat-card') === c };
+  });
+  check('Traffic tab: a "Where does the traffic come from?" card is first, with 3 assumptions each tagged ASSUMPTION, says no real traffic data is used, and lists every traffic parameter', t.has && t.first && t.asm === 3 && (t.tags.match(/ASSUMPTION/g) || []).length === 3 && /no real traffic data/i.test(t.txt) && /Corniche/.test(t.txt) && t.rows >= 6, JSON.stringify({ ...t, txt: t.txt.length }));
+  await page.click('#ntab-ab'); 
+  const ok = await waitFor(page, () => !!document.querySelector('#npane-ab .nat-abres[data-ready="1"]'), null, 15000);
+  const ab = await W(page, () => { const r = document.querySelector('#npane-ab .nat-abres'); return r ? { txt: r.innerText, tiles: r.querySelectorAll('.nat-abtiles .kpi').length } : null; });
+  check('A/B tab runs by itself on first open (100 incidents, seed 7) and shows the median and 90th-percentile gain, the share of incidents where the order flips, n and seed, and what it does NOT prove', ok && ab && ab.tiles === 4 && /Median gain/.test(ab.txt) && /90th-percentile/.test(ab.txt) && /order flips/.test(ab.txt) && /n = 100/.test(ab.txt) && /seed 7/.test(ab.txt) && /does NOT prove/.test(ab.txt), ab && ab.txt.slice(0, 160));
+  check('traffic / A/B explanation: no console errors', errors.length === 0, errors.join(' | ')); allErrors.push(...errors); await ctx.close();
+}
+for (const [lang, width] of [['en', 1440], ['ar', 390]]) {
+  const { ctx, page, errors } = await openNat({ width, height: width > 600 ? 900 : 844, lang, query: '#demo' });
+  await sleep(500);
+  await W(page, () => { MissionNational.select('N1'); MissionNational.zoomIn('N1'); }); await sleep(900);
+  const z = await W(page, () => { const z = document.querySelector('#mc-zoomctx'); return { txt: z.innerText, crumbs: [...z.querySelectorAll('.zc-crumbs li')].map(l => l.textContent.trim()), clock: MissionControl.snap.clock, hour: MissionControl.snap.hour, scope: MissionControl.scope(), folded: ['scenario', 'judge'].map(id => { const e = document.querySelector('#pn-' + id); return e ? e.classList.contains('collapsed') : null; }), layout: document.querySelector('#main').dataset.layout }; });
+  const ov = await overflow(page);
+  check(`${lang}/${width}: the zoom-in shows a breadcrumb Qatar > municipality > place > last 100 m, the national clock (07:4x) and says it is a simulated scenario`, z.scope === 'local' && z.crumbs.length >= 3 && /(Qatar|قطر)/.test(z.crumbs[0]) && /(Last 100 m|آخر ١٠٠ متر|آخر 100 متر)/.test(z.crumbs[z.crumbs.length - 1]) && /^07:4/.test(z.clock) && /(simulated scenario|سيناريو محاكى)/.test(z.txt), JSON.stringify(z));
+  check(`${lang}/${width}: no horizontal overflow on the zoom-in (breadcrumb wraps instead of clipping)`, ov.scrollW <= ov.W && ov.bad.length === 0, JSON.stringify(ov));
+  if (width > 1000) check('the zoom-in opens calmer: the scenario list and the judge controls start folded (and can be opened)', z.layout === 'wide' && z.folded[0] === true && z.folded[1] === true, JSON.stringify(z.folded));
+  await page.click('.zc-home'); await sleep(700);
+  check(`${lang}/${width}: the breadcrumb's "Qatar" returns to the national map`, (await W(page, () => MissionControl.scope())) === 'national');
+  check(`${lang}/${width}: breadcrumb: no console errors`, errors.length === 0, errors.join(' | ')); allErrors.push(...errors); await ctx.close();
+}
+{
+  const { ctx, page, errors } = await openNat({ width: 390, height: 844, lang: 'en', query: '' });
+  await sleep(500);
+  const g = await W(page, () => ({ stage: document.querySelector('.nat-stage').getBoundingClientRect().height, vh: innerHeight }));
+  check(`phone: the map takes at least 38% of the viewport (${Math.round(g.stage)} of ${g.vh} px) with the sheet half open`, g.stage / g.vh >= 0.38, JSON.stringify(g));
+  check('phone: the demo call to action is visible in the open sheet on the first screen', await W(page, () => { const b = document.querySelector('#nat-demo-d').getBoundingClientRect(); return b.top < innerHeight - 10 && b.bottom > 0; }));
+  allErrors.push(...errors); await ctx.close();
 }
 
 check('whole run: no console or page errors anywhere', allErrors.length === 0, allErrors.slice(0, 3).join(' | '));

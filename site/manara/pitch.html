@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title data-en="MANARA — The Pitch">منارة — العرض التقديمي</title>
-<meta name="description" content="العرض التقديمي لمنارة: شرائح بوضع ملء الشاشة، ونص كلامي لثلاث دقائق بالثواني، وأجوبة صادقة عن أسئلة الحَكَم، وقائمة جاهزية الطاولة. كل رقم محاكى موسوم SIM.">
+<meta name="description" content="العرض التقديمي لمنارة لكل قطر: شرائح بوضع ملء الشاشة، ونص كلامي لثلاث دقائق بالثواني، وأجوبة صادقة عن أسئلة الحَكَم، وقائمة جاهزية الطاولة. كل رقم محاكى موسوم SIM.">
 <meta name="theme-color" content="#0a0e15">
 <meta name="color-scheme" content="light dark">
 <script>(function(){var d=document.documentElement,t,l;try{t=localStorage.getItem('manara-theme');l=localStorage.getItem('manara-lang')}catch(e){}var q=/[?&]lang=(ar|en)/.exec(location.search);if(q)l=q[1];if(t!=='light'&&t!=='dark')t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';if(l!=='en')l='ar';d.dataset.theme=t;d.dataset.lang=l;d.lang=l;d.dir=l==='ar'?'rtl':'ltr';d.classList.add('js');setTimeout(function(){if(!window.__manaraReady)d.classList.remove('js')},2500)})();</script>
@@ -16,6 +16,10 @@
 <link rel="stylesheet" href="css/pitch.css">
 <script src="js/core.js" defer></script>
 <script src="js/sim.js" defer></script>
+<script src="data/qatar-geo.js" defer></script>
+<script src="data/qatar-facilities.js" defer></script>
+<script src="data/qatar-roads.js" defer></script>
+<script src="js/national.js" defer></script>
 <script src="js/pitch.js" defer></script>
 </head>
 <body data-page="pitch.html" class="pitch">
@@ -30,7 +34,7 @@
       <div class="pt-hero-copy">
         <span class="eyebrow" data-icon="slides"><span data-l="ar">حزمة العرض</span><span data-l="en">Pitch kit</span></span>
         <h1 id="pt-h1"><span data-l="ar">العرض التقديمي</span><span data-l="en">The pitch</span></h1>
-        <p class="pt-purpose"><span data-l="ar">اعرض «منارة» في ثلاث دقائق: شرائح بوضع ملء الشاشة، ونص كلامي بالثواني، وأجوبة صادقة لأسئلة الحَكَم، وقائمة جاهزية للطاولة.</span><span data-l="en">Present MANARA in three minutes: full-screen slides, a second-by-second script, honest answers to judge questions, and a booth checklist.</span></p>
+        <p class="pt-purpose"><span data-l="ar">اعرض «منارة» لكل قطر في ثلاث دقائق: شرائح بوضع ملء الشاشة، ونص كلامي بالثواني، وأجوبة صادقة لأسئلة الحَكَم (ومنها البيانات والخريطة)، وقائمة جاهزية للطاولة.</span><span data-l="en">Present MANARA for the whole of Qatar in three minutes: full-screen slides, a second-by-second script, honest answers to judge questions (including the data and the map), and a booth checklist.</span></p>
         <div class="btns pt-hero-cta">
           <button class="btn btn-primary" type="button" id="pt-start"><span data-l="ar">ابدأ العرض (F)</span><span data-l="en">Start presenting (F)</span></button>
           <button class="btn btn-ghost" type="button" id="pt-go-script"><span data-l="ar">اقرأ النص الكلامي</span><span data-l="en">Read the script</span></button>
@@ -72,9 +76,10 @@
                       <p class="sl-kick sl-in"><span class="sl-num num">01</span><span data-l="ar">مسابقة الابتكار · قطر</span><span data-l="en">Innovation competition · Qatar</span></p>
                       <h2 class="ti-name sl-in" id="st-1"><span data-l="ar">منارة</span><span data-l="en">MANARA</span></h2>
                       <p class="ti-tag sl-in"><span data-l="ar">ترى الخطر… توقظ الجميع… وتُضيء طريق النجاة</span><span data-l="en">Sees the danger. Wakes everyone. Lights the safe way out.</span></p>
-                      <p class="ti-sub sl-in"><span data-l="ar">منصة «آخر مئة متر» لكل أنواع الطوارئ: حريق ودخان، غاز، سيول، غبار، حرّ، وشخص يحتاج مساعدة.</span><span data-l="en">The last-100-metres platform for every kind of emergency: fire and smoke, gas, flash flood, dust, heat, and someone who needs help.</span></p>
+                      <p class="ti-sub sl-in"><span data-l="ar"><b>منصة واحدة لكل قطر</b>، من الدوحة إلى الشمال: «آخر مئة متر» لكل أنواع الطوارئ — حريق ودخان، غاز، سيول، غبار، حرّ، وشخص يحتاج مساعدة.</span><span data-l="en"><b>One platform for the whole of Qatar</b>, from Doha to Al Shamal: the last 100 metres of every kind of emergency — fire and smoke, gas, flash flood, dust, heat, and someone who needs help.</span></p>
                       <ul class="ti-chips sl-in">
                         <li><span data-l="ar">نموذج أولي</span><span data-l="en">Prototype</span></li>
+                        <li><span data-l="ar">خريطة قطر الحقيقية (لقطة OSM)</span><span data-l="en">Real map of Qatar (OSM snapshot)</span></li>
                         <li class="warn"><span data-l="ar">المحاكاة موسومة SIM</span><span data-l="en">Simulation marked SIM</span></li>
                         <li><span data-l="ar">يعمل دون إنترنت</span><span data-l="en">Works offline</span></li>
                       </ul>
@@ -316,12 +321,41 @@
                   </div>
                 </section>
 
-                <!-- ---------- 10. Evidence ---------- -->
-                <section class="slide s-evidence" id="slide-10" data-slide="evidence" aria-roledescription="slide" aria-labelledby="st-10">
+                <!-- ---------- 10. The whole of Qatar: fastest given traffic on the REAL map ---------- -->
+                <section class="slide s-national" id="slide-10" data-slide="national" aria-roledescription="slide" aria-labelledby="st-10">
                   <div class="sl-bg" aria-hidden="true"></div>
                   <header class="sl-head">
-                    <p class="sl-kick sl-in"><span class="sl-num num">10</span><span data-l="ar">الأدلة</span><span data-l="en">Evidence</span></p>
-                    <h2 class="sl-title sl-in" id="st-10"><span data-l="ar">ما قِسناه… وما لم نقِسه بعد</span><span data-l="en">What we measured… and what we haven't yet</span></h2>
+                    <p class="sl-kick sl-in"><span class="sl-num num">10</span><span data-l="ar">كل قطر</span><span data-l="en">The whole of Qatar</span> <span class="tag info"><span data-l="ar">خريطة حقيقية</span><span data-l="en">Real map</span></span> <span class="tag warn">SIM</span></p>
+                    <h2 class="sl-title sl-in" id="st-10"><span data-l="ar">الأسرع وصولًا بحسب الازدحام… على خريطة قطر الحقيقية</span><span data-l="en">Fastest given traffic… on the real map of Qatar</span></h2>
+                  </header>
+                  <div class="sl-body na-grid">
+                    <div class="na-map-card sl-card sl-in" data-no-swipe>
+                      <div class="na-maps">
+                        <div class="na-zoom" id="na-zoom"></div>
+                        <div class="na-loc" id="na-loc"></div>
+                      </div>
+                      <p class="na-credit sl-src"><span data-l="ar">الخرائط: لقطة من OpenStreetMap بتاريخ <b class="num" dir="ltr">2026-10-08</b> (رخصة ODbL). الطرق والمنشآت حقيقية كما خُرِّطت؛ <b>المرور وأماكن الوحدات وتوفّرها محاكاة (SIM)</b>.</span><span data-l="en">Maps: a snapshot of OpenStreetMap dated <b class="num" dir="ltr">2026-10-08</b> (ODbL). Roads and facilities are real as mapped; <b>traffic and the position and availability of units are simulated (SIM)</b>.</span> <bdi dir="ltr" class="na-attr">Contains data © OpenStreetMap contributors, ODbL 1.0</bdi></p>
+                    </div>
+                    <div class="na-side">
+                      <div class="na-gain sl-in" id="na-gain" role="status" aria-live="polite"></div>
+                      <div class="na-cmp sl-in" id="na-cmp"></div>
+                      <p class="na-why sl-in" id="na-why"></p>
+                      <div class="na-ctl sl-in" data-no-swipe>
+                        <label class="field na-f"><span><span data-l="ar">رقم المثال (بذرة)</span><span data-l="en">Example (seed)</span></span><input class="input num" id="na-seed" type="number" min="1" max="99" step="1" value="7" inputmode="numeric"></label>
+                        <button type="button" class="btn btn-ghost btn-sm" id="na-go"><span data-l="ar">ابحث عن مثال حقيقي آخر</span><span data-l="en">Find another real example</span></button>
+                        <a class="btn btn-primary btn-sm" id="na-open" href="mission.html#scope=national" target="_blank" rel="noopener" data-icon="map"><span data-l="ar">افتح خريطة قطر في غرفة العمليات</span><span data-l="en">Open the Qatar map in Mission Control</span></a>
+                      </div>
+                      <p class="sl-src sl-in"><span data-l="ar">999 يبقى هو المرسِل. بيانات OSM ناقصة في أماكن (مثل مراكز الدفاع المدني: 21 مركز إطفاء في الخريطة مقابل 23 مركزًا رسميًا) ولا نخترع ما ينقص.</span><span data-l="en">999 stays the dispatcher. OSM data has gaps (for example 21 fire stations on the map against 23 official Civil Defence centres) and we invent nothing to fill them.</span></p>
+                    </div>
+                  </div>
+                </section>
+
+                <!-- ---------- 10. Evidence ---------- -->
+                <section class="slide s-evidence" id="slide-11" data-slide="evidence" aria-roledescription="slide" aria-labelledby="st-11">
+                  <div class="sl-bg" aria-hidden="true"></div>
+                  <header class="sl-head">
+                    <p class="sl-kick sl-in"><span class="sl-num num">11</span><span data-l="ar">الأدلة</span><span data-l="en">Evidence</span></p>
+                    <h2 class="sl-title sl-in" id="st-11"><span data-l="ar">ما قِسناه… وما لم نقِسه بعد</span><span data-l="en">What we measured… and what we haven't yet</span></h2>
                   </header>
                   <div class="sl-body ev-grid">
                     <article class="ev-col ev-real sl-card sl-in">
@@ -351,11 +385,11 @@
                 </section>
 
                 <!-- ---------- 11. Build + plug in ---------- -->
-                <section class="slide s-build" id="slide-11" data-slide="build" aria-roledescription="slide" aria-labelledby="st-11">
+                <section class="slide s-build" id="slide-12" data-slide="build" aria-roledescription="slide" aria-labelledby="st-12">
                   <div class="sl-bg" aria-hidden="true"></div>
                   <header class="sl-head">
-                    <p class="sl-kick sl-in"><span class="sl-num num">11</span><span data-l="ar">البناء والتكامل</span><span data-l="en">Build and plug-in</span></p>
-                    <h2 class="sl-title sl-in" id="st-11"><span data-l="ar">بسيطة في البناء… ومصمَّمة لتتصل بما هو موجود</span><span data-l="en">Simple to build… designed to plug into what exists</span></h2>
+                    <p class="sl-kick sl-in"><span class="sl-num num">12</span><span data-l="ar">البناء والتكامل</span><span data-l="en">Build and plug-in</span></p>
+                    <h2 class="sl-title sl-in" id="st-12"><span data-l="ar">بسيطة في البناء… ومصمَّمة لتتصل بما هو موجود</span><span data-l="en">Simple to build… designed to plug into what exists</span></h2>
                   </header>
                   <div class="sl-body bd-grid">
                     <div class="bd-left sl-card sl-in">
@@ -372,11 +406,11 @@
                 </section>
 
                 <!-- ---------- 12. Roadmap + ask + thanks ---------- -->
-                <section class="slide s-close" id="slide-12" data-slide="close" aria-roledescription="slide" aria-labelledby="st-12">
+                <section class="slide s-close" id="slide-13" data-slide="close" aria-roledescription="slide" aria-labelledby="st-13">
                   <div class="sl-bg" aria-hidden="true"></div>
                   <header class="sl-head">
-                    <p class="sl-kick sl-in"><span class="sl-num num">12</span><span data-l="ar">الخطوة التالية</span><span data-l="en">Next steps</span></p>
-                    <h2 class="sl-title sl-in" id="st-12"><span data-l="ar">إلى أين نمضي… وماذا نطلب منكم</span><span data-l="en">Where we go next… and what we ask of you</span></h2>
+                    <p class="sl-kick sl-in"><span class="sl-num num">13</span><span data-l="ar">الخطوة التالية</span><span data-l="en">Next steps</span></p>
+                    <h2 class="sl-title sl-in" id="st-13"><span data-l="ar">إلى أين نمضي… وماذا نطلب منكم</span><span data-l="en">Where we go next… and what we ask of you</span></h2>
                   </header>
                   <div class="sl-body cl-grid">
                     <ol class="road sl-in" id="road"></ol>

@@ -2,7 +2,7 @@
 //
 //   node tools/manara/test-home.mjs            (about 2–3 minutes; needs Playwright + Chromium, see tools/manara/lib.mjs)
 //
-// What is checked (numbered like the sections printed below):
+// What is checked (numbered like the sections printed below; the hero is two views: 'All of Qatar' and 'Last 100 metres'):
 //   1  the project laws, read from the source: classic scripts, no fetch/XHR/CDN, innerHTML only for author-written SVG, logical CSS only, tokens only
 //   2  every real-world number on the page against docs/MANARA-SOURCES.md, and every simulation / detector number against the engines that produce it
 //      (ManaraSim A/B + sweeps, test-fire.mjs, the Decoy Lab in detect.html, the tier costs in build.html, the persona wording in messages.js, §13 thresholds)
@@ -13,7 +13,8 @@
 //   7  the fastest-responder map: farther-but-faster, night, trauma, jam/close, keyboard, honest SIM labels, all three unit types
 //   8  hazard cards + gauges, personas + languages, transparency filter, placeholders, links resolve
 //   9  accessibility (names, ids, headings, landmarks, target size, focus, WCAG AA contrast in both themes × both languages)
-//  10  print (always paper-light, PDF renders), reduced motion, layout shift, 404.html
+//  10  print (always paper-light, PDF renders), reduced motion, layout shift, 404
+//  11  the national layer: the real map of Qatar (data read independently in Node), Qatar-wide facts and hazard layers, credits, national A/B and the test tails.html
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -28,6 +29,12 @@ const SOURCES = fs.readFileSync(path.join(ROOT, 'docs/MANARA-SOURCES.md'), 'utf8
 const HAZ = fs.readFileSync(path.join(ROOT, 'docs/MANARA-HAZARDS.md'), 'utf8');
 const loadCtx = f => { const c = vm.createContext({ console }); vm.runInContext(read('js/' + f), c); return c; };
 const S = loadCtx('sim.js').ManaraSim, MSG = loadCtx('messages.js').MANARA_MSG;
+// an independent copy of the national engine and data, read in Node (the page is compared against it)
+const NCTX = vm.createContext({ console });
+for (const f of ['data/qatar-geo.js', 'data/qatar-facilities.js', 'data/qatar-roads.js', 'js/national.js']) vm.runInContext(read(f), NCTX);
+const NN = NCTX.ManaraNational, NGEO = NCTX.MANARA_QATAR_GEO, NFAC = NCTX.MANARA_QATAR_FACILITIES, NROADS = NCTX.MANARA_QATAR_ROADS;
+const natOpts = { seed: 7, date: '2026-07-12', hour: 7.5, autoApprove: false, params: { unitBusyPct: 0 } };
+const NAT = NN.create(natOpts);
 const browser = await launch();
 const mk = (o = {}) => openPage(browser, 'index.html', o);
 const strip = h => h.replace(/<script[\s\S]*?<\/script>/g, '').replace(/<style[\s\S]*?<\/style>/g, '').replace(/<[^>]+>/g, ' ');
@@ -38,13 +45,15 @@ section('1. Project laws (read from the source)');
   const scripts = [...HTML.matchAll(/<script\b[^>]*>/g)].map(m => m[0]);
   check('classic scripts only: every external <script> is defer, none is type=module', scripts.filter(s => /src=/.test(s)).every(s => /\bdefer\b/.test(s)) && !scripts.some(s => /type=["']?module/.test(s)));
   const ext = [...HTML.matchAll(/(?:href|src)=["'](https?:[^"']+)["']/g)].map(m => m[1]).filter(u => !/^https:\/\/fonts\.(googleapis|gstatic)\.com/.test(u));
-  check('no library or CDN: the only external hosts are Google Fonts', ext.length === 0, ext.join(' '));
+  check('no library or CDN: the only external hosts are Google Fonts and the one OpenStreetMap copyright link (an anchor, never a script)', ext.length === 1 && ext[0] === 'https://www.openstreetmap.org/copyright' && /<a href="https:\/\/www\.openstreetmap\.org\/copyright"/.test(HTML), ext.join(' '));
+  const dataScripts = [...HTML.matchAll(/<script src="([^"]+)" defer>/g)].map(m => m[1]);
+  check('script order: core, the three data files, national.js, then home.js (all defer, local)', JSON.stringify(dataScripts) === JSON.stringify(['js/core.js', 'data/qatar-geo.js', 'data/qatar-facilities.js', 'data/qatar-roads.js', 'js/national.js', 'js/home.js']), dataScripts.join(' '));
   check('home.js: no fetch / XMLHttpRequest / import / export / eval', !/\b(fetch|XMLHttpRequest|eval)\s*\(|^\s*(import|export)\s/m.test(JS));
   check('home.js: no cookies, no network sends, storage only through core.js', !/document\.cookie|sendBeacon|WebSocket|localStorage|sessionStorage/.test(JS));
   const inner = JS.match(/\.innerHTML\s*=/g) || [];
   check('innerHTML is assigned in exactly one place (setStaticHTML)', inner.length === 1 && /function setStaticHTML\(node, html\) \{ node\.innerHTML = html; \}/.test(JS), String(inner.length));
   const calls = [...JS.matchAll(/setStaticHTML\(([^;]*?)\);/g)].map(m => m[1]).filter(a => !a.startsWith('node, html'));
-  check(`all ${calls.length} setStaticHTML calls pass only author-written SVG (Manara.icon/logo, iconInner or a literal <svg>)`, calls.length >= 8 && calls.every(a => /^[^,]+,\s*(M\.(icon|logo)\(|iconInner\(|kd\.icon === 'plus')/.test(a)), calls.filter(a => !/^[^,]+,\s*(M\.(icon|logo)\(|iconInner\(|kd\.icon === 'plus')/.test(a)).join(' || '));
+  check(`all ${calls.length} setStaticHTML calls pass only author-written SVG (Manara.icon/logo, iconInner or a literal <svg>)`, calls.length >= 8 && calls.every(a => /^[^,]+,\s*(M\.(icon|logo)\(|iconInner\(|unitIcon\(|kd\.icon === 'plus')/.test(a)), calls.filter(a => !/^[^,]+,\s*(M\.(icon|logo)\(|iconInner\(|unitIcon\(|kd\.icon === 'plus')/.test(a)).join(' || '));
   check('home.js: no insertAdjacentHTML / document.write / outerHTML', !/insertAdjacentHTML|document\.write|outerHTML/.test(JS));
   const cssNoPrint = CSS.slice(0, CSS.indexOf('@page{'));
   const physical = cssNoPrint.match(/(margin|padding|border)-(left|right)\b|text-align\s*:\s*(left|right)|(^|[;{\s])(left|right)\s*:|\bfloat\s*:/gm) || [];
@@ -215,7 +224,7 @@ section('4. Bilingual structure, language and theme');
     const other = el.getAttribute('data-l') === 'ar' ? 'en' : 'ar', p = el.parentElement; if (![...p.children].some(c => c !== el && c.getAttribute('data-l') === other)) bad.push((p.className || p.tagName) + ': ' + el.textContent.trim().slice(0, 30)); }); return bad.slice(0, 6); });
   check('every data-l="ar" has its data-l="en" twin in the same parent (and the other way round)', pairs.length === 0, pairs.join(' | '));
   // text outside data-l and outside the JS-rendered / numeric containers
-  const bare = await page.evaluate(() => { const bad = [], skip = '.tag.warn,.pp-ex,#fast-chart-h,#ravi-lang,#truth-filter,#ph-status,[data-l],script,style,svg,canvas,.ph,bdi,.num,#hero-hz,#hero-steps,#hero-cap,#hero-why,#hero-verdict,#hero-safe,#hero-clock,#fast-results,#fast-live,.gauge,.phone,.persona-hz,#persona-hz,#lang-chips,#lang-bars,#proof-verdict,.flag,[data-nav],[data-footer],.g-row,.stat-n,.kpi b,noscript,.mini-draft,.ab-b,.matrix,#ev-det .bars b,.hz-links,.fr-eta';
+  const bare = await page.evaluate(() => { const bad = [], skip = '.tag.warn,.pp-ex,#fast-chart-h,#ravi-lang,#truth-filter,#ph-status,[data-l],script,style,svg,canvas,.ph,bdi,.num,#hero-hz,.cr-attr,#hero-steps,#hero-cap,#nat-steps,#nat-cap,#nat-why,#nat-board,#nat-example-t,#nat-verdict,#nat-t,#qa-legend,#qa-read,#qa-table,#qa-adv,#qa-adv-h,#qa-src,#qa-th-layer,#fast-ex,#fast-facts,#fast-roads,#fast-load-v,#fast-results,#hero-why,#hero-verdict,#hero-safe,#hero-clock,#fast-results,#fast-live,.gauge,.phone,.persona-hz,#persona-hz,#lang-chips,#lang-bars,#proof-verdict,.flag,[data-nav],[data-footer],.g-row,.stat-n,.kpi b,noscript,.mini-draft,.ab-b,.matrix,#ev-det .bars b,.hz-links,.fr-eta';
     const w = document.createTreeWalker(document.querySelector('main'), NodeFilter.SHOW_TEXT);
     while (w.nextNode()) { const t = w.currentNode, el = t.parentElement; if (!el || el.closest(skip)) continue; const s = t.nodeValue.trim(); if (/[A-Za-z؀-ۿ]{3,}/.test(s)) bad.push(el.tagName + '.' + el.className + ': ' + s.slice(0, 30)); }
     return bad.slice(0, 8); });
@@ -226,8 +235,8 @@ section('4. Bilingual structure, language and theme');
     while (w.nextNode()) { const t = w.currentNode, el = t.parentElement; if (!el || !/[؀-ۿ]/.test(t.nodeValue) || !el.getBoundingClientRect().width) continue; const v = getComputedStyle(el).letterSpacing; if (v !== 'normal' && parseFloat(v) !== 0) bad.push(el.className + ' ' + v); } return bad.slice(0, 4); });
   check('no letter-spacing on any Arabic text', ls.length === 0, ls.join(' | '));
   await page.evaluate(() => Manara.setLang('en')); await page.waitForTimeout(200);
-  const en = await page.evaluate(() => ({ dir: document.documentElement.dir, lang: document.documentElement.lang, title: document.title, cap: document.querySelector('#hero-cap').textContent, fr: document.querySelector('.fr-card .fr-name').textContent, h1: document.querySelector('h1').innerText.trim(), nav: document.querySelector('.brand small').textContent }));
-  check('switching to English flips to ltr, re-renders the hero caption, the dispatch cards, the title and the nav tagline', en.dir === 'ltr' && /^MANARA/.test(en.title) && /[A-Za-z]{4}/.test(en.cap) && /\(demo\)/.test(en.fr) && /MANARA/.test(en.h1) && /Sees the danger/.test(en.nav), JSON.stringify(en));
+  const en = await page.evaluate(() => ({ dir: document.documentElement.dir, lang: document.documentElement.lang, title: document.title, cap: document.querySelector('#hero-cap').textContent, fr: document.querySelector('#nat-cap').textContent, h1: document.querySelector('h1').innerText.trim(), nav: document.querySelector('.brand small').textContent }));
+  check('switching to English flips to ltr, re-renders the hero captions, the title and the nav tagline', en.dir === 'ltr' && /^MANARA/.test(en.title) && /[A-Za-z]{4}/.test(en.cap) && /[A-Za-z]{4}/.test(en.fr) && /MANARA/.test(en.h1) && /Sees the danger/.test(en.nav), JSON.stringify(en));
   const arVis = await page.evaluate(() => [...document.querySelectorAll('main [data-l=ar]')].filter(e => e.getBoundingClientRect().width > 0).length);
   check('in English no Arabic data-l block is visible', arVis === 0, String(arVis));
   await page.evaluate(() => Manara.theme.set('light')); await page.waitForTimeout(100);
@@ -245,6 +254,7 @@ section('5. Hero: the live miniature');
   check('hero has the SIM chip, one h1, the tagline and the slogan', h.sim && h.h1 === 1 && /Sees the danger\. Wakes everyone\. Lights the safe way out\./.test(h.tag) && /No one left asleep\. No one left behind\./.test(h.slogan), JSON.stringify(h));
   check('two primary calls to action: Open Mission Control → mission.html, Try the Evidence Lab → detect.html', h.ctas.length === 2 && /^mission\.html Open Mission Control/.test(h.ctas[0]) && /^detect\.html Try the Evidence Lab/.test(h.ctas[1]), h.ctas.join(' | '));
   check('the canvas has a live aria-label that says "Simulation (SIM)"', /Simulation \(SIM\)/.test(h.canvas), h.canvas);
+  await page.evaluate(() => window.__manaraHome.tabs.select('st-zoom'));
   // reduced motion: a still frame where the story has finished, for every hazard
   const still = await page.evaluate(() => { const H = window.__manaraHome.hero, out = []; for (const id of window.__manaraHome.HZ) { H.selectHz(id, false); const s = H.state(); out.push([id, s.playing, s.t === s.stillT, s.stage, s.safe, s.people, document.querySelector('#hero-safe').textContent, document.querySelector('#hero-open').getAttribute('href')]); } return out; });
   check('prefers-reduced-motion: the hero is paused on a finished still frame (stage 6, everyone safe) for all six hazards', still.every(s => s[1] === false && s[2] && s[3] === 5 && (s[0] === 'sos' || s[4] === s[5])), JSON.stringify(still));
@@ -279,6 +289,7 @@ section('5. Hero: the live miniature');
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: 'dark', reducedMotion: 'no-preference' });
   await context.addInitScript(() => { window.__raf = 0; const r = window.requestAnimationFrame.bind(window); window.requestAnimationFrame = f => { window.__raf++; return r(f); }; try { localStorage.setItem('manara-lang', 'en'); } catch (e) { /* ignore */ } });
   const { page, errors } = await openPage(browser, 'index.html', { context });
+  await page.evaluate(() => window.__manaraHome.tabs.select('st-zoom'));
   const t = () => page.evaluate(() => window.__manaraHome.hero.state().t);
   await page.waitForTimeout(300); const t0 = await t(); await page.waitForTimeout(900); const t1 = await t();
   check('with motion allowed the scene plays (time advances)', t1 - t0 > 0.5, `${t0.toFixed(2)} → ${t1.toFixed(2)}`);
@@ -292,6 +303,88 @@ section('5. Hero: the live miniature');
   await page.click('#hero-play'); await page.waitForTimeout(150); const q0 = await t(); await page.waitForTimeout(500);
   check('the pause button stops the scene and labels itself "Play the scene"', (await t()) === q0 && (await page.getAttribute('#hero-play', 'aria-label')) === 'Play the scene');
   check('no console errors with motion on', errors.length === 0, errors.join(' | '));
+  await context.close();
+}
+
+/* ---- 5b. the national hero: "All of Qatar" (the real map, simulated incidents) ---- */
+section('5b. Hero, all of Qatar: a hazard → two keys → approval → the fastest unit of each type drives in over real roads');
+const waitNat = page => page.waitForFunction(() => window.__manaraHome.nat && window.__manaraHome.nat.state().ready, null, { timeout: 15000 });
+{
+  const { ctx, page, errors } = await mk({ lang: 'en', reducedMotion: 'reduce' });
+  await waitNat(page);
+  const o = await page.evaluate(() => ({ tabs: [...document.querySelectorAll('#stage-tabs [role=tab]')].map(t => [t.id, t.getAttribute('aria-selected'), t.getAttribute('aria-controls'), t.tabIndex]), natHidden: document.querySelector('#sp-nat').hidden, zoomHidden: document.querySelector('#sp-zoom').hidden,
+    sim: !!document.querySelector('.stage-title .tag.warn')?.textContent.includes('SIM'), label: document.querySelector('#nat-canvas').getAttribute('aria-label'), credit: document.querySelector('.hero-stage .stage-credit').textContent.replace(/\s+/g, ' '),
+    note: document.querySelector('.hero-stage .stage-note').textContent, loadingHidden: document.querySelector('#nat-loading').hidden, busy: document.querySelector('#nat-canvas').getAttribute('aria-busy') }));
+  check('two stage tabs (All of Qatar selected by default, Last 100 metres), a real tablist wired to its tabpanels with roving tabindex', o.tabs[0][0] === 'st-nat' && o.tabs[0][1] === 'true' && o.tabs[0][2] === 'sp-nat' && o.tabs[0][3] === 0 && o.tabs[1][1] === 'false' && o.tabs[1][3] === -1 && !o.natHidden && o.zoomHidden, JSON.stringify(o.tabs));
+  check('the national canvas says "Simulation (SIM)" on the map of Qatar; the loading veil is gone and aria-busy cleared once the engine is ready', /Simulation \(SIM\) on the map of Qatar/.test(o.label) && o.loadingHidden && o.busy === null, o.label);
+  check('the stage says the map is a real OpenStreetMap snapshot while incidents, traffic and availability are simulated, and 999 stays the dispatcher', /real OpenStreetMap snapshot/.test(o.note) && /simulated/.test(o.note) && /999 stays the dispatcher/.test(o.note), o.note);
+  check(`the attribution line: "Contains data © OpenStreetMap contributors, ODbL 1.0 · snapshot ${NGEO.meta.snapshotDate}" (the date comes from the data)`, o.credit.includes('Contains data © OpenStreetMap contributors, ODbL 1.0') && o.credit.includes(NGEO.meta.snapshotDate), o.credit);
+  // every hazard on the still frame: units per type, against an independent engine in Node
+  const HZ = { fire: 4, gas: 4, flood: 10.5, dust: 10.5, heat: 10.5, sos: 10.5 }, want = { fire: ['fire', 'ambulance', 'police'], gas: ['fire', 'ambulance', 'police'], flood: ['rescue', 'police', 'ambulance'], dust: ['police', 'ambulance'], heat: ['ambulance'], sos: ['ambulance'] };
+  const rows = [];
+  for (const id of Object.keys(HZ)) {
+    await page.click(`#hero-hz [data-hz=${id}]`);
+    const r = await page.evaluate(() => { const s = window.__manaraHome.nat.state(); return { s, board: [...document.querySelectorAll('#nat-board .nb-row')].map(r => r.querySelector('.nb-eta').textContent), t: document.querySelector('#nat-t').textContent, v: document.querySelector('#nat-verdict').textContent, steps: document.querySelectorAll('#nat-steps li').length }; });
+    const kinds = r.s.units.map(u => u.kind);
+    const spot = r.s.spot, tt = NN.timeAt(NAT, '2026-07-12', HZ[id]);
+    const plan = NN.dispatchNational(NAT, { hazard: id, lon: spot.lon, lat: spot.lat, severity: 2, patients: (id === 'sos' || id === 'heat') ? { n: 1, need: 'ed' } : undefined }, tt);
+    const ok = want[id].every(k => kinds.includes(k)) && r.s.playing === false && r.s.t === r.s.stillT && r.s.stage === 5 && r.board.every(b => /arrived|^\d+:\d\d$/.test(b)) && r.steps === 6
+      && r.s.units.every(u => { const m = plan.units.find(p => p.kind === u.kind && Math.abs(p.etaSec - u.eta) < 1); return !!m; }) && (id === 'heat' || id === 'sos' ? r.s.hosp === true : true) && NGEO.inLand(spot.lon, spot.lat);
+    rows.push([id, ok, kinds.join('+'), r.s.units.map(u => Math.round(u.eta)).join('/')]);
+  }
+  check('reduced motion: a finished still frame for all six hazards; the units of each type are the ones the hazard needs (fire → fire+ambulance+police, flood → rescue+…, heat/SOS → ambulance + destination hospital)', rows.every(r => r[1]), JSON.stringify(rows));
+  check('every ETA on the page equals ManaraNational.dispatchNational run independently in Node (same seed, same clock): ' + rows.map(r => r[0] + ' ' + r[3]).join('; '), rows.every(r => r[1]));
+  // example: a real "farther but faster" case
+  await page.click('#hero-hz [data-hz=fire]');
+  await page.waitForFunction(() => !document.querySelector('#nat-example').disabled, null, { timeout: 20000 });
+  await page.click('#nat-example');
+  const ex = await page.evaluate(() => ({ s: window.__manaraHome.nat.state(), pressed: document.querySelector('#nat-example').getAttribute('aria-pressed'), cap: document.querySelector('#nat-cap').textContent, why: document.querySelector('#nat-why').textContent, rows: [...document.querySelectorAll('#nat-board .nb-row')].map(r => r.textContent.replace(/\s+/g, ' ')), steps: document.querySelector('#nat-steps').hidden }));
+  const ref = NN.findFartherButFaster(7, { nat: NAT, times: [7.5], budget: 30, kinds: ['fire'], minGainSec: 60 });
+  check(`the real "farther but faster" example equals ManaraNational.findFartherButFaster(seed 7, 07:30): fastest ${ref.fastest.etaSec} s vs nearest ${ref.nearest.etaSec} s, ${ref.gainSec} s faster, ${ref.extraStraightKm} km farther (reason: ${ref.reason})`, ex.s.mode === 'example' && ex.pressed === 'true' && ex.s.example.fast === ref.fastest.etaSec && ex.s.example.near === ref.nearest.etaSec && ex.s.example.gain === ref.gainSec && ref.gainSec > 0 && ref.extraStraightKm > 0 && ref.reason === 'traffic', JSON.stringify(ex.s.example));
+  check('the example shows the engine\'s own explanation, both units with their straight-line and road km, and the SIM wording', ex.why.length > 40 && ex.rows.length === 2 && /Fastest given traffic/.test(ex.rows[0]) && /Nearest in a straight line/.test(ex.rows[1]) && /km straight/.test(ex.rows[0]) && /\(SIM\)/.test(ex.cap) && ex.steps === true, JSON.stringify([ex.why.slice(0, 60), ex.rows, ex.cap.slice(0, 80)]));
+  await page.click('#nat-example');
+  check('"Back to the story" returns to the hazard scene', (await page.evaluate(() => window.__manaraHome.nat.state().mode)) === 'story');
+  // keyboard on the stage tabs (LTR: ArrowRight = next)
+  await page.focus('#st-nat'); await page.keyboard.press('ArrowRight');
+  const kt = await page.evaluate(() => [document.querySelector('#st-zoom').getAttribute('aria-selected'), document.activeElement.id, document.querySelector('#sp-nat').hidden, document.querySelector('#sp-zoom').hidden]);
+  check('tabs keyboard: ArrowRight selects and focuses "Last 100 metres" and swaps the panels; Home returns', kt.join() === 'true,st-zoom,true,false' && (await (async () => { await page.keyboard.press('Home'); return page.evaluate(() => document.activeElement.id + document.querySelector('#sp-zoom').hidden); })()) === 'st-natfalse'.replace('false', 'true'), kt.join());
+  // pixels and theme
+  const px = await page.evaluate(() => { const c = document.querySelector('#nat-canvas'), g = c.getContext('2d'), set = new Set(); for (let i = 0; i < 500; i++) { const d = g.getImageData((i * 37) % c.width, (i * 53) % c.height, 1, 1).data; set.add(d[0] + ',' + d[1] + ',' + d[2]); } return set.size; });
+  check('the national canvas is drawn (many distinct colours: land, roads, facilities, routes)', px > 15, String(px));
+  const sig = () => page.evaluate(() => { const c = document.querySelector('#nat-canvas'), g = c.getContext('2d'); const d = g.getImageData(8, 8, 1, 1).data, e = g.getImageData(c.width / 2, c.height / 2, 1, 1).data; return [d[0], d[1], d[2], e[0], e[1], e[2]].join(','); });
+  await page.evaluate(() => Manara.theme.set('dark')); await page.waitForTimeout(150); const a = await sig();
+  await page.evaluate(() => Manara.theme.set('light')); await page.waitForTimeout(150); const b = await sig();
+  check('themechange re-reads the tokens and repaints the national canvas (sea and land pixels differ between dark and light)', a !== b, a + ' vs ' + b);
+  await page.evaluate(() => Manara.setLang('ar')); await page.waitForTimeout(200);
+  const ar = await page.evaluate(() => [document.querySelector('#nat-cap').textContent, document.querySelector('#nat-example-t').textContent, document.querySelector('#nat-board .nb-k').textContent]);
+  check('Arabic: the national caption, button and board are re-rendered in Arabic', ar.every(x => /[؀-ۿ]/.test(x)), ar.join(' | '));
+  check('no console errors with the national scene', errors.length === 0, errors.join(' | '));
+  await ctx.close();
+}
+{ // with motion: it runs, loops, pauses off-screen, scrubs
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: 'dark', reducedMotion: 'no-preference' });
+  await context.addInitScript(() => { window.__raf = 0; const r = window.requestAnimationFrame.bind(window); window.requestAnimationFrame = f => { window.__raf++; return r(f); }; try { localStorage.setItem('manara-lang', 'en'); } catch (e) { /* ignore */ } });
+  const { page, errors } = await openPage(browser, 'index.html', { context });
+  await waitNat(page);
+  const t = () => page.evaluate(() => window.__manaraHome.nat.state().t);
+  await page.waitForTimeout(300); const t0 = await t(); await page.waitForTimeout(900); const t1 = await t();
+  check('with motion allowed the national scene plays (time advances) and loops inside its 26 s', t1 - t0 > 0.5 && (await page.evaluate(() => window.__manaraHome.nat.state().loop)) === 26, `${t0.toFixed(2)} → ${t1.toFixed(2)}`);
+  await page.evaluate(() => window.__manaraHome.nat.seek(12, true));
+  const mid = await page.evaluate(() => ({ s: window.__manaraHome.nat.state(), board: [...document.querySelectorAll('#nat-board .nb-eta')].map(e => e.textContent), v: document.querySelector('#nat-verdict').textContent, tt: document.querySelector('#nat-t').textContent, live: document.querySelector('#nat-cap').getAttribute('aria-live') }));
+  check('mid-scene (12 s): stage "En route", the ETA countdowns are running (mm:ss), the clock "T+ … (SIM)" shows, the operator\'s approval is recorded, and the caption is polite while paused', mid.s.stage === 4 && mid.board.some(b => /^\d+:\d\d$/.test(b)) && /T\+ \d+:\d\d \(SIM\)/.test(mid.tt) && /APPROVED/.test(mid.v) && mid.live === 'polite', JSON.stringify(mid));
+  await page.evaluate(() => window.__manaraHome.nat.seek(4, true));
+  const keys = await page.evaluate(() => [document.querySelector('#nat-verdict').textContent, window.__manaraHome.nat.state().stage]);
+  check('at 4 s one key is lit: "SUSPECT · 1 key" (a single key never alerts)', /SUSPECT · 1 key/.test(keys[0]) && keys[1] === 1, keys.join());
+  await page.click('#nat-play'); await page.waitForTimeout(200);
+  await page.evaluate(() => window.scrollTo(0, document.querySelector('#hardware').offsetTop)); await page.waitForTimeout(2300);
+  const r0 = await page.evaluate(() => window.__raf), p0 = await t(); await page.waitForTimeout(1200); const r1 = await page.evaluate(() => window.__raf), p1 = await t();
+  check('the national canvas pauses off-screen (IntersectionObserver): the clock stands still and no animation frames are requested', p1 === p0 && r1 - r0 <= 14, `t ${p0} → ${p1}; rAF ${r1 - r0}`);
+  await page.evaluate(() => window.scrollTo(0, 0)); await page.waitForTimeout(900);
+  check('…and resumes when it scrolls back into view', (await t()) !== p1);
+  await page.evaluate(() => window.__manaraHome.tabs.select('st-zoom')); await page.waitForTimeout(500);
+  const z0 = await page.evaluate(() => window.__manaraHome.nat.state().t); await page.waitForTimeout(700); const z1 = await page.evaluate(() => window.__manaraHome.nat.state().t);
+  check('with the "Last 100 metres" tab open the hidden national canvas does not run', z1 === z0, `${z0} → ${z1}`);
+  check('no console errors with motion on (national scene)', errors.length === 0, errors.join(' | '));
   await context.close();
 }
 
@@ -354,55 +447,85 @@ section('6. Counters, pipeline, proof before panic');
 }
 
 /* ============================================================================================ 7. fastest */
-section('7. The fastest responder (simulated traffic, fictional units)');
+section('7. The fastest responder on the real map (OSM roads, simulated traffic, real units)');
 {
-  const { ctx, page } = await mk({ lang: 'en' });
+  const { ctx, page, errors } = await mk({ lang: 'en' });
+  await page.evaluate(() => window.__manaraHome.fast.activate());
+  await page.waitForFunction(() => window.__manaraHome.fast.state().ready, null, { timeout: 20000 });
   const fs_ = () => page.evaluate(() => window.__manaraHome.fast.state());
   let s = await fs_();
-  check('default rush hour (80 %): Fire B is chosen over the NEARER Fire A — farther but faster', s.picks.fire.chosen === 'FB' && s.picks.fire.nearest === 'FA' && s.picks.fire.runner === 'FA', JSON.stringify(s.picks.fire));
-  check('all three unit types are recommended: fire/rescue, police, hospital', ['fire', 'police', 'hospital'].every(k => s.picks[k] && s.picks[k].chosen), JSON.stringify(s.picks));
-  check('the hospital pick is also "farther but faster" at rush hour (the nearer hospital sits behind the jam)', s.picks.hospital.chosen !== s.picks.hospital.nearest, JSON.stringify(s.picks.hospital));
-  const cards = await page.evaluate(() => [...document.querySelectorAll('.fr-card')].map(c => ({ k: c.dataset.pick, t: c.textContent.replace(/\s+/g, ' '), sr: c.querySelector('.sr-only')?.textContent, vis: c.querySelector('.fr-eta > span:first-child').textContent, hid: c.querySelector('.fr-eta > span:first-child').getAttribute('aria-hidden') })));
-  check('each decision card shows ETA mm:ss, "SIM · km", a "(demo)" unit name and a spoken ETA for screen readers', cards.length === 3 && cards.every(c => /^\d+:\d\d$/.test(c.vis) && c.hid === 'true' && /SIM · [\d.]+ km/.test(c.t) && /\(demo\)/.test(c.t) && /(min|s) \(SIM\)/.test(c.sr)), JSON.stringify(cards.map(c => c.vis + ' ' + c.sr)));
-  check('the explanation names the road that slows the nearer unit ("West Arterial 2") and says how much faster, in minutes and seconds', /farther but 2 min 33 s faster: the nearest one’s shortest route uses West Arterial 2/.test(cards[0].t), cards[0].t);
-  const etas = await page.evaluate(() => { const H = window.__manaraHome.fast, out = []; for (const l of [0, 0.2, 0.5, 0.8, 1]) { H.setLoad(l); const p = H.state().picks; out.push([l, p.fire.chosen, p.fire.eta]); } return out; });
-  check('the chosen fire ETA never decreases as traffic rises: ' + etas.map(e => `${e[0]}:${e[1]} ${e[2].toFixed(1)}`).join(', '), etas.every((e, i) => i === 0 || e[2] >= etas[i - 1][2] - 1e-9));
-  await page.click('[data-load="5"]'); s = await fs_();
-  check('Night (5 %): empty roads, the NEAREST unit wins (Fire A)', s.load === 0.05 && s.picks.fire.chosen === 'FA' && s.picks.fire.chosen === s.picks.fire.nearest, JSON.stringify(s.picks.fire));
-  check('Night: the explanation says "The nearest by distance is also the fastest right now."', /nearest by distance is also the fastest/.test(await page.textContent('.fr-card[data-pick=fire]')));
+  const ex = NN.findFartherButFaster(7, { nat: NAT, times: [7.5], budget: 30, kinds: ['fire'], minGainSec: 60 });
+  const t75 = NN.timeAt(NAT, '2026-07-12', 7.5);
+  const ref = NN.dispatchNational(NAT, { hazard: 'fire', lon: ex.incident.lon, lat: ex.incident.lat, severity: 2 }, t75);
+  const rf = ref.units.find(u => u.kind === 'fire'), rp = ref.units.find(u => u.kind === 'police');
+  check(`default (fire example near ${ex.incident.place.name.en}, Sunday 07:30, load ×1.0): the fire pick equals the engine run in Node (${Math.round(rf.etaSec)} s), and it is NOT the nearest in a straight line — farther but faster`, s.picks.fire.far === true && s.picks.fire.nearest !== s.picks.fire.unit && Math.abs(s.picks.fire.eta - rf.etaSec) < 1 && s.picks.fire.unit === rf.unitId && s.picks.fire.gain > 0, JSON.stringify(s.picks.fire));
+  check('all three unit types are recommended: fire & rescue, police, ambulance, plus a destination hospital', ['fire', 'police', 'ambulance'].every(k => s.picks[k] && s.picks[k].unit) && s.hosp && s.hosp.eta > 0 && Math.abs(s.picks.police.eta - rp.etaSec) < 1, JSON.stringify(s.picks));
+  check('the incident sits on the real map of Qatar (inside the outline) and the clock is Sunday 07:30', NGEO.inLand(s.inc.lon, s.inc.lat) && s.t === t75, JSON.stringify(s.inc));
+  const cards = await page.evaluate(() => [...document.querySelectorAll('.fr-card')].map(c => ({ k: c.dataset.pick, t: c.textContent.replace(/\s+/g, ' '), sr: c.querySelector('.sr-only')?.textContent, vis: c.querySelector('.fr-eta > span:first-child').textContent, hid: c.querySelector('.fr-eta > span:first-child').getAttribute('aria-hidden'), bars: c.querySelectorAll('.fr-bar').length })));
+  check('each decision card shows ETA mm:ss, "SIM · km", the unit\'s OSM name and a spoken ETA for screen readers; the fire card carries the "farther but faster" tag and two ETA bars', cards.length === 3 && cards.every(c => /^\d+:\d\d$/.test(c.vis) && c.hid === 'true' && /SIM · [\d.]+ km/.test(c.t) && /(min|s) \(SIM\)/.test(c.sr)) && /farther but faster/.test(cards[0].t) && cards[0].bars === 2, JSON.stringify(cards.map(c => c.vis + ' ' + c.bars)));
+  check('the explanation is the engine\'s own sentence: it names the road that slows the nearer unit and how many seconds faster', new RegExp(`${ex.gainSec} s|${Math.floor(ex.gainSec / 60)}:${String(ex.gainSec % 60).padStart(2, '0')}|${Math.floor(ex.gainSec / 60)} min ${ex.gainSec % 60} s`).test(cards[0].t) || /faster because congestion on/.test(cards[0].t), cards[0].t);
+  check('the hospital line names the destination, its ETA from the scene and whether its emergency department is verified', /Hospital: .+ · in .+\(SIM\) · (ED verified|ED not verified)/.test(cards[2].t), cards[2].t);
+  // traffic load: ETA never decreases as the load rises (the minimum over units), and equals Node
+  const etas = await page.evaluate(() => { const H = window.__manaraHome.fast, out = []; for (const l of [0, 0.5, 1, 1.5, 2]) { H.setLoad(l); const p = H.state().picks; out.push([l, p.fire.eta, p.fire.unit, p.police.eta]); } return out; });
+  const nat2 = NN.create(natOpts), nodeEtas = [0, 0.5, 1, 1.5, 2].map(l => { NN.setParam(nat2, 'trafficLoad', l); return NN.dispatchNational(nat2, { hazard: 'fire', lon: ex.incident.lon, lat: ex.incident.lat, severity: 2 }, t75).units.find(u => u.kind === 'fire').etaSec; });
+  check('the chosen fire ETA never decreases as the traffic load rises, and every point equals the engine in Node: ' + etas.map(e => `×${e[0]} ${Math.round(e[1])} s`).join(', '), etas.every((e, i) => (i === 0 || e[1] >= etas[i - 1][1] - 1e-9) && Math.abs(e[1] - nodeEtas[i]) < 1), JSON.stringify([etas, nodeEtas]));
+  check('with the load at ×0 the nearest unit wins; at ×1 and above the farther one wins (traffic changes the decision)', etas[0][2] !== etas[2][2] && etas[2][2] === etas[4][2], JSON.stringify(etas.map(e => e[2].slice(-9))));
+  await page.evaluate(() => window.__manaraHome.fast.setLoad(1));
+  await page.click('#fast-time [data-hour="3"]'); s = await fs_();
+  check('Night 03:00 (empty roads): the ETA is shorter than at the morning peak', s.hour === 3 && s.picks.fire.eta < rf.etaSec, `${s.picks.fire.eta} vs ${rf.etaSec}`);
+  await page.click('#fast-time [data-hour="7.5"]');
+  // the slider input
+  await page.evaluate(() => { const r = document.querySelector('#fast-load'); r.value = '200'; r.dispatchEvent(new Event('input', { bubbles: true })); });
+  s = await fs_(); const lv = await page.textContent('#fast-load-v');
+  check('the traffic slider (×0…×2) moves the decision: ×2.0 is labelled and its ETA is the engine\'s', s.load === 2 && lv === '×2.0' && Math.abs(s.picks.fire.eta - nodeEtas[4]) < 1, lv + ' ' + s.picks.fire.eta);
+  await page.evaluate(() => { const r = document.querySelector('#fast-load'); r.value = '100'; r.dispatchEvent(new Event('input', { bubbles: true })); });
+  // trauma: capability beats speed
+  const sosPlan = need => NN.dispatchNational(NAT, { hazard: 'sos', lon: ex.incident.lon, lat: ex.incident.lat, severity: 2, patients: { n: 1, need } }, t75).hospital.chosen;
+  const hEd = sosPlan('ed'), hTr = sosPlan('trauma'); s = await fs_();
+  check(`default hospital = the engine's fastest ED (${hEd.name.en}, ${Math.round(hEd.etaSec)} s)`, s.hosp.name.en === hEd.name.en && Math.abs(s.hosp.eta - hEd.etaSec) < 1, JSON.stringify(s.hosp));
   await page.click('#fast-trauma'); s = await fs_();
-  check('"needs a trauma centre": the capable hospital is chosen, not the nearest (capability beats speed)', s.picks.hospital.chosen === 'H2' && /capable hospital is chosen, not the nearest/.test(await page.textContent('.fr-card[data-pick=hospital]')), JSON.stringify(s.picks.hospital));
-  await page.click('#fast-trauma'); await page.click('[data-load="80"]');
-  // jam / close a road with the mouse and with the keyboard
-  const road = page.locator('.rd[data-e=r2]');
-  await road.click({ force: true }); s = await fs_();
-  const jam1 = s.jam.r2;
-  await road.click({ force: true }); s = await fs_();
-  const jam2 = s.jam.r2;
-  check('clicking a road cycles clear → jammed → closed', jam1 === 1 && jam2 === 2, `${jam1},${jam2}`);
-  check('a closed road is removed: the road keeps aria-pressed and its label says "closed"', (await road.getAttribute('aria-pressed')) === 'true' && /closed/.test(await road.getAttribute('aria-label')));
-  await road.click({ force: true }); s = await fs_();
-  check('a third click reopens it', !s.jam.r2);
-  await page.focus('.rd[data-e=r1]'); await page.keyboard.press('Enter'); s = await fs_();
-  check('keyboard: Enter on a focused road jams it (roads are real buttons for assistive tech)', s.jam.r1 === 1 && (await page.getAttribute('.rd[data-e=r1]', 'role')) === 'button');
-  await page.keyboard.press(' '); await page.keyboard.press(' '); s = await fs_();
-  check('keyboard: Space cycles back to clear', !s.jam.r1);
-  // closing the arterial that Fire B uses changes the decision
-  const before = (await fs_()).picks.fire.chosen;
-  await page.evaluate(() => { const H = window.__manaraHome.fast; H.jam('v8', 2); H.jam('r9', 2); });
-  s = await fs_();
-  check('closing both roads into Station B\'s junction takes B out of the decision: Fire A is recommended and no ETA is invented (Dijkstra skips closed roads)', before === 'FB' && s.picks.fire.chosen === 'FA' && s.picks.fire.runner === null, JSON.stringify(s.picks.fire));
-  await page.click('#fast-reset'); s = await fs_();
-  check('"Reset roads" clears every jam', Object.values(s.jam).every(v => !v));
+  check(`"needs a trauma centre": the capable hospital is chosen, not the nearest (${hTr.name.en}); the card says so`, s.trauma && s.hosp.name.en === hTr.name.en && s.hosp.name.en !== hEd.name.en && /needs trauma centre/.test(await page.textContent('.fr-card[data-pick=ambulance]')), JSON.stringify(s.hosp));
+  await page.click('#fast-trauma');
+  // click-to-jam on a real road, with the mouse
+  const road = await page.evaluate(() => { const H = window.__manaraHome, f = H.fast, st = f.state(), box = document.querySelector('#fast-canvas').getBoundingClientRect(), hit = f.edgeAtView(0.5, 0.45); if (!hit) return null; const X = (hit.lon - 51.2) * H.NATL.KX, Y = (hit.lat - 25.3) * H.NATL.KY, W = box.width, Hh = box.height; return { edge: hit.edge, name: hit.info.name.en, x: box.left + W / 2 + (X - st.view.cx) * st.view.k, y: box.top + Hh / 2 - (Y - st.view.cy) * st.view.k, win: innerHeight }; });
+  check('a real OSM road (with its name) can be found under the map: ' + (road && road.name), !!road && road.edge >= 0);
+  await page.evaluate(() => document.querySelector('#fast-canvas').scrollIntoView({ block: 'center' })); await page.waitForTimeout(300);
+  const pos = await page.evaluate(({ edge }) => { const H = window.__manaraHome, st = H.fast.state(), box = document.querySelector('#fast-canvas').getBoundingClientRect(), hit = H.fast.edgeAtView(0.5, 0.45); const X = (hit.lon - 51.2) * H.NATL.KX, Y = (hit.lat - 25.3) * H.NATL.KY; return { edge: hit.edge, x: box.left + box.width / 2 + (X - st.view.cx) * st.view.k, y: box.top + box.height / 2 - (Y - st.view.cy) * st.view.k }; }, road);
+  await page.mouse.click(pos.x, pos.y); s = await fs_(); const j1 = s.jam[pos.edge];
+  await page.mouse.click(pos.x, pos.y); s = await fs_(); const j2 = s.jam[pos.edge];
+  await page.mouse.click(pos.x, pos.y); s = await fs_(); const j3 = s.jam[pos.edge] || 0;
+  check('clicking a real road on the map cycles it: jammed → closed → clear', j1 === 1 && j2 === 2 && j3 === 0, `${j1},${j2},${j3}`);
+  // a road on the chosen route, closed: the route cannot use it
+  const before = (await fs_()).picks.fire;
+  const edge = +(await page.locator('#fast-roads .road-btn').first().getAttribute('data-edge')), rb = () => page.locator(`#fast-roads .road-btn[data-edge="${edge}"]`);
+  await rb().click(); await rb().click(); s = await fs_();
+  const closedLbl = await page.locator(`#fast-roads .road-btn[data-edge="${edge}"]`).getAttribute('aria-label');
+  check('closing a road on the chosen route (a real button, so the keyboard works too) removes it from the route: the fire ETA rises or the unit changes, and the label says "closed"', s.jam[edge] === 2 && (s.picks.fire.eta > before.eta || s.picks.fire.unit !== before.unit) && /closed/.test(closedLbl), JSON.stringify([before.eta, s.picks.fire.eta, s.picks.fire.unit === before.unit]));
+  const nat3 = NN.create(natOpts); NN.closeRoad(nat3, edge); const nodeClosed = NN.dispatchNational(nat3, { hazard: 'fire', lon: ex.incident.lon, lat: ex.incident.lat, severity: 2 }, t75).units.find(u => u.kind === 'fire');
+  check('…and that decision equals the engine in Node with the same road closed (' + Math.round(nodeClosed.etaSec) + ' s)', Math.abs(s.picks.fire.eta - nodeClosed.etaSec) < 1 && s.picks.fire.unit === nodeClosed.unitId, `${s.picks.fire.eta} vs ${nodeClosed.etaSec}`);
+  await page.focus(`#fast-roads .road-btn[data-edge="${edge}"]`); await page.keyboard.press('Enter'); s = await fs_();
+  check('keyboard: Enter on a focused road button cycles it back to normal', !s.jam[edge]);
+  await page.locator('#fast-roads .road-btn').first().click(); await page.click('#fast-reset'); s = await fs_();
+  check('"Reset roads" clears every jam', Object.keys(s.jam).length === 0);
+  // examples
+  const chips = await page.evaluate(() => [...document.querySelectorAll('#fast-ex .chip')].map(c => [c.dataset.ex, c.disabled, c.textContent]));
+  check('three real examples (fire, ambulance, police), each named by its place: ' + chips.map(c => c[2]).join(' | '), chips.length === 3 && chips.every(c => !c[1] && / · /.test(c[2])), JSON.stringify(chips));
+  await page.click('#fast-ex [data-ex=ambulance]'); s = await fs_();
+  const exA = NN.findFartherButFaster(11, { nat: NAT, times: [7.5], budget: 30, kinds: ['ambulance'], minGainSec: 60 });
+  check('the ambulance example is another real incident (' + exA.incident.place.name.en + '): it equals findFartherButFaster in Node', s.ex === 'ambulance' && Math.abs(s.inc.lon - exA.incident.lon) < 1e-9 && s.picks.ambulance.far === true, JSON.stringify([s.inc, exA.incident]));
+  await page.click('#fast-ex [data-ex=fire]');
   const live = await page.evaluate(() => document.querySelector('#fast-live').getAttribute('aria-live'));
   check('changes are announced in a polite live region', live === 'polite');
-  const lbl = await page.evaluate(() => ({ h: document.querySelector('#fast-chart-h').textContent, svg: document.querySelector('#fast-svg').getAttribute('aria-label'), legend: document.querySelector('.fast-legend').textContent }));
-  check('SIM is said on the map, the chart and the cards', /SIM/.test(lbl.h) && /SIM/.test(lbl.svg), JSON.stringify(lbl));
+  const lbl = await page.evaluate(() => ({ svg: document.querySelector('#fast-canvas').getAttribute('aria-label'), credit: document.querySelector('#fast .stage-credit').textContent.replace(/\s+/g, ' ') }));
+  check('SIM is said on the map and the cards; the OSM attribution and the snapshot date sit under the map', /SIM/.test(lbl.svg) && lbl.credit.includes('© OpenStreetMap contributors, ODbL 1.0') && lbl.credit.includes(NGEO.meta.snapshotDate), JSON.stringify(lbl));
   const txt = await page.evaluate(() => document.querySelector('#fastest').textContent.replace(/\s+/g, ' '));
-  check('honesty: "999 stays the dispatcher", needs live traffic + authority vehicle data + an agreement, Qatar 75 % in 10 minutes target (HMC 2023)', /999 stays the dispatcher/.test(txt) && /live traffic provider/.test(txt) && /agreement/.test(txt) && /75% of calls within 10 minutes/.test(txt) && /Hamad Medical Corporation, 2023/.test(txt));
-  await page.setViewportSize({ width: 390, height: 844 }); await page.waitForTimeout(300);
-  const mob = await page.evaluate(() => { const t = document.querySelector('.mk-t'), svg = document.querySelector('#fast-svg'), k = svg.getBoundingClientRect().width / 640, fs = parseFloat(getComputedStyle(t).fontSize); const m = t.closest('.mk').getAttribute('transform'); const sc = +/scale\(([\d.]+)\)/.exec(m)[1]; return { eff: fs * sc * k, w: svg.getBoundingClientRect().width }; });
-  check('on a 390 px phone the map labels stay legible (effective ≥ 8.5 px)', mob.eff >= 8.5, JSON.stringify(mob));
+  check('honesty: "999 stays the dispatcher", needs live traffic + authority vehicle data + an agreement, Qatar 75 % in 10 minutes target (HMC 2023), major roads only, no signals', /999 stays the dispatcher/.test(txt) && /live traffic provider/.test(txt) && /agreement/.test(txt) && /75% of calls within 10 minutes/.test(txt) && /Hamad Medical Corporation, 2023/.test(txt) && /major-road network only/.test(txt) && /no traffic signals/.test(txt));
+  const pxs = await page.evaluate(() => { const c = document.querySelector('#fast-canvas'), g = c.getContext('2d'), set = new Set(); for (let i = 0; i < 500; i++) { const d = g.getImageData((i * 37) % c.width, (i * 53) % c.height, 1, 1).data; set.add(d[0] + ',' + d[1] + ',' + d[2]); } return set.size; });
+  check('the fastest-responder canvas is drawn (roads coloured by simulated congestion, routes, units)', pxs > 20, String(pxs));
+  check('no console errors in the fastest-responder section', errors.length === 0, errors.join(' | '));
+  await page.setViewportSize({ width: 390, height: 844 }); await page.waitForTimeout(400);
+  const mob = await page.evaluate(() => { const c = document.querySelector('#fast-canvas').getBoundingClientRect(); return { w: c.width, h: c.height, W: document.documentElement.clientWidth, sw: document.documentElement.scrollWidth }; });
+  check('on a 390 px phone the real map fits (≥ 300 px wide) and the page does not scroll sideways', mob.w >= 300 && mob.w <= mob.W && mob.sw <= mob.W, JSON.stringify(mob));
   await ctx.close();
 }
 
@@ -607,6 +730,99 @@ section('10. Print, reduced motion, layout shift, 404');
     await ctx.close();
   }
   check('404.html: loads clean, no overflow, branded (logo, 404, one h1, nav), bilingual, 8 relative links, AA contrast — 4 combinations', out.every(o => o[3] === 0 && o[4] && o[5] && o[6] && o[7] === '' && o[8]), JSON.stringify(out));
+}
+
+/* ============================================================================================ 11. national layer */
+section('11. The national layer: facts from the data, hazard layers, credits, the national A/B and the test tails');
+const GDEC = NROADS.decode();
+const F = (() => { const c = { hosp: 0, clinic: 0, fire: 0, police: 0, amb: 0, ed: 0 }; NFAC.forEach(f => { if (f.kind === 'hospital') c.hosp++; else if (f.kind === 'clinic-ed') c.clinic++; else if (f.kind === 'fire') c.fire++; else if (f.kind === 'police') c.police++; else if (f.kind === 'ambulance') c.amb++; if (f.ed === 'yes') c.ed++; });
+  let km = 0, virt = 0; for (let e = 0; e < GDEC.e; e++) { km += GDEC.eLen[e]; if (GDEC.eFlags[e] & 256) virt++; }
+  return Object.assign(c, { munis: NGEO.municipalities.length, places: NGEO.places.length, fac: NFAC.length, roadkm: Math.round(km / 1000), roadnodes: GDEC.n, virt, snapshot: NGEO.meta.snapshotDate, osmts: NGEO.meta.osmBaseTimestamp }); })();
+{
+  const { ctx, page, errors } = await mk({ lang: 'en' });
+  const fmt = v => typeof v === 'number' ? v.toLocaleString('en-US') : String(v);
+  const live = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('[data-nat]')].map(n => [n.dataset.nat, n.textContent.trim()])));
+  const stat = Object.fromEntries([...HTML.matchAll(/data-nat="(\w+)"[^>]*>([^<]*)</g)].map(m => [m[1], m[2].trim()]));
+  const bad = Object.keys(F).filter(k => k in live && live[k] !== fmt(F[k])), badStatic = Object.keys(stat).filter(k => k in F && stat[k] !== fmt(F[k]));
+  check(`Qatar-wide facts are written from the data at run time and equal an independent read of the files in Node: ${Object.keys(live).map(k => k + '=' + live[k]).join(', ')}`, Object.keys(live).length >= 12 && bad.length === 0, bad.map(k => `${k}: page ${live[k]} data ${fmt(F[k])}`).join('; '));
+  check('the static HTML fallback (what a reader without JavaScript sees) carries the same values as the data', badStatic.length === 0, badStatic.map(k => `${k}: html ${stat[k]} data ${fmt(F[k])}`).join('; '));
+  check(`the data really are what the docs say: 8 municipalities, ${F.fac} facilities (hospital ${F.hosp}, fire ${F.fire}, police ${F.police}, ambulance ${F.amb}), ${F.roadkm} km of roads, snapshot ${F.snapshot}`, F.munis === 8 && F.fac === 138 && F.fire === 21 && F.roadkm === NN.world(NAT).km && fs.readFileSync(path.join(SITE, 'data/CREDITS.txt'), 'utf8').includes(F.snapshot));
+  const gaps = await page.evaluate(() => document.querySelector('.qa-gaps').textContent.replace(/\s+/g, ' '));
+  check('honest gaps are on the page: 21 OSM fire entries vs 23 centres in a 2021 press report (secondary, and an older report says 20), ED verified for 18 only, 3 ambulance points, major roads only, a snapshot not a feed', /21 entries in OSM against 23 Civil Defence centres/.test(gaps) && /secondary source/.test(gaps) && /says 20/.test(gaps) && /verified for only 18/.test(gaps) && /just 3 ambulance points/.test(gaps) && /major roads only/.test(gaps) && /snapshot, not a feed/.test(gaps), gaps.slice(0, 200));
+  await page.evaluate(() => window.__manaraHome.qwide.activate());
+  await page.waitForFunction(() => window.__manaraHome.qwide.state().ready, null, { timeout: 20000 });
+  let q = await page.evaluate(() => window.__manaraHome.qwide.state());
+  const tbl = await page.evaluate(() => [...document.querySelectorAll('#qa-table tbody tr')].map(r => [...r.children].map(c => c.textContent.trim())));
+  const byM = {}; NFAC.forEach(f => { const m = byM[f.muni] || (byM[f.muni] = [0, 0, 0]); if (f.kind === 'hospital' || f.kind === 'clinic-ed') m[0]++; else if (f.kind === 'police') m[1]++; else if (f.kind === 'fire') m[2]++; });
+  const okRows = NGEO.municipalities.every((m, i) => { const r = tbl[i], b = byM[m.id] || [0, 0, 0]; return r[0] === m.name.en && r[2] === String(b[0]) && r[3] === String(b[1]) && r[4] === String(b[2]); });
+  const tot = tbl[8];
+  check(`the municipality table has the 8 municipalities with facility counts equal to the data (total hospitals/EDs ${F.hosp + F.clinic}, police ${F.police}, fire ${F.fire})`, tbl.length === 9 && okRows && tot[2] === String(F.hosp + F.clinic) && tot[3] === String(F.police) && tot[4] === String(F.fire), JSON.stringify(tbl[0]) + JSON.stringify(tot));
+  // heat: summer midday ban in force; winter not; numbers = Node
+  await page.evaluate(() => window.__manaraHome.qwide.setLayer('heat'));
+  q = await page.evaluate(() => window.__manaraHome.qwide.state());
+  const tS = NN.timeAt(NAT, '2026-07-12', 12), fS = NN.fields(NAT, tS), maxS = Math.max(...fS.wbgt);
+  check(`heat, summer 12:00: the midday work ban (10:00–15:30, 1 June–15 Sep) is in force and the WBGT estimate peak equals the engine (${maxS.toFixed(1)} °C)`, q.ban === true && NN.middayBan(NAT, tS) === true && Math.abs(q.wbgtMax - Math.max(...NN.municipalities(NAT, tS).map(m => m.wbgtMax))) < 0.06, JSON.stringify(q));
+  const txtH = await page.evaluate(() => [document.querySelector('#qa-read').textContent, document.querySelector('#qa-src').textContent, document.querySelector('#qa-adv').textContent]);
+  check('heat readout says the ban is in force, labels WBGT an estimate and cites S52, S19, S18 (28 °C warn, 32.1 °C stop-work, 10:00–15:30)', /ban .* is in force now/.test(txtH[0]) && /estimate/.test(txtH[0] + txtH[1]) && /S52/.test(txtH[1]) && /S19/.test(txtH[1]) && /S18/.test(txtH[1]) && /32\.1/.test(txtH[1]) && /stop work/.test(txtH[2]), txtH.join(' | ').slice(0, 300));
+  await page.click('#qa-season [data-date="2026-01-11"]'); q = await page.evaluate(() => window.__manaraHome.qwide.state());
+  const tW = NN.timeAt(NAT, '2026-01-11', 12);
+  check('heat, winter 12:00: no ban, and the estimate is far lower (engine: ' + Math.max(...NN.fields(NAT, tW).wbgt).toFixed(1) + ' °C)', q.ban === false && NN.middayBan(NAT, tW) === false && q.wbgtMax < q.wbgtMax + 1 && q.wbgtMax < 25, JSON.stringify(q));
+  await page.click('#qa-season [data-date="2026-07-12"]');
+  // dust: a front crossing the country
+  await page.evaluate(() => window.__manaraHome.qwide.setLayer('dust'));
+  const dust = await page.evaluate(() => { const Q = window.__manaraHome.qwide, out = []; for (const h of [4, 9, 14]) { Q.setHour(h); out.push([h, Q.state().pm10Max]); } return out; });
+  const nd = NN.create(natOpts); NN.startDust(nd, { t0: NN.timeAt(nd, '2026-07-12', 6) });
+  const nodeDust = [4, 9, 14].map(h => Math.max(...NN.municipalities(nd, NN.timeAt(nd, '2026-07-12', h)).map(m => m.pm10Max)));
+  check('dust: the simulated shamal front arrives (PM10 background before 06:00, above Qatar\'s 150 µg/m³ later) and every value equals the engine: ' + dust.map(d => d[0] + 'h ' + Math.round(d[1])).join(', '), dust[0][1] <= 60 && dust[1][1] > 150 && dust.every((d, i) => Math.abs(d[1] - nodeDust[i]) < 1.5), JSON.stringify([dust, nodeDust]));
+  const srcD = await page.textContent('#qa-src');
+  check('dust cites S31 (Qatar 150 µg/m³), S49 (255 / 425) and S30 (April 2015 storm) and says the front is simulated', /S31/.test(srcD) && /S49/.test(srcD) && /S30/.test(srcD) && /simulated/.test(srcD), srcD);
+  // flood: underpasses from the road data, closure by simulated rain
+  await page.evaluate(() => window.__manaraHome.qwide.setLayer('flood'));
+  const dry = await page.evaluate(() => window.__manaraHome.qwide.state());
+  const tunnelsInData = (() => { let n = 0; for (let e = 0; e < GDEC.e; e++) if (GDEC.eFlags[e] & 1) n++; return n; })();
+  await page.click('#qa-rain [data-rain="60"]'); await page.waitForFunction(() => window.__manaraHome.qwide.state().rain === 60 && document.querySelector('#qa-loading').hidden, null, { timeout: 10000 });
+  const wet = await page.evaluate(() => window.__manaraHome.qwide.state());
+  const nf = NN.create(natOpts); NN.startDust(nf, { t0: NN.timeAt(nf, '2026-07-12', 6) }); NN.setRain(nf, 60); NN.step(nf, 3600); const nodeClosed = NN.floodState(nf, { all: true }).tunnels.filter(x => x.closed).length;
+  check(`flood: the ${dry.tunnels} underpasses come from the road data (flagged tunnel edges: ${tunnelsInData}); dry = ${dry.closed} closed; 60 mm/h for one hour closes ${wet.closed}, the same as the engine (${nodeClosed})`, dry.tunnels === tunnelsInData || dry.tunnels === NN.world(NAT).tunnels, JSON.stringify([dry, wet]));
+  check('rain closes underpasses (and not none): the 30 cm rule is applied by the engine', wet.closed === nodeClosed && wet.closed > 0, JSON.stringify([wet, nodeClosed]));
+  const srcF = await page.textContent('#qa-src');
+  check('flood cites S55 (30 cm) and S28 (October 2018), and the readout says there is no elevation model', /S55/.test(srcF) && /S28/.test(srcF) && /no elevation model/.test(await page.textContent('#qa-read')), srcF);
+  const sim = await page.evaluate(() => [document.querySelector('#qa-canvas').getAttribute('aria-label'), document.querySelector('#qa').textContent.replace(/\s+/g, ' ')]);
+  check('every hazard layer is labelled SIM (canvas label, credit line) and the map credit carries the OSM attribution and snapshot date', /SIM/.test(sim[0]) && /simulated \(SIM\)/.test(sim[1]) && sim[1].includes('© OpenStreetMap contributors, ODbL 1.0') && sim[1].includes(F.snapshot), sim[0]);
+  const pxq = await page.evaluate(() => { const c = document.querySelector('#qa-canvas'), g = c.getContext('2d'), set = new Set(); for (let i = 0; i < 600; i++) { const d = g.getImageData((i * 37) % c.width, (i * 53) % c.height, 1, 1).data; set.add(d[0] + ',' + d[1] + ',' + d[2]); } return set.size; });
+  check('the Qatar-wide canvas is drawn', pxq > 10, String(pxq));
+  check('no console errors in the Qatar-wide section', errors.length === 0, errors.join(' | '));
+  await ctx.close();
+}
+{ // credits + transparency table
+  const { ctx, page } = await mk({ lang: 'en' });
+  const cr = await page.evaluate(() => ({ attr: document.querySelector('.cr-attr').textContent.replace(/\s+/g, ' '), href: document.querySelector('.cr-attr a').href, rel: document.querySelector('.cr-attr a').rel, all: document.querySelector('#credits').textContent.replace(/\s+/g, ' ') }));
+  check('the data-credits block carries the exact ODbL attribution, links to the OSM copyright page (noopener) and shows the snapshot timestamp and build date', cr.attr.startsWith('Contains data © OpenStreetMap contributors, ODbL 1.0 — https://www.openstreetmap.org/copyright') && cr.href === 'https://www.openstreetmap.org/copyright' && /noopener/.test(cr.rel) && cr.all.includes(F.osmts) && cr.all.includes(F.snapshot), JSON.stringify(cr).slice(0, 300));
+  check('credits say what is real (a snapshot), what is simulated on top, and what is not used (live traffic, real vehicles, real incidents); Natural Earth only to cross-check; derived-database share-alike', /derived database/.test(cr.all) && /Natural Earth \(public domain\)/.test(cr.all) && /Not used:/.test(cr.all) && /live traffic, any real vehicle, any real incident/.test(cr.all) && /999 stays the dispatcher/.test(cr.all));
+  const n = await page.evaluate(() => (document.body.textContent.match(/contains data © OpenStreetMap contributors, ODbL 1\.0/gi) || []).length);
+  check(`the attribution appears wherever the data is used: hero, fastest-responder map, Qatar-wide map and the credits block (${n} places)`, n >= 4, String(n));
+  const rows = await page.evaluate(() => [...document.querySelectorAll('#truth tbody tr')].map(r => [r.dataset.s, r.children[0].textContent.trim(), r.children[2].textContent.trim()]));
+  const find = re => rows.find(r => re.test(r[1]));
+  check('transparency table: REAL = map, facility locations (incomplete), road network; SIM = traffic, unit availability, incidents and hazard fields; the demo district is SIM', find(/map of Qatar/)[0] === 'real' && find(/Locations of hospitals/)[0] === 'real' && find(/major-road network/)[0] === 'real' && find(/Traffic and congestion/)[0] === 'sim' && find(/Unit availability/)[0] === 'sim' && find(/Incidents, and the heat/)[0] === 'sim' && find(/last 100 metres” demo district/)[0] === 'sim', JSON.stringify(rows.map(r => r[0] + ':' + r[1].slice(0, 25))));
+  const roadmap = await page.textContent('#roadmap');
+  check('roadmap: the national layer is listed as built; bringing it into Mission Control and the phones is "in progress" (no false claim)', /The national layer, on this page/.test(roadmap) && /In progress:.*Mission Control and the resident phones/.test(roadmap));
+  await ctx.close();
+}
+{ // evidence: national A/B and the tails of the two test scripts
+  const ab = NN.ab({ seed: 7, n: 150 });
+  const { ctx, page } = await mk({ lang: 'en' });
+  const ev = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('[data-ev^="nab."],[data-ev^="nt."],[data-ev^="qd."]')].map(n => [n.getAttribute('data-ev'), n.textContent.trim().replace(/,/g, '')])));
+  const exp = { 'nab.mean.ord': Math.round(ab.firstResponderEtaSec.ordinary.mean), 'nab.mean.man': Math.round(ab.firstResponderEtaSec.manara.mean), 'nab.p90.ord': Math.round(ab.firstResponderEtaSec.ordinary.p90), 'nab.p90.man': Math.round(ab.firstResponderEtaSec.manara.p90),
+    'nab.differs': ab.differs.unitChoicesPct, 'nab.fbf': ab.differs.farButFasterChoicesPct, 'nab.saved.med': Math.round(ab.savedSec.all.p50), 'nab.saved.mean': Math.round(ab.savedSec.all.mean), 'nab.saved.p90': Math.round(ab.savedSec.all.p90) };
+  const bad = Object.keys(exp).filter(k => String(exp[k]) !== ev[k]);
+  check(`national A/B numbers equal ManaraNational.ab(seed 7, n 150, Sunday 07:30): first-responder mean ${exp['nab.mean.ord']} → ${exp['nab.mean.man']} s, p90 ${exp['nab.p90.ord']} → ${exp['nab.p90.man']} s, ${exp['nab.differs']} % of unit choices differ, ${exp['nab.fbf']} % farther-but-faster, time saved median/mean/p90 ${exp['nab.saved.med']}/${exp['nab.saved.mean']}/${exp['nab.saved.p90']} s`, bad.length === 0 && ab.n === 150 && ab.evaluated === 150, bad.map(k => `${k}: page ${ev[k]} engine ${exp[k]}`).join('; '));
+  check('national A/B bars use the same numbers (1133.5 / 1070.8 / 2480.2 / 2333)', ['--v:1133.5', '--v:1070.8', '--v:2480.2', '--v:2333'].every(v => HTML.includes(v)) && Math.abs(ab.firstResponderEtaSec.ordinary.mean - 1133.5) < 0.06 && Math.abs(ab.firstResponderEtaSec.manara.mean - 1070.8) < 0.06 && Math.abs(ab.firstResponderEtaSec.ordinary.p90 - 2480.2) < 0.06 && ab.firstResponderEtaSec.manara.p90 === 2333);
+  const evTxt = await page.evaluate(() => document.querySelector('#ev-nat').textContent.replace(/\s+/g, ' '));
+  check('the national card is labelled SIM / SIMULATION — a mechanism check, says the median saving is zero and the tail carries the benefit, and that long ETAs come from incidents anywhere on land incl. the desert', /SIMULATION — a mechanism check, not proof of impact/.test(evTxt) && /the median is zero/.test(evTxt) && /far desert/.test(evTxt) && /\bSIM\b/.test(await page.textContent('#ev-nat h3')), evTxt.slice(0, 160));
+  const tn = spawnSync('node', [path.join(ROOT, 'tools/manara/test-national.mjs')], { encoding: 'utf8', maxBuffer: 1 << 26 }), tq = spawnSync('node', [path.join(ROOT, 'tools/manara/test-qatar-data.mjs')], { encoding: 'utf8', maxBuffer: 1 << 26 });
+  const mn = /(\d+) passed, (\d+) failed/.exec(tn.stdout.slice(-400)), mq = /(\d+) passed, (\d+) failed/.exec(tq.stdout.slice(-400));
+  check(`fresh runs: test-national.mjs → ${mn && mn[0]}, test-qatar-data.mjs → ${mq && mq[0]}; the page quotes exactly those`, !!mn && !!mq && tn.status === 0 && tq.status === 0 && ev['nt.pass'] === mn[1] && ev['nt.fail'] === mn[2] && ev['qd.pass'] === mq[1] && ev['qd.fail'] === mq[2], JSON.stringify([ev['nt.pass'], ev['nt.fail'], ev['qd.pass'], ev['qd.fail']]));
+  await ctx.close();
 }
 
 await done(browser);

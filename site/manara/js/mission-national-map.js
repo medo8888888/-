@@ -58,7 +58,7 @@
   var KIND_PRIO = { city: 0, town: 1, 'municipality-centre': 2, airport: 2, industrial: 2, port: 2, island: 3, village: 3, education: 3, suburb: 4, quarter: 5, neighbourhood: 5, hamlet: 5, locality: 5 };
   var PRIO_PPK = [0, 0, 3.4, 6.5, 15, 34];                       // pixels per km from which a place of that priority is labelled
   var CLS_MIN_PPK = [0, 0, 0, 5, 12, 40];                        // motorway, trunk, primary, secondary, tertiary, local
-  var CLS_W = [2.1, 1.9, 1.55, 1.1, 0.85, 0.6];                  // base width in px (before the zoom factor)
+  var CLS_W = [1.3, 1.15, 0.95, 0.72, 0.55, 0.42];               // base width in px (before the zoom factor): hairlines, so labels and markers stay readable
   var HZ_TOK = { fire: 'fire-3', gas: 'warn', flood: 'info', dust: 'warn', heat: 'brand', sos: 'danger' };
   var KIND_TOK = { fire: 'fire-3', rescue: 'brand', ambulance: 'danger', police: 'info', hospital: 'danger' };
   var STATE_TOK = { recommended: 'accent', approved: 'brand', dispatched: 'brand', 'en-route': 'brand', 'on-scene': 'safe', cleared: 'muted' };
@@ -92,7 +92,7 @@
   function create(o) {
     var cvs = o.canvas, ctx = cvs.getContext('2d'), G = o.roads, GEO = o.geo, FAC = o.fac;
     var lang = o.lang || function () { return 'en'; }, reduced = o.reduced || function () { return false; };
-    var R = { scene: { layers: { traffic: true, hazard: 'off', fac: { hospital: true, police: true, fire: true, ambulance: true }, units: true, munis: true, places: true, tunnels: true, closures: true } }, hits: [], dirty: true, stats: { frames: 0, cacheRenders: 0, lastCacheMs: 0, lastFrameMs: 0 } };
+    var R = { scene: { layers: { traffic: true, hazard: 'off', fac: { hospital: true, police: true, fire: true, ambulance: true, minor: false }, units: true, munis: true, places: true, tunnels: true, closures: true } }, hits: [], labelFor: null, dirty: true, stats: { frames: 0, cacheRenders: 0, lastCacheMs: 0, lastFrameMs: 0 } };
     var W = 800, H = 600, dpr = 1, col = {}, font = 'system-ui, sans-serif', mono = 'monospace';
     var view = { cx: 0, cy: 0, s: 0.004 }, fitView = { cx: 0, cy: 0, s: 0.004 }, minS = 0.002, maxS = 0.6;
     var lastViewChange = 0, anim = null, themeVer = 1;
@@ -141,7 +141,7 @@
 
     /* ---------- camera ---------- */
     function computeFit() {
-      var bw = (wx1 - wx0) * 1.1, bh = (wy1 - wy0) * 1.08;
+      var bw = (wx1 - wx0) * 1.06, bh = (wy1 - wy0) * 1.07;
       var s = Mth.min(W / bw, H / bh);
       fitView = { cx: (wx0 + wx1) / 2, cy: (wy0 + wy1) / 2, s: s };
       minS = s * 0.8; maxS = 0.5;
@@ -212,13 +212,13 @@
       c.setTransform(dpr * s, 0, 0, -dpr * s, dpr * (W / 2 + ca.mx - ca.cx * s), dpr * (H / 2 + ca.my + ca.cy * s));
       return { x0: ca.cx - (W / 2 + ca.mx) / s, x1: ca.cx + (W / 2 + ca.mx) / s, y0: ca.cy - (H / 2 + ca.my) / s, y1: ca.cy + (H / 2 + ca.my) / s };
     }
-    function levelColor(l) { return l === 'danger' ? C('danger') : l === 'warning' ? C('warn') : l === 'watch' ? C('accent') : null; }
+    function levelColor(l) { return l === 'danger' ? C('danger') : l === 'warning' ? C('warn') : null; }          // 'watch' is not tinted: only real warnings colour a municipality
 
     function renderBase() {
       var ca = caches.base, t0 = now(); cacheSetup(ca);
       var c = ca.ctx, s = ca.s, sc = R.scene, dark = col.dark;
       worldTransform(ca);
-      var water = mixc(C('bg-2'), C('info'), dark ? 0.14 : 0.1), land = mixc(C('surface-2'), C('bg'), dark ? 0.35 : 0.1);
+      var water = dark ? mixc(C('bg'), C('info'), 0.07) : mixc(C('bg-2'), C('info'), 0.1), land = dark ? mixc(C('surface-2'), C('surface-3'), 0.22) : mixc(C('surface-2'), C('bg'), 0.1);
       c.save(); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.fillStyle = rgba(water); c.fillRect(0, 0, ca.cw, ca.ch); c.restore();
       // faint graticule on the sea (every 0.25 degrees) gives the empty water some structure without any claim
       c.save(); c.lineWidth = 1 / s; c.strokeStyle = rgba(C('line'), dark ? 0.35 : 0.5); c.beginPath();
@@ -242,14 +242,15 @@
     function baseKey() { var sc = R.scene, k = [themeVer, W, H, dpr, sc.layers.munis ? 1 : 0]; if (sc.layers.munis && sc.muniLevel) for (var id in sc.muniLevel) k.push(id + sc.muniLevel[id]); return k.join('|'); }
 
     var BUCKET_N = 6;
-    function bucketOf(c) { return c <= 0.0001 ? 5 : c >= 0.85 ? 0 : c >= 0.65 ? 1 : c >= 0.45 ? 2 : c >= 0.28 ? 3 : 4; }
+    function bucketOf(c) { return c <= 0.0001 ? 5 : c >= 0.5 ? 0 : c >= 0.35 ? 2 : c >= 0.2 ? 3 : 4; }          // only clearly slow roads (below half speed) get a colour; 0 = neutral
     function bucketColor(b) {
       switch (b) {
-        case 0: return C('safe'); case 1: return mixc(C('safe'), C('warn'), 0.5); case 2: return C('warn');
-        case 3: return mixc(C('warn'), C('danger'), 0.55); case 4: return C('danger'); default: return mixc(C('danger'), C('ink'), 0.45);
+        case 2: return mixc(C('warn'), C('bg'), col.dark ? 0.15 : 0.38);                // slow: a soft amber, not the full warning colour
+        case 3: return mixc(C('warn'), C('danger'), 0.6);
+        case 4: return C('danger'); default: return mixc(C('danger'), C('ink'), 0.45);
       }
     }
-    function zf(ppk) { return clamp(0.55 + 0.3 * Mth.log(Mth.max(ppk, 2) / 4) / Mth.LN2, 0.55, 3.3); }
+    function zf(ppk) { return clamp(0.62 + 0.24 * Mth.log(Mth.max(ppk, 2) / 4) / Mth.LN2, 0.62, 2.4); }   // road width follows the zoom, gently
     function renderRoads() {
       var ca = caches.roads, t0 = now(); cacheSetup(ca);
       var c = ca.ctx, s = ca.s, ppk = s * 1000, sc = R.scene, traffic = !!(sc.layers.traffic && sc.cong), cong = sc.cong, dark = col.dark;
@@ -276,19 +277,19 @@
         }
       }
       c.lineCap = 'round'; c.lineJoin = 'round';
-      var neutral = mixc(C('surface-3'), C('ink'), dark ? 0.34 : 0.36), neutralMajor = mixc(neutral, C('head'), dark ? 0.22 : 0.18);
+      // ONE muted tone per class (motorways a little stronger). Free-flowing roads stay neutral; ONLY slow or closed roads get a colour, so the accent stays for the selected route.
+      var neutral = dark ? mixc(C('surface-3'), C('ink'), 0.3) : mixc(C('surface-3'), C('ink'), 0.2), neutralMajor = dark ? mixc(neutral, C('head'), 0.2) : mixc(neutral, C('head'), 0.22);
       for (cls = 5; cls >= 0; cls--) {
         n = listN[cls]; if (!n) continue;
         var w = CLS_W[cls] * zfac * inv;
-        // neutral casing / fill (always drawn, so the network is visible with the traffic layer off and under the colours)
-        c.setLineDash([]); c.lineWidth = w; c.strokeStyle = rgba(cls < 3 ? neutralMajor : neutral, traffic ? 0.55 : 0.95);
+        c.setLineDash([]); c.lineWidth = w; c.strokeStyle = rgba(cls < 3 ? neutralMajor : neutral, dark ? 0.85 : 0.8);
         c.beginPath(); trace(lists[cls], n, 2); c.stroke();
         c.setLineDash([5 * inv * 1.5, 3.5 * inv * 1.5]); c.lineWidth = w; c.strokeStyle = rgba(neutralMajor, 0.95);        // tunnels / underpasses: dashed
         c.beginPath(); trace(lists[cls], n, 1); c.stroke(); c.setLineDash([]);
         if (traffic) {
-          var tw = w + 0.5 * inv;
-          for (var bk = 0; bk < BUCKET_N; bk++) {
-            c.lineWidth = bk === 5 ? tw + 0.6 * inv : tw; c.strokeStyle = rgba(bucketColor(bk), bk === 5 ? 1 : 0.92);
+          var tw = w + 0.35 * inv;
+          for (var bk = 2; bk < BUCKET_N; bk++) {                                 // buckets 0 (free) and 1 (light) stay in the neutral tone
+            c.lineWidth = bk === 5 ? tw + 0.4 * inv : tw; c.strokeStyle = rgba(bucketColor(bk), bk === 5 ? 1 : (bk === 2 ? 0.6 : 0.9));
             if (bk === 5) c.setLineDash([4 * inv * 1.4, 3 * inv * 1.4]);
             c.beginPath(); trace(lists[cls], n, 0, bk); c.stroke();
             if (bk === 5) c.setLineDash([]);
@@ -323,7 +324,8 @@
       if (w < 24) return [mixc(C('accent'), C('safe'), 0.4), 0.05];
       if (w < 28) return [mixc(C('safe'), C('warn'), (w - 24) / 4 * 0.7), 0.16 + (w - 24) * 0.02];
       if (w < 32.1) return [mixc(C('warn'), C('brand'), (w - 28) / 4.1), 0.28 + (w - 28) * 0.03];
-      return [mixc(C('danger'), C('fire-3'), clamp((w - 32.1) / 4, 0, 1)), 0.46 + clamp((w - 32.1) / 6, 0, 0.2)];
+      var u = clamp((w - 33.5) / 4.5, 0, 1);                   // above the stop-work limit the colour keeps climbing (33.5 → 38 °C), so the field shows its structure
+      return [mixc(mixc(C('warn'), C('danger'), 0.55), mixc(C('danger'), C('fire-3'), 0.8), u), 0.34 + 0.3 * u];
     }
     function dustRGB(p) {          // PM10 µg/m³: 150 warn (S31), 255 danger / 425 critical (EPA bands, S49)
       if (p < 60) return [C('warn'), 0];
@@ -375,12 +377,14 @@
       for (var i = 0; i < LQ.length && placed < 140; i++) {
         var L = LQ[i], o = L.o, size = o.size || 11;
         ctx.font = (o.weight || 500) + ' ' + size + 'px ' + font;
-        var tw = ctx.measureText(L.s).width, x = clamp(L.x, tw / 2 + 4, Mth.max(tw / 2 + 4, W - tw / 2 - 4)), tries = o.noShift ? [0] : [0, -(size + 4), size + 4], ok = false, y, r;
+        var tw = ctx.measureText(L.s).width, x = clamp(L.x, tw / 2 + 4, Mth.max(tw / 2 + 4, W - tw / 2 - 4)), tries = o.noShift ? [0] : (o.tries || [0, -(size + 4), size + 4]), ok = false, y, r, xx = x;
         for (var t = 0; t < tries.length && !ok; t++) {
-          y = L.y + (o.dy || 0) + tries[t]; r = [x - tw / 2 - 2, y - size / 2 - 1, x + tw / 2 + 2, y + size / 2 + 1];
+          var tr = tries[t], dxT = Array.isArray(tr) ? tr[0] : 0, dyT = Array.isArray(tr) ? tr[1] : tr;
+          xx = clamp(x + dxT, tw / 2 + 4, Mth.max(tw / 2 + 4, W - tw / 2 - 4)); y = L.y + (o.dy || 0) + dyT; r = [xx - tw / 2 - 2, y - size / 2 - 1, xx + tw / 2 + 2, y + size / 2 + 1];
           if (y < size || y > H - size) continue;
           if (!hitsOcc(r)) ok = true;
         }
+        x = xx;
         if (!ok) continue;
         occupy(r[0], r[1], r[2], r[3]); placed++;
         if (o.halo !== false) { ctx.lineWidth = 3.4; ctx.strokeStyle = o.haloColor || halo; ctx.strokeText(L.s, x, y); }
@@ -391,15 +395,18 @@
     function nm(o) { return lang() === 'ar' ? (o.ar || o.en || '') : (o.en || o.ar || ''); }
 
     /* ---------- icons ---------- */
+    function facLab(f) { return R.labelFor ? R.labelFor(f.id) : null; }
+    function facCls(f) { var l = facLab(f); if (l) return l.cls; if (f.kind !== 'hospital' && f.kind !== 'clinic-ed') return 'other'; return f.ed === 'yes' ? 'ed' : 'hospital'; }
     function facIcon(f, x, y, sz, big) {
-      var surf = rgba(C('surface')), kind = f.kind, edYes = f.ed === 'yes';
+      var surf = rgba(C('surface')), kind = f.kind, cls = facCls(f), edYes = cls === 'ed', lab = facLab(f), edVer = !!(lab && lab.edVerified);
       ctx.save(); ctx.translate(x, y); ctx.lineJoin = 'round';
       if (kind === 'hospital' || kind === 'clinic-ed') {
         var col1 = C('danger'), solid = edYes;
+        if (cls === 'minor') sz = sz * 0.72;
         rrect(ctx, -sz, -sz, 2 * sz, 2 * sz, sz * 0.3);
         if (solid) { ctx.fillStyle = rgba(col1); ctx.fill(); ctx.lineWidth = 1.6; ctx.strokeStyle = surf; ctx.stroke(); crossPath(ctx, sz * 0.62, sz * 0.21); ctx.fillStyle = '#fff'; ctx.fill(); }
-        else { ctx.fillStyle = surf; ctx.fill(); ctx.lineWidth = 1.8; ctx.strokeStyle = rgba(mixc(col1, C('muted'), 0.45)); ctx.stroke(); crossPath(ctx, sz * 0.58, sz * 0.19); ctx.fillStyle = rgba(mixc(col1, C('muted'), 0.45)); ctx.fill(); }
-        if (big && edYes) { ctx.font = '700 ' + Mth.max(8, sz * 0.78) + 'px ' + font; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.direction = 'ltr'; var tw = ctx.measureText('ED').width + 6; rrect(ctx, -tw / 2, sz + 1, tw, sz * 0.95, 3); ctx.fillStyle = rgba(C('danger')); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillText('ED', 0, sz + 1 + sz * 0.5); }
+        else { ctx.fillStyle = surf; ctx.fill(); ctx.lineWidth = 1.8; ctx.strokeStyle = rgba(mixc(col1, C('muted'), cls === 'minor' ? 0.75 : 0.45)); ctx.stroke(); crossPath(ctx, sz * 0.58, sz * 0.19); ctx.fillStyle = rgba(mixc(col1, C('muted'), cls === 'minor' ? 0.75 : 0.45)); ctx.fill(); }
+        if (big && edVer) { ctx.font = '700 ' + Mth.max(8, sz * 0.78) + 'px ' + font; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.direction = 'ltr'; var tw = ctx.measureText('ED').width + 6; rrect(ctx, -tw / 2, sz + 1, tw, sz * 0.95, 3); ctx.fillStyle = rgba(C('danger')); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillText('ED', 0, sz + 1 + sz * 0.5); }
       } else if (kind === 'fire') {
         ctx.beginPath(); ctx.arc(0, 0, sz, 0, TAU); ctx.fillStyle = rgba(C('fire-3')); ctx.fill(); ctx.lineWidth = 1.6; ctx.strokeStyle = surf; ctx.stroke(); flamePath(ctx, sz * 0.62); ctx.fillStyle = '#fff'; ctx.fill();
       } else if (kind === 'police') {
@@ -438,7 +445,17 @@
       var fade = clamp((13 - ppk) / 4, 0, 1);
       munis.forEach(function (m) {
         var x = sx_(m.x), y = sy_(m.y); if (x < -80 || x > W + 80 || y < -20 || y > H + 20) return;
-        label(lang() === 'en' ? nm(m.name).toUpperCase() : nm(m.name), x, y, { color: rgba(C('ink-2'), 0.62 * fade + 0.1), size: clamp(10 + ppk * 0.35, 10, 15), weight: 700, prio: 1, halo: true, noShift: true });
+        label(lang() === 'en' ? nm(m.name).toUpperCase() : nm(m.name), x, y, { color: rgba(C('ink-2'), 0.62 * fade + 0.1), size: clamp(11 + ppk * 0.4, 11.5, 16), weight: 700, prio: 95, halo: true, tries: [0, 24, -24, [-60, 0], [60, 0], [-60, 24], [60, 24], [-60, -24], [60, -24], 44, -44, 66, -66, [-90, 30], [90, 30], 90, -90] });          // beside the facility clusters at the municipality centre
+      });
+    }
+    // faint geographic CONTEXT at national zoom: neighbouring countries and the Gulf (labels only; no data is claimed about them)
+    var CONTEXT = [{ ar: 'المملكة العربية السعودية', en: 'SAUDI ARABIA', lon: 51.0, lat: 24.43, dy: 0 }, { ar: 'البحرين', en: 'BAHRAIN', lon: 50.55, lat: 25.9, dy: 0 }, { ar: 'الخليج العربي', en: 'ARABIAN GULF', lon: 51.93, lat: 25.5, dy: 0 }];
+    function drawContext(ppk) {
+      if (ppk > 9) return;
+      var fade = clamp((9 - ppk) / 3, 0, 1);
+      CONTEXT.forEach(function (c) {
+        var xy = toScreen(c.lon, c.lat); if (xy[0] < 24 || xy[0] > W - 24 || xy[1] < 10 || xy[1] > H - 10) return;
+        label(lang() === 'ar' ? c.ar : c.en, xy[0], xy[1], { color: rgba(C('muted'), 0.78 * fade), size: 10.5, weight: 600, prio: 2, halo: false, noShift: true });
       });
     }
     function drawPlaces(ppk) {
@@ -451,10 +468,11 @@
       }
       for (i = 0; i < vis.length; i++) {
         p = vis[i][0]; x = vis[i][1]; y = vis[i][2];
+        var noAr = lang() === 'ar' && !p.name.ar;                    // Arabic mode: a place with no Arabic name in OSM keeps its dot but not an English label
         var rad = p.prio === 0 ? 3.6 : p.prio === 1 ? 3 : p.prio <= 3 ? 2.4 : 1.9;
         ctx.beginPath(); ctx.arc(x, y, rad, 0, TAU); ctx.fillStyle = rgba(C('head'), 0.85); ctx.fill(); ctx.lineWidth = 1.2; ctx.strokeStyle = rgba(C('bg'), 0.9); ctx.stroke();
         occupy(x - rad - 1, y - rad - 1, x + rad + 1, y + rad + 1);
-        label(nm(p.name), x, y, { color: rgba(C(p.prio <= 1 ? 'head' : 'ink-2')), size: p.prio === 0 ? 13.5 : p.prio === 1 ? 12 : p.prio <= 3 ? 11 : 10.5, weight: p.prio <= 1 ? 700 : 500, prio: 20 - p.prio * 3, dy: -(rad + 8) });
+        if (!noAr) label(nm(p.name), x, y, { color: rgba(C(p.prio <= 1 ? 'head' : 'ink-2')), size: p.prio === 0 ? 13.5 : p.prio === 1 ? 12 : p.prio <= 3 ? 11 : 10.5, weight: p.prio <= 1 ? 700 : 500, prio: 20 - p.prio * 3, dy: -(rad + 8) });
       }
     }
     function drawTunnels(ppk) {
@@ -489,6 +507,7 @@
       var sc = R.scene, L = sc.layers.fac, vis = [], i, f, x, y, sz;
       for (i = 0; i < facs.length; i++) {
         f = facs[i]; if (!L[f.kind === 'clinic-ed' ? 'hospital' : f.kind]) continue;
+        if ((f.kind === 'hospital' || f.kind === 'clinic-ed') && facCls(f) === 'minor' && !L.minor) continue;       // clinics, health centres, psychiatry, bone and joint: only when the layer is switched on
         x = sx_(f.x); y = sy_(f.y); if (x < -20 || x > W + 20 || y < -20 || y > H + 20) continue;
         vis.push([f, x, y]);
       }
@@ -515,8 +534,12 @@
           f = vis[i][0]; x = vis[i][1]; y = vis[i][2];
           facIcon(f, x, y, sz, ppk >= 40);
           pushHit({ type: 'facility', id: f.id, x: x, y: y, r: sz + 4, prio: 4 });
-          occupy(x - sz - 1, y - sz - 1, x + sz + 1, y + sz + (f.ed === 'yes' && ppk >= 40 ? sz + 2 : 1));
-          if (ppk >= 34) { var nmx = nm(f.name) || (lang() === 'ar' ? 'منشأة بلا اسم في OSM' : 'Unnamed in OSM'); label(nmx.replace(/\s*\(.*\)$/, ''), x, y, { color: rgba(C('ink-2')), size: 10.5, weight: 600, prio: 6, dy: sz + (f.ed === 'yes' && ppk >= 40 ? 22 : 10) }); }
+          occupy(x - sz - 1, y - sz - 1, x + sz + 1, y + sz + (facLab(f) && facLab(f).edVerified && ppk >= 40 ? sz + 2 : 1));
+          var lb = facLab(f), cls2 = facCls(f), badge = !!(lb && lb.edVerified) && ppk >= 40, text = null;
+          if (lb) { if (lang() === 'ar') text = lb.hasAr ? lb.ar : (ppk >= 90 ? lb.ar : null); else text = lb.hasEn ? lb.en : (ppk >= 90 ? lb.en : null); } else text = nm(f.name) || null;
+          // label budget by zoom: ED hospitals, fire and police first; everything else only when zoomed in a lot
+          var important = cls2 === 'ed' || f.kind === 'fire' || f.kind === 'police';
+          if (text && ppk >= 34 && (important || ppk >= 70)) label(text.replace(/\s*\(.*\)$/, ''), x, y, { color: rgba(C('ink-2')), size: 10.5, weight: 600, prio: important ? 8 : 5, dy: sz + (badge ? 22 : 10) });
         }
       }
     }
@@ -621,9 +644,10 @@
       R.dirty = false;
       ensureCaches();
       R.hits.length = 0; occupied.length = 0; LQ.length = 0;
+      occupy(0, 0, Mth.min(W * 0.62, 570), 112); occupy(W - 62, 0, W, 250);                      // the HUD (clock, tools, zoom buttons) sits on the canvas: labels keep out of it
       var ppk = view.s * 1000;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.globalAlpha = 1; ctx.setLineDash([]);
-      ctx.fillStyle = rgba(mixc(C('bg-2'), C('info'), col.dark ? 0.14 : 0.1)); ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = rgba(col.dark ? mixc(C('bg'), C('info'), 0.07) : mixc(C('bg-2'), C('info'), 0.1)); ctx.fillRect(0, 0, W, H);
       blit(caches.base);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       drawField(sc);
@@ -638,6 +662,7 @@
       drawUnits(ts, animating);
       drawIncidentMarkers(ts, animating);
       drawExample(ts, animating);
+      drawContext(ppk);
       drawMuniNames(ppk);
       drawPlaces(ppk);
       // selection / hover rings
@@ -665,6 +690,7 @@
     R.view = function () { return { cx: view.cx, cy: view.cy, s: view.s, center: [toLon(view.cx), toLat(view.cy)], ppk: view.s * 1000 }; };
     R.ppk = function () { return view.s * 1000; }; R.fitPpk = function () { return fitView.s * 1000; };
     R.hit = hit; R.frame = frame; R.invalidate = invalidate;
+    R.home = function (ms) { flyTo({ lon: toLon(fitView.cx), lat: toLat(fitView.cy), ppk: fitView.s * 1000 }, ms); };
     R.visibleFacilityCount = function () { return R.visFac || 0; };
     R.facilities = facs; R.places = places; R.munis = munis;
     R.edgeMid = function (e) { return [toLon(eMid[2 * e]), toLat(eMid[2 * e + 1])]; };

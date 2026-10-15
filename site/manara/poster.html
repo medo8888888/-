@@ -16,6 +16,9 @@
 <link rel="stylesheet" href="css/poster.css">
 <style id="page-rule">@page{size:297mm 420mm;margin:0}</style>
 <script src="js/core.js" defer></script>
+<script src="data/qatar-geo.js" defer></script>
+<script src="data/qatar-facilities.js" defer></script>
+<script src="data/qatar-roads.js" defer></script>
 <script src="js/poster.js" defer></script>
 </head>
 <body data-page="poster.html">
@@ -264,7 +267,7 @@
             <header class="mod hero" id="m-hero" aria-labelledby="hero-t">
               <img class="hero-logo" src="assets/logo.svg" alt="" width="256" height="256">
               <div class="hero-body">
-                <p class="hero-eyebrow bl"><span data-l="ar">نموذج أولي لمسابقة الابتكار · قطر</span><span data-l="en">Innovation-competition prototype · Qatar</span></p>
+                <p class="hero-eyebrow bl"><span data-l="ar">منصة لكل قطر · نموذج أولي لمسابقة الابتكار</span><span data-l="en">A platform for the whole of Qatar · innovation-competition prototype</span></p>
                 <h2 class="hero-title" id="hero-t"><span class="bl"><span data-l="ar">منارة</span><span data-l="en">MANARA</span></span></h2>
                 <p class="hero-tag bl"><span data-l="ar">ترى الخطر… توقظ الجميع… وتُضيء طريق النجاة</span><span data-l="en">Sees the danger. Wakes everyone. Lights the safe way out.</span></p>
                 <p class="hero-pos bl"><span data-l="ar">فرق الطوارئ تواجه الخطر… والمنارة تُوصل كل إنسان إلى الأمان</span><span data-l="en">Responders fight the hazard. The lighthouse gets every person to safety.</span></p>
@@ -275,6 +278,7 @@
                 <figcaption class="qr-cap"><b class="bl"><span data-l="ar">ابدأ من هنا</span><span data-l="en">Start here</span></b><code dir="ltr"></code></figcaption>
               </figure>
               <ul class="hero-chips">
+                <li class="bl il"><span data-l="ar">كل قطر · خريطة حقيقية</span><span data-l="en">Whole of Qatar · real map</span></li>
                 <li class="bl il"><span data-l="ar">ستة أخطار · منصة واحدة</span><span data-l="en">Six hazards · one platform</span></li>
                 <li class="bl il"><span data-l="ar">يعمل دون إنترنت</span><span data-l="en">Works offline</span></li>
                 <li class="bl il"><span data-l="ar">SIM = محاكاة</span><span data-l="en">SIM = simulated</span></li>
@@ -305,14 +309,15 @@
             </section>
 
             <section class="mod" id="m-fast" aria-labelledby="m-fast-t">
-              <h2 class="mh" id="m-fast-t"><span class="mn num">09</span><span class="mt bl"><span data-l="ar">الأسرع وصولًا يستجيب</span><span data-l="en">The fastest unit responds</span></span></h2>
+              <h2 class="mh" id="m-fast-t"><span class="mn num">09</span><span class="mt bl"><span data-l="ar">الأسرع وصولًا يستجيب… على خريطة قطر</span><span data-l="en">The fastest unit responds… on the map of Qatar</span></span></h2>
               <div class="faststrip">
                 <span class="fu" style="--sc:var(--safe)"><svg class="pi" aria-hidden="true"><use href="#pi-hospital"/></svg><b class="bl"><span data-l="ar">مستشفى / إسعاف</span><span data-l="en">Hospital · ambulance</span></b></span>
                 <span class="fu" style="--sc:var(--info)"><svg class="pi" aria-hidden="true"><use href="#pi-police"/></svg><b class="bl"><span data-l="ar">شرطة</span><span data-l="en">Police</span></b></span>
                 <span class="fu" style="--sc:var(--danger)"><svg class="pi" aria-hidden="true"><use href="#pi-fire"/></svg><b class="bl"><span data-l="ar">إطفاء وإنقاذ</span><span data-l="en">Fire &amp; rescue</span></b></span>
               </div>
-              <figure class="fig" data-fig="fast" data-alt-ar="مقارنة: الوحدة الأقرب مسافة (500 م) تصل في 181 ثانية وقت الذروة، والوحدة الأبعد (1,118 م) تصل في 118 ثانية، فتستجيب الأبعد. محاكاة." data-alt-en="Comparison: the nearer unit (500 m) takes 181 s at rush hour, the farther unit (1,118 m) takes 118 s, so the farther one responds. Simulation."><svg class="sv" role="img" viewBox="0 0 600 134" preserveAspectRatio="xMidYMid meet"></svg></figure>
+              <figure class="fig" data-fig="nat" data-alt-ar="خريطة حقيقية من OpenStreetMap: حريق عند نعيجة في الدوحة الأحد 17:45. الوحدة الأقرب بخط مستقيم (5.7 كم) تصل في 14:00، والوحدة الأبعد (10.0 كم) تصل في 12:34 فتستجيب الأبعد، أسرع بـ 86 ثانية. المرور محاكى (SIM)." data-alt-en="A real OpenStreetMap map: a fire at Nuaija, Doha, Sunday 17:45. The unit nearest in a straight line (5.7 km) arrives in 14:00, the farther unit (10.0 km) arrives in 12:34, so the farther one responds, 86 seconds sooner. Traffic is simulated (SIM)."><svg class="sv" role="img" viewBox="0 0 600 236" preserveAspectRatio="xMidYMid meet"></svg></figure>
               <p class="bl lead-s"><span data-l="ar">توصي منارة بالوحدة التي تصل <b>أولًا في ظل المرور</b>، لا الأقرب مسافةً. <b>محاكاة SIM · و999 يبقى هو المرسِل.</b></span><span data-l="en">MANARA recommends the unit that arrives <b>first given traffic</b>, not the nearest. <b>Simulated (SIM); 999 stays the dispatcher.</b></span></p>
+              <p class="src bl" id="nat-src"></p>
             </section>
 
             <footer class="pfoot"><span class="pf-brand"><img src="assets/logo.svg" alt="" width="40" height="40"><b class="bl il"><span data-l="ar">منارة</span><span data-l="en">MANARA</span></b></span><span class="pf-n bl"><span data-l="ar">اللوحة 2 من 3 · ماذا</span><span data-l="en">Panel 2 of 3 · What</span></span></footer>
@@ -359,6 +364,7 @@
               <p class="res-h"><b class="bl"><span data-l="ar">الأخطار الأخرى (بذرة 1)</span><span data-l="en">The other hazards (seed 1)</span></b> <span class="tag warn">SIM</span></p>
               <ul class="hzres" id="hz-res"></ul>
               <p class="bl lead-s trade"><span data-l="ar"><b>مقايضة صريحة:</b> أول رسالة شخصية بعد 39 ث والصفّارة بعد 14 ث؛ ومع 0% تسرّب غاز تعرّض منارة أعلى (682 مقابل 0). <b>فحص آلية لا برهان أثر.</b></span><span data-l="en"><b>An honest trade-off:</b> the first personal message comes at 39 s, the siren at 14 s; with 0% gas seeping indoors MANARA's exposure is higher (682 vs 0). <b>A mechanism check, not proof of impact.</b></span></p>
+              <p class="bl lead-s nat-res"><span data-l="ar"><b>على خريطة قطر</b> <span class="tag warn">SIM</span> (150 حادثًا، بذرة 7): تختلف الوحدة الأولى عن الأقرب في 64.7% من الحوادث، ومتوسط التوفير 63 ث، لكن الوسيط 0.</span><span data-l="en"><b>On the map of Qatar</b> <span class="tag warn">SIM</span> (150 incidents, seed 7): the first unit differs from the nearest in 64.7% of incidents; mean saving 63 s, median 0.</span></p>
               <p class="src bl" id="res-src"></p>
             </section>
 

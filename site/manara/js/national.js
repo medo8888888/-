@@ -425,6 +425,8 @@
   def('edCapacity', 'dispatch', 8, 1, 40, 1, 'patients', ['سعة الطوارئ (افتراض)', 'ED simultaneous capacity (assumption)'], ['عدد المرضى الذين يستطيع قسم طوارئ استقبالهم معاً؛ لا توجد أرقام حقيقية للأسرّة في البيانات (افتراض).', 'How many patients one emergency department can take at once; there are no real bed numbers in the data (assumption).']);
   def('edOccupancyPct', 'dispatch', 60, 0, 100, 5, '%', ['إشغال الطوارئ (افتراض)', 'ED occupancy (assumption)'], ['نسبة السعة المشغولة قبل الحادث (افتراض).', 'Share of that capacity already taken before the incident (assumption).']);
   def('loadSec', 'dispatch', 240, 0, 900, 30, 's', ['تحميل المريض', 'Patient loading'], ['الثواني على مكان الحادث قبل أن تغادر الإسعاف إلى المستشفى (افتراض).', 'Seconds on scene before the ambulance leaves for the hospital (assumption).']);
+  def('farEtaMin', 'dispatch', 20, 8, 60, 1, 'min', ['ETA يستدعي تنبيه فجوة بيانات', 'ETA above which a data-gap warning is shown'],
+    ['إذا زاد وقت وصول وحدة مطلوبة عن هذا الحد تُعرض توصيتها مع تنبيه: خريطة OSM قد لا تحوي المراكز الأقرب، فلا تُقرأ كزمن استجابة حقيقي (افتراض عرض فقط).', 'When a required unit would take longer than this, its recommendation carries a warning: the OSM map may not contain the closer stations, so it must not be read as a real response time (display assumption only).']);
   def('rankTopK', 'dispatch', 5, 2, 12, 1, 'units', ['المرشحون للحساب الدقيق', 'Candidates re-timed exactly'], ['عدد أفضل المرشحين لكل نوع الذين يُعاد حساب زمنهم بدقة مع تغيّر الازدحام على طول المسار (هندسي).', 'How many top candidates per type are re-timed exactly with congestion changing along the route (engineering).']);
   // ---- incidents
   def('fireGrowthMin', 'incident', 20, 2, 120, 2, 'min', ['زمن نمو الحريق', 'Fire growth time constant'], ['ثابت الزمن لنمو شدّة الحريق نحو الحدّ الأقصى (افتراض مبسّط).', 'Time constant for the fire severity growing to its maximum (simplified assumption).']);
@@ -1059,18 +1061,61 @@
   var KIND_NAME = { fire: T('إطفاء', 'Fire engine'), rescue: T('إنقاذ', 'Rescue team'), ambulance: T('إسعاف', 'Ambulance'), police: T('شرطة', 'Police') };
   var MUNI_FALLBACK = T('', '');
   function muniName(W, id) { var ms = W.geo.municipalities, i; for (i = 0; i < ms.length; i++) if (ms[i].id === id) return ms[i].name; return MUNI_FALLBACK; }
-  function facLabel(W, fr) {
-    var f = fr.f, ar = f.name && f.name.ar, en = f.name && f.name.en;
-    if (ar || en) return T(ar || en, en || ar);
-    var m = muniName(W, f.muni);
-    return T('(بلا اسم في OSM) — ' + m.ar, '(unnamed in OSM) — ' + m.en);
+  /* ---- DISPLAY LABELS for facilities (judge feedback: never show "(unnamed in OSM)", never show raw odd OSM names as the main label, Arabic first in Arabic).
+   *  The data keeps the raw OSM names (name.ar / name.en / flags).  The label layer decides what a person SEES:
+   *    - a name is used as the main label only if it exists in the UI language and is not on the "odd or generic" list (ODD_NAME);
+   *    - otherwise the main label is "<type> — <nearest place>" in that language (the place comes from the data, Arabic names from OSM name:ar);
+   *    - the raw OSM name stays as a small secondary line (sub) and in tooltips; `verified` is false for unnamed / odd entries (shown as an "unverified" badge);
+   *    - cls says how the map treats it: 'ed' (ED confirmed in the data), 'hospital' (a hospital by name heuristic, ED not confirmed), 'minor' (clinics, health centres, specialist centres: hidden in the default layer). */
+  var ODD_NAME = [/^fire police department$/i, /preventitive/i, /departement/i, /^qatar police$/i, /^traffic police$/i, /accident vehicle collection/i, /^ambulance point$/i, /^hospital recruiting police$/i, /^um slal$/i, /^heath housing complex$/i];
+  var SPECIALTY = /psychiatr|bone\s*&\s*joint|heart hospital|dental|cancer|\bamal\b|recruit|rehab|therapy|naufar|commission|armed force|clinic\b|health cent|medical cent|airways clinic|wellness/i;
+  var hasArabic = function (s) { return /[\u0600-\u06FF]/.test(s || ''); };
+  function tidyName(s) { return String(s || '').replace(/\s+/g, ' ').replace(/\bAl-\s+/g, 'Al-').trim(); }
+  function facTypeName(f) {
+    var k = f.kind, role = f.role;
+    if (k === 'fire') return role === 'civil-defence-station' ? T('مركز دفاع مدني', 'Civil Defence station') : role === 'civil-defence-hq' ? T('مجمّع الدفاع المدني', 'Civil Defence complex') : role === 'industrial-fire-station' ? T('إطفاء صناعي', 'Industrial fire station') : T('مركز إطفاء', 'Fire station');
+    if (k === 'police') return role === 'traffic' ? T('مرور', 'Traffic police') : role === 'department' ? T('إدارة شرطة', 'Police department') : role === 'training' ? T('موقع تدريب شرطي', 'Police training site') : role === 'station' ? T('مركز شرطة', 'Police station') : T('منشأة شرطة', 'Police facility');
+    if (k === 'ambulance') return T('نقطة إسعاف', 'Ambulance point');
+    if (k === 'clinic-ed') return T('عيادة طوارئ', 'Emergency clinic');
+    return f.facilityType === 'health-centre' ? T('مركز صحي', 'Health centre') : f.facilityType === 'specialist-centre' ? T('مركز تخصصي', 'Specialist centre') : T('مستشفى', 'Hospital');
   }
+  function facClass(f) {
+    if (f.kind !== 'hospital' && f.kind !== 'clinic-ed') return 'other';
+    var nm = (f.name && (f.name.en || f.name.ar)) || '';
+    if (f.ed === 'yes') return 'ed';
+    if (f.ed === 'no' || f.facilityType !== 'hospital' || SPECIALTY.test(nm)) return 'minor';
+    return 'hospital';
+  }
+  var LABEL_PLACE_KINDS = { city: 1, town: 1, suburb: 1, village: 1, 'municipality-centre': 1, industrial: 1, quarter: 1, airport: 1 };
+  function labelPlace(W, lon, lat) {                       // the nearest place that is a sensible label (no hamlets, gates or islands; no brackets in the name)
+    var best = null, bd = INF, i, p, d;
+    for (i = 0; i < W.geo.places.length; i++) {
+      p = W.geo.places[i]; if (!LABEL_PLACE_KINDS[p.kind] || /[(]/.test((p.name.en || '') + (p.name.ar || ''))) continue;
+      d = haversineM(lon, lat, p.lon, p.lat); if (d < bd) { bd = d; best = p; }
+    }
+    return best ? { name: best.name, distM: bd } : null;
+  }
+  function makeLabel(W, f) {
+    var pl = labelPlace(W, f.lon, f.lat), place = pl ? pl.name : muniName(W, f.muni), ty = facTypeName(f), generic = T(ty.ar + ' — ' + (place.ar || place.en), ty.en + ' — ' + (place.en || place.ar));
+    var en = tidyName(f.name && f.name.en), ar = tidyName(f.name && f.name.ar);
+    if (ar && !hasArabic(ar)) { if (!en) en = ar; ar = ''; }              // OSM name:ar that holds Latin letters is an English name
+    var odd = ODD_NAME.some(function (re) { return re.test(en) || re.test(ar); }), good = !odd, useAr = good && !!ar, useEn = good && !!en;
+    var out = { id: f.id, ar: useAr ? ar : generic.ar, en: useEn ? en : generic.en, generic: !useAr || !useEn, verified: !!(en || ar) && good, hasAr: useAr, hasEn: useEn,
+      raw: { ar: ar, en: en }, place: place, type: ty, cls: facClass(f), ed: f.ed || null, edVerified: f.ed === 'yes' && /official/.test(f.edSrc || '') };
+    out.sub = T(!useAr && en ? en : '', !useEn ? (en || ar) : '');
+    if (!f.name || (!f.name.ar && !f.name.en)) out.sub = T('', '');
+    return out;
+  }
+  function buildLabels(W) { W.labels = {}; W.facs.forEach(function (fr) { W.labels[fr.id] = makeLabel(W, fr.f); }); }
+  function facLabel(W, fr) { if (!W.labels) buildLabels(W); var L = W.labels[fr.id] || (W.labels[fr.id] = makeLabel(W, fr.f)); return T(L.ar, L.en); }
   function unitNameOf(W, kind, fr) {
-    var role = fr.f.role, lab = facLabel(W, fr), pre;
-    if (kind === 'fire') pre = role === 'civil-defence-station' ? T('الدفاع المدني', 'Civil Defence') : role === 'civil-defence-hq' ? T('مجمّع الدفاع المدني', 'Civil Defence complex') : role === 'industrial-fire-station' ? T('إطفاء صناعي', 'Industrial fire station') : T('مركز إطفاء', 'Fire station');
-    else if (kind === 'police') pre = role === 'traffic' ? T('المرور', 'Traffic police') : T('الشرطة', 'Police');
-    else pre = T('إسعاف', 'Ambulance');
-    return T(pre.ar + ' — ' + lab.ar, pre.en + ' — ' + lab.en);
+    var role = fr.f.role, lab = facLabel(W, fr), L = W.labels[fr.id];
+    if (kind === 'ambulance') {
+      if (fr.f.kind === 'ambulance') return lab;                                                                         // an OSM ambulance point: "Ambulance point — <place>"
+      return T('إسعاف (مُنمذَج في ' + lab.ar + ')', 'Ambulance (modelled at ' + lab.en + ')');                            // ambulances are MODELLED at hospital EDs: OSM has only 3 ambulance points
+    }
+    if (kind === 'fire' && role === 'industrial-fire-station' && !L.generic) return T('إطفاء صناعي — ' + lab.ar, 'Industrial fire station — ' + lab.en);
+    return lab;
   }
   var isRestricted = function (f) { return (f.flags || []).some(function (x) { return /^name suggests restricted access/.test(x); }); };
   var isHospitalLike = function (f) { return f.kind === 'hospital' || f.kind === 'clinic-ed'; };
@@ -1440,6 +1485,27 @@
       nearestByStraight: nearest ? { id: nearest.fr.id, name: facLabel(W, nearest.fr), etaSec: Mth.round(nearest.etaSec) } : null, skipped: skipped.length, patients: patients, why: why };
   }
 
+  // DATA-GAP judgement (display only, never changes the ranking): a required unit, or the destination hospital, that is far beyond the threshold means
+  // "no verified unit close by in the OSM snapshot" (real stations may exist that OSM lacks), not a real response time.  Recomputed from the ETAs at recommendation time.
+  function gapOf(nat, plan) {
+    var thr = nat.P.farEtaMin * 60, items = [], ambModelled = false;
+    plan.units.forEach(function (pu) {
+      if (pu.kind === 'ambulance' && pu.unitId) { var u = nat.fleet.byId[pu.unitId]; if (u && u.basing && u.basing !== 'ambulance-point') ambModelled = true; }
+      if (!pu.unitId || pu.optional || pu.standby) return;
+      var eta = pu.etaAtRec != null ? pu.etaAtRec : pu.etaSec;
+      if (eta > thr) items.push({ kind: pu.kind, slot: pu.slot, unitId: pu.unitId, etaMin: r1(eta / 60), km: r1((pu.distM || 0) / 1000), name: pu.name,
+        text: T('أقرب ' + KIND_NAME[pu.kind].ar + ' متاحة في بيانات OSM تبعد ' + r1((pu.distM || 0) / 1000) + ' كم (' + Mth.round(eta / 60) + ' دقيقة). قد توجد محطات أقرب غير مرسومة في الخريطة.', 'The nearest available ' + KIND_NAME[pu.kind].en.toLowerCase() + ' in the OSM data is ' + r1((pu.distM || 0) / 1000) + ' km away (' + Mth.round(eta / 60) + ' min). Closer stations may exist that are not on the map.') });
+    });
+    var hc = plan.hospital && plan.hospital.chosen;
+    if (plan.patients && plan.patients.n > 0) {
+      if (!hc) items.push({ kind: 'hospital', etaMin: null, km: null, name: null, text: T('لا يوجد مستشفى بقسم طوارئ مؤكد يمكن الوصول إليه في البيانات.', 'No reachable hospital with a verified emergency department in the data.') });
+      else if (hc.etaSec > thr) items.push({ kind: 'hospital', etaMin: hc.etaMin, km: r1(hc.distM / 1000), name: hc.name,
+        text: T('لا يوجد قسم طوارئ مؤكد ضمن ' + nat.P.farEtaMin + ' دقيقة في البيانات؛ الأقرب ' + hc.name.ar + ' على بعد ' + r1(hc.distM / 1000) + ' كم (' + Mth.round(hc.etaMin) + ' دقيقة).', 'No verified emergency department within ' + nat.P.farEtaMin + ' min in the data; the nearest is ' + hc.name.en + ', ' + r1(hc.distM / 1000) + ' km away (' + Mth.round(hc.etaMin) + ' min).') });
+    }
+    if (!items.length) return { thresholdMin: nat.P.farEtaMin, items: [], text: null, ambulanceModelled: ambModelled };
+    return { thresholdMin: nat.P.farEtaMin, items: items, ambulanceModelled: ambModelled,
+      text: T('لا توجد وحدات موثّقة قريبة في خريطة OSM لهذه المنطقة. لا تُقرأ الأزمنة هنا كاستجابة حقيقية؛ المراكز الفعلية قد تختلف و999 هي من يقرّر.', 'No verified units are close by in the OSM map for this area. Do not read the times here as a real response; real stations may differ and 999 decides.') };
+  }
   // The dispatch plan for an incident-like object at clock t. PURE: it reserves nothing and changes no state.
   //   inc = { hazard, lon, lat, severity?, patients?:{n, need}, id? }   → plan (see the API header)
   function buildPlan(nat, inc, t, opts) {
@@ -1465,6 +1531,8 @@
       t: { recommended: t }, patients: patients, units: units, hospital: hospital, sim: true,
       notes: [T('المحاكاة وهمية: مواقع الوحدات وتوفّرها والازدحام محاكاة، و999 تبقى المُرسِل', 'Simulation: unit positions, availability and traffic are simulated; 999 stays the dispatcher')],
       perf: { ms: Date.now() - t0 } };
+    plan.dataGap = gapOf(nat, plan);
+    if (plan.dataGap.ambulanceModelled) plan.notes.push(T('الإسعاف مُنمذَج في أقسام طوارئ المستشفيات لأن OSM فيها 3 نقاط إسعاف فقط؛ مراكز إسعاف حمد الفعلية قد تختلف', 'Ambulances are modelled at hospital emergency departments because OSM holds only 3 ambulance points; real ambulance stations may differ'));
     if (hazard === 'heat') plan.notes.push(T('تُوصى أيضاً بدعم تبريد في الموقع (ظل، ماء) — لا وحدة له في البيانات', 'Cooling support on site (shade, water) is also recommended — there is no unit type for it in the data'));
     if (hazard === 'dust') plan.notes.push(T('الإسعاف في وضع الاستعداد للحالات التنفسية', 'Ambulance on standby for respiratory cases'));
     return plan;
@@ -1907,17 +1975,21 @@
   /* ====================================================================================
    * 12. SNAPSHOT, BUS MESSAGES, HASH
    * ==================================================================================== */
+  function facLabelOf(W, id) { var fr = W.facById[id]; return fr ? facLabel(W, fr) : T('', ''); }
+  function labelSub(W, id) { var L = W.labels && W.labels[id]; return L && (L.sub.ar || L.sub.en) ? L.sub : null; }
   function planSnap(nat, inc, o) {
     var plan = inc.plan; if (!plan) return null;
     var W = nat.W;
-    return { id: plan.id, state: plan.state, origin: plan.origin, scope: 'national', hazard: plan.hazard, scene: plan.scene, t: JSON.parse(JSON.stringify(plan.t)), patients: plan.patients, notes: plan.notes,
+    return { id: plan.id, state: plan.state, origin: plan.origin, scope: 'national', hazard: plan.hazard, scene: plan.scene, t: JSON.parse(JSON.stringify(plan.t)), patients: plan.patients, notes: plan.notes, dataGap: gapOf(nat, plan),
       units: plan.units.map(function (pu) {
         var u = pu.unitId ? nat.fleet.byId[pu.unitId] : null, route = [];
         if (u && o.routes !== false && pu.state !== 'cleared' && pu.state !== 'on-scene') route = decimate(stepsPolyline(W, remainingSteps(pu._trk)), 200);
         return { slot: pu.slot, kind: pu.kind, unitId: pu.unitId, name: pu.name, state: pu.state, optional: !!pu.optional, standby: !!pu.standby, flags: pu.flags || [],
           etaSec: pu.etaSec === null || pu.etaSec === undefined ? null : Mth.round(pu.etaSec), etaMin: pu.etaSec === null || pu.etaSec === undefined ? null : r1(pu.etaSec / 60), distM: pu.distM ? Mth.round(pu.distM) : null,
           pos: u ? { lon: r5(u.pos.lon), lat: r5(u.pos.lat) } : null, route: route, why: pu.why, whyData: pu.whyData, runnerUp: pu.runnerUp || null, nearestByStraight: pu.nearestByStraight || null,
-          reroutes: pu.reroutes || 0, replaced: pu.replaced || [], states: pu.states, unreachable: !!pu.unreachable };
+          reroutes: pu.reroutes || 0, replaced: pu.replaced || [], states: pu.states, unreachable: !!pu.unreachable,
+          modelled: u && u.basing && u.basing !== 'ambulance-point' ? { at: facLabelOf(W, u.fac), hospitalId: u.fac } : null, unverified: !!(u && u.flags.indexOf('unnamed-in-osm') >= 0), sub: u ? labelSub(W, u.fac) : null,
+          gap: !!(pu.unitId && !pu.optional && !pu.standby && (pu.etaAtRec != null ? pu.etaAtRec : pu.etaSec) > nat.P.farEtaMin * 60) };
       }),
       hospital: plan.hospital && plan.hospital.chosen ? { id: plan.hospital.chosen.id, name: plan.hospital.chosen.name, etaSec: plan.hospital.chosen.etaSec, etaMin: plan.hospital.chosen.etaMin, distM: plan.hospital.chosen.distM, lon: plan.hospital.chosen.lon, lat: plan.hospital.chosen.lat,
         fits: plan.hospital.chosen.fits, freeSlots: plan.hospital.chosen.freeSlots, ed: plan.hospital.chosen.ed, edNote: plan.hospital.chosen.edNote, assumed: plan.hospital.chosen.assumed, route: o.routes === false ? [] : plan.hospital.chosen.route, why: plan.hospital.why, options: plan.hospital.options } : null };
@@ -2069,7 +2141,7 @@
       fr = it.fr; f = fr.f;
       var pf = pathViaFwd(W, S2, freeKey, from, { edge: fr.edge, frac: fr.frac }, true), free = pf ? pf.sec + (sn.distM + fr.accessM) / accMps : null, straight = haversineM(o.lon, o.lat, fr.lon, fr.lat), brg = bearingDeg(o.lon, o.lat, fr.lon, fr.lat);
       var edNote = !isHospitalLike(f) ? null : f.ed === 'yes' ? T('فيه قسم طوارئ (' + (f.edSrc === 'osm-tag' ? 'وسم OSM' : 'قائمة رسمية') + ')', 'Has an emergency department (' + (f.edSrc === 'osm-tag' ? 'OSM tag' : 'official list') + ')') : f.ed === 'no' ? T('لا قسم طوارئ', 'No emergency department') : T('الطوارئ غير مؤكدة في البيانات', 'Emergency department not confirmed in the data');
-      res.push({ id: fr.id, kind: f.kind, role: f.role || null, facilityType: f.facilityType || null, name: facLabel(W, fr), lon: fr.lon, lat: fr.lat, muni: f.muni, ed: isHospitalLike(f) ? f.ed : null, edNote: edNote,
+      res.push({ id: fr.id, kind: f.kind, role: f.role || null, facilityType: f.facilityType || null, name: facLabel(W, fr), sub: labelSub(W, fr.id), verified: W.labels[fr.id].verified, cls: W.labels[fr.id].cls, edVerified: W.labels[fr.id].edVerified, lon: fr.lon, lat: fr.lat, muni: f.muni, ed: isHospitalLike(f) ? f.ed : null, edNote: edNote,
         straightKm: r1(straight / 1000), bearingDeg: Mth.round(brg), bearing: compass(brg), roadMinFree: free === null ? null : r1(free / 60), roadMinNow: r1(it.now / 60), delayPct: free ? Mth.round((it.now / free - 1) * 100) : null,
         call: { key: 'nat.call999', text: MSG['nat.call999'] }, credit: { key: 'nat.credit', text: MSG['nat.credit'] }, sim: true,
         note: T('الزمن تقدير على شبكة الطرق (محاكاة للازدحام) وليس تعليمات ملاحة', 'The time is an estimate on the road network (simulated congestion), not a navigation instruction') });
@@ -2259,6 +2331,9 @@
     return out;
   }
   function polyline(nat, edge) { var pl = nat.W.G.polyline(edge), out = [], i; for (i = 0; i < pl.length; i += 2) out.push([pl[i], pl[i + 1]]); return out; }
+  // The opening demo of Mission Control (fixed, checked by tools/manara/test-national.mjs): a fire in Al Thumama (Doha) on a Sunday morning rush hour with the default engine
+  // (seed 7, winter). The unit that arrives FIRST is NOT the nearest in a straight line, so the first screen already shows "fastest, not nearest".
+  var DEMO = { hazard: 'fire', severity: 2, lon: 51.56147, lat: 25.23494, seed: 7, date: '2026-01-11', hour: 7.75, placeId: null };
   var API = {
     VERSION: VERSION, SIM_LABEL: SIM_LABEL, PARAMS: PARAM_DEFS, PARAM_GROUPS: PARAM_GROUPS, MSG: MSG, HAZARDS: HAZARDS, HAZARD_NAME: HAZARD_NAME, KIND_NAME: KIND_NAME, REQUIRED: REQUIRED, PROFILES: PROFILES, DOW_NAMES: DOW_NAMES,
     defaults: defaultParams, create: create, restart: function (nat, over) { return create(Object.assign({}, nat.opts, over || {})); },
@@ -2276,6 +2351,10 @@
     fields: hazardFields, heatField: heatField, dustField: dustField, rainField: rainField, visibility: visIndex, wbgtEstimate: wbgtEstimate, heatExposure: heatExposure, kpis: kpis, municipalities: municipalityStatus, advisories: advisories, renderMsg: renderMsg, middayBan: function (nat, t) { return inMiddayBan(clockInfo(nat.start, t === undefined ? nat.t : t)); },
     // phones
     nearestFacilities: nearestFacilities,
+    // display labels of the facilities (never '(unnamed in OSM)'): {id, ar, en, sub, generic, verified, hasAr, hasEn, raw, place, type, cls 'ed'|'hospital'|'minor'|'other', edVerified}
+    facilityLabel: function (nat, id) { var W = nat.W; if (!W.labels) buildLabels(W); return W.labels[id] || null; },
+    facilityLabels: function (nat) { var W = nat.W; if (!W.labels) buildLabels(W); return W.labels; },
+    DEMO: DEMO,
     // A/B, demonstration
     ab: ab, sensitivity: sensitivity, findFartherButFaster: findFartherButFaster, sampler: makeSampler,
     // low-level (tests): the graph, a cost array, a Dijkstra on any cost array
