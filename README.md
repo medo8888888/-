@@ -21,7 +21,7 @@ python3 tools/build.py
 ## النشر على Cloudflare (مع المساعد الذكي)
 
 1. Cloudflare ← **Workers & Pages** ← الـ Worker الحالي `noisy-water-017a` ← **Settings** ← **Build** ← **Connect** ← اختر هذا المستودع والفرع (اسم الـ Worker في `wrangler.jsonc` مطابق له).
-2. اترك أمر البناء فارغاً، وأمر النشر: `npx wrangler deploy` (يقرأ `wrangler.jsonc` تلقائياً).
+2. أمر البناء: `npm run build` (يبني الموقعين ويولّد نسخة `site/manara/` من مجلد `manara/` — **لازم** حتى تظهر منارة على `/manara/` لأن النسخة خارج git)، وأمر النشر: `npx wrangler deploy` (يقرأ `wrangler.jsonc` تلقائياً).
 3. بعد النشر: إعدادات الـ Worker ← **Variables and Secrets** ← أضف **Secret** باسم `GEMINI_API_KEY` وقيمته مفتاحك من Google AI Studio.
    (أو من جهازك: `npx wrangler secret put GEMINI_API_KEY`)
 4. يُنصح بإضافة قاعدة **Rate limiting** في Cloudflare على المسار `/api/chat`.
@@ -30,12 +30,13 @@ python3 tools/build.py
 
 النموذج الافتراضي في `wrangler.jsonc` ← `vars.GEMINI_MODEL`، ويمكن تغييره دون تعديل الكود.
 
-**رفع مباشر (بدون GitHub):** ارفع محتوى مجلد `site/` (أو الملف المضغوط) إلى الـ Worker عبر Upload assets؛ يعمل كل شيء، والمساعد يجيب من نص الكتيب («وضع الكتيب»). إجابات Gemini تحتاج طريقة GitHub أعلاه مع المفتاح السري.
+**رفع مباشر (بدون GitHub):** شغّل `npm run sync:manara` أولًا (ليدخل `site/manara/`) ثم ارفع محتوى مجلد `site/` (أو الملف المضغوط) إلى الـ Worker عبر Upload assets؛ يعمل كل شيء، والمساعد يجيب من نص الكتيب («وضع الكتيب»). إجابات Gemini تحتاج طريقة GitHub أعلاه مع المفتاح السري.
 
 ## التشغيل محلياً
 
 ```bash
 cp .dev.vars.example .dev.vars   # ضع مفتاحك هنا (الملف مُستثنى من git)
+npm run sync:manara              # مرة واحدة: ينسخ منارة إلى site/manara/ ليظهر /manara/ محلياً
 npx wrangler dev
 npm test                         # اختبارات الـ Worker
 ```
@@ -62,3 +63,12 @@ node tools/yanabee/test-ui.mjs                 # اختبارات البحث و�
 **البحث:** زر البحث أو <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>K</kbd> أو <kbd>/</kbd> — بحث عربي يتجاهل التشكيل والهمزات ويعمل دون اتصال.
 
 **«مساعد ينابيع»:** يستخدم مفتاح `GEMINI_API_KEY` نفسه (لا إعداد إضافي)؛ ترسل الصفحات `site: "yanabee"` إلى `/api/chat` فيجيب الـ Worker بتعليمات ومعرفة ينابيع. إذا لم يتوفر المفتاح أو فُتح الموقع دون الـ Worker، ينتقل المساعد تلقائياً إلى **وضع البحث في الوثائق**: يعرض الفقرات الأقرب إلى السؤال كما وردت حرفياً مع رابط إلى موضعها في الموقع، دون أي نص مولَّد.
+
+## مشروع «منارة» (`/manara/`)
+
+كل ما يخص **منارة** في مجلد واحد: [`manara/`](manara/) (الصفحات والشيفرة والبيانات والوثائق والاختبارات والأدوات). افتح `manara/index.html` مباشرة (يعمل دون إنترنت)، وللتفاصيل — البنية والاختبارات وإعادة بناء البيانات والنشر والرخص والحدود الصريحة — انظر **[`manara/README.md`](manara/README.md)**.
+
+```bash
+npm run test:manara      # كل اختبارات منارة (bash manara/tools/run-all.sh)
+npm run sync:manara      # ينسخ الأجزاء العامة من manara/ إلى site/manara/ (نسخة مولَّدة خارج git يخدمها الـ Worker على /manara/)
+```
