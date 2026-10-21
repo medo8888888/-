@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ar" dir="rtl" data-lang="ar">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title data-en="MANARA — Control Room">منارة — غرفة التحكم</title>
+<meta name="description" content="غرفة التحكم في منارة: طابور إنذارات مرتّب بالأولوية، وجدار بثّ المسيّرات (عادي وحراري ودمج) مع كشف بقواعد الرؤية الحاسوبية، وخريطة قطر الحقيقية، وأسطول المسيّرات، والإرسال الأسرع بحسب الازدحام، وروبوت الإنقاذ، وسجل الاتصالات وملخص التسليم، ومساعد قائد بقواعد صريحة (دعم قرار وليس نموذج لغة). المسيّرات والروبوت مفهوم بنموذج أولي محاكى، والرقم 999 يبقى هو المُرسِل.">
+<meta property="og:title" content="منارة · غرفة التحكم · MANARA Control Room">
+<meta property="og:description" content="A simulated national control room: drone alerts, a live feed wall, the fastest-unit dispatch, a rescue robot and a rule-based commander assistant (decision support, not a language model). Concept with a simulated prototype; 999 stays the dispatcher.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#0a0e15">
+<meta name="color-scheme" content="light dark">
+<script>(function(){var d=document.documentElement,t,l;try{t=localStorage.getItem('manara-theme');l=localStorage.getItem('manara-lang')}catch(e){}var q=/[?&]lang=(ar|en)/.exec(location.search);if(q)l=q[1];if(t!=='light'&&t!=='dark')t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';if(l!=='en')l='ar';d.dataset.theme=t;d.dataset.lang=l;d.lang=l;d.dir=l==='ar'?'rtl':'ltr';d.classList.add('js');setTimeout(function(){if(!window.__manaraReady)d.classList.remove('js')},2500)})();</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/control.css">
+<link rel="stylesheet" href="css/control-feeds.css">
+<link rel="stylesheet" href="css/control-robot.css">
+<link rel="stylesheet" href="css/control-panels.css">
+<link rel="stylesheet" href="css/control-ai.css">
+<script src="js/core.js" defer></script>
+<script src="js/fire.js" defer></script>
+<script src="js/drone-scene.js" defer onerror="(window.__crMissing=window.__crMissing||[]).push('drone-scene.js')"></script>
+<script src="js/sim.js" defer onerror="(window.__crMissing=window.__crMissing||[]).push('sim.js')"></script>
+<script src="js/messages.js" defer></script>
+<script src="data/qatar-geo.js" defer onerror="(window.__crMissing=window.__crMissing||[]).push('qatar-geo.js')"></script>
+<script src="data/qatar-facilities.js" defer onerror="(window.__crMissing=window.__crMissing||[]).push('qatar-facilities.js')"></script>
+<script src="data/qatar-roads.js" defer onerror="(window.__crMissing=window.__crMissing||[]).push('qatar-roads.js')"></script>
+<script src="js/national.js" defer onerror="(window.__crMissing=window.__crMissing||[]).push('national.js')"></script>
+<script src="js/mission-national-map.js" defer onerror="(window.__crMissing=window.__crMissing||[]).push('mission-national-map.js')"></script>
+<script src="js/control.js" defer></script>
+<script src="js/control-ui.js" defer></script>
+<script src="js/control-feeds.js" defer></script>
+<script src="js/control-robot.js" defer></script>
+<script src="js/control-panels.js" defer></script>
+<script src="js/control-ai.js" defer></script>
+<script src="js/control-demo.js" defer></script>
+</head>
+<body data-page="control.html" class="control">
+<a class="skip" href="#main">تخطَّ إلى المحتوى</a>
+<header class="nav" data-nav></header>
+<main id="main" class="cr" tabindex="-1" data-layout="wide" data-state="boot">
+  <h1 class="sr-only"><span data-l="ar">غرفة التحكم — منارة</span><span data-l="en">Control Room — MANARA</span></h1>
+  <noscript><div style="padding:16px"><p class="note warn"><span data-l="ar">تحتاج غرفة التحكم إلى JavaScript. افتح الصفحة في متصفح حديث (تعمل دون إنترنت).</span><span data-l="en">The Control Room needs JavaScript. Open the page in a modern browser (it works offline).</span></p></div></noscript>
+
+  <!-- the console: structure is static (so nothing jumps), content is filled by js/control.js and its modules -->
+  <div class="cr-top" id="cr-top" role="toolbar" aria-label="Control room toolbar"></div>
+  <div class="cr-kpis scroll-x" id="cr-kpis" role="group" aria-label="Key figures (simulation)"></div>
+  <div class="cr-work" id="cr-work">
+    <aside class="cr-queue" id="cr-queue" aria-label="Alert queue"></aside>
+    <section class="cr-center" id="cr-center" aria-label="National map">
+      <div class="cr-stage" id="cr-stage">
+        <canvas id="cr-map" class="cr-map" tabindex="0" aria-describedby="cr-map-summary"></canvas>
+        <canvas id="cr-ov" class="cr-ov" aria-hidden="true"></canvas>
+        <div class="cr-hud" id="cr-hud"></div>
+        <div class="cr-tip" id="cr-tip" role="tooltip" hidden></div>
+        <p id="cr-map-summary" class="sr-only"></p>
+        <div class="cr-boot" id="cr-boot" role="status">
+          <div class="cr-boot-card"><i class="cr-spin" aria-hidden="true"></i>
+            <p><span data-l="ar">جارٍ تجهيز غرفة التحكم: خريطة قطر (بيانات OpenStreetMap محفوظة محليًا) ومحاكاة المسيّرات…</span><span data-l="en">Preparing the Control Room: the map of Qatar (OpenStreetMap data bundled with the page) and the drone simulation…</span></p></div>
+        </div>
+      </div>
+      <div class="cr-demo" id="cr-demo" hidden></div>
+    </section>
+    <aside class="cr-right" id="cr-right" aria-label="Feeds, fleet, dispatch, robot, comms, handover and commander assistant"></aside>
+  </div>
+  <nav class="cr-timeline" id="cr-timeline" aria-label="Timeline of the day"></nav>
+  <div class="cr-foot" id="cr-foot"></div>
+  <nav class="cr-tabbar scroll-x" id="cr-tabbar" aria-label="Panels"></nav>
+</main>
+<div id="cr-live" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+</body>
+</html>
