@@ -68,7 +68,7 @@
    * 2. STATE
    * ==================================================================================== */
   var A = {
-    recs: [], raw: {}, dismissed: {}, done: {}, forced: {}, issued: {}, undo: [], audit: [], auditSeq: 0, convo: [], lastRec: null, lastWhatIf: null,
+    recs: [], raw: {}, routes: {}, dismissed: {}, done: {}, forced: {}, issued: {}, undo: [], audit: [], auditSeq: 0, convo: [], lastRec: null, lastWhatIf: null,
     explain: false, voice: false, backend: null, sitrep: { lines: [], text: '', at: 0 }, cache: { oor: [], thermal: false }, lastAt: 0, active: false, built: false, ui: {}, cards: {}, lines: {}, typing: [], seq: 0, confirm: {}
   };
   var RULE = {
@@ -227,7 +227,7 @@
         });
       });
       if (!hit) return;
-      var route = null; try { route = NN.route(f.nat, { lon: hit.un.lon, lat: hit.un.lat }, { lon: b.lon, lat: b.lat }, f.t, { em: 1.3 }); } catch (e) { route = null; }
+      var ck = hit.un.id + '>' + b.id + '@' + Math.floor(f.t / 30), route = A.routes[ck]; if (route === undefined) { try { route = NN.route(f.nat, { lon: hit.un.lon, lat: hit.un.lat }, { lon: b.lon, lat: b.lat }, f.t, { em: 1.3 }); } catch (e) { route = null; } route = route ? { sec: route.sec } : null; A.routes = Object.keys(A.routes).length > 40 ? {} : A.routes; A.routes[ck] = route; }
       var chosen = hit.u, k = kindT(chosen.kind), unTxt = hit.un.name;
       var driveSec = route ? route.sec : null, gain = driveSec != null && chosen.etaSec ? Math.round(chosen.etaSec - driveSec) : null;
       var why = [T(unTxt.ar + ' محجوزة للإنذار ' + ltr(hit.a.id) + ' (أولوية ' + hit.a.priority + ')، بينما ' + ltr(b.id) + ' (أولوية ' + b.priority + ') أعلى أولوية وكان يريدها.', unTxt.en + ' is committed to alert ' + hit.a.id + ' (priority ' + hit.a.priority + ') while ' + b.id + ' (priority ' + b.priority + ') is more urgent and wanted it.'),

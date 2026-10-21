@@ -40,7 +40,7 @@ window.MANARA_CHAT_KB = {
   emerg: {
     strong: {
       en: ['help me', 'help us', 'send help', 'need help', 'we need help', 'save me', 'not breathing', 'unconscious', 'heart attack', 'cardiac arrest', 'choking', 'drowning', 'trapped', 'on fire', 'caught fire', 'is burning', 'are burning'],
-      ar: ['نجدة', 'ساعدوني', 'ساعدني', 'الحقوني', 'انقذوني', 'أنقذني', 'استغاثة', 'لا يتنفس', 'فاقد الوعي', 'مغمى عليه', 'أزمة قلبية', 'سكتة قلبية', 'محاصرين', 'عالقين', 'يحترق', 'تحترق', 'احترق', 'شبّ حريق']
+      ar: ['نجدة', 'ساعدوني', 'ساعدني', 'الحقوني', 'انقذوني', 'أنقذني', 'استغاثة', 'لا يتنفس', 'فاقد الوعي', 'مغمى عليه', 'أزمة قلبية', 'سكتة قلبية', 'محاصرين', 'عالقين', 'الحقوا', 'يحترق', 'تحترق', 'احترق', 'شبّ حريق']
     },
     hazard: {
       en: ['fire', 'smoke', 'burning', 'flame', 'gas', 'gas leak', 'flood', 'flooding', 'flash flood', 'dust storm', 'sandstorm', 'heat stroke', 'heatstroke', 'carbon monoxide', 'ambulance', 'sos', 'emergency', 'collapsed', 'explosion', 'needs help', 'someone needs help'],
@@ -51,7 +51,7 @@ window.MANARA_CHAT_KB = {
       ar: ['نجدة', 'حريق', 'نار', 'دخان', 'غاز', 'سيول', 'إسعاف', 'طوارئ', 'مساعدة']
     },
     urgent: {
-      en: ['now', 'urgent', 'urgently', 'quickly', 'hurry', 'right now', 'there is', 'there s', 'theres', 'my house', 'my home', 'my flat', 'my apartment', 'my building', 'my kitchen', 'my car', 'my room', 'my office', 'our house', 'our building', 'i smell', 'i can smell', 'i see', 'we see', 'caught', 'burning', 'need', 'send', 'call'],
+      en: ['now', 'urgent', 'urgently', 'quickly', 'hurry', 'right now', 'there is', 'there s', 'theres', 'my house', 'my home', 'my flat', 'my apartment', 'my building', 'my kitchen', 'my car', 'my room', 'my office', 'our house', 'our building', 'i smell', 'i can smell', 'i see', 'we see', 'caught', 'burning', 'need'],
       ar: ['الآن', 'حالا', 'بسرعة', 'فورا', 'عاجل', 'عندي', 'عندنا', 'يوجد', 'موجود', 'فيه', 'بيتي', 'بيتنا', 'شقتي', 'مطبخي', 'عمارتنا', 'مبنانا', 'أشم', 'اشمّ', 'شميت', 'احترق', 'يحترق', 'تحترق', 'شب', 'محتاج', 'نحتاج', 'أرسلوا', 'اتصلوا']
     },
     info: {   /* a question about the project or a definition: not an emergency by itself */
@@ -66,8 +66,18 @@ window.MANARA_CHAT_KB = {
 
   /* words from outside the project's scope: an entry that does not itself mention them loses points when the question does */
   scopeOut: {
-    en: ['dubai', 'abu dhabi', 'sharjah', 'saudi', 'riyadh', 'kuwait', 'bahrain', 'oman', 'egypt', 'london', 'paris', 'america', 'usa', 'france', 'germany', 'china', 'japan', 'weather', 'football', 'soccer', 'recipe', 'bitcoin', 'stock', 'movie', 'joke', 'poem', 'song', 'capital', 'president', 'prime minister', 'election', 'price of'],
-    ar: ['دبي', 'أبوظبي', 'الشارقة', 'السعودية', 'الرياض', 'الكويت', 'البحرين', 'مصر', 'لندن', 'باريس', 'أمريكا', 'فرنسا', 'ألمانيا', 'الصين', 'اليابان', 'الطقس', 'كرة القدم', 'وصفة', 'بيتكوين', 'أسهم', 'فيلم', 'نكتة', 'قصيدة', 'أغنية', 'عاصمة', 'رئيس', 'انتخابات', 'سعر']
+    en: ['exchange', 'gold', 'airplane', 'airplanes', 'moon', 'french', 'spanish', 'german', 'chinese', 'russian', 'dubai', 'abu dhabi', 'sharjah', 'saudi', 'riyadh', 'kuwait', 'bahrain', 'oman', 'egypt', 'london', 'paris', 'america', 'usa', 'france', 'germany', 'china', 'japan', 'weather', 'football', 'soccer', 'recipe', 'bitcoin', 'stock', 'movie', 'joke', 'poem', 'song', 'capital', 'president', 'prime minister', 'election', 'price of'],
+    ar: ['صرف', 'ذهب', 'القمر', 'فرنسي', 'إسباني', 'ألماني', 'صيني', 'روسي', 'دبي', 'أبوظبي', 'الشارقة', 'السعودية', 'الرياض', 'الكويت', 'البحرين', 'مصر', 'لندن', 'باريس', 'أمريكا', 'فرنسا', 'ألمانيا', 'الصين', 'اليابان', 'الطقس', 'كرة القدم', 'وصفة', 'بيتكوين', 'أسهم', 'فيلم', 'نكتة', 'قصيدة', 'أغنية', 'عاصمة', 'رئيس', 'انتخابات', 'سعر']
+  },
+
+  /* synonyms: each group maps every variant to its first word (the question keeps both forms, so a keyword may use either) */
+  syn: {
+    en: [['fire', 'blaze', 'inferno', 'flames', 'ablaze', 'wildfire'], ['flood', 'inundation', 'deluge', 'floodwater', 'waterlogging'], ['help', 'assist', 'assistance', 'aid', 'rescue'],
+         ['hurt', 'injured', 'wounded', 'injury'], ['phone', 'mobile', 'smartphone', 'cellphone', 'iphone', 'android'], ['cost', 'price', 'pricing', 'expensive', 'budget'],
+         ['drone', 'uav', 'quadcopter', 'uas'], ['law', 'legislation', 'statute'], ['smell', 'odor', 'odour', 'scent', 'stink'], ['accuracy', 'precision', 'reliability', 'correctness'], ['lift', 'elevator'], ['weak', 'weakness', 'weaknesses'],
+         ['wrong', 'mistake', 'error', 'incorrect'], ['alarm', 'siren', 'buzzer'], ['danger', 'hazard', 'threat'], ['fastest', 'quickest'], ['nearest', 'closest'], ['worker', 'labourer', 'laborer', 'employee']],
+    ar: [['حريق', 'حرق', 'حرائق', 'النيران', 'نيران', 'لهيب', 'اشتعال'], ['مسيرة', 'درون', 'مسيرات'], ['هاتف', 'جوال', 'موبايل', 'تلفون', 'الجوال'], ['سعر', 'تكلفة', 'ثمن', 'كلفة', 'تكاليف'],
+         ['خطر', 'خطير', 'خطورة'], ['عامل', 'عمال', 'موظف'], ['صفارة', 'انذار', 'جرس'], ['اصابة', 'اصيب', 'جريح', 'مصاب']]
   },
 
   entries: [
@@ -77,8 +87,8 @@ window.MANARA_CHAT_KB = {
     { id: 'res-fire', aud: 'res',
       q: { ar: 'ماذا أفعل عند حريق أو دخان؟', en: 'What do I do in a fire or smoke?' },
       s: { ar: ['شب حريق في بيتنا ماذا أفعل', 'رأيت دخانا في المبنى', 'كيف أهرب من حريق'], en: ['there is a fire what should i do', 'i see smoke in the building', 'how do i escape a fire', 'fire safety'] },
-      k: { ar: 'حريق^2, حرائق, دخان^2, نار, احتراق, يحترق, لهب, شب حريق^2, اخلاء, هروب, مخرج, مخرج طوارئ, ماذا افعل عند حريق^2, انذار الدخان, الحريق, حريقه',
-           en: 'fire^2, fires, smoke^2, burning, flame, on fire, house fire, building fire, evacuate, evacuation, escape, fire exit, smoke alarm, what to do in a fire^2, caught fire, fire safety' },
+      k: { ar: 'حريق^3, حرائق, دخان^3, نار, احتراق^2, يحترق^3, تحترق^3, احترق^3, لهب, شب حريق^2, اخلاء, هروب, مخرج, مخرج طوارئ, ماذا افعل عند حريق^2, انذار الدخان, الحريق, حريقه',
+           en: 'fire^3, fires, smoke^3, lift^2, elevator^2, burning, flame, on fire, house fire, building fire, evacuate, evacuation, escape, fire exit, smoke alarm, what to do in a fire^2, caught fire, fire safety' },
       a: { ar: `اخرج فورًا واتصل بـ **999** من خارج المبنى، ولا تجمع أغراضك.
 - ابقَ منخفضًا تحت الدخان، وأغلق الأبواب خلفك (إغلاق الأبواب يُبطئ الحريق).
 - استعمل الدرج لا المصعد، وتوجّه إلى نقطة التجمّع المتفق عليها.
@@ -99,7 +109,7 @@ Neighbours downwind of a fire should shelter: close the windows and switch off f
       q: { ar: 'كيف أُطفئ الحريق؟', en: 'How do I put out a fire?' },
       s: { ar: ['شلون اطفي الحريق', 'كيف اطفي النار', 'هل أطفئ الحريق بنفسي', 'هل أستعمل الماء على النار'], en: ['how do i put out the fire', 'can i use water on a fire', 'should i fight the fire myself', 'how to extinguish a fire'] },
       k: { ar: 'اطفي^2, اطفاء^2, اطفئ^2, طفايه^2, اخماد, اخمد, شلون اطفي^3, اكافح الحريق, اطفي النار^2, اطفي الحريق^3, مكافحه',
-           en: 'put out^2, extinguish^2, extinguisher^2, fight fire, fight a fire, hose, water on fire, stop the fire, kill the fire, fire fighting^2, firefighting' },
+           en: 'put out^3, extinguish^3, extinguisher^2, fight fire, fight a fire, hose, water on fire, stop the fire, kill the fire, fire fighting^2, firefighting' },
       a: { ar: `ليست لديّ تعليمات لإطفاء الحريق، ولن أخترع شيئًا. النصيحة التي لديّ: **اخرج واتصل بـ 999**.
 
 إطفاء الحرائق عمل الدفاع المدني، ومنارة نفسها لا تطفئ الحرائق: هي تساعد الناس على الخروج وتتأكد أن الجميع خرجوا. وإن كان أحد ما زال في الداخل فأخبر 999، ولا تعد إلى المبنى.`,
@@ -110,7 +120,7 @@ Putting fires out is the work of Civil Defence, and MANARA does not fight fires 
 
     { id: 'res-fire-extra', aud: 'res',
       q: { ar: 'ماذا أفعل إن حوصرت بالدخان؟', en: 'What if I am trapped by smoke?' },
-      s: { ar: ['محاصر في الغرفة والدخان يدخل', 'الباب ساخن'], en: ['i am stuck in a room with smoke', 'the door is hot', 'trapped in a fire'] },
+      s: { ar: ['محاصر في الغرفة والدخان يدخل', 'الباب ساخن'], en: ['i am stuck in a room with smoke', 'the door is hot', 'stuck and cannot get out'] },
       k: { ar: 'حوصرت^2, محاصر^2, عالق^2, باب ساخن^2, اغلق الباب, قماش مبلل, اشر من النافذه, محبوس',
            en: 'trapped^2, stuck^2, hot door^2, shut the door, wet cloth, signal from a window, cannot get out, blocked exit' },
       a: { ar: `إن حُوصرت: أغلق الباب، وسدّ الفتحات بقماش مبلّل، وأشِر من النافذة، واتصل بـ **999** وأخبرهم أين أنت.
@@ -146,7 +156,7 @@ LPG is heavier than air and pools in cellars, drains and low ground, so keep awa
 
     { id: 'res-co', aud: 'res',
       q: { ar: 'ماذا عن أول أكسيد الكربون؟', en: 'What about carbon monoxide (CO)?' },
-      s: { ar: ['صداع ودوار في الغرفة', 'غاز بلا رائحة'], en: ['headache and dizzy at home', 'gas with no smell', 'co poisoning'] },
+      s: { ar: ['صداع ودوار في الغرفة', 'تسمم بأول أكسيد الكربون'], en: ['headache and dizzy at home', 'co poisoning'] },
       k: { ar: 'اول اكسيد الكربون^3, اكسيد الكربون^2, co^2, صداع^2, دوار^2, غثيان, بلا رائحه, بدون رائحه, تسمم',
            en: 'carbon monoxide^3, co^2, headache^2, dizziness^2, dizzy^2, nausea, no smell, odourless, odorless, poisoning' },
       a: { ar: `أول أكسيد الكربون بلا لون ولا رائحة، فلا تنتظر أن تشمّه. اخرج إلى الهواء النقي فورًا، واتصل بـ **999**، ولا تعد إلى الداخل.
@@ -160,8 +170,8 @@ Anyone with a headache, dizziness or nausea should get fresh air and medical hel
     { id: 'res-flood', aud: 'res',
       q: { ar: 'ماذا أفعل عند سيول أو أمطار غزيرة؟', en: 'What do I do in a flood or heavy rain?' },
       s: { ar: ['الميه دخلت البيت', 'غرق الشارع بالمطر', 'سيول في الحي', 'ارتفع الماء'], en: ['water is rising', 'my street is flooding', 'flash flood what to do', 'heavy rain safety', 'flod'] },
-      k: { ar: 'سيول^3, سيل^2, فيضان^2, امطار, مطر^2, امطار غزيره^2, الميه^2, المي, غرق^2, غمر, ارتفاع الماء^2, مرتفع, ارض مرتفعه, طابق علوي',
-           en: 'flood^3, flooding^3, flash flood^3, flod^2, heavy rain^2, rain^2, water rising^2, waterlogged, higher ground^2, upper floor, drain, storm water, turn around' },
+      k: { ar: 'ماء دخل البيت^4, سيول^3, سيل^2, فيضان^2, امطار, مطر^2, امطار غزيره^2, الميه^2, المي, غرق^2, غمر, ارتفاع الماء^2, مرتفع, ارض مرتفعه, طابق علوي',
+           en: 'water coming into^4, water in the house^4, into our house^3, flood^3, flooding^3, flash flood^3, flod^2, heavy rain^2, rain^2, water rising^2, waterlogged, higher ground^2, upper floor, drain, storm water, turn around' },
       a: { ar: `انتقل إلى طابق أعلى أو مكان مرتفع وابقَ هناك.
 - ابتعد عن فتحات الصرف المكشوفة ومصادر الكهرباء.
 - لا تمشِ ولا تسبح ولا تقد في مياه جارية، بل استدر.
@@ -183,8 +193,8 @@ Call **999** when life is at risk. For other problems the news listed the Munici
     { id: 'res-flood-drive', aud: 'res',
       q: { ar: 'هل أقود عبر مياه السيول أو النفق؟', en: 'Can I drive through flood water or an underpass?' },
       s: { ar: ['أعبر النفق بالسيارة والماء فيه', 'قيادة السيارة في المطر'], en: ['can i drive through water', 'the underpass is flooded', 'driving in flood'] },
-      k: { ar: 'اقود^2, سياره^2, قيادة^2, نفق^3, انفاق^2, عبور^2, اعبر, مياه جاريه^2',
-           en: 'drive^2, driving^2, car^2, underpass^3, tunnel^2, cross^2, moving water^2, vehicle' },
+      k: { ar: 'قيادة في السيول^5, اقود^2, سياره^2, قيادة^2, نفق^3, انفاق^2, عبور^2, اعبر, مياه جاريه^2',
+           en: 'driving in flood^5, drive in flood^5, drive^2, driving^2, car^2, underpass^4, tunnel^3, cross^2, moving water^2, vehicle' },
       a: { ar: `لا. لا تمشِ ولا تسبح ولا تقد في مياه جارية؛ استدر وخذ طريقًا آخر.
 
 بحسب إرشاد هيئة الأرصاد الأمريكية (وليس قطر): نحو 15 سم (6 بوصات) من الماء الجاري قد تُسقط شخصًا، ونحو 30 سم (12 بوصة) قد تطفو بها سيارة. والنفق هو المكان الذي يتجمّع فيه الماء: غُمرت أنفاق في الدوحة بعد أمطار أكتوبر 2018.`,
@@ -197,7 +207,7 @@ According to US National Weather Service guidance (not Qatar): about 15 cm (6 in
       q: { ar: 'ماذا أفعل في عاصفة غبار؟', en: 'What do I do in a dust storm?' },
       s: { ar: ['عجاج كثيف اليوم', 'غبار في الجو والربو'], en: ['dust storm coming', 'sandstorm what to do', 'asthma and dust'] },
       k: { ar: 'غبار^3, عاصفه غباريه^3, عاصفه رمليه^2, عجاج^3, طوز, تراب, ربو^2, كمامه^2, رؤيه ضعيفه, pm10',
-           en: 'dust^3, dust storm^3, sandstorm^3, sand storm, haze, asthma^2, mask^2, poor visibility, pm10, dusty' },
+           en: 'dust^3, dust storm^3, sandstorm^3, sand storm^3, haze, asthma^2, mask^2, poor visibility, pm10, dusty' },
       a: { ar: `ادخل مبنى مغلقًا وأغلق النوافذ والأبواب.
 - إن اضطررت للخروج فغطِّ الأنف والفم بكمّامة أو قماش مبلّل واحمِ عينيك.
 - أبقِ الأطفال وكبار السن ومرضى الربو والرئة في الداخل.
@@ -219,8 +229,8 @@ Call **999** if someone cannot breathe. Confirm the air-quality limits used in Q
     { id: 'res-heat', aud: 'res',
       q: { ar: 'ماذا أفعل في الحرّ الشديد؟', en: 'What do I do in extreme heat?' },
       s: { ar: ['الجو حار مرة', 'العمل في الشمس صيفا', 'متى يمنع العمل وقت الظهيرة'], en: ['it is very hot outside', 'working in the sun in summer', 'midday work ban', 'heat wave advice'] },
-      k: { ar: 'حر^3, حراره^2, حرارة شديده^2, الحر الشديد^3, اجهاد حراري^3, شمس, ظل, ماء, عمال^2, عامل, حظر العمل^2, ظهيره^2, wbgt^2, صيف',
-           en: 'heat^3, hot^2, extreme heat^3, heat wave^2, heat stress^3, sun, shade, water, worker^2, workers^2, midday^2, work ban^2, wbgt^2, summer' },
+      k: { ar: 'الجو حار^4, حار مره^3, حر^3, حراره^2, حرارة شديده^2, الحر الشديد^3, اجهاد حراري^3, شمس, ظل, ماء, عمال^2, عامل, حظر العمل^3, منع العمل^3, ظهيره^3, wbgt^2, صيف',
+           en: 'heat^3, hot^2, extreme heat^3, heat wave^2, heat stress^3, sun, shade, water, worker^2, workers^2, midday^3, work ban^3, wbgt^2, summer' },
       a: { ar: `ابقَ في الظل أو في مكان مبرَّد، واشرب الماء بانتظام.
 - ارتدِ ملابس خفيفة فضفاضة، وبلّل جلدك.
 - تفقّد كبار السن ومن يعيش وحده والأطفال والعمال.
@@ -253,8 +263,8 @@ MANARA cannot measure anyone's body temperature and does not diagnose heat strok
     { id: 'res-help', aud: 'res',
       q: { ar: 'شخص يحتاج مساعدة، ماذا أفعل؟', en: 'Someone needs help. What do I do?' },
       s: { ar: ['شخص سقط ولا يتحرك', 'أحتاج إسعافا', 'مريض في البيت'], en: ['someone collapsed', 'i need an ambulance', 'a person is hurt', 'sos'] },
-      k: { ar: 'مساعده^2, يحتاج مساعده^3, نجده^2, اسعاف^3, استغاثه^2, سقط^2, مصاب^2, مريض, طوارئ^2, لا يتحرك, لا يستجيب',
-           en: 'help^2, needs help^3, need help^3, ambulance^3, sos^2, collapsed^2, hurt^2, injured^2, unconscious^2, emergency^2, medical emergency^2, person fell' },
+      k: { ar: 'مساعده^2, يحتاج مساعده^3, نجده^2, اسعاف^3, ابي اسعاف^3, رجل سقط^3, استغاثه^2, سقط^2, مصاب^2, مريض, طوارئ^2, لا يتحرك, لا يستجيب',
+           en: 'help^2, needs help^3, need help^3, ambulance^3, fell down^3, man fell^3, fall^2, sos^2, collapsed^2, hurt^2, injured^2, unconscious^2, emergency^2, medical emergency^2, person fell' },
       a: { ar: `تأكّد أن المكان آمن لك أولًا، ثم اتصل بـ **999** وقل أين أنت وما حدث.
 - ابقَ مع المصاب وطمئنه، وراقب تنفّسه.
 - إن لم يستجب ولا يتنفّس فاتبع تعليمات المُرسِل، وابدأ الإنعاش إن كنت مدرَّبًا.
@@ -286,9 +296,9 @@ The only first-aid wording in my notes is the heat-stroke steps, and those need 
 
     { id: 'res-alerts', aud: 'res',
       q: { ar: 'كيف تصلني التنبيهات؟', en: 'How do alerts reach me?' },
-      s: { ar: ['كيف أعرف أن هناك خطرا', 'كيف ينبهني التطبيق', 'متى يصلني الإنذار'], en: ['how will i be warned', 'how do i get the warning', 'will my phone ring'] },
-      k: { ar: 'تنبيه^2, تنبيهات^2, انذار^2, اشعار, يصلني^3, كيف تصلني^3, هاتف^2, رساله^2, تحذير, صفاره, حارس, نبهني',
-           en: 'alert^2, alerts^2, warning^2, warn^2, notification, reach me^3, phone^2, message^2, siren, guard, how will i be warned^3, notify' },
+      s: { ar: ['كيف أعرف أن هناك خطرا', 'كيف ينبهني التطبيق', 'متى يصلني الإنذار'], en: ['how will i be warned', 'how do i get the warning', 'will i get a notification'] },
+      k: { ar: 'اعرف ان في خطر^4, تنبيه^2, تنبيهات^2, انذار^2, اشعار, يصلني^3, كيف تصلني^3, هاتف^2, رساله^2, تحذير, صفاره, حارس, نبهني',
+           en: 'know there is danger^4, how do i know^3, alert^2, alerts^2, warning^2, warn^2, notification, reach me^3, phone^2, message^2, siren, guard, how will i be warned^3, notify' },
       a: { ar: `في التصميم يكون التنبيه موجَّهًا وشخصيًا:
 - **موجَّه:** للمبنى أو الكتلة السكنية لا للمدينة كلها.
 - **شخصي:** بلغتك وبصيغة تناسبك: صوت أو اهتزاز أو نص أو بطاقة مصورة، وصوت للمكفوفين، ووميض اختياري للصمّ.
@@ -308,8 +318,8 @@ Nothing public goes out until two independent keys agree and a human approves. O
     { id: 'res-wake', aud: 'res',
       q: { ar: 'كيف توقظني منارة وأنا نائم؟', en: 'How does MANARA wake me at night?' },
       s: { ar: ['ماذا لو لم أسمع الإنذار', 'نوم ثقيل', 'ما صوت التنبيه'], en: ['what if i sleep through the alarm', 'a heavy sleeper', 'what sound does the alert make', 'wake up ladder'] },
-      k: { ar: 'نائم^3, نوم^2, ايقاظ^3, يوقظ^2, سلم الايقاظ^3, الليل^2, ليلا, صوت, نغمه, 520, اهتزاز^2',
-           en: 'asleep^3, sleep^2, sleeping^2, wake^3, wake up^3, waking^2, ladder^2, night^2, sound^2, tone^2, 520 hz^2, vibration^2, sleep through the alarm^3' },
+      k: { ar: 'نائم^3, لم اسمع^3, ما اسمع^3, اسمع الانذار^3, نوم^2, ايقاظ^3, يوقظ^2, سلم الايقاظ^3, الليل^2, ليلا, صوت, نغمه, 520, اهتزاز^2',
+           en: 'asleep^3, did not hear^3, cannot hear the alarm^3, sleep^2, sleeping^2, wake^3, wake up^3, waking^2, ladder^2, night^2, sound^2, tone^2, 520 hz^2, vibration^2, sleep through the alarm^3' },
       a: { ar: `في الليل تستعمل منارة «سلّم إيقاظ»: رسالة عند اللحظة صفر ثم تتكرر بعد 30 و60 و90 ثانية، ويتوقف السلّم عندما تؤكد أنك مستيقظ. وعند 60 ثانية تصل الحارسَ قائمة أولويات ليطرق الأبواب.
 
 أما الصوت: ذكر بحث نشرته مؤسسة NFPA (2020) أن نغمة منخفضة التردد 520 هرتز بنمط ثلاث نبضات كانت الأكثر فاعلية لإيقاظ ضعاف السمع. ومكبرات الهواتف الصغيرة تعيد 520 هرتز بضعف، فنقرنها باهتزاز قوي ووميض اختياري للصمّ. ولا نقلّد نغمة الإنذار الوطني، فقد حذّرت وزارة الداخلية من عواقب قانونية.`,
@@ -334,8 +344,8 @@ We have not measured what share of people each layer reaches. In the simulation 
     { id: 'res-languages', aud: 'res',
       q: { ar: 'بأي لغات تصلني الرسائل؟', en: 'Which languages do the messages use?' },
       s: { ar: ['هل توجد رسائل بالمالايالامية', 'اللغات المدعومة', 'لغة العمال'], en: ['do you support malayalam', 'what languages are supported', 'languages for workers', 'is it translated'] },
-      k: { ar: 'لغه^3, لغات^3, ترجمه^3, عربي, انجليزي, مالايالام^2, نيبال^2, بنغال^2, اردو^2, تاغالوغ^2, هندي^2, سنهال, تاميل, عامل اجنبي',
-           en: 'language^3, languages^3, translation^3, translated^2, translate^2, arabic, english, malayalam^2, nepali^2, bengali^2, urdu^2, tagalog^2, hindi^2, sinhala, tamil, sinhalese' },
+      k: { ar: 'لغه^3, لغات^3, ترجمه^3, عربي, انجليزي, مالايالام^3, نيبال^3, بنغال^3, اردو^3, تاغالوغ^3, هندي^3, نسخه^2, سنهال, تاميل, عامل اجنبي',
+           en: 'language^3, languages^3, translation^3, translated^2, translate^2, arabic, english, malayalam^3, nepali^3, bengali^3, urdu^3, tagalog^3, hindi^3, version^2, sinhala, tamil, sinhalese' },
       a: { ar: `العربية والإنجليزية كاملتان. أما اللغات الست (المالايالامية والنيبالية والبنغالية والأردية والتاغالوغية والهندية) فمسودات مكتوب عليها «تحتاج مراجعة متحدث أصلي» حتى يوقّع عليها مراجع.
 
 اخترناها لأن أكبر الجاليات بحسب تقديرات السفارات 2015–2017 (وليست أرقامًا رسمية) من الهند ونيبال وبنغلاديش والفلبين وباكستان؛ وجالية سريلانكا (السنهالية والتاميلية) خارج المجموعة حاليًا. والبطاقات المصورة تحمل الرسالة الأساسية للجميع، ولا نستخدم ترجمة آلية حيّة أبدًا.`,
@@ -346,8 +356,8 @@ We chose them because the largest communities in the 2015–2017 embassy estimat
 
     { id: 'res-access', aud: 'res',
       q: { ar: 'ماذا عن الصمّ والمكفوفين ومستخدمي الكراسي المتحركة؟', en: 'What about Deaf, blind and wheelchair users?' },
-      s: { ar: ['رسائل للصم', 'للمكفوفين رسالة صوتية', 'مقعد متحرك والدرج', 'كبار السن'], en: ['messages for deaf residents', 'voice message for blind people', 'wheelchair and stairs', 'elderly residents', 'disabled'] },
-      k: { ar: 'اصم^3, صم^3, مكفوف^3, كفيف^3, ضرير, اعاقه^2, كرسي متحرك^3, مقعد متحرك^3, عكاز, كبار السن^2, مسن^2, وميض^2, اهتزاز, بطاقه مصوره^2, حساسيه ضوئيه^2',
+      s: { ar: ['رسائل للصم', 'للمكفوفين رسالة صوتية', 'كرسي متحرك وإرشاد الخروج', 'كبار السن'], en: ['messages for deaf residents', 'voice message for blind people', 'wheelchair and stairs', 'elderly residents', 'disabled'] },
+      k: { ar: 'يعرف المخرج^3, اصم^3, صم^3, مكفوف^3, كفيف^3, ضرير, اعاقه^2, كرسي متحرك^3, مقعد متحرك^3, عكاز, كبار السن^2, مسن^2, وميض^2, اهتزاز, بطاقه مصوره^2, حساسيه ضوئيه^2',
            en: 'deaf^3, blind^3, wheelchair^3, disabled^2, disability^2, mobility^2, elderly^2, older people^2, stairs^2, strobe^2, flashing^2, seizure^2, picture card^2, accessibility^2, hearing' },
       a: { ar: `- **الصمّ:** اهتزاز قوي ونص ورموز، مع وميض اختياري. الوميض مغلق افتراضيًا ومعه تحذير من الحساسية الضوئية، ولا يتجاوز ثلاث وميضات في الثانية (معيار WCAG 2.3.1).
 - **المكفوفون:** رسالة صوتية بخطوات واضحة.
@@ -379,7 +389,7 @@ Any trial with real pupils needs a school partnership, parental consent and ethi
     { id: 'res-privacy', aud: 'both',
       q: { ar: 'ماذا عن خصوصيتي؟ هل تتتبعونني؟', en: 'What about my privacy? Do you track me?' },
       s: { ar: ['هل تصورون الناس', 'من يرى بياناتي', 'هل تحفظون موقعي'], en: ['are you filming people', 'who sees my data', 'do you store my location', 'data protection'] },
-      k: { ar: 'خصوصيه^3, خصوصيتي^3, تتبع^3, تتبعون^3, بيانات^2, موقعي^2, موقع^2, تصوير^2, تصورون^2, حمايه البيانات^3, سجل الاحتياجات, اسماء, كاميره^2',
+      k: { ar: 'تسجلون^3, تسجلون موقعي^4, خصوصيه^3, خصوصيتي^3, تتبع^3, تتبعون^3, بيانات^2, موقعي^2, موقع^2, تصوير^2, تصورون^2, حمايه البيانات^3, سجل الاحتياجات, اسماء, كاميره^2',
            en: 'privacy^3, track^3, tracking^3, data^2, location^2, filming^2, filmed^2, camera^2, data protection^3, personal data^3, names^2, register^2, gdpr' },
       a: { ar: `منارة لا تتتبّعك.
 - تسجيل الحضور يرسل رقم الغرفة والحالة (بخير / أحتاج مساعدة) فقط، دون أسماء.
@@ -402,8 +412,8 @@ In a real building any camera needs the owner's consent, signage and a legal rev
     { id: 'res-checkin', aud: 'res',
       q: { ar: 'كيف أسجّل أنني بخير؟', en: 'How do I check in as safe?' },
       s: { ar: ['زر أنا بخير', 'كيف يعرفون أنني خرجت', 'العدّ والإحصاء'], en: ['i am safe button', 'how do they know i got out', 'headcount', 'check in point'] },
-      k: { ar: 'انا بخير^3, بخير^2, تسجيل الحضور^3, تسجيل^2, احتاج مساعده^2, عد^2, احصاء^2, حصر, نقطه التجمع^2, تجمع, MANARA-SAFE^3, نقطه تسجيل',
-           en: 'i am safe^3, safe^2, check in^3, checkin^3, check-in^3, headcount^3, head count^3, count^2, counted^2, assembly point^2, meeting point, manara safe^3, register' },
+      k: { ar: 'خرجت^3, كيف يعرفون اني خرجت^5, انا بخير^3, بخير^2, تسجيل الحضور^3, تسجيل^2, احتاج مساعده^2, عد^2, احصاء^2, حصر, نقطه التجمع^2, تجمع, MANARA-SAFE^3, نقطه تسجيل',
+           en: 'i got out^4, know i got out^4, got out^3, how do they know^2, i am safe^3, safe^2, check in^3, checkin^3, check-in^3, headcount^3, head count^3, count^2, counted^2, assembly point^2, meeting point, manara safe^3, register' },
       a: { ar: `بعد التنبيه يمكنك الضغط على «أنا بخير» أو «أحتاج مساعدة» في صفحة الهاتف. يُرسَل رقم الغرفة والحالة فقط.
 
 وهناك طرق أخرى للإحصاء: نقطة تسجيل الحضور دون إنترنت «MANARA-SAFE» (نقطة وايفاي تعمل بلا إنترنت)، وجهاز المعلمة، والحارس. وترى غرفة العمليات عدًّا حيًّا مقابل السجلّ: بخير، يحتاج مساعدة، غير محسوب. وكل السكان في العرض افتراضيون.`,
@@ -415,8 +425,8 @@ Other ways to be counted: the offline check-in point MANARA-SAFE (a Wi-Fi access
     { id: 'res-numbers', aud: 'both',
       q: { ar: 'ما أرقام الطوارئ؟', en: 'What are the emergency numbers?' },
       s: { ar: ['رقم الدفاع المدني', 'رقم الإسعاف', 'رقم الطوارئ في قطر', 'رقم البلدية'], en: ['what is the civil defence number', 'ambulance number', 'emergency number in qatar', 'call 999', 'number for the municipality'] },
-      k: { ar: 'رقم^3, ارقام^3, ارقام الطوارئ^3, الخط الساخن^2, 999^3, 992^2, 184, 188, 991, هاتف الطوارئ^2, اتصل^2',
-           en: 'number^3, numbers^3, emergency number^3, hotline^2, helpline^2, 999^3, 992^2, 184, 188, 991, phone number^2, call^2, who do i call^2' },
+      k: { ar: 'رقم الاسعاف^5, رقم الدفاع المدني^5, رقم^3, ارقام^3, ارقام الطوارئ^3, الخط الساخن^2, 999^3, 992^2, 184, 188, 991, هاتف الطوارئ^2, اتصل^1',
+           en: 'ambulance number^5, civil defence number^5, number^3, numbers^3, emergency number^3, hotline^2, helpline^2, 999^3, 992^2, 184, 188, 991, phone number^2, call^1, who do i call^2' },
       a: { ar: `**999** هو رقم الطوارئ في قطر، وهو من يرسل الفرق. وللمتصل الأصمّ قناة مخصصة لدى وزارة الداخلية على 992.
 
 وفي الأمطار الغزيرة نشرت الأخبار أرقام البلدية (184) وأشغال (188) وكهرماء (991 عند انقطاع الكهرباء). الأرقام قد تتغيّر، فأكِّدها مع الجهة المختصة. ومنارة لا تتصل بـ 999 نيابةً عنك أبدًا.`,
@@ -428,8 +438,8 @@ In heavy rain the news listed the Municipality (184), Ashghal (188) and Kahramaa
     { id: 'res-demo-status', aud: 'both',
       q: { ar: 'هل هذا نظام إنذار حقيقي؟', en: 'Is this a real alert system?' },
       s: { ar: ['هل ستتصل منارة بالدفاع المدني', 'هل يعمل في بيتي الآن', 'هل هو رسمي'], en: ['will manara call civil defence', 'can i use it in my home now', 'is it official', 'is this real'] },
-      k: { ar: 'حقيقي^3, رسمي^3, حقيقيه^2, يعمل في بيتي^2, يتصل بالدفاع المدني^2, معتمد^2, تجريبي^2, نموذج اولي^2, طلاب',
-           en: 'real^3, official^3, certified^2, use it at home^2, call civil defence^2, prototype^2, demo^2, student project^2, is it real^3, actually work' },
+      k: { ar: 'اعتمد عليه^4, اعتمد^3, تتصل منارة^4, ستتصل^4, حقيقي^3, رسمي^3, حقيقيه^2, يعمل في بيتي^2, يتصل بالدفاع المدني^2, معتمد^2, تجريبي^2, نموذج اولي^2, طلاب',
+           en: 'rely on^4, rely^3, trust^2, real^3, official^3, certified^2, use it at home^2, call civil defence^2, prototype^2, demo^2, student project^2, is it real^3, actually work' },
       a: { ar: `لا. منارة نموذج أولي طلابي لمسابقة، ومحاكاة. ليست خدمة رسمية، وغير معتمدة، ولا تحلّ محل أي جهاز إنذار أو جهة، ولا ترسل تنبيهًا حقيقيًا إلى أحد.
 
 ومنارة لا تتصل بـ 999 ولا بالدفاع المدني نيابةً عنك. عند الخطر اتصل دائمًا بـ **999** واتبع إرشادات الدفاع المدني.`,
@@ -441,8 +451,8 @@ MANARA does not call 999 or Civil Defence for you. In danger always call **999**
     { id: 'res-false-alarm', aud: 'both',
       q: { ar: 'هل قد تُرسل إنذارات كاذبة؟', en: 'Could it send false alarms?' },
       s: { ar: ['إرهاق الإنذارات', 'ماذا لو أخطأ الحساس', 'إنذار خاطئ'], en: ['alert fatigue', 'what if the sensor is wrong', 'will people ignore alerts'] },
-      k: { ar: 'انذار كاذب^3, انذارات كاذبه^3, كاذب^2, خاطئ^2, اخطاء^2, ارهاق الانذارات^3, تجاهل^2, خطا',
-           en: 'false alarm^3, false alarms^3, false alert^3, false^2, wrong^2, alert fatigue^3, cry wolf^2, ignore alerts^2, mistake' },
+      k: { ar: 'انذار كاذب^3, انذارات كاذبه^3, كاذب^2, خاطئ^2, اخطاء^2, ارهاق الانذارات^3, تجاهل^2, خطا, !مسيره',
+           en: 'false alarm^3, false alarms^3, false alert^3, false^2, wrong^2, alert fatigue^3, cry wolf^2, ignore alerts^2, mistake, !drone, !patrols' },
       a: { ar: `نعم، هذا خطر حقيقي. نخفّفه بثلاثة أمور: مفتاحان مستقلان وموافقة إنسان قبل أي تنبيه عام؛ ومناطق مستهدفة (المبنى أو الكتلة لا المدينة)؛ وثلاثة مستويات (مراقبة، احتماء، إخلاء) فتكون أغلب التنبيهات هادئة.
 
 وداخل المبنى لا تنتظر الصفّارة المحلية وأسهم المخارج، كأي جهاز إنذار. أما ما لم نفعله فقياس معدل الإنذارات الكاذبة على مدى أسابيع في مبنى حقيقي.`,
@@ -454,7 +464,7 @@ Inside the building the local siren and exit arrows do not wait, like any fire a
     { id: 'res-drone-sees', aud: 'both',
       q: { ar: 'ماذا ترى المسيّرة؟', en: 'What does the drone see?' },
       s: { ar: ['هل تصور المسيرة بيتي', 'كاميرا المسيرة والخصوصية', 'هل تتعرف على الوجوه'], en: ['does the drone film my home', 'drone camera and privacy', 'face recognition', 'what can the drone see'] },
-      k: { ar: 'مسيره^2, درون^2, طائره^2, ماذا ترى^3, ترى^2, كاميره المسيره^3, وجوه^2, تعرف على الوجوه^3, تصوير, حراري^2',
+      k: { ar: 'طائره بدون طيار^3, مسيره^2, درون^2, ماذا ترى^3, ترى^2, كاميره المسيره^3, وجوه^2, تعرف على الوجوه^3, تصوير, حراري^2',
            en: 'drone^2, drones^2, what does the drone see^3, see^2, drone camera^3, faces^2, face recognition^3, thermal^2, filming, aerial' },
       a: { ar: `في عرضنا لا يُصوَّر أحد: تغذية المسيّرة مشهد جوي **مولَّد بالحاسوب** وموسوم SIM. وفي نشر حقيقي تشغّلها جهة مرخَّصة.
 
@@ -477,8 +487,8 @@ Our design limits harm: the drone launches only for an alert or an assigned patr
     { id: 'jud-what', aud: 'jud',
       q: { ar: 'ما هي منارة؟', en: 'What is MANARA?' },
       s: { ar: ['عرّفني بالمشروع', 'ما فكرة المشروع', 'ما معنى منارة', 'ما المشكلة التي تحلها'], en: ['tell me about the project', 'what is the idea', 'what problem does it solve', 'what does manara mean', 'explain manara', 'wat is manra'] },
-      k: { ar: 'منارة^3, مشروع^2, فكره^2, ما هي منارة^3, عرفني^2, مشكله, المئه متر^2, اخر مئه متر^3, نبذه',
-           en: 'manara^3, manra^2, project^2, idea^2, what is manara^3, last 100 metres^3, last 100 meters^3, lighthouse^2, problem, overview^2, about the project^2, summary^2' },
+      k: { ar: 'منارة^3, مشروع^1, فكره^2, ما هي منارة^3, عرفني^2, مشكله, المئه متر^2, اخر مئه متر^3, نبذه',
+           en: 'manara^3, manra^2, project^1, idea^2, what is manara^3, last 100 metres^3, last 100 meters^3, lighthouse^2, problem, overview^2, about the project^2, summary^2' },
       a: { ar: `منارة («المنارة» = Lighthouse) نموذج أولي طلابي لـ **«آخر مئة متر»** في أي طارئ: أن يستيقظ كل شخص قرب الخطر، ويفهم ماذا يفعل **لهذا الخطر** بلغته وبصيغته، ويسلك طريقًا آمنًا فعلًا الآن، ويُحصى؛ وأن يصل المساعدةُ بسرعة إلى من يحتاجها.
 
 مسار واحد يغطي ستة أخطار: حريق ودخان، تسرّب غاز، سيول، عاصفة غبار، حرّ شديد، وشخص يحتاج مساعدة. ومنارة لا تكافح الحرائق ولا تحلّ محل 999 أو الدفاع المدني أو نظام الإنذار الوطني. شعارها: لا نائمَ يُنسى، ولا أحدَ يُترك خلفنا. وهي مفهوم بنموذج أولي محاكى، وليست منتجًا معتمدًا.`,
@@ -528,8 +538,8 @@ These are cheap parts with real limits: MQ sensors respond to several gases and 
     { id: 'jud-prove', aud: 'both',
       q: { ar: 'لماذا مفتاحان وموافقة إنسان؟ (الدليل قبل الذعر)', en: 'Why two keys and a human? (Proof before panic)' },
       s: { ar: ['من يقرر إرسال التنبيه', 'لماذا ننتظر الإنسان', 'مفتاح الإنسان'], en: ['who decides to alert', 'why wait for a human', 'what are the two keys', 'human approval'] },
-      k: { ar: 'مفتاحان^3, مفتاح^2, الدليل قبل الذعر^3, اعتماد^2, موافقه^2, مشغل^2, تحقق^2, اتحقق, اشتباه^2, مؤكد^2',
-           en: 'two keys^3, key^2, keys^2, proof before panic^3, approve^2, approval^2, operator^2, verify^2, verification^2, suspect^2, confirmed^2, human in the loop^2' },
+      k: { ar: 'حساس واحد^4, مفتاحان^3, من يقرر^4, يقرر ارسال^4, مفتاح^2, الدليل قبل الذعر^3, اعتماد^2, موافقه^2, مشغل^2, تحقق^2, اتحقق, اشتباه^2, مؤكد^2',
+           en: 'one sensor^4, single sensor^4, trigger^2, alone^2, two keys^3, who decides^4, decides to alert^4, key^2, keys^2, proof before panic^3, approve^2, approval^2, operator^2, verify^2, verification^2, suspect^2, confirmed^2, human in the loop^2' },
       a: { ar: `حسّاس واحد لا يتجاوز أبدًا مرحلة **«اشتباه»**. للتأكيد يلزم دليلان **مستقلان** (مبدأ فيزيائي مختلف أو مكان مختلف أو مصدر رسمي)، ثم يضغط المشغّل «اعتماد» قبل أي تنبيه عام. وسبب ذلك أن تنبيهًا عامًا كاذبًا يعلّم الناس تجاهل التنبيه الحقيقي التالي.
 
 داخل المبنى لا شيء ينتظر: الصفّارة المحلية وأسهم المخارج تعمل فورًا كأي جهاز إنذار. ولم نقِس زمن مشغّل حقيقي؛ في العرض يعتمد مشغّل محاكى بعد زمن افتراضي قابل للتعديل (20 ثانية).`,
@@ -540,9 +550,9 @@ Inside the building nothing waits: the local siren and exit arrows fire at once,
 
     { id: 'jud-reach', aud: 'jud',
       q: { ar: 'كيف تصل الرسالة إلى كل شخص (الإبلاغ)؟', en: 'How does the message reach each person (Reach)?' },
-      s: { ar: ['رسالة شخصية', 'لغة وصيغة كل شخص', 'ما الفرق عن الرسالة العامة'], en: ['personal message', 'language and format for each person', 'difference from a broadcast', 'cell broadcast'] },
-      k: { ar: 'ابلاغ^2, رساله شخصيه^3, بث^2, رساله نصيه^2, مناطق^2, موجه^2, الانذار الوطني^3, نظام التحذير^2, cap^2',
-           en: 'reach^2, personal message^3, broadcast^3, cell broadcast^3, sms^2, text message^2, zones^2, targeted^2, national warning^3, warning system^2, cap^2' },
+      s: { ar: ['رسالة شخصية', 'لغة وصيغة كل شخص', 'الفرق بين البث والرسالة الشخصية'], en: ['personal message', 'language and format for each person', 'difference from a broadcast', 'cell broadcast'] },
+      k: { ar: 'لغه مختلفه^3, ابلاغ^2, رساله شخصيه^3, لغه وصيغه^3, كل شخص^3, الرساله العامه^4, بث^3, رساله نصيه^2, مناطق^2, موجه^2, الانذار الوطني^3, نظام التحذير^2, cap^2',
+           en: 'different language^4, language for each^4, reach^2, personal message^3, format for each person^4, each person^3, broadcast^3, cell broadcast^3, sms^2, text message^2, zones^2, targeted^2, national warning^3, warning system^2, cap^2' },
       a: { ar: `البثّ رسالة واحدة بصيغة واحدة لكل من في المنطقة، وهو مفيد وسنسلّم رسالتنا إلى مثل هذه القنوات عبر صيغة CAP القياسية. لكنه لا يستطيع أن يصعد مع النائم حتى يستجيب، ولا أن يوقظ الأصمّ باهتزاز وبطاقة مصورة، ولا أن يخاطب قارئ المالايالامية بلغته، ولا أن يعرف أن مخرجًا أُقفل للتوّ، ولا أن يعدّ من خرج.
 
 فالبثّ للمنطقة، ومنارة للشخص، و999 للاستجابة. ولم نختبر الإرسال عبر شبكة بثّ حقيقية.`,
@@ -567,8 +577,8 @@ Each exit has a state: OPEN, SMOKE, FIRE or LOCKED ("exit truth"). When a state 
     { id: 'jud-count', aud: 'jud',
       q: { ar: 'كيف يُحصى من خرج (العدّ)؟', en: 'How is everyone counted (Count)?' },
       s: { ar: ['غير محسوب', 'السجل والحضور'], en: ['unaccounted people', 'register and headcount'] },
-      k: { ar: 'عد^2, احصاء^2, حضور, سجل, غير محسوب^3, مفقود, headcount^2',
-           en: 'count^2, counted, unaccounted^3, register^2, headcount^3, accounted for, missing people' },
+      k: { ar: 'من خرج^3, عد^2, احصاء^2, حضور, سجل, غير محسوب^3, مفقود, headcount^2',
+           en: 'who got out^4, how do you count^4, count^2, counted, unaccounted^3, register^2, headcount^3, accounted for, missing people' },
       a: { ar: `بعد التنبيه يسجّل الناس «أنا بخير» أو «أحتاج مساعدة» من هواتفهم أو من لوحة المكان أو من نقطة «MANARA-SAFE» دون إنترنت أو من جهاز المعلمة. وتقارنها غرفة العمليات بسجلّ المقيمين: **بخير / يحتاج مساعدة / غير محسوب**، لكل غرفة.
 
 إن وجد الروبوت (في المحاكاة) مقيمًا لم يسجّل حضوره فهو خانة منفصلة «تم تحديد مكانه»، ولا يُحسب «بخير».`,
@@ -592,7 +602,7 @@ If the robot (in the simulation) finds a resident who has not checked in, that i
 
     { id: 'jud-hazards', aud: 'jud',
       q: { ar: 'لماذا هذه الأخطار الستة؟', en: 'Why these six hazards?' },
-      s: { ar: ['ما الأخطار التي تغطيها', 'لماذا لا زلازل'], en: ['which hazards do you cover', 'why not earthquakes', 'six hazards'] },
+      s: { ar: ['ما الأخطار التي تغطيها', 'لماذا اخترتم هذه الأخطار'], en: ['which hazards do you cover', 'why did you choose these hazards', 'six hazards'] },
       k: { ar: 'الاخطار^3, ستة اخطار^3, ست^2, خطر^2, لماذا هذه^2, سيناريو',
            en: 'hazards^3, six hazards^3, six^2, why these^3, hazard^2, scenarios^2, which hazards^3' },
       a: { ar: `لأن «آخر مئة متر» هي المشكلة نفسها في كلها: أن يستيقظ الناس ويفهموا ويتحركوا في الاتجاه الصحيح ويُعدّوا. واخترنا ما له سجلّ في قطر: سيول أكتوبر 2018 (84 ملم في أبو هامور)، وعاصفة أبريل 2015 الغبارية (PM10 فوق 7,000)، وحرّ الصيف وقواعد وزارة العمل، وتسرّب الغاز، والحريق، وحالات الاستغاثة في المنازل.
@@ -619,8 +629,8 @@ We replace no one: 999 stays the dispatcher, Civil Defence fights the fire, and 
     { id: 'jud-drone-vs-others', aud: 'jud',
       q: { ar: 'كيف تختلف عن مشاريع المسيّرات والكاميرات الأخرى؟', en: 'How is it different from other drone projects and CCTV?' },
       s: { ar: ['ماذا عن مسيرة آيسف', 'لماذا لا نكتفي بكاميرات المراقبة', 'لماذا مسيرة أصلا'], en: ['what about the isef drone', 'why not just use cctv', 'why a drone at all', 'cameras instead of drones'] },
-      k: { ar: 'كاميرات المراقبة^3, cctv^3, آيسف^3, isef^3, مشروع مسيره^2, مسيرات الدفاع المدني^2, لماذا مسيره^3, لماذا مسيره اصلا^3',
-           en: 'cctv^3, cameras^2, surveillance cameras^3, isef^3, h2s drone^3, why a drone^3, other drone projects^3, civil defence drones^2, drone project^2' },
+      k: { ar: 'طائره بدون طيار^3, كاميرات بدل المسيرات^4, كاميرات المراقبة^3, cctv^3, آيسف^3, isef^3, مشروع مسيره^2, مسيرات الدفاع المدني^2, لماذا مسيره^3, لماذا مسيره اصلا^3',
+           en: 'cctv^3, cameras instead of drones^4, cameras^3, surveillance cameras^3, isef^3, h2s drone^3, why a drone^3, other drone projects^3, civil defence drones^2, drone project^2' },
       a: { ar: `**كاميرات المراقبة** ثابتة وتغطي أماكنها فقط وتحتاج من يشاهدها. المسيّرة تأتي بمنظور من الخارج ومن الأعلى وبصورة حرارية إلى حيث لا كاميرا. ونحن لا نستبدل الكاميرات: أي تغذية كاميرا يمكن أن تكون مصدرًا في غرفة التحكم وتمرّ بالمفاتيح نفسها. وللمسيّرة حدودها: المدى وحرارة الأرض وتصريح الطيران.
 
 **مشاريع المسيّرات الأخرى:** نحترم مشروع آيسف 2025 لكشف كبريتيد الهيدروجين (المعلن عنوانه وجائزته فقط، ولم نطّلع على تصميمه)، وللدفاع المدني مسيّرات إطفاء أصلًا. ومنارة ليست مشروع مسيّرة: المنتج هو المستشعر الثابت، والمسيّرة اختيارية وتتبع جهة مرخَّصة. لو كشفت مسيّرة تسرّبًا فمنارة هي التي تخبر الناس إلى أين يمشون.`,
@@ -632,7 +642,7 @@ We replace no one: 999 stays the dispatcher, Civil Defence fights the fire, and 
     { id: 'jud-drone-numbers', aud: 'jud',
       q: { ar: 'متى تصل المسيّرة قبل الوحدة الأرضية؟ (أرقام المحاكاة)', en: 'How often does the drone beat the ground units? (SIM numbers)' },
       s: { ar: ['كم نسبة وصول المسيرة أولا', 'ما أرقام المحاكاة الوطنية', 'الحوادث خارج المدى', '90% و244 ثانية'], en: ['how fast does the drone arrive', 'national simulation results', 'incidents out of range', '244 seconds versus 440', 'drone before ground unit'] },
-      k: { ar: 'اولا^2, قبل اول وحده ارضيه^3, 90^2, 244^3, 440^3, 33^2, خارج المدى^3, خارج مدى^3, ارقام^2, نتائج المحاكاه^2, محاكاه^2, وسيط^2, 150 حادث^2',
+      k: { ar: 'نسبه وصول المسيره^5, وصول المسيره^4, اولا^2, قبل اول وحده ارضيه^3, 90^2, 244^3, 440^3, 33^2, خارج المدى^3, خارج مدى^3, ارقام^2, نتائج المحاكاه^2, محاكاه^2, وسيط^2, 150 حادث^2',
            en: 'before the first ground unit^3, ground unit^3, 90%^2, 244^3, 440^3, 33%^2, out of range^3, simulation results^3, numbers^2, median^2, seed 7^2, 150 incidents^2, drone first^3, results^2' },
       a: { ar: `في المحاكاة (SIM، البذرة 7، 150 حادثًا) تكون المسيّرة في الموقع قبل أول وحدة أرضية في **90%** من الحوادث التي تستطيع الوصول إليها: الوسيط **244 ث** مقابل **440.5 ث**.
 
@@ -673,7 +683,7 @@ We show it because it is the honest limit: in Qatar's summer heat the ground war
     { id: 'jud-detector', aud: 'jud',
       q: { ar: 'ما دقة كاشف الحريق؟', en: 'How accurate is the fire detector?' },
       s: { ar: ['كم نسبة صحة الكاشف', '66.7%', 'ما معدل الخطأ', 'مختبر الخدع'], en: ['what is the detector accuracy', '66.7%', 'error rate of the detector', 'decoy lab', 'held out photos'] },
-      k: { ar: 'دقه^3, دقه الكاشف^3, الكاشف^2, كاشف^2, 66.7^3, صور محجوزه^3, مختبر الخدع^3, خدع^2, 12 من 18^3, عينه صغيره^2',
+      k: { ar: 'معدل الخطا^4, معدل خطا^4, دقه^3, دقه الكاشف^3, الكاشف^2, كاشف^2, 66.7^3, صور محجوزه^3, مختبر الخدع^3, خدع^2, 12 من 18^3, عينه صغيره^2',
            en: 'accuracy^3, accurate^3, detector^2, detector accuracy^3, 66.7^3, held-out^3, held out^3, decoy^3, decoy lab^3, 12 of 18^3, small sample^2, precision, acuracy^3, detecter^2' },
       a: { ar: `يصيب كاشفنا **66.7%** على صور محجوزة لم يُضبط عليها (12 من 18): وجد صور النار الست كلها، لكنه أخطأ في 3 من 12 صور بلا نار، ولم يجد دخانًا في صور الدخان الثلاث. هي عيّنة صغيرة فلا نعمّمها.
 
@@ -686,8 +696,8 @@ This is why its vision alone never triggers a public alert: we need a second ind
     { id: 'jud-not-ai', aud: 'jud',
       q: { ar: 'هل كاشف الحريق «ذكاء اصطناعي»؟', en: 'Is the fire detector "AI"?' },
       s: { ar: ['هل تستخدمون التعلم العميق', 'كيف يكتشف الحريق', 'رؤية حاسوبية بقواعد'], en: ['do you use deep learning', 'how does it detect fire', 'rule-based computer vision', 'machine learning'] },
-      k: { ar: 'ذكاء^3, اصطناعي^3, تعلم عميق^3, تعلم الي^2, بقواعد^3, رؤيه حاسوبيه^3, كيف يكتشف^2, كيف يكتشف الحريق^3, الوان^2, وميض^2',
-           en: 'ai^3, artificial intelligence^3, deep learning^3, machine learning^3, rule-based^3, rule based^3, computer vision^3, how does it detect^3, colour models^2, flicker^2, neural^2, model^2' },
+      k: { ar: 'الكاشف ذكاء^5, ذكاء^2, اصطناعي^2, الكاشف^2, تعلم عميق^3, تعلم الي^2, بقواعد^3, رؤيه حاسوبيه^3, كيف يكتشف^2, كيف يكتشف الحريق^3, الوان^2, وميض^2',
+           en: 'detector ai^5, ai^2, detector^2, artificial intelligence^2, deep learning^3, machine learning^3, rule-based^3, rule based^3, computer vision^3, how does it detect^3, colour models^2, flicker^2, neural^2, model^2' },
       a: { ar: `لا. هو **رؤية حاسوبية بقواعد**: نماذج لون وحركة وتذبذب وطبقات تحقق (شكل، استمرار، فيتو حراري). دقته على صور اختبار لم يرها أثناء الضبط 66.7% فقط ونقول ذلك، ويرفض كاشف الفيديو الأجسام الحمراء الثابتة.
 
 وهو لا يقرر وحده: لا بد من مفتاحين مستقلين ثم موافقة بشرية قبل أي تنبيه عام. وقد نجرّب نموذجًا متعلمًا لاحقًا ونقيسه في «مختبر الخدع» بالشروط نفسها.
@@ -719,9 +729,9 @@ The robot is a concept and a simulated prototype: no rescue robot has been built
 
     { id: 'jud-sim-vs-real', aud: 'both',
       q: { ar: 'ما الحقيقي وما المحاكى في المشروع؟', en: 'What is real and what is simulated?' },
-      s: { ar: ['هل المرور حقيقي', 'ما الذي اختبرتموه فعلا', 'ما المحاكاة SIM', 'هل جربتم على حرائق حقيقية'], en: ['is the traffic real', 'what did you actually test', 'what does sim mean', 'have you tested on real fires', 'real or fake'] },
-      k: { ar: 'حقيقي^3, محاكى^3, محاكاه^3, sim^3, افتراضي^2, وهمي^2, اختبرتم^2, جربتم^2, حرائق حقيقيه^3, فعلا^2, ما الحقيقي^3',
-           en: 'real^3, simulated^3, simulation^3, sim^3, fictional^2, fake^2, tested^2, real fires^3, actually^2, what is real^3, mechanism check^3, proof^2' },
+      s: { ar: ['ما الحقيقي في العرض', 'ما المحاكاة SIM', 'هل كل شيء محاكى'], en: ['what is real in the demo', 'what does sim mean', 'real or fake', 'is everything simulated'] },
+      k: { ar: 'الحقيقي في العرض^5, حقيقي^3, محاكى^3, محاكاه^3, sim^3, افتراضي^2, وهمي^2, فعلا^2, ما الحقيقي^3',
+           en: 'real in the demo^5, real and simulated^5, real^3, simulated^3, simulation^3, sim^3, fictional^2, fake^2, actually^2, what is real^3, mechanism check^3, proof^2' },
       a: { ar: `**حقيقي:** بيانات OpenStreetMap (لقطة 8 أكتوبر 2026) والخرائط والطرق، والشيفرة والاختبارات الآلية، وكاشف الصور على صور حقيقية، وحدود الحسّاسات من صحائفها، والمعايير والأرقام المنسوبة إلى مصادرها.
 
 **محاكى (SIM):** المرور، ومواقع الوحدات والمستشفيات وسعتها في العرض، والسكان، وتحليق المسيّرة، والروبوت، وزمن المشغّل. وكل رقم منها يحمل «SIM» وهو «فحص لآلية العمل لا برهان على أثر».
@@ -737,8 +747,8 @@ The robot is a concept and a simulated prototype: no rescue robot has been built
     { id: 'jud-ab-honest', aud: 'jud',
       q: { ar: 'أليست المحاكاة مصمَّمة لتنجح؟', en: 'Is your simulation rigged to make MANARA win?' },
       s: { ar: ['هل المحاكاة دليل على الأثر', 'لماذا تظهر منارة أفضل', 'البذرة نفسها'], en: ['does the simulation prove impact', 'why does manara look better', 'same seed two worlds', 'ordinary alarm versus manara'] },
-      k: { ar: 'مصممه لتنجح^3, تنجح^2, برهان^2, اثبات^2, الانذار العادي^3, نفس البذره^3, صفاره المبنى^2, 14 ثانيه^2, 39 ثانيه^2, مقايضه',
-           en: 'rigged^3, prove impact^3, ordinary alarm^3, same seed^3, building siren^2, 14 seconds^2, 39 seconds^2, trade-off^2, biased^2, cherry picked^2, fair^2' },
+      k: { ar: 'لا تثبت^4, تثبت^3, مصممه لتنجح^3, تنجح^2, دليل على الاثر^4, تظهر منارة افضل^4, افضل^2, برهان^2, اثبات^2, الانذار العادي^3, نفس البذره^3, صفاره المبنى^2, 14 ثانيه^2, 39 ثانيه^2, مقايضه',
+           en: 'not able to prove^4, cannot prove^4, prove^3, rigged^3, look better^4, looks better^4, better^2, prove impact^3, ordinary alarm^3, same seed^3, building siren^2, 14 seconds^2, 39 seconds^2, trade-off^2, biased^2, cherry picked^2, fair^2' },
       a: { ar: `لا يمكنها إثبات الأثر ونكتب ذلك في كل صفحة: SIM فحص للآلية فقط. تُشغّل البذرة نفسها في عالمين (إنذار عادي مقابل منارة)، وكل افتراض شريط قابل للتعديل.
 
 والنتائج تختلف باختلاف السيناريو والبذرة: في الحريق الليلي والغاز والاستغاثة فرق واضح، وفي الغبار وحريق المدرسة صغير، وفي الحرّ يتغير باختلاف البذرة. ونعرض مقايضة محرجة: صفّارة المبنى تُسمع بعد 14 ثانية في العالمين، أما أول رسالة شخصية من منارة فتصل بعد 39 ثانية لأنها تتحقق أولًا.`,
@@ -750,8 +760,8 @@ Results differ by scenario and seed: the night fire, gas and SOS runs show a cle
     { id: 'jud-limits', aud: 'both',
       q: { ar: 'ما أكبر حدود المشروع؟', en: 'What are the biggest limitations?' },
       s: { ar: ['ما نقاط الضعف', 'ما الذي لا تستطيع منارة فعله', 'حدود المشروع الصادقة'], en: ['what are the weak spots', 'what can manara not do', 'honest limits', 'drawbacks'] },
-      k: { ar: 'حدود^3, قيود^3, نقاط الضعف^3, عيوب^3, مشاكل^2, لا تستطيع^2, صادق^2, ضعف^2',
-           en: 'limitations^3, limits^3, weaknesses^3, weak spots^3, drawbacks^3, problems^2, cannot^2, honest^2, shortcomings^2, risks^2' },
+      k: { ar: 'نقاط ضعف^4, حدود^3, لا تستطيع منارة^4, ما لا تستطيع^4, قيود^3, نقاط الضعف^3, عيوب^3, مشاكل^2, لا تستطيع^2, صادق^2, ضعف^2',
+           en: 'weak points^4, weak point^4, limitations^3, limits^3, not do^5, cannot do^5, weaknesses^3, weak spots^3, drawbacks^3, problems^2, cannot^2, honest^2, shortcomings^2, risks^2' },
       a: { ar: `عيّنات الاختبار صغيرة، وكاشف الصور يصيب 66.7% فقط؛ والحسّاسات رخيصة وقراءاتها استرشادية؛ والمرور والسكان والمحطات في المحاكاة افتراضية؛ والمسيّرة والروبوت مفهوم؛ واللغات الست مسودات؛ ولم نجرّب على حرائق حقيقية ولا على أشخاص؛ والمشروع غير معتمد ولا يحلّ محل أي جهاز أو جهة.
 
 ومن الحدود أيضًا: لا توقيع تشفيري للرسائل بعد، ولم نختبر انقطاع الكهرباء، ولم نقِس معدل الإنذارات الكاذبة في مبنى حقيقي. ونحب أن نسمع أين ترون نقاط ضعف أخرى.`,
@@ -780,7 +790,7 @@ In practice: the drone is a concept for a licensed agency such as Civil Defence,
     { id: 'jud-drone-false-alarms', aud: 'jud',
       q: { ar: 'كم إنذارًا كاذبًا قد تسبّب المسيّرة؟', en: 'How many false alarms could the drone cause?' },
       s: { ar: ['المسيرة تصرخ ذئب', '233 إنذارا', '96.6%'], en: ['drone cries wolf', '233 false alerts', '96.6%', 'false alerts from patrols'] },
-      k: { ar: 'انذارات كاذبه^2, اندارات كاذبه^1, دوريات^3, 233^3, 96.6^3, ذئب^3, اخطاء المسيره^3',
+      k: { ar: 'انذارات كاذبه^2, انذار كاذب مسيره^4, تسبب المسيره^4, اندارات كاذبه^1, دوريات^3, 233^3, 96.6^3, ذئب^3, اخطاء المسيره^3',
            en: 'false alerts^3, false alarms^2, drone^1, patrols^3, 233^3, 96.6^3, cry wolf^3, drone false alarms^3, dismissed^2' },
       a: { ar: `لا نعرف المعدل الحقيقي، فلم نُطِر شيئًا. في يوم محاكى رفعنا فيه افتراض الإنذار الكاذب إلى 3 كل ساعة (افتراض لا قياس) صدر **233** إنذارًا كاذبًا من دوريات المسيّرات، أسقط المشغّل **96.6%** منها بالدليل (لا مفتاحين، جسم ساخن، دليل غائب)، وأُرسلت وحدات خطأً في 8، فوجدت الموقع خاليًا وسُجّلت «إنذار كاذب في الموقع»: ثمن الخطأ ظاهر.
 
@@ -818,8 +828,8 @@ That is a prototype's cost. A certified, installed and maintained product, and a
     { id: 'jud-scale', aud: 'jud',
       q: { ar: 'هل يتوسّع إلى مدينة أو إلى دول الخليج؟', en: 'Does it scale to a city or the Gulf?' },
       s: { ar: ['هل يتسع لقطر كلها', 'التوسع خارج قطر', 'اختبارات الحمل'], en: ['does it scale to all of qatar', 'expand to other gulf countries', 'load tests', 'scalability'] },
-      k: { ar: 'يتوسع^3, توسع^3, يتسع^2, مدينه^2, الخليج^3, دول الخليج^3, قطر كلها^2, حمل^2, scalability^3',
-           en: 'scale^3, scales^3, scalability^3, scaling^3, city^2, gulf^3, gcc^3, all of qatar^2, expand^2, load^2, growth^2' },
+      k: { ar: 'اختبارات الحمل^4, يتوسع^3, توسع^3, يتسع^2, مدينه^2, الخليج^3, دول الخليج^3, قطر كلها^2, حمل^2, scalability^3',
+           en: 'load tests^4, scale^3, scales^3, scalability^3, scaling^3, city^2, gulf^3, gcc^3, all of qatar^2, expand^2, load^2, growth^2' },
       a: { ar: `بنيةً نعم، فعليًا لم نختبر. اليوم مبنى واحد؛ والمسار نفسه لكل منطقة. وفي المحاكاة نشغّل كتلة حيّ واحدة (96×64 خلية) فيها نحو 120 مقيمًا ومدرسة وموقع عمل. التوسع إلى مدينة يحتاج اختبارات حمل وتصميم بوابة لكل مبنى وتكاملًا مع أنظمة الجهة.
 
 وللتوسع إلى دولة خليجية يلزم: حدودها، ومقارنة منشآتها بقوائمها الرسمية، وملف مرور مختلف وعطلة نهاية أسبوع مختلفة، وعتبات الحرارة والغبار وقوانينها ولغاتها. والروبوت يحتاج خريطة لكل مبنى، وعندنا نموذج واحد لمبنى سكني (53 عقدة). نقول إنه مصمَّم ليتّسع، ولم نختبر ذلك إلا في قطر.`,
@@ -831,8 +841,8 @@ Extending to another Gulf state needs: its boundary, a check of its facilities a
     { id: 'jud-routing', aud: 'jud',
       q: { ar: 'كيف تختار منارة أسرع وحدة استجابة؟', en: 'How does MANARA pick the fastest responder?' },
       s: { ar: ['لماذا الأسرع لا الأقرب', 'خوارزمية الإرسال', 'كيف تحسبون زمن الوصول', 'dijkstra على الطرق'], en: ['why fastest not nearest', 'dispatch algorithm', 'how do you compute the eta', 'which unit responds', 'dijkstra on roads'] },
-      k: { ar: 'اسرع^3, الاسرع^3, اقرب^2, الاقرب^2, زمن الوصول^3, eta^3, ديكسترا^3, خوارزميه^3, ازدحام^2, مرور^2, اختيار الوحده^3, اقرب جهه استجابه^3',
-           en: 'fastest^3, nearest^2, closest^2, eta^3, arrival time^3, dijkstra^3, algorithm^3, congestion^2, traffic^2, which unit^3, responder^3, routing^3, fastest unit^3, speedy' },
+      k: { ar: 'خوارزميه الارسال^4, اسرع^3, الاسرع^3, اقرب^2, الاقرب^2, زمن الوصول^3, eta^3, ديكسترا^3, خوارزميه^3, ازدحام^2, مرور^2, اختيار الوحده^3, اقرب جهه استجابه^3',
+           en: 'dispatch algorithm^4, fastest^3, nearest^2, closest^2, eta^3, arrival time^3, dijkstra^3, algorithm^3, congestion^2, traffic^2, which unit^3, responder^3, routing^3, fastest unit^3, speedy' },
       a: { ar: `بمن يصل **أسرع** بحسب الازدحام، لا بمن هو أقرب على الخريطة. لكل نوع وحدة (إطفاء/إنقاذ، إسعاف، شرطة) نأخذ كل محطة ونحسب زمن الطريق بخوارزمية ديكسترا على شبكة الطرق من OpenStreetMap: زمن كل طريق = الطول ÷ (السرعة الحرة × الازدحام)، ونحذف الطرق المغلقة، ونتجاوز الوحدات المشغولة، ونختار أقل زمن وصول.
 
 ونعرض صاحب المركز الثاني والمسافة ليرى المشغّل السبب (مثلًا «المحطة ب أبعد بنحو كيلومتر لكنها أسرع بـ 47 ثانية بسبب ازدحام الذروة» — SIM). والمرور في العرض **محاكى**، والمحطات افتراضية، و**999 هو من يرسل فعلًا**.`,
@@ -846,8 +856,8 @@ We show the runner-up and the distance so the operator sees why (for example "St
     { id: 'jud-fastest-vs-nearest', aud: 'jud',
       q: { ar: 'ما الفرق الفعلي بين «الأسرع» و«الأقرب» في المحاكاة؟', en: 'What is the real gap between fastest and nearest?' },
       s: { ar: ['64.7%', 'كم ثانية توفرون', 'الوسيط واحد'], en: ['64.7%', 'how many seconds do you save', 'the median is the same', 'nearest versus fastest numbers'] },
-      k: { ar: '64.7^3, 31.1^3, 1133^3, 1071^3, 63 ثانيه^3, توفير^2, الذيل^2, الفرق الفعلي^3, الاسرع مقابل الاقرب^3',
-           en: '64.7^3, 31.1^3, 1,133^3, 1,071^3, 63 seconds^3, saving^2, tail^2, actual difference^3, fastest versus nearest^3, farther but faster^3' },
+      k: { ar: 'مقارنه بالاقرب^5, كم ثانيه^4, 64.7^3, 31.1^3, 1133^3, 1071^3, 63 ثانيه^3, توفير^2, الذيل^2, الفرق الفعلي^3, الاسرع مقابل الاقرب^3',
+           en: 'compared to the nearest^5, compared with the nearest^5, how many seconds^4, 64.7^3, 31.1^3, 1,133^3, 1,071^3, 63 seconds^3, saving^2, tail^2, actual difference^3, fastest versus nearest^3, farther but faster^3' },
       a: { ar: `نتيجة صريحة: على 150 حادثًا محاكى (البذرة 7، الأحد 07:30، حريق وغاز وسيول واستغاثة) يختلف اختيار الوحدة الأولى عن الأقرب في **64.7%** من الحوادث، وفي **31.1%** من اختيارات الوحدات يكون المختار أبعد لكنه أسرع.
 
 متوسط زمن وصول أول وحدة 1,133 ثانية للأقرب مقابل 1,071 لمنارة (توفير 63 ثانية)، والمئين التسعون 2,480 مقابل 2,333؛ لكن **الوسيط واحد** (725.5 ثانية) في الحالتين. أي أن الفائدة تتركز في الذيل وفي مواقع بعيدة عن الطرق. وهي محاكاة (SIM) فحص للآلية لا برهان على الأثر، وتتغير مع البذرة والساعة والمرور.`,
@@ -858,9 +868,9 @@ The mean arrival time of the first unit is 1,133 seconds for the nearest against
 
     { id: 'jud-traffic', aud: 'jud',
       q: { ar: 'هل المرور حقيقي؟ وهل الأزمنة واقعية؟', en: 'Is the traffic real? Are the times realistic?' },
-      s: { ar: ['من أين المرور', 'كيف تعرفون أن الأزمنة واقعية', 'مزود مرور حي'], en: ['where does the traffic come from', 'how do you know the times are realistic', 'live traffic provider', 'why not google maps'] },
-      k: { ar: 'المرور^3, مرور^3, حقيقي^1, واقعيه^3, ازمنه^2, خرائط جوجل^3, google maps^3, مزود مرور^2, الذروه^2',
-           en: 'traffic^3, realistic^3, times^2, google maps^3, live traffic^3, congestion^2, rush hour^2, peaks^2, why not google^3' },
+      s: { ar: ['من أين المرور', 'هل المرور حقيقي', 'كيف تعرفون أن الأزمنة واقعية', 'مزود مرور حي'], en: ['is the traffic real', 'where does the traffic come from', 'how do you know the times are realistic', 'live traffic provider', 'why not google maps'] },
+      k: { ar: 'المرور^4, مرور^4, حقيقي^1, واقعيه^3, ازمنه^2, خرائط جوجل^3, google maps^3, مزود مرور^2, الذروه^2',
+           en: 'traffic^4, is the traffic real^5, realistic^3, times^2, google maps^3, live traffic^3, congestion^2, rush hour^2, peaks^2, why not google^3' },
       a: { ar: `لا. المرور محاكى ويُكتب عليه SIM في كل مكان: زمن كل مقطع = الطول ÷ (السرعة الحرة × الازدحام)، وأشكال الذروة افتراضات. والسرعات الحرة من وسم maxspeed في OSM حيث وُجد (نحو 36% من المقاطع) وإلا فافتراض موسوم بحسب صنف الطريق.
 
 ولا نعرف بعد إن كانت الأزمنة واقعية: ما فعلناه فحوص سلامة فقط. وسنقارن الأزمنة المحاكاة بتطبيق ملاحة عند ساعات ثابتة على 10 مسارات على الأقل ونبلّغ عن الخطأ مهما كان. وفي النشر الحقيقي يأتي زمن الوصول من مزوّد مرور حيّ أو من بيانات الجهة. ولا نستخدم خرائط Google لأن العرض يجب أن يعمل دون إنترنت ولأننا نحتاج الشبكة نفسها لنغيّر تكلفتها ونحاكي.`,
@@ -871,9 +881,9 @@ We do not know yet whether the times are realistic: what we did are sanity check
 
     { id: 'jud-dispatch', aud: 'jud',
       q: { ar: 'مَن يرسل الوحدات فعلًا؟ وكيف يُختار المستشفى؟', en: 'Who actually dispatches, and how is the hospital chosen?' },
-      s: { ar: ['هل تتصلون بـ 999', 'حالات التوصية', 'قدرة المستشفى'], en: ['do you call 999', 'dispatch states', 'hospital capability', 'which hospital'] },
+      s: { ar: ['هل تتصلون بـ 999', 'حالات التوصية', 'قدرة المستشفى'], en: ['who sends the ambulance', 'dispatch states', 'hospital capability', 'which hospital'] },
       k: { ar: 'يرسل^3, ارسال^2, مرسل^2, 999^2, مستشفى^3, حاله^1, حالات التوصيه^3, cad^2, مؤسسه حمد^2, اقرب مستشفى^3',
-           en: 'dispatch^3, dispatches^3, dispatcher^3, 999^2, hospital^3, hospitals^3, states^1, recommended^2, cad^2, hamad^2, which hospital^3' },
+           en: 'sends the ambulance^5, who sends^4, dispatch^3, dispatches^3, dispatcher^3, 999^2, hospital^3, hospitals^3, states^1, recommended^2, cad^2, hamad^2, which hospital^3' },
       a: { ar: `**999** هو من يرسل: غرفة عمليات وزارة الداخلية ترسل الدفاع المدني، وخدمة الإسعاف في مؤسسة حمد ترسل الإسعاف. منارة لا تتصل بهم ولا تحلّ محلهم؛ تُعدّ حزمة موثّقة وتوصي بوحدة. وللتوصية حالات: مقترحة ← معتمدة ← مُرسلة ← في الطريق ← في الموقع ← أُنهيت، لكل منها وقتها.
 
 والمستشفى: الأقرب ليس دائمًا الأفضل، فنستخدم علامات القدرة (قسم طوارئ 24 ساعة، مركز صدمات من المستوى الأول، طوارئ أطفال) مع افتراض سعة موسوم، ثم نختار الأسرع بين من يناسب. مستشفيات العرض افتراضية، وفي الواقع يقرر المسعفون الوجهة. والربط الحقيقي بنظام الإرسال يحتاج اتفاقًا، ولا ندّعي أنه تم.`,
@@ -885,8 +895,8 @@ Hospital: the nearest is not always best, so we use capability flags (24-hour em
     { id: 'jud-osm', aud: 'jud',
       q: { ar: 'من أين بيانات الخريطة؟ وما مدى اكتمالها؟', en: 'Where does the map data come from, and how complete is it?' },
       s: { ar: ['ما هو OpenStreetMap', 'رخصة ODbL', 'من يملك البيانات'], en: ['what is openstreetmap', 'odbl licence', 'who owns the data', 'map data completeness'] },
-      k: { ar: 'خريطه^3, خرائط^2, بيانات الخريطه^3, openstreetmap^3, osm^3, odbl^3, رخصه^2, منشات^2, مراكز اطفاء^2, اكتمال^3',
-           en: 'map^3, map data^3, openstreetmap^3, osm^3, odbl^3, licence^2, license^2, facilities^2, fire stations^2, completeness^3, attribution^2, data source^3' },
+      k: { ar: 'لقطه الخريطه^5, من يملك البيانات^4, خريطه^3, خرائط^2, بيانات الخريطه^3, openstreetmap^3, osm^3, odbl^3, رخصه^2, منشات^2, مراكز اطفاء^2, اكتمال^3',
+           en: 'map snapshot^5, snapshot^4, who owns the data^4, ownership^3, map^3, map data^3, openstreetmap^3, osm^3, odbl^3, licence^2, license^2, facilities^2, fire stations^2, completeness^3, attribution^2, data source^3' },
       a: { ar: `من OpenStreetMap: لقطة بتاريخ 8 أكتوبر 2026 يبنيها سكربت في المستودع إلى ثلاثة ملفات: حدود قطر، و138 منشأة (72 مستشفى، و21 مركز إطفاء، و41 مركز شرطة، و3 نقاط إسعاف…)، وشبكة طرق رئيسية طولها 6,116 كم. البيانات © مساهمو OpenStreetMap برخصة ODbL 1.0، ونُبقي نص النسب في كل صفحة ترسم الخريطة.
 
 قارنّا المنشآت بقوائم رسمية وجدناها: ما ينقص موسوم «مفقود» ولا نخترع له إحداثيات (21 مركز إطفاء في الخريطة مقابل 23 مركزًا رسميًا للدفاع المدني). هذه فجوات في البيانات لا ادعاءات عن الخدمة الحقيقية. وفي نشر حقيقي تتقدم بيانات الجهة.`,
@@ -911,8 +921,8 @@ We checked the facilities against the official lists we could find: anything mis
     { id: 'jud-sensors-trust', aud: 'jud',
       q: { ar: 'هل يمكن الاعتماد على الحسّاسات الرخيصة؟', en: 'Can the cheap sensors be trusted?' },
       s: { ar: ['حساسات MQ', 'معايرة الحساسات', 'من يصيّن الحساسات'], en: ['mq sensors', 'sensor calibration', 'who maintains the sensors', 'sensor drift'] },
-      k: { ar: 'رخيصه^3, موثوقه^3, الاعتماد^2, mq^3, معايره^3, صيانه^3, انجراف^3, استرشادي^3, تسخين^2, يعطل^2',
-           en: 'cheap^3, trusted^3, trust^3, reliable^3, mq^3, calibration^3, maintenance^3, drift^3, indicative^3, burn-in^2, fails^2, broken sensor^2' },
+      k: { ar: 'حساسات الغاز^4, يصين^3, رخيصه^3, موثوقه^3, الاعتماد^2, mq^3, معايره^3, صيانه^3, انجراف^3, استرشادي^3, تسخين^2, يعطل^2',
+           en: 'gas sensors^4, sensors accurate^4, accurate enough^3, maintain^3, maintains^3, cheap^3, trusted^3, trust^3, reliable^3, mq^3, calibration^3, maintenance^3, drift^3, indicative^3, burn-in^2, fails^2, broken sensor^2' },
       a: { ar: `ليست موثوقة وحدها. حسّاسات MQ حسّاسة لغازات متعددة وتنجرف مع الحرارة والرطوبة، وتطلب صحائف بياناتها تسخينًا لا يقل عن 48 ساعة؛ وتسخين الدقائق الثلاث على الطاولة يعطي قراءات استرشادية فقط. لهذا يحتاج كل إنذار إلى مفتاحين مستقلين، ونكتب «استرشادي» على قراءات ppm، ومنارة مكمِّلة: لا تحلّ محل جهاز إنذار حريق أو كاشف غاز معتمد.
 
 والصيانة الحقيقية عمل حقيقي: تُرسل الحسّاسات نبضًا دوريًا ونفحص «الحسّاس العالق»، لكن حسّاسات الغاز تحتاج معايرة واستبدالًا، والبطاريات تشيخ أسرع في الحرارة. لم نُجرِ اختبارًا طويل الأمد.`,
@@ -936,9 +946,9 @@ Children, older people and sick people can be harmed at lower levels. The screen
 
     { id: 'jud-wbgt', aud: 'jud',
       q: { ar: 'ماذا تضيف منارة إلى حظر العمل وقت الظهيرة؟', en: 'What does MANARA add to the midday work ban?' },
-      s: { ar: ['منع العمل وحد WBGT', 'العمال والحر'], en: ['work ban and wbgt limit', 'workers and heat', 'ilo study'] },
-      k: { ar: 'حظر العمل^3, المنع^2, عمال^2, العمل وقت الظهيره^3, وزاره العمل^2, منظمه العمل الدوليه^3, ilo^3, تنظيم الوتيره^2, تذكير^2',
-           en: 'work ban^3, midday ban^3, workers^2, ministry of labour^2, ilo^3, self-pace^2, nudge^3, enforcement^2, wbgt estimate^3' },
+      s: { ar: ['ماذا تضيف منارة إلى المنع', 'دراسة منظمة العمل الدولية'], en: ['what does manara add to the ban', 'ilo study', 'nudge not enforcement'] },
+      k: { ar: 'ماذا تضيف منارة^4, تضيف منارة^4, حظر العمل^2, المنع^2, عمال^2, وزاره العمل^2, منظمه العمل الدوليه^3, ilo^3, تنظيم الوتيره^2, تذكير^2',
+           en: 'what does manara add^4, manara add^4, work ban^2, midday ban^2, workers^2, ministry of labour^2, ilo^3, self-pace^2, nudge^3, enforcement^2, wbgt estimate^3' },
       a: { ar: `المنع جدول زمني (10:00–15:30 من 1 يونيو إلى 15 سبتمبر)، وحدّ 32.1 °م يتطلب قياسًا في موقع العمل. منارة تحوّل القياس إلى رسالة شخصية «توقف واذهب إلى الظل» بلغة العامل، وتحصي من وصل إلى مكان التبريد.
 
 ووجدت دراسة منظمة العمل الدولية 2019 أن العمال الذين يستطيعون تنظيم وتيرتهم وأخذ الاستراحة كانوا أقل عرضة للإجهاد الحراري، فنصمّم تذكيرًا لا إجبارًا. وقيمة WBGT من مستشعر حرارة ورطوبة **تقدير** نكتبه على الشاشة؛ الرقم القانوني يحتاج مقياسًا بكرة سوداء. ومنارة لا تُنفّذ القانون ولا تعتمد صاحب عمل.`,
@@ -971,8 +981,8 @@ Any trial with real pupils needs a school partnership, parental consent and ethi
     { id: 'jud-real-fires', aud: 'jud',
       q: { ar: 'هل جُرِّب المشروع على حرائق حقيقية؟', en: 'Has it been tested on real fires?' },
       s: { ar: ['كيف تعرضون الحريق في القاعة', 'اختبار اللهب'], en: ['how do you demo fire in the hall', 'flame testing', 'safe demo'] },
-      k: { ar: 'حرائق حقيقيه^3, لهب^2, تجربه ميدانيه^3, القاعه^2, بدائل امنه^3, كوب ساخن^3, مجفف شعر^3, عرض امن^2',
-           en: 'real fires^3, flame^2, field trial^3, hall^2, safe stand-ins^3, hot mug^3, hair dryer^3, booth safe^2, live fire^3' },
+      k: { ar: 'حرائق حقيقيه^4, اختبار اللهب^4, اللهب^3, عرض امن^4, لهب^2, تجربه ميدانيه^3, القاعه^2, بدائل امنه^3, كوب ساخن^3, مجفف شعر^3, عرض امن^2',
+           en: 'real fires^4, tested on real fires^5, flame testing^4, safe demo^4, flame^3, field trial^3, hall^2, safe stand-ins^3, hot mug^3, hair dryer^3, booth safe^2, live fire^3' },
       a: { ar: `لا — ونقولها. لا يُسمح بلهب ولا غاز قابل للاشتعال ولا دخان حقيقي في القاعة، فنستعمل بدائل آمنة: كوب ساخن، وبخار معقّم، ومجفّف شعر، وكوب ماء، ومحاكاة موسومة SIM. اختُبر الكاشف على صور ومقاطع لا على حرائق مبانٍ حقيقية.
 
 واختبار اللهب الحقيقي يحتاج مختبرًا خاضعًا للإشراف وموافقة السلامة في المدرسة أو الدفاع المدني، وهو في خطواتنا التالية. وادعاءاتنا محصورة فيما قسناه.`,
@@ -997,8 +1007,8 @@ We ask you for guidance and permission for a safe drill, reviewers for the langu
     { id: 'jud-rollout', aud: 'jud',
       q: { ar: 'ما خطة الانتقال من النموذج إلى حيّ حقيقي؟', en: 'What is the plan to move from prototype to a real district?' },
       s: { ar: ['المراحل الثلاث', 'من يجب أن يوافق', 'مؤشرات القياس'], en: ['the three phases', 'who must approve', 'what will you measure', 'rollout plan', 'pilot'] },
-      k: { ar: 'خطه التطبيق^3, المراحل^3, بوابه قرار^3, التجربه^2, حي واحد^3, الموافقه^2, مؤشرات^3, ظلي^3, تجربه حي^3',
-           en: 'rollout^3, rollout plan^3, phases^3, gate^2, pilot^3, one district^3, approvals^2, indicators^3, shadow mode^3, kpis^3' },
+      k: { ar: 'خطه التطبيق^3, خطه الانتقال^4, حي حقيقي^4, من النموذج^3, الانتقال^3, خطه^2, المراحل^3, بوابه قرار^3, التجربه^2, حي واحد^3, الموافقه^2, مؤشرات^3, ظلي^3, تجربه حي^3',
+           en: 'rollout^3, rollout plan^3, plan^3, move from prototype^4, real district^4, prototype to a real district^5, deployment^3, phases^3, gate^2, pilot^3, one district^3, approvals^2, indicators^3, shadow mode^3, kpis^3' },
       a: { ar: `ثلاث مراحل بينها بوابات قرار، والمدد تقديرية: **(1) نموذج المدرسة** (الآن): محاكاة كاملة وصفحات العرض ودليل البناء، وحارس وعربة مختبر على الطاولة دون لهب ودون طيران قرب الناس. **(2) تجربة في حيّ واحد بعد موافقة الجهات:** تشغيل «ظلّي» تنبّه فيه منارة غرفة العمليات ولا ترسل شيئًا للعامة، ودرون يشغّله مشغّل مرخَّص فقط. **(3) التوسّع** بعد نتائج المرحلة 2، مع بقاء 999 هو المُرسِل.
 
 ونقيس فعليًا: زمن الدرون قبل أول وحدة أرضية، والحوادث خارج المدى، ومن وُجد في التمارين، ومعدّل الإنذارات الكاذبة، وزمن قرار المشغّل. وأرقام SIM الحالية ستُستبدل بقياس فعلي. ولم نتحدث مع أي جهة بعد.`,
@@ -1010,8 +1020,8 @@ What we will actually measure: drone time before the first ground unit, incident
     { id: 'jud-tests', aud: 'jud',
       q: { ar: 'كيف اختبرتم المشروع؟ وكم اختبارًا آليًا؟', en: 'How was it tested, and how many automated checks are there?' },
       s: { ar: ['كم عدد الاختبارات', 'هل الاختبارات تعمل', 'اختبارات آلية'], en: ['how many tests', 'do the tests pass', 'automated tests', 'test suites'] },
-      k: { ar: 'اختبار^3, اختبارات^3, فحص^2, فحوص^2, اختبارات آليه^3, كم اختبار^3, نجحت^2, تغطيه^2',
-           en: 'test^3, tests^3, testing^3, automated tests^3, checks^2, how many tests^3, pass^2, suites^3, coverage^2, quality^2' },
+      k: { ar: 'اختبار^3, اختبارات^3, فحص^2, فحوص^2, اختبارات آليه^3, كم اختبار^3, نجحت^2, تغطيه^2, !حمل',
+           en: 'test^3, tests^3, testing^3, automated tests^3, checks^2, how many tests^3, pass^2, suites^3, coverage^2, quality^2, !load' },
       a: { ar: `للمشروع مجموعات اختبار آلية لكل وحدة: المحرك والمحاكاة والكاشف والرسائل والبيانات والخريطة الوطنية والمسيّرة وصفحات المتصفح. آخر تشغيل مسجَّل في ملف الأعداد ({{tests.generated|التاريخ غير متاح}}) أعطى **{{tests.total|العدد غير متاح}}** فحصًا ناجحًا، والفاشل منها: {{tests.failed|غير متاح}}.
 
 وهذه اختباراتنا نحن، وليست إثباتًا لأثر حقيقي: تتحقق من أن الشيفرة تفعل ما كتبناه، لا من أن ما كتبناه يكفي في الواقع. شغّلها بنفسك: bash manara/tools/run-all.sh.`,
@@ -1022,9 +1032,9 @@ These are our own tests, not proof of real impact: they check that the code does
 
     { id: 'jud-team', aud: 'jud',
       q: { ar: 'مَن بنى المشروع؟ وماذا اشتريتم وبنيتم؟', en: 'Who built it, and what was built or bought?' },
-      s: { ar: ['اسم الطالب والمدرسة', 'من ساعدكم', 'من المرشد'], en: ['student name and school', 'who helped you', 'who is the mentor', 'team'] },
-      k: { ar: 'فريق^3, من بنى^3, الطالب^3, طالب^2, مدرسه^2, المرشد^3, مشرف^2, ساعدني^2, اشتريت^3, بنيت^3, اسماء^2',
-           en: 'team^3, who built^3, student^3, school^2, mentor^3, supervisor^2, helped^2, bought^3, built^2, names^2, author^3' },
+      s: { ar: ['من بنى المشروع', 'اسم الطالب والمدرسة', 'من ساعدكم', 'من المرشد'], en: ['who built this project', 'who made this project', 'student name and school', 'who helped you', 'who is the mentor', 'team'] },
+      k: { ar: 'فريق^3, من بنى^4, من صنع^4, من بنى المشروع^5, الطالب^3, طالب^2, مدرسه^2, المرشد^3, مشرف^2, ساعدني^2, اشتريت^3, بنيت^3, اسماء^2',
+           en: 'team^3, who built^4, made^3, who made^4, student^3, school^2, mentor^3, supervisor^2, helped^2, bought^3, built^2, names^2, author^3' },
       a: { ar: `أسماء الفريق لا تُخزَّن هنا ولا أخترعها: هي **خانات تنتظر أن يملأها الفريق** في لوحة العرض والتقرير. الاسم: {{STUDENT_NAME}} — المدرسة: {{SCHOOL_NAME}} — الصف: {{GRADE_CLASS}} — المرشد: {{MENTOR_NAME}} — ساعدني: {{HELPED_BY}}.
 
 وما بُني وما اشتُري: ما بناه الطالب {{BUILT_BY_STUDENT}}، وما اشتراه أو أعاد استخدامه {{BOUGHT_OR_REUSED}}. وجدول «بنيت / اشتريت / ساعدني» في التقرير هو المرجع.`,
@@ -1036,8 +1046,8 @@ What was built and what was bought: built by the student {{BUILT_BY_STUDENT}}; b
     { id: 'jud-ai-use', aud: 'jud',
       q: { ar: 'هل استخدمتم أدوات ذكاء اصطناعي في المشروع؟', en: 'Did you use AI tools on this project?' },
       s: { ar: ['هل كتب الذكاء الاصطناعي الشيفرة', 'الإفصاح عن الأدوات'], en: ['did ai write the code', 'tool disclosure', 'chatgpt used'] },
-      k: { ar: 'استخدمتم ذكاء^3, ادوات ذكاء^3, افصاح^3, كتب الشيفره^2, ادوات^2, مساعده^2',
-           en: 'did you use ai^3, ai tools^3, disclosure^3, wrote the code^3, tools used^3, ai help^3, chatgpt^3, copilot^2, claude^2, assistance^2' },
+      k: { ar: 'كتب الذكاء الاصطناعي الشيفره^5, استخدمتم ذكاء^3, ادوات ذكاء^3, افصاح^3, كتب الشيفره^2, ادوات^2, مساعده^2',
+           en: 'chatgpt used^4, did you use chatgpt^5, did you use ai^3, ai tools^3, disclosure^3, wrote the code^3, tools used^3, ai help^3, chatgpt^3, copilot^2, claude^2, assistance^2' },
       a: { ar: `نعم، ونذكر ذلك صراحةً. ساعدتنا أدوات ذكاء اصطناعي في صياغة أجزاء من الشيفرة والنصوص ومسودات الترجمة؛ أما القرارات، والاختبارات، والتحقق من كل رقم ومصدره، ومراجعة اللغتين العربية والإنجليزية، فعمل الفريق (من راجع: {{HELPED_BY}}). الأدوات المستخدمة: {{AI_TOOLS_USED}}. وكل ذلك مدرج في جدول «بنيت / اشتريت / ساعدني» بالتقرير، واللغات الست مسودات.
 
 وهذه المحادثة نفسها ليست نموذجًا لغويًا: هي بحث في إجابات كتبناها وفق مصادر المشروع.`,
@@ -1048,7 +1058,7 @@ This chat itself is not a language model: it searches answers we wrote from the 
 
     { id: 'jud-demo-tour', aud: 'jud',
       q: { ar: 'أين أرى كل جزء في العرض؟', en: 'Where can I see each part in the demo?' },
-      s: { ar: ['ما صفحات الموقع', 'أين الكاشف', 'أين الروبوت', 'جولة في المشروع'], en: ['what pages are there', 'where is the detector', 'where is the robot', 'tour of the project', 'site map'] },
+      s: { ar: ['ما صفحات الموقع', 'أي صفحة تعرض الكاشف', 'أين الروبوت', 'جولة في المشروع'], en: ['what pages are there', 'which page shows the detector', 'where is the robot', 'tour of the project', 'site map'] },
       k: { ar: 'اين^2, صفحات^3, صفحه^3, جوله^3, ارى^2, العرض^2, تجربه^2, رابط^2, اين الكاشف^3, اين الروبوت^3',
            en: 'where^2, pages^3, page^2, tour^3, see^2, demo^3, try^2, link^2, site map^3, where is the detector^3, where is the robot^3, navigate^2' },
       a: { ar: `- **الرئيسية:** القصة كلها من الخطر إلى الروبوت.
@@ -1076,8 +1086,8 @@ This chat itself is not a language model: it searches answers we wrote from the 
     { id: 'about-bot', aud: 'both',
       q: { ar: 'من أنت؟ وكيف تجيب؟', en: 'Who are you, and how do you answer?' },
       s: { ar: ['هل أنت ذكاء اصطناعي', 'هل أنت إنسان', 'كيف تعمل المحادثة', 'ماذا تستطيع أن تفعل', 'ساعدني'], en: ['are you an ai', 'are you a human', 'how does this chat work', 'what can you do', 'are you chatgpt', 'how to use'] },
-      k: { ar: 'من انت^3, انت^2, بوت^3, روبوت محادثه^3, محادثه^3, شات^3, هل انت ذكاء^3, كيف تجيب^3, ماذا تستطيع^3, كيف استخدم^3, اسال منارة^3, مساعد',
-           en: 'who are you^3, you^1, bot^3, chatbot^3, chat^2, are you an ai^3, are you chatgpt^3, language model^3, how do you answer^3, what can you do^3, how to use^3, ask manara^3, assistant^2' },
+      k: { ar: 'ذكاء اصطناعي^3, من انت^3, انت^2, بوت^3, روبوت محادثه^3, محادثه^3, شات^3, هل انت ذكاء^3, كيف تجيب^3, ماذا تستطيع^3, كيف استخدم^3, اسال منارة^3, مساعد',
+           en: 'how does this chat work^5, this chat^4, are you an ai^4, who are you^3, you^1, bot^3, chatbot^3, chat^2, are you an ai^3, are you chatgpt^3, language model^3, how do you answer^3, what can you do^3, how to use^3, ask manara^3, assistant^2' },
       a: { ar: `أنا «اسأل منارة»: **لست ذكاءً اصطناعيًا ولا نموذجًا لغويًا**. أنا بحث بقواعد في قاعدة معرفة كتبها فريق منارة من وثائق المشروع وصفحاته. أطبّع سؤالك (أحذف التشكيل والتطويل وأوحّد أشكال الألف والياء والتاء المربوطة، وأبسّط الكلمات الإنجليزية)، وأطابق كلماته وعباراته ومرادفاتها مع الإجابات المكتوبة وأتحمّل بعض الأخطاء الإملائية، ثم أعرض أقرب إجابة مع مصدرها وسبب اختيارها.
 
 ما لا أعرفه أقوله ولا أخمّنه، وأعرض أقرب المواضيع. وأي سؤال عن لائحة أو رقم ليس عندي أقول فيه: أكِّد مع الجهة المختصة. وإن بدا أن هناك خطرًا حقيقيًا فأبدأ بتنبيه: **هذا نموذج تجريبي — اتصل بـ 999**. أعمل دون إنترنت، ورسائلك لا تغادر هذه الصفحة. يمكنك التبديل بين وضع «ساكن» ووضع «حكم/زائر» من الأعلى.`,
@@ -1089,7 +1099,7 @@ What I do not know I say, and I do not guess: I show the closest topics. For any
     { id: 'greet', aud: 'both',
       q: { ar: 'مرحبًا', en: 'Hello' },
       s: { ar: ['السلام عليكم', 'أهلا', 'صباح الخير', 'مساء الخير', 'هلا'], en: ['hi', 'hey', 'good morning', 'good evening', 'salam'] },
-      k: { ar: 'مرحبا^3, اهلا^3, السلام عليكم^3, هلا^3, صباح الخير^3, مساء الخير^3, هاي^3', en: 'hello^3, hi^3, hey^3, good morning^3, good evening^3, salam^3, greetings^3, hiya^3' },
+      k: { ar: 'مرحبا^3, هلا بك^3, اهلا^3, السلام عليكم^3, هلا^3, صباح الخير^3, مساء الخير^3, هاي^3', en: 'hello^3, marhaba^3, merhaba^3, hala^3, hi^3, hey^3, good morning^3, good evening^3, salam^3, greetings^3, hiya^3' },
       a: { ar: `أهلًا بك! أنا «اسأل منارة»، أجيب من قاعدة معرفة مكتوبة عن السلامة (للسكان) وعن المشروع وأرقامه (للحكام والزوار). اختر وضعك من الأعلى أو اضغط على أحد الأسئلة المقترحة. وفي خطر حقيقي اتصل بـ **999**.`,
            en: `Welcome! I am "Ask MANARA". I answer from a written knowledge base about safety (for residents) and about the project and its numbers (for judges and visitors). Pick your mode at the top or tap one of the suggested questions. In real danger, call **999**.` },
       src: ['index.html'], doc: 'docs/MANARA.md ("Ask MANARA")', f: ['res-fire', 'jud-what', 'about-bot'] },
@@ -1097,14 +1107,14 @@ What I do not know I say, and I do not guess: I show the closest topics. For any
     { id: 'thanks', aud: 'both',
       q: { ar: 'شكرًا', en: 'Thank you' },
       s: { ar: ['شكرا لك', 'يعطيك العافية', 'مع السلامة', 'وداعا'], en: ['thanks', 'thanks a lot', 'bye', 'goodbye', 'cheers'] },
-      k: { ar: 'شكرا^3, يعطيك العافيه^3, الله يعطيك العافيه^3, مع السلامه^3, وداعا^3, تسلم^3, ممتاز^2', en: 'thanks^3, thank you^3, thank^3, bye^3, goodbye^3, cheers^3, great^2, perfect^2, nice^2' },
+      k: { ar: 'جزيلا^3, شكرا^3, يعطيك العافيه^3, الله يعطيك العافيه^3, مع السلامه^3, وداعا^3, تسلم^3, ممتاز^2', en: 'thanks^3, thank you^3, thank^3, bye^3, goodbye^3, cheers^3, great^2, perfect^2, nice^2' },
       a: { ar: `العفو! يمكنك تقييم الإجابة بـ«مفيد» أو «غير مفيد» (يبقى تقييمك في ذاكرة هذه الصفحة فقط)، أو تصدير المحادثة. وتذكّر: في الخطر اتصل بـ **999**.`,
            en: `You are welcome! You can rate an answer "helpful" or "not helpful" (your rating stays in this page's memory only), or export the conversation. And remember: in danger, call **999**.` },
       src: ['index.html'], doc: 'docs/MANARA.md ("Ask MANARA")', f: ['res-fire', 'jud-what', 'about-bot'] },
 
     { id: 'confirm-authority', aud: 'both',
       q: { ar: 'سؤال عن لائحة أو غرامة أو رقم غير موجود عندك؟', en: 'A regulation, fine or number you do not have?' },
-      s: { ar: ['ما غرامة القانون', 'ما اللوائح الرسمية', 'ما الرقم الرسمي', 'هل هذا قانوني'], en: ['what is the official fine', 'what do the regulations say', 'what is the official number', 'is this legal', 'what is the law'] },
+      s: { ar: ['ما غرامة القانون', 'ما اللوائح الرسمية', 'ما الرقم الرسمي'], en: ['what is the official fine', 'what do the regulations say', 'what is the official number', 'what is the law'] },
       k: { ar: 'لائحه^3, لوائح^3, غرامه^2, قانون^2, تشريع^3, رسمي^2, الرقم الرسمي^3, قانوني^2, مخالفه^3, تعليمات^2, وزاره^2',
            en: 'regulation^3, regulations^3, fine^2, law^2, legislation^3, official^2, official number^3, legal^2, offence^3, rules^2, ministry^2, decree^3' },
       a: { ar: `أجيب فقط عمّا هو مكتوب في قاعدة معرفتي، وهي مبنية من وثائق المشروع وصفحاته. للوائح والغرامات والتصاريح والأرقام الرسمية (أرقام الخطوط الساخنة، ساعات حظر العمل، حدود جودة الهواء، فئات تصاريح الطيران…) **لا أخمّن: أكِّدها مع الجهة المختصة** قبل الاعتماد عليها، فقد تتغيّر.
