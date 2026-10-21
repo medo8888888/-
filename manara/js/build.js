@@ -59,7 +59,7 @@
   function T2(ar, en) { return { ar: ar, en: en }; }
 
   var state = { tier: 2 };                           // default: the sentinel board (Tier 2)
-  (function () { var t0 = parseInt(store('tier'), 10); if (t0 >= 1 && t0 <= 3) state.tier = t0; })();
+  (function () { var t0 = parseInt(store('tier'), 10); if (t0 >= 1 && t0 <= 4) state.tier = t0; })();
 
   /* =============================================================== DATA: tiers, parts, pins, steps, ... */
   var TIERS = [
@@ -77,7 +77,12 @@
       time: T2('عطلتا أسبوع إضافيتان (تقدير)', 'Two more weekends (estimate)'),
       you: [T2('رأس يمسح ويلاحق أسخن نقطة، ولوحة «آمن» بشبكة Wi-Fi دون إنترنت.', 'A head that patrols and tracks the hottest point, and a MANARA-SAFE board with its own offline Wi-Fi.'),
             T2('مقطع درون من مشغّل مرخّص (اختياري) — لا تحلّق بنفسك.', 'A drone clip from a licensed operator (optional) — never fly one yourself.')],
-      judge: T2('الحكم ينضم إلى «آمن» من هاتفه فيتحرك العدّاد أمامه.', 'The judge joins MANARA-SAFE from their own phone and the counter moves in front of them.') }
+      judge: T2('الحكم ينضم إلى «آمن» من هاتفه فيتحرك العدّاد أمامه.', 'The judge joins MANARA-SAFE from their own phone and the counter moves in front of them.') },
+    { n: 4, short: T2('4 · درون وروبوت', '4 · Drone & rover'), name: T2('الدرون والروبوت', 'Drone & rescue rover'), sub: T2('عربة مقعد + حمولة درون على الطاولة (مفهوم)', 'Bench rover + a drone payload on the bench (concept)'),
+      time: T2('ثلاث عطلات أسبوع إضافية (تقدير)', 'Three more weekends (estimate)'),
+      you: [T2('عربة بمحرّكين وكاميرا حرارية ومستشعر مسافة، لا تتحرك قبل موافقة إنسان.', 'A two-motor rover with a thermal camera and a distance sensor that does not move before a human approves.'),
+            T2('حمولة الدرون على الطاولة فقط والمراوح مفكوكة: لا طيران إلا من مشغّل مرخّص بإذن.', 'The drone payload on the bench only, propellers off: no flying except by a licensed operator with permission.')],
+      judge: T2('الحكم يضغط «اعتماد» فتبدأ العربة البحث، ثم يضع شكلًا دافئًا أمامها فتتوقف وتُبلغ.', 'The judge presses “Approve”, the rover starts searching, then a warm shape in front of it makes it stop and report.') }
   ];
 
   // price = estimated US$ for the whole line (qty included). kind: seen | est | own | opt
@@ -109,7 +114,34 @@
     { t: 3, n: T2('حسّاس غبار PMS5003', 'PMS5003 dust sensor'), q: '1', lo: 20, hi: 35, k: 'opt', role: T2('اختياري. وإلا فالغبار محاكاة SIM', 'Optional. Otherwise dust is SIM'), note: T2('رُصد: £24.50 (The Pi Hut).', 'Seen: £24.50 (The Pi Hut).') },
     { t: 3, n: T2('جهاز لوحي لشاشة التسجيل', 'Tablet for the check-in screen'), q: '1', lo: 0, hi: 0, k: 'own', role: T2('يعرض عدّاد /count', 'Shows the /count counter'), note: T2('', '') },
     { t: 3, n: T2('رمز QR مطبوع للانضمام إلى «آمن» + لافتة', 'Printed QR code to join MANARA-SAFE + a sign'), q: '1', lo: 0, hi: 3, k: 'est', role: T2('بديل لمن لا تظهر له صفحة الدخول', 'Fallback when the portal page does not pop up'), note: T2('', '') },
-    { t: 3, n: T2('مقطع درون من الدفاع المدني أو مشغّل مرخّص', 'Drone clip from Civil Defence or a licensed operator'), q: '0', lo: 0, hi: 0, k: 'opt', role: T2('اختياري: لا تشترِ درونًا ولا تحلّق', 'Optional: do not buy or fly a drone'), note: T2('اطلب إذنًا كتابيًّا بالاستخدام.', 'Ask for written permission to use it.') }
+    { t: 3, n: T2('مقطع درون من الدفاع المدني أو مشغّل مرخّص', 'Drone clip from Civil Defence or a licensed operator'), q: '0', lo: 0, hi: 0, k: 'opt', role: T2('اختياري: لا تشترِ درونًا ولا تحلّق', 'Optional: do not buy or fly a drone'), note: T2('اطلب إذنًا كتابيًّا بالاستخدام.', 'Ask for written permission to use it.') },
+
+    // Tier 4: the bench rover and the drone payload. Every price is an APPROXIMATE range (estimate): check suppliers. "seen" = the same part as in Tier 2.
+    { t: 4, n: T2('هيكل عربة بعجلتين ومحرّكين مسنّنين DC وعجلة كروية', 'Two-wheel rover chassis kit: 2 DC gear motors, wheels, caster ball'), q: '1', lo: 8, hi: 25, k: 'est', role: T2('جسم العربة', 'The rover’s body'), note: T2('تقدير تقريبي: تحقّق من الموردين. اختر محرّكات بطيئة عالية العزم لا سريعة، وسطحًا علويًّا مستويًا للإلكترونيات.', 'Approximate: check suppliers. Pick slow high-torque gear motors, not fast ones, and a flat top for the electronics.') },
+    { t: 4, n: T2('لوحة ESP32 DevKit ثانية (عقل العربة)', 'Second ESP32 DevKit board (the rover’s brain)'), q: '1', lo: 5, hi: 12, k: 'seen', role: T2('تشغّل manara_rover.ino', 'Runs manara_rover.ino'), note: T2('مثل لوحة الحارس: النطاق نفسه تقريبًا.', 'Same as the sentinel’s board: about the same range.') },
+    { t: 4, n: T2('مشغّل محرّكات L298N أو TB6612FNG', 'Motor driver: L298N or TB6612FNG'), q: '1', lo: 2, hi: 8, k: 'est', role: T2('يدير المحرّكين من بطارية منفصلة', 'Drives the two motors from a separate battery'), note: T2('تقدير تقريبي. اقرأ ورقتي البيانات: L298N يضيّع جهدًا أكبر حرارةً من TB6612FNG.', 'Approximate. Read both datasheets: the L298N wastes more voltage as heat than the TB6612FNG.') },
+    { t: 4, n: T2('مستشعر المسافة HC-SR04 (أمامي)', 'HC-SR04 ultrasonic sensor (front)'), q: '1', lo: 1, hi: 4, k: 'seen', role: T2('منطقة البطء ومنطقة التوقف', 'The slow zone and the stop zone'), note: T2('مقسّم جهد للصدى (1 كيلو + 2 كيلو).', 'Echo through a divider (1 k + 2 k).') },
+    { t: 4, n: T2('كاميرا حرارية MLX90640 للعربة', 'MLX90640 thermal camera for the rover'), q: '1', lo: 45, hi: 100, k: 'seen', role: T2('البقعة الساخنة والشكل الدافئ', 'The hot spot and the warm shape'), note: T2('رُصد: Adafruit US$ 74.95. بديل أرخص أقل دقة: AMG8833 بحجم 8×8 (تقدير 25–45، تحقّق).', 'Seen: Adafruit US$ 74.95. A cheaper, coarser alternative: the 8×8 AMG8833 (estimate 25–45, check).') },
+    { t: 4, n: T2('سمّاعة صغيرة 8 أوم + مقاومة 100 أوم', 'Small 8 Ω speaker + a 100 Ω resistor'), q: '1', lo: 1, hi: 5, k: 'est', role: T2('نغمات فقط: لا تتكلم', 'Tones only: it cannot speak'), note: T2('الكلام المسجّل يحتاج وحدة تشغيل صوت منفصلة وهي غير مشمولة.', 'Recorded speech needs a separate audio-player module, which is not included.') },
+    { t: 4, n: T2('زر إيقاف طارئ كبير + دايود ضوء ومقاومة 330 أوم', 'Big E-stop push button + an LED and a 330 Ω resistor'), q: '1 set', lo: 2, hi: 7, k: 'est', role: T2('إيقاف الطوارئ والضوء الودود', 'The emergency stop and the friendly light'), note: T2('', '') },
+    { t: 4, n: T2('بطارية 2S (7.4 فولت) محميّة: حامل 2×18650 مع لوحة حماية وشاحن', 'Protected 2S (7.4 V) battery: 2×18650 holder with a protection board, and a charger'), q: '1', lo: 8, hi: 25, k: 'est', role: T2('طاقة المحرّكات، ويقيس الشيفرة جهدها', 'Motor power; the sketch measures its voltage'), note: T2('تقدير تقريبي. لا LiPo عارية. الشيفرة مضبوطة على 6.0–8.4 فولت؛ غيّر الثوابت إن كانت بطاريتك مختلفة.', 'Approximate. No bare LiPo. The sketch assumes 6.0–8.4 V; change the constants if your pack differs.') },
+    { t: 4, n: T2('محوّل هابط 5 فولت (1–3 أمبير)', '5 V step-down converter (1–3 A)'), q: '1', lo: 2, hi: 6, k: 'est', role: T2('يغذّي ESP32 من البطارية', 'Powers the ESP32 from the pack'), note: T2('', '') },
+    { t: 4, n: T2('مقاومات (100ك و47ك و1ك و2ك)، مفتاح تشغيل، حامل فيوز، أسلاك، لوح تجارب', 'Resistors (100k, 47k, 1k, 2k), a power switch, a fuse holder, wires, breadboard'), q: '1 set', lo: 5, hi: 12, k: 'est', role: T2('مقسّما الجهد وسلامة الدارة', 'The two dividers and circuit safety'), note: T2('', '') },
+    { t: 4, n: T2('حامل لحمولة الدرون: لوح فوم أو قطعة مطبوعة', 'Mount for the drone payload: foam board or a printed holder'), q: '1', lo: 0, hi: 10, k: 'opt', role: T2('اختياري: يحمل ESP32 والكاميرا الحرارية على الطاولة', 'Optional: holds the ESP32 and the thermal camera on the bench'), note: T2('بلا مراوح وبلا طيران. أي طيران حقيقي من مشغّل مرخّص بإذن.', 'No propellers, no flying. Any real flight is by a licensed operator with permission.') }
+  ];
+
+  // Pins of the ROVER (same numbers as the CONFIG block of manara_rover.ino): a SECOND ESP32, so they are not in the sentinel's pin table or drawing.
+  var ROVER_PINS = [
+    { part: T2('الكاميرا الحرارية MLX90640 (أو AMG8833)', 'Thermal camera MLX90640 (or AMG8833)'), sig: 'SDA · SCL', gpio: '21 · 22', note: T2('ناقل I2C رقم 0 بجهد 3.3 فولت: العنوان 0x33 (MLX) أو 0x69 (AMG). المكتبة تضبط 400 كيلوهرتز.', 'I2C bus 0 at 3.3 V: address 0x33 (MLX) or 0x69 (AMG). The code sets 400 kHz.') },
+    { part: T2('مشغّل المحرّكات: المحرّك الأيسر', 'Motor driver: left motor'), sig: 'ENA/PWMA · IN1 · IN2', gpio: '25 · 26 · 27', note: T2('ENA سرعة (PWM بتردد 20 كيلوهرتز)، وIN1/IN2 اتجاه.', 'ENA is speed (20 kHz PWM), IN1/IN2 are direction.') },
+    { part: T2('مشغّل المحرّكات: المحرّك الأيمن', 'Motor driver: right motor'), sig: 'ENB/PWMB · IN3 · IN4', gpio: '33 · 32 · 13', note: T2('إن دار محرّك إلى الخلف فبدّل سلكيه أو بدّل IN1 وIN2.', 'If a motor turns the wrong way, swap its two wires or swap IN1 and IN2.') },
+    { part: 'HC-SR04', sig: 'TRIG', gpio: '23', note: T2('3.3 فولت تكفي. التغذية 5 فولت.', '3.3 V is enough. Power 5 V.') },
+    { part: 'HC-SR04', sig: 'ECHO', gpio: '19', note: T2('إشارة 5 فولت: 1 كيلو على التوالي ثم 2 كيلو إلى GND.', 'A 5 V signal: 1 k in series, then 2 k to GND.') },
+    { part: T2('قياس جهد البطارية', 'Battery voltage sense'), sig: T2('نقطة المقسّم', 'divider midpoint'), gpio: '34', note: T2('من + البطارية: 100 كيلو إلى GPIO34 ثم 47 كيلو إلى GND (النسبة 3.128). طرف إدخال فقط على ADC1.', 'From the pack +: 100 k to GPIO34, then 47 k to GND (ratio 3.128). An input-only ADC1 pin.') },
+    { part: T2('السمّاعة', 'Speaker'), sig: T2('إشارة', 'signal'), gpio: '18', note: T2('عبر 100 أوم (أو ترانزستور NPN صغير). نغمات فقط.', 'Through 100 Ω (or a small NPN transistor). Tones only.') },
+    { part: T2('الضوء الودود (LED)', 'Friendly light (LED)'), sig: T2('إشارة', 'signal'), gpio: '4', note: T2('330 أوم إلى GND. ومضة بطيئة أثناء البحث، ووميضان قصيران كل ثانيتين عند الإيقاف.', '330 Ω to GND. A slow blink while searching, two short flashes every 2 s while holding.') },
+    { part: T2('زر الإيقاف الطارئ', 'E-stop button'), sig: T2('ساق واحدة', 'one leg'), gpio: '17', note: T2('الساق الأخرى إلى GND. مضغوط = المحرّكات مطفأة وتحتاج موافقة جديدة.', 'The other leg to GND. Pressed = motors off and a new approval is needed.') },
+    { part: T2('الطاقة', 'Power'), sig: T2('البطارية · المحوّل', 'pack · converter'), gpio: '—', note: T2('+ البطارية إلى مدخل طاقة المشغّل (عبر مفتاح وفيوز) وإلى المحوّل الهابط، ومنه 5 فولت إلى VIN. الأرضي مشترك بين الكل.', 'Pack + goes to the driver’s power input (through a switch and fuse) and to the step-down converter; its 5 V goes to VIN. One common ground for everything.') }
   ];
 
   // Pins of the SENTINEL (same numbers as the CONFIG block of manara_sentinel.ino). gpio = null: not a GPIO.
@@ -207,7 +239,31 @@
     { id: 's17', t: 3, ti: T2('بروفة الكشك مرتين', 'Rehearse the booth twice'),
       d: T2('اتبع نص الدقائق الثلاث أدناه مع صديق يلعب دور الحكم.', 'Follow the 3-minute script below with a friend playing the judge.'),
       p: T2('تنتهي في 3 دقائق أو أقل دون إعادة تشغيل أي قطعة، ويستطيع «الحكم» تكرار كل خطوة وحده.', 'You finish in 3 minutes or less without restarting any part, and the “judge” can repeat every step alone.'),
-      f: T2('تتعطل قطعة؟ اكتب السبب في سجل الهندسة، فاللجنة تقدّر الأعطال المشروحة.', 'A part fails? Write the cause in the engineering logbook: judges value explained failures.') }
+      f: T2('تتعطل قطعة؟ اكتب السبب في سجل الهندسة، فاللجنة تقدّر الأعطال المشروحة.', 'A part fails? Write the cause in the engineering logbook: judges value explained failures.') },
+    { id: 's18', t: 4, ti: T2('اختبر العربة والعجلات مرفوعة عن الأرض', 'Test the rover with its wheels off the ground'),
+      d: T2('ضع العربة فوق صندوق (العجلات في الهواء)، وصِل المحرّكات ببطاريتها المنفصلة مع أرضي مشترك، وارفع manara_rover.ino.', 'Put the rover on a box (wheels in the air), connect the motors to their own battery with a common ground, and upload manara_rover.ino.'),
+      p: T2('الشاشة التسلسلية تُظهر # MANARA rover firmware وأسطر rover بحالة stowed، ولا تدور أي عجلة.', 'The Serial Monitor shows # MANARA rover firmware and rover lines with state stowed, and no wheel turns.'),
+      f: T2('عجلة تدور وحدها؟ افصل البطارية فورًا وراجع IN1 وIN2 وENA: الشيفرة تُطفئ المحرّكات في setup قبل أي شيء.', 'A wheel turns by itself? Disconnect the battery at once and check IN1, IN2 and ENA: the sketch switches the motors off in setup before anything else.') },
+    { id: 's19', t: 4, ti: T2('مفتاح الإنسان والإيقاف الطارئ', 'The human key and the E-stop'),
+      d: T2('أرسل {"v":1,"type":"rover","cmd":"approve"} مرة واحدة فقط، ثم كل ثانية. ثم اضغط زر الإيقاف الطارئ.', 'Send {"v":1,"type":"rover","cmd":"approve"} once only, then every second. Then press the E-stop button.'),
+      p: T2('بمرة واحدة تبدأ ثم تعود إلى stowed بعد 3 ثوانٍ (why: link)؛ وكل ثانية تستمر؛ والإيقاف الطارئ يوقفها فورًا (why: estop).', 'Once: it starts, then returns to stowed after 3 s (why: link); every second: it keeps going; the E-stop stops it at once (why: estop).'),
+      f: T2('لا تتحرك أبدًا؟ تأكد أن سطر JSON كامل وينتهي بسطر جديد وأن v يساوي 1، وأن الزر غير مضغوط.', 'It never moves? Check the JSON line is complete, ends with a newline and has v equal to 1, and that the E-stop is not pressed.') },
+    { id: 's20', t: 4, ti: T2('مستشعر المسافة: منطقة البطء ومنطقة التوقف', 'The distance sensor: slow zone and stop zone'),
+      d: T2('قرّب كفّك من HC-SR04 ببطء وقارن قيمة cm في سطر rover بمسطرة.', 'Bring your hand slowly to the HC-SR04 and compare the cm value in the rover line with a ruler.'),
+      p: T2('تبطئ قرب 45 سم وتدور مبتعدة قرب 20 سم؛ وبلا صدى تبقى بطيئة ولا تعدّ الطريق خاليًا.', 'It slows near 45 cm and turns away near 20 cm; with no echo it stays slow and never treats the way as clear.'),
+      f: T2('قراءات مضطربة؟ راجع مقسّم الصدى (1 كيلو + 2 كيلو) واستعمل هدفًا مستويًا: الأسطح المائلة والناعمة تشتّت الصدى.', 'Noisy readings? Check the echo divider (1 k + 2 k) and use a flat target: slanted and soft surfaces scatter the echo.') },
+    { id: 's21', t: 4, ti: T2('الكاميرا الحرارية: البقعة الساخنة والشكل الدافئ وحدّ الغرفة الحارة', 'The thermal camera: hot spot, warm shape and the hot-room limit'),
+      d: T2('كوب ساخن أمام الكاميرا، ثم كفّ مفتوحة أو دفّاية يد على بُعد نحو 30 سم في غرفة باردة. وإن وجدت غرفة حرارتها 34°م أو أكثر فجرّب فيها.', 'A hot mug in front of the camera, then an open palm or a hand warmer about 30 cm away in a cool room. If you can find a room at 34 °C or hotter, try it there too.'),
+      p: T2('الكوب يظهر hot فلا تتقدم نحوه؛ والكفّ تظهر person بعد نحو ثانية ونصف فتنتقل إلى holding وتصدر 3 نغمات؛ وفي الغرفة الحارة يظهر nocontrast ويتوقف المفتاح: هذا حدّها الصادق.', 'The mug shows hot and it does not drive at it; the palm shows person after about 1.5 s and it switches to holding with three beeps; in the hot room nocontrast appears and the key switches off: its honest limit.'),
+      f: T2('لا تجد الكفّ؟ اقترب أكثر (الصورة 32×24 فقط). ولا تقل إنها تكشف «أشخاصًا»: هي ترى شكلًا دافئًا.', 'It does not find the palm? Get closer (the image is only 32×24). And never say it detects “people”: it sees a warm shape.') },
+    { id: 's22', t: 4, ti: T2('أول اختبار على الأرض: مساحة صغيرة وحواجز ناعمة', 'First floor test: a small area and soft barriers'),
+      d: T2('ساحة نحو 2×2 م بحواجز ناعمة (كتب أو أسفنج)، وبالغ بيده زر الإيقاف الطارئ وآخر يراقب. ابدأ بـ DRIVE_MAX_PCT عند 40.', 'An area of about 2×2 m with soft barriers (books or foam), an adult with a hand on the E-stop and another watching. Start with DRIVE_MAX_PCT at 40.'),
+      p: T2('تبحث وتدور عند الحواجز وتتوقف عند شكل دافئ، وتتوقف تمامًا عند الإيقاف الطارئ، ولا تقترب من حافة أو درج.', 'It searches, turns at the barriers, stops at a warm shape, stops completely at the E-stop, and is never near an edge or stairs.'),
+      f: T2('تنحرف؟ عجلة أسرع من الأخرى: عدّل TURN_MS وراجع التوصيل. لا تزد السرعة لتعويض ذلك.', 'It drifts? One wheel is faster: adjust TURN_MS and check the wiring. Do not raise the speed to compensate.') },
+    { id: 's23', t: 4, ti: T2('حمولة الدرون على الطاولة (المراوح مفكوكة)', 'The drone payload on the bench (propellers off)'),
+      d: T2('ثبّت لوحة ESP32 والكاميرا الحرارية على حامل أو حامل ثلاثي وغذّهما من بنك طاقة USB. إن كان عندك هيكل درون فبلا مراوح وبلا بطارية موصولة. لا طيران.', 'Fix an ESP32 and the thermal camera on a holder or tripod and power them from a USB power bank. If you own a drone frame: no propellers and no battery connected. No flying.'),
+      p: T2('المراقِب يقرأ الصور الحرارية ويُظهر البقعة الساخنة كما في المستوى 2؛ ولا شيء يطير ولا يدور.', 'The monitor reads the thermal images and shows the hot spot as in Tier 2; nothing flies and nothing spins.'),
+      f: T2('عندك سؤال عن الطيران أو الإذن؟ اسأل معلّمك وهيئة الطيران المدني القطرية قبل أي تحليق (انظر «القانون والسلامة»).', 'A question about flying or permission? Ask your teacher and the Qatar Civil Aviation Authority before any flight (see “Legal and safety”).') }
   ];
 
   var RULES = [
@@ -259,7 +315,9 @@
     { id: 'o8', p: T2('قياسات المعايرة ونتائج الاختبار', 'Calibration measurements and test results'), w: '', n: '' },
     { id: 'o9', p: T2('نصوص الكشك واللوحة والتقرير', 'Booth, poster and report text'), w: '', n: '' },
     { id: 'o10', p: T2('ترجمات الرسائل (مسودات تحتاج متحدثًا أصليًّا)', 'Message translations (drafts need a native speaker)'), w: '', n: '' },
-    { id: 'o11', p: T2('الموافقة الأخلاقية واختبار الفهم (لم يُجرَ بعد)', 'Ethics approval and the comprehension test (not run yet)'), w: '', n: '' }
+    { id: 'o11', p: T2('الموافقة الأخلاقية واختبار الفهم (لم يُجرَ بعد)', 'Ethics approval and the comprehension test (not run yet)'), w: '', n: '' },
+    { id: 'o12', p: T2('شيفرة العربة (manara_rover.ino)', 'Rover firmware (manara_rover.ino)'), w: 'ai', n: '', ph: T2('نسخة أولى كُتبت بمساعدة الذكاء الاصطناعي — ماذا غيّرتَ أنت؟', 'first version written with AI help — what did you change?') },
+    { id: 'o13', p: T2('هيكل العربة والتوصيل (المستوى 4)', 'Rover chassis and wiring (Tier 4)'), w: '', n: '' }
   ];
   var WHO = [
     { v: '', l: T2('— اختر —', '— choose —') }, { v: 'bought', l: T2('اشتريتُه جاهزًا', 'Bought ready-made') }, { v: 'built', l: T2('بنيتُه بنفسي', 'Built by me') },
@@ -281,9 +339,16 @@
     { id: 'e12', t: T2('الاستجابة: الوحدة الأسرع وصولًا حسب الزحام، لا الأقرب مسافةً', 'Dispatch: the unit that arrives fastest given traffic, not the nearest by distance'), d: T2('الزحام في المحاكاة SIM، والمرسِل الحقيقي (999) هو الذي يقرّر.', 'Traffic in the simulation is SIM, and the real dispatcher (999) decides.') }
   ];
 
+  var EXPLAIN4 = [
+    { id: 'e13', t: T2('بوابة الموافقة ومفتاح الإنسان المتكرر في العربة', 'The rover’s approval gate and the repeated human key'), d: T2('لماذا تتوقف بعد 3 ثوانٍ دون «approve»، ولماذا لا يلغي المتصفح الإيقاف الطارئ أو العائق.', 'why it stops after 3 s without “approve”, and why the browser cannot override the E-stop or an obstacle.') },
+    { id: 'e14', t: T2('قاعدة الشكل الدافئ وحدّ الغرفة الحارة', 'The warm-shape rule and the hot-room limit'), d: T2('28–42°م وأدفأ من وسيط الغرفة بـ 4°م، وفوق 34°م لا تباين فيتوقف المفتاح. هي رؤية بقواعد وليست ذكاءً اصطناعيًّا، وترى شكلًا دافئًا لا شخصًا.', '28–42 °C and 4 °C above the room’s median pixel; above 34 °C there is no contrast and the key switches off. It is rule-based and not AI, and it sees a warm shape, not a person.') }
+  ];
+  EXPLAIN = EXPLAIN.concat(EXPLAIN4);
+
   var KIT = [
     { f: 'kit/firmware/manara_sentinel/manara_sentinel.ino', n: 'manara_sentinel.ino', tg: 'ESP32 · Arduino', d: T2('لوحة الحارس: قراءة كل الحسّاسات، إنذار محلي بمفتاحين، بروتوكول v1 (إطار 4 هرتز + صورة حرارية 1 هرتز)، يقبل أمر signs، ورأس متحرك اختياري (HAS_HEAD).', 'The sentinel: reads every sensor, a two-key local alarm, protocol v1 (frame 4 Hz + thermal image 1 Hz), accepts the signs command, and an optional pan-tilt head (HAS_HEAD).') },
     { f: 'kit/firmware/manara_safepoint/manara_safepoint.ino', n: 'manara_safepoint.ino', tg: 'ESP32 · Arduino', d: T2('نقطة «آمن»: شبكة MANARA-SAFE دون إنترنت وصفحة تسجيل (غرفة ولغة وحالة بلا أسماء)، تُرسل أسطر checkin وتعرض عدّادًا.', 'MANARA-SAFE: an offline Wi-Fi with a check-in page (room, language, status, no names); sends checkin lines and shows a counter.') },
+    { f: 'kit/firmware/manara_rover/manara_rover.ino', n: 'manara_rover.ino', tg: 'ESP32 · Arduino · T4', d: T2('العربة التجريبية (المستوى 4): بوابة موافقة بمفتاح إنسان متكرر، بحث وتجنّب عوائق، إيقاف عند الحرارة، مفتاح الشكل الدافئ، وبروتوكول v1 (rover وgrid). لم تُجرَّب على عتاد حقيقي.', 'The bench rover (Tier 4): an approval gate with a repeated human key, search and obstacle avoidance, a stop at heat, the warm-shape key, and protocol v1 (rover and grid). Not yet run on real hardware.') },
     { f: 'kit/python/manara_webcam.py', n: 'manara_webcam.py', tg: 'Python · numpy', d: T2('كاشف اللون والوميض على كاميرا الحاسوب أو ملف فيديو، يعمل بـ numpy وحدها (OpenCV اختياري). الدالة detect_frame(rgb).', 'Colour + flicker detector for a laptop camera or a video file, numpy only (OpenCV optional). The pure function detect_frame(rgb).') },
     { f: 'kit/README.md', n: 'README.md', tg: 'AR · EN', d: T2('المكتبات وإصداراتها، وخطوات الرفع، وبروتوكول v1 باختصار، وقائمة الفحص بعد الرفع.', 'Libraries and versions, flashing steps, protocol v1 in short, and the post-flash test checklist.') }
   ];
@@ -305,7 +370,7 @@
   function applyLabels() { LABELS.forEach(function (a) { var n = $(a[0]); if (n) n.setAttribute(a[1], L(a[2])); }); }
 
   /* =============================================================== in-page nav */
-  var SECS = [['overview', T2('نظرة عامة', 'Overview')], ['monitor', T2('المراقِب', 'Monitor')], ['tiers', T2('المستويات', 'Tiers')], ['parts', T2('القطع', 'Parts')], ['wiring', T2('التوصيل', 'Wiring')],
+  var SECS = [['overview', T2('نظرة عامة', 'Overview')], ['monitor', T2('المراقِب', 'Monitor')], ['tiers', T2('المستويات', 'Tiers')], ['parts', T2('القطع', 'Parts')], ['wiring', T2('التوصيل', 'Wiring')], ['tier4', T2('درون وروبوت', 'Drone & rover')],
     ['bringup', T2('الخطوات', 'Steps')], ['calibrate', T2('المعايرة', 'Calibration')], ['safety', T2('السلامة', 'Safety')], ['legal', T2('القانون', 'Legal')], ['booth', T2('الكشك', 'Booth')], ['ownership', T2('الملكية', 'Ownership')], ['kit', T2('الحقيبة', 'Kit')]];
   function renderSubnav() {
     var row = clear($('#subnav-row'));
@@ -326,12 +391,12 @@
   /* =============================================================== overview diagram */
   var OV = [
     { n: 1, c: '--accent', t: T2('الحارس', 'Sentinel'), s: [T2('ESP32 وحسّاسات', 'ESP32 + sensors'), T2('يرى ويقرّر محليًّا', 'sees, decides locally'), T2('لا ينتظر أحدًا', 'never waits')], tier: 2, icon: 'chip' },
-    { n: 2, c: '--info', t: T2('الدرون (مفهوم)', 'Drone (concept)'), s: [T2('نظرة ثانية من الخارج', 'a second view from outside'), T2('تشغّله جهة مرخّصة', 'flown by a licensed agency')], tier: 3, icon: 'drone' },
-    { n: 3, c: '--brand', t: T2('هواتف السكان', 'Resident phones'), s: [T2('لغة كل شخص وصيغته', 'each person’s language + format'), T2('سلّم إيقاظ ليلي', 'night wake-up ladder')], tier: 1, icon: 'phone' },
-    { n: 4, c: '--safe', t: T2('العدّ', 'Headcount'), s: [T2('«أنا بأمان» / «أحتاج مساعدة»', '“I’m safe” / “I need help”'), T2('نقطة «آمن» دون إنترنت', 'MANARA-SAFE, offline')], tier: 3, icon: 'users' },
-    { n: 5, c: '--danger', t: T2('التسليم', 'Hand-off'), s: [T2('للدفاع المدني والإسعاف', 'to Civil Defence + ambulance'), T2('حزمة موثّقة + تصدير CAP', 'verified package + CAP export')], tier: 1, icon: 'card' }
+    { n: 2, c: '--info', t: T2('الدرون (مفهوم)', 'Drone (concept)'), s: [T2('يرى من الأعلى ويُنبّه غرفة التحكم', 'sees from above, alerts the control room'), T2('تشغّله جهة مرخّصة', 'flown by a licensed agency')], tier: 4, icon: 'drone' },
+    { n: 3, c: '--brand', t: T2('غرفة التحكم', 'Control room'), s: [T2('مفتاحان + «اعتماد» بشري', 'two keys + a human Approve'), T2('الأسرع وصولًا، والتسليم لـ 999', 'fastest unit; hand-off to 999')], tier: 1, icon: 'radar' },
+    { n: 4, c: '--safe', t: T2('هواتف السكان والعدّ', 'Phones and headcount'), s: [T2('لغة كل شخص وصيغته', 'each person’s language + format'), T2('«أنا بأمان» / «أحتاج مساعدة»', '“I’m safe” / “I need help”')], tier: 1, icon: 'phone' },
+    { n: 5, c: '--danger', t: T2('الروبوت (عربة مقعد)', 'Rescue robot (bench rover)'), s: [T2('يبحث في المبنى بعد موافقة', 'searches the building after approval'), T2('نموذج منطقه فقط', 'a model of its logic only')], tier: 4, icon: 'robot' }
   ];
-  var TIER_C = { 1: '--brand', 2: '--accent', 3: '--info' };
+  var TIER_C = { 1: '--brand', 2: '--accent', 3: '--info', 4: '--danger' };
   function ovIcon(kind, g, color) {
     var a = { 'class': 'ov-icon', style: '--sc:var(' + color + ')' };
     var ic = sv('g', a, g);
@@ -347,6 +412,13 @@
     } else if (kind === 'phone') {
       sv('rect', { x: 14, y: 5, width: 20, height: 38, rx: 5, 'class': 'fill' }, ic);
       sv('path', { d: 'M21 38h6M19 24l4 4 7-8' }, ic);
+    } else if (kind === 'radar') {
+      sv('circle', { cx: 24, cy: 24, r: 18, 'class': 'fill' }, ic); sv('circle', { cx: 24, cy: 24, r: 10 }, ic);
+      sv('path', { d: 'M24 24l13-9' }, ic); sv('circle', { cx: 24, cy: 24, r: 2 }, ic);
+    } else if (kind === 'robot') {
+      sv('rect', { x: 9, y: 22, width: 30, height: 14, rx: 4, 'class': 'fill' }, ic);
+      sv('circle', { cx: 15, cy: 38, r: 4 }, ic); sv('circle', { cx: 33, cy: 38, r: 4 }, ic);
+      sv('path', { d: 'M24 22v-7M20 15h8M16 29h6' }, ic); sv('circle', { cx: 31, cy: 29, r: 2.5 }, ic);
     } else if (kind === 'users') {
       sv('circle', { cx: 24, cy: 15, r: 6, 'class': 'fill' }, ic);
       sv('path', { d: 'M12 40v-4a8 8 0 0 1 8-8h8a8 8 0 0 1 8 8v4' }, ic);
@@ -383,27 +455,27 @@
   }
   function renderOverview() {
     var host = clear($('#overview-host')), rtl = Manara.lang() === 'ar';
-    var h = sv('svg', { 'class': 'ov-h', viewBox: '0 0 1180 240', role: 'img', 'aria-label': L(T2('مخطط أفقي: الحارس ثم الدرون ثم الهواتف ثم العدّ ثم التسليم', 'Horizontal diagram: sentinel, drone, phones, headcount, hand-off')) }, host);
+    var h = sv('svg', { 'class': 'ov-h', viewBox: '0 0 1180 240', role: 'img', 'aria-label': L(T2('مخطط أفقي: الحارس ثم الدرون ثم غرفة التحكم ثم الهواتف والعدّ ثم الروبوت', 'Horizontal diagram: sentinel, drone, control room, phones and headcount, rescue robot')) }, host);
     var W = 176, H = 196, G = 68;
     OV.forEach(function (n, i) {
       var pos = rtl ? 4 - i : i, x = 14 + pos * (W + G);
       ovNode(h, n, x, 22, W, H);
       if (i < 4) {
         var xa = rtl ? x - 6 : x + W + 6, xb = rtl ? x - G + 6 : x + W + G - 6;
-        ovArrow(h, xa, 22 + H / 2, xb, 22 + H / 2, i === 1);
+        ovArrow(h, xa, 22 + H / 2, xb, 22 + H / 2, i === 2);
       }
     });
-    var v = sv('svg', { 'class': 'ov-v', viewBox: '0 0 360 1100', role: 'img', 'aria-label': L(T2('مخطط رأسي: الحارس ثم الدرون ثم الهواتف ثم العدّ ثم التسليم', 'Vertical diagram: sentinel, drone, phones, headcount, hand-off')) }, host);
+    var v = sv('svg', { 'class': 'ov-v', viewBox: '0 0 360 1100', role: 'img', 'aria-label': L(T2('مخطط رأسي: الحارس ثم الدرون ثم غرفة التحكم ثم الهواتف والعدّ ثم الروبوت', 'Vertical diagram: sentinel, drone, control room, phones and headcount, rescue robot')) }, host);
     OV.forEach(function (n, i) {
       var y = 8 + i * 226;
       ovNode(v, n, 20, y, 320, 176);
-      if (i < 4) ovArrow(v, 180, y + 182, 180, y + 222, i === 1);
+      if (i < 4) ovArrow(v, 180, y + 182, 180, y + 222, i === 2);
     });
     var rb = el('ol', 'ribbon');
     [T2('أرصد', 'Sense'), T2('أتحقق', 'Prove'), T2('أُبلغ', 'Reach'), T2('أُرشد', 'Guide'), T2('أعُدّ', 'Count'), T2('أُسلّم', 'Hand off')].forEach(function (s) { var li = el('li'); li.appendChild(bi(s)); rb.appendChild(li); });
     host.appendChild(rb);
     var lg = el('div', 'ov-legend');
-    [1, 2, 3].forEach(function (t) { var s = el('span', 'ov-lg'); s.style.setProperty('--sc', 'var(' + TIER_C[t] + ')'); s.appendChild(el('i')); s.appendChild(bi(T2('T' + t + ' = ' + TIERS[t - 1].name.ar, 'T' + t + ' = ' + TIERS[t - 1].name.en))); lg.appendChild(s); });
+    [1, 2, 3, 4].forEach(function (t) { var s = el('span', 'ov-lg'); s.style.setProperty('--sc', 'var(' + TIER_C[t] + ')'); s.appendChild(el('i')); s.appendChild(bi(T2('T' + t + ' = ' + TIERS[t - 1].name.ar, 'T' + t + ' = ' + TIERS[t - 1].name.en))); lg.appendChild(s); });
     host.appendChild(lg);
   }
 
@@ -552,6 +624,81 @@
     state.tier = t; store('tier', String(t));
     ['tier-pick-parts', 'tier-pick-wiring', 'tier-pick-steps'].forEach(tierPick);
     renderTierCards(); renderParts(); renderWiring(); renderSteps();
+  }
+
+  /* =============================================================== Tier 4: drone payload + bench rover */
+  function renderTier4() {
+    var tb = clear($('#t4-parts-body')); if (!tb) return;
+    var tot = { lo: 0, hi: 0 }, opt = { lo: 0, hi: 0 };
+    PARTS.forEach(function (p) {
+      if (p.t !== 4) return;
+      var b = p.k === 'opt' ? opt : tot; b.lo += p.lo; b.hi += p.hi;
+      var tr = el('tr');
+      cell(tr, T2('القطعة', 'Part'), bi(p.n), 'pn');
+      cell(tr, T2('العدد', 'Qty'), p.q, 'num');
+      var c3 = cell(tr, T2('السعر التقريبي (US$)', 'Approximate price (US$)'), p.hi === 0 ? '0' : 'US$ ' + range(p.lo, p.hi), 'price');
+      var tg = p.k === 'seen' ? tag('cool', T2('رُصد (كالمستوى 2)', 'seen (as Tier 2)')) : p.k === 'opt' ? tag('info', T2('اختياري', 'optional')) : tag('warn', T2('تقدير', 'estimate'));
+      c3.appendChild(document.createTextNode(' ')); c3.appendChild(tg);
+      cell(tr, T2('لماذا نحتاجها', 'What it is for'), bi(p.role));
+      cell(tr, T2('ملاحظة', 'Note'), p.note.ar || p.note.en ? bi(p.note) : '–');
+      tb.appendChild(tr);
+    });
+    var k = clear($('#t4-totals'));
+    [['warn', T2('المستوى 4 يضيف (تقريبي، بلا الاختياري)', 'Tier 4 adds (approximate, without optional)'), 'US$ ' + range(tot.lo, tot.hi)],
+     ['cool', T2('المجموع حتى المستوى 4 (تقريبي)', 'Total up to Tier 4 (approximate)'), 'US$ ' + range(sumParts(4, false).core.lo, sumParts(4, false).core.hi)],
+     ['', T2('اختياري', 'Optional'), 'US$ ' + range(opt.lo, opt.hi)]].forEach(function (r) {
+      var d = el('div', 'kpi ' + r[0]); d.appendChild(el('b', 'num', r[2])); var s2 = el('span'); s2.appendChild(bi(r[1])); d.appendChild(s2); k.appendChild(d);
+    });
+    var pb = clear($('#rover-pin-body'));
+    ROVER_PINS.forEach(function (p) {
+      var tr = el('tr');
+      var c1 = cell(tr, T2('القطعة', 'Part'), null, 'pn'); if (typeof p.part === 'string') c1.appendChild(document.createTextNode(p.part)); else c1.appendChild(bi(p.part));
+      cell(tr, T2('إشارة القطعة', 'Part signal'), typeof p.sig === 'string' ? p.sig : bi(p.sig), 'mono');
+      var c3 = cell(tr, T2('طرف ESP32 (GPIO)', 'ESP32 pin (GPIO)'), p.gpio, 'num'); c3.style.fontWeight = '700';
+      cell(tr, T2('ملاحظة التوصيل', 'Wiring note'), bi(p.note));
+      pb.appendChild(tr);
+    });
+    var pr = $('#rover-proto');
+    if (pr) pr.textContent = [
+      '// rover → browser  (≈ 2 Hz, one JSON object per line; the "grid" line is the same as the sentinel’s)',
+      '{"v":1,"type":"rover","ms":12345,"state":"searching","approved":true,"drive":{"l":27,"r":27},',
+      ' "range":{"cm":84.2,"state":"clear"},',
+      ' "thermal":{"tmax":33.4,"tmean":27.9,"person":{"x":0.41,"y":0.55,"px":14,"dt":5.2}},',
+      ' "batt":{"mv":7420,"pct":71},"local":{"stop":false,"why":"none"}}',
+      '// browser → rover  (the human key: repeat "approve" about once a second, or it stops after 3 s)',
+      '{"v":1,"type":"rover","cmd":"approve"}',
+      '{"v":1,"type":"rover","cmd":"search"}   {"v":1,"type":"rover","cmd":"hold"}   {"v":1,"type":"rover","cmd":"recall"}',
+      '{"v":1,"type":"rover","cmd":"drive","l":40,"r":40}   {"v":1,"type":"rover","cmd":"say","say":"follow"}',
+      '// the E-stop, a flat battery, an obstacle and heat ahead are LOCAL: no browser command can override them',
+      '# lines that start with # are human notes: every parser ignores them'
+    ].join('\n');
+    renderRoverDiagram();
+  }
+  function renderRoverDiagram() {
+    var host = clear($('#rover-diagram')); if (!host) return;
+    var s = sv('svg', { viewBox: '0 0 760 330', style: 'direction:ltr', role: 'img', 'aria-label': L(T2('مخطط كتل العربة: المستشعرات والإيقاف الطارئ تدخل ESP32 الذي يحمل منطق الموافقة والأمان، ويخرج منه أمر العجلات إلى المشغّل والمحرّكين والنغمات والضوء، ويتصل بالمتصفح عبر USB', 'Rover block diagram: the sensors and the E-stop feed the ESP32, which holds the approval and safety logic; its wheel command goes to the motor driver and the two motors, plus tones and the light; it talks to the browser over USB')) }, host);
+    function box(x, y, w, h, c, title, sub) {
+      var g = sv('g', { style: '--sc:var(' + c + ')' }, s);
+      sv('rect', { x: x, y: y, width: w, height: h, rx: 14, 'class': 'ov-node on' }, g);
+      svBi('text', { x: x + w / 2, y: y + (sub ? h / 2 - 2 : h / 2 + 5), 'class': 'ov-title', 'text-anchor': 'middle' }, g, title);
+      if (sub) svBi('text', { x: x + w / 2, y: y + h / 2 + 18, 'class': 'ov-sub', 'text-anchor': 'middle' }, g, sub);
+    }
+    function arr(x1, y1, x2, y2) {
+      sv('path', { d: 'M' + x1 + ' ' + y1 + 'L' + x2 + ' ' + y2, 'class': 'ov-arrow' }, s);
+      var a = M.atan2(y2 - y1, x2 - x1), hx = 8;
+      sv('path', { d: 'M' + x2 + ' ' + y2 + 'L' + (x2 - hx * M.cos(a - 0.5)) + ' ' + (y2 - hx * M.sin(a - 0.5)) + 'L' + (x2 - hx * M.cos(a + 0.5)) + ' ' + (y2 - hx * M.sin(a + 0.5)) + 'Z', 'class': 'ov-arrow-head' }, s);
+    }
+    box(10, 8, 210, 62, '--info', T2('مستشعر المسافة HC-SR04', 'HC-SR04 distance'), T2('بطء / توقف', 'slow / stop'));
+    box(10, 84, 210, 62, '--danger', T2('كاميرا حرارية', 'Thermal camera'), T2('بقعة ساخنة · شكل دافئ', 'hot spot · warm shape'));
+    box(10, 160, 210, 62, '--warn', T2('جهد البطارية', 'Battery voltage'), T2('منخفضة / قطع', 'low / cut'));
+    box(10, 236, 210, 62, '--danger', T2('زر الإيقاف الطارئ', 'E-stop button'), T2('محلي: لا يُلغى', 'local: never overridden'));
+    box(275, 84, 210, 130, '--accent', 'ESP32', T2('roverStep(): موافقة ثم أمان ثم بحث', 'roverStep(): approve, safety, search'));
+    box(540, 8, 210, 62, '--safe', T2('مشغّل المحرّكات ← محرّكان', 'Motor driver → 2 motors'), T2('البطارية 2S منفصلة', 'separate 2S pack'));
+    box(540, 84, 210, 62, '--brand', T2('سمّاعة (نغمات) + ضوء', 'Speaker (tones) + light'), T2('وميضان كل ثانيتين عند الإيقاف', 'two flashes every 2 s when holding'));
+    box(540, 160, 210, 62, '--info', T2('المتصفح عبر USB', 'Browser over USB'), T2('«اعتماد» كل ثانية · تقارير', '“approve” every second · reports'));
+    [39, 115, 191, 267].forEach(function (y) { arr(224, y, 270, M.min(M.max(y, 100), 200)); });
+    arr(489, 128, 535, 40); arr(489, 148, 535, 116);
+    arr(489, 190, 535, 190); arr(535, 200, 489, 200);
   }
 
   /* =============================================================== warm-up timers */
@@ -1298,14 +1445,14 @@
 
   /* =============================================================== boot */
   function onLang() {
-    applyLabels(); renderOverview(); renderLive(); renderCount(); updateCounts(); updateSource(false); renderConns();
+    applyLabels(); renderOverview(); renderRoverDiagram(); renderLive(); renderCount(); updateCounts(); updateSource(false); renderConns();
     $$('#own-body option').forEach(function (op) { op.textContent = L({ ar: op.dataset.ar, en: op.dataset.en }); });
     $$('#own-body input.input').forEach(function (i) { i.setAttribute('aria-label', L(T2('دليل أو ملاحظة', 'Evidence or note'))); if (i.dataset.ar) i.placeholder = L({ ar: i.dataset.ar, en: i.dataset.en }); });
   }
   function boot() {
     renderSubnav(); renderOverview();
     ['tier-pick-parts', 'tier-pick-wiring', 'tier-pick-steps'].forEach(tierPick);
-    renderTierCards(); renderParts(); renderWiring(); renderSteps(); renderTimers();
+    renderTierCards(); renderParts(); renderWiring(); renderSteps(); renderTimers(); renderTier4();
     renderRules(); renderStandins(); renderBooth(); renderScript(); renderOwnership(); bindOwnButtons(); renderKit();
     initMonitor(); applyLabels();
     window.addEventListener('langchange', onLang);
@@ -1316,7 +1463,7 @@
   window.ManaraBuild = {
     validate: validate, extraKeys: extraKeys, handleLine: handleLine, makeSim: makeSim, boardOutputs: boardOutputs, hotspotTest: hotspotTest,
     stullWetBulb: stullWetBulb, wbgtEstimate: wbgtEstimate, heatIndexC: heatIndexC, attachPort: attachPort, sendCommand: sendCommand,
-    PARTS: PARTS, PINS: PINS, STEPS: STEPS, TIERS: TIERS, sumParts: sumParts, state: state, mon: Mon, setTier: setTier, KIT: KIT
+    PARTS: PARTS, PINS: PINS, ROVER_PINS: ROVER_PINS, STEPS: STEPS, TIERS: TIERS, sumParts: sumParts, state: state, mon: Mon, setTier: setTier, KIT: KIT
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();

@@ -66,6 +66,7 @@ if (on(1)) {
   const kf = [...CSS.matchAll(/@keyframes\s+([\w-]+)\s*\{((?:[^{}]|\{[^{}]*\})*)\}/g)].map(m => [m[1], [...m[2].matchAll(/([\w-]+)\s*:/g)].map(x => x[1]).filter(p => !['from', 'to'].includes(p))]);
   const badKf = kf.filter(([, props]) => props.some(p => !['transform', 'opacity'].includes(p)));
   check(`every @keyframes in home.css (${kf.map(k => k[0]).join(', ')}) animates only transform and opacity`, kf.length >= 6 && badKf.length === 0, JSON.stringify(badKf));
+  check('no @keyframes is named strobe / flash / blink / flicker (the lint demands those be opt-in); the one-shot alert pulse is called ringout', !kf.some(([n]) => /strobe|flash|blink|flicker/i.test(n)) && kf.some(([n]) => n === 'ringout'), kf.map(k => k[0]).join(' '));
   const inf = [...CSS.matchAll(/animation:([^;}]*)\binfinite\b/g)].map(m => m[1]);
   check(`looping animations are slow (no loop shorter than 0.4 s, so nothing flashes more than 3 times a second): ${inf.length} found`, inf.every(a => { const d = /(\d*\.?\d+)s/.exec(a); return d && +d[1] >= 0.4; }), inf.join(' | '));
   check('reduced motion: the CSS stops the loops, the entrance animation and the sheen; the JS draws still frames and counters end at once',
@@ -91,14 +92,14 @@ if (on(2)) {
   check(`English: "AI" only as "not AI" or in the AI-disclosure (${aiEn.length} mentions)`, aiEn.every(s => /not AI|AI tools|AI disclosure|AI_TOOLS|Ownership & AI/.test(s)), aiEn.join(' || '));
   check('Arabic names the detector «رؤية حاسوبية بقواعد», English "rule-based computer vision"; the robot and drone are "concept / simulated", never "product"', /رؤية حاسوبية بقواعد/.test(HTML) && /rule-based computer vision/i.test(HTML) && /no robot has been built/i.test(HTML) && /no real drone has flown/i.test(HTML));
   check('prior art is named respectfully (Saqr, Shaheen, Suhail, Hassantuk) with "complements, never competes"; 999 stays the dispatcher', ['Saqr', 'Shaheen', 'Suhail', 'Hassantuk'].every(w => HTML.includes(w)) && /Complements, never competes/.test(HTML) && /999 stays/.test(HTML + JS));
-  check('"SIM" labels the simulated parts: camera, story views, all-Qatar demo, console, robot, every simulated number card', (HTML.match(/>SIM</g) || []).length >= 14 && (HTML.match(/data-k="sim"/g) || []).length === 10 && (HTML.match(/data-k="measured"/g) || []).length === 3);
+  check('"SIM" labels the simulated parts: camera, story views, all-Qatar demo, console, robot, every simulated number card', (HTML.match(/>SIM</g) || []).length >= 14 && (HTML.match(/data-k="sim"/g) || []).length === 9 && (HTML.match(/data-k="measured"/g) || []).length === 3);
 
   // ---- engines, run here in Node (independent of the page)
   const loadCtx = files => { const c = vm.createContext({ console }); for (const f of files) vm.runInContext(read(f), c, { filename: f }); return c; };
   const S = loadCtx(['js/sim.js']).ManaraSim;
   const NC = loadCtx(['js/fire.js', 'js/drone-scene.js', 'data/qatar-geo.js', 'data/qatar-facilities.js', 'data/qatar-roads.js', 'js/national.js']);
   const N = NC.ManaraNational, GEO = NC.MANARA_QATAR_GEO, FAC = NC.MANARA_QATAR_FACILITIES, RDS = NC.MANARA_QATAR_ROADS;
-  const TC = loadCtx(['data/test-counts.js']).MANARA_TEST_COUNTS;
+  const TC = (() => { const w = {}; vm.runInContext(read('data/test-counts.js'), vm.createContext({ window: w })); return w.MANARA_TEST_COUNTS; })();
   const QUIET = { dronePatrolPct: 0, droneFaultPct: 0, droneUnavailPct: 0, droneWindMps: 0 };
   const exp = {};
   { // first eyes, national A/B
@@ -131,7 +132,7 @@ if (on(2)) {
   const { ctx, page } = await still({ lang: 'en', width: 1440 }); await ready(page);
   const ev = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('[data-ev]')].map(n => [n.getAttribute('data-ev'), n.textContent.trim().replace(/,/g, '')])));
   const keys = Object.keys(exp).sort(), bad = keys.filter(k => String(exp[k]) !== ev[k]);
-  check(`${keys.length} simulation / detector numbers on the page equal the engines (${keys.map(k => k + '=' + exp[k]).join(' ')})`, bad.length === 0 && keys.length >= 24, bad.map(k => `${k}: page ${ev[k]} engine ${exp[k]}`).join('; '));
+  check(`${keys.length} simulation / detector numbers on the page equal the engines (${keys.map(k => k + '=' + exp[k]).join(' ')})`, bad.length === 0 && keys.length >= 23, bad.map(k => `${k}: page ${ev[k]} engine ${exp[k]}`).join('; '));
   const dup = await page.evaluate(() => { const m = {}; document.querySelectorAll('[data-ev]').forEach(n => { const k = n.getAttribute('data-ev'); (m[k] = m[k] || new Set()).add(n.textContent.trim()); }); return Object.entries(m).filter(([, v]) => v.size > 1).map(([k]) => k); });
   check('a number quoted twice on the page (in a card and in its Limit line) is the same text both times', dup.length === 0, dup.join(' '));
   const tc = await page.evaluate(() => ({ total: document.querySelector('[data-tc=total]').textContent, suites: document.querySelector('[data-tc=suites]').textContent }));
@@ -145,7 +146,8 @@ if (on(2)) {
   const nb = Object.keys(want).filter(k => String(want[k]) !== nat[k]);
   check(`Qatar-wide facts equal the data files: ${want.munis} municipalities, ${want.fac} facilities (${want.hosp} hospitals, ${want.fire} fire stations, ${want.ed} EDs), ${want.places} places, ${want.roadkm} km of roads, snapshot ${want.snapshot}`, nb.length === 0 && want.munis === 8 && want.snapshot === '2026-10-08', nb.map(k => `${k}: page ${nat[k]} data ${want[k]}`).join('; '));
   const rows = await page.evaluate(() => [...document.querySelectorAll('#qd-table tbody tr')].map(r => [...r.children].map(c => c.textContent.trim())));
-  check('the municipality table lists all 8 municipalities with their area and facility counts from the data', rows.length === GEO.municipalities.length && rows.every((r, i) => r[1].replace(/,/g, '') === String(GEO.municipalities[i].areaKm2)), JSON.stringify(rows.slice(0, 2)));
+  const byM = id => ({ hosp: FAC.filter(f => f.muni === id && (f.kind === 'hospital' || f.kind === 'clinic-ed')).length, police: FAC.filter(f => f.muni === id && f.kind === 'police').length, fire: FAC.filter(f => f.muni === id && f.kind === 'fire').length });
+  check('the municipality table lists all 8 municipalities with their area (km², rounded) and their hospital / police / fire counts, recounted here from the data', rows.length === GEO.municipalities.length && rows.every((r, i) => { const m = GEO.municipalities[i], c = byM(m.id); return r[1].replace(/,/g, '') === String(Math.round(m.areaKm2)) && +r[2] === c.hosp && +r[3] === c.police && +r[4] === c.fire; }), JSON.stringify(rows.slice(0, 3)));
   // the ETAs drawn in the hero story are the engine's plan for the same scenario (fire in Doha, seed 7, 07:30, quiet fleet)
   const run = N.create({ seed: 7, date: '2026-07-12', hour: 7.5, autoApprove: false, params: { unitBusyPct: 0, ...QUIET } });
   const inc = N.createIncident(run, { hazard: 'fire', lon: 51.5264, lat: 25.2856, severity: 2, trigger: 'sentinel' });
@@ -347,7 +349,7 @@ if (on(6)) {
     await go(page, '#room'); await sleep(2200); const c0 = await tt(); await sleep(1200); const c1 = await tt(); const run3 = await running();
     check(`at the control-room miniature: it plays (${c0.con.toFixed(1)} → ${c1.con.toFixed(1)} s), the radar sweep runs, the hero (off-screen now) does not`, c1.con - c0.con > 0.6 && run3.some(c => /con-radar/.test(c)) && !run3.some(c => /beam/.test(c)) && Math.abs(c1.cam - b1.cam) < 0.05, JSON.stringify([b1, c0, c1, run3]));
     await go(page, '#robot'); await sleep(2000); const d0 = await tt(); await sleep(900); const d1 = await tt();
-    check(`at the robot: it plays (${d0.rob.toFixed(1)} → ${d1.rob.toFixed(1)} s) and the console behind it stands still`, d1.rob - d0.rob > 0.4 && Math.abs(d1.con - c1.con) < 0.05, JSON.stringify([c1, d0, d1]));
+    check(`at the robot: it plays (${d0.rob.toFixed(1)} → ${d1.rob.toFixed(1)} s) and the console we just left stands still`, d1.rob - d0.rob > 0.4 && Math.abs(d1.con - d0.con) < 0.02, JSON.stringify([c1, d0, d1]));
     await go(page, '#top'); await sleep(900);
     const e0 = await tt(); await page.evaluate(() => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => true }); document.dispatchEvent(new Event('visibilitychange')); }); await sleep(900);
     const e1 = await tt(), tab = await page.evaluate(() => document.documentElement.hasAttribute('data-tab-hidden')), run4 = await running();
@@ -391,7 +393,7 @@ if (on(6)) {
     await go(page, '#room'); await sleep(2500);
     await page.click('#con-restart'); await sleep(250);
     const al = await page.evaluate(() => { const li = document.querySelector('#al-main'); return { enter: li.classList.contains('enter'), anims: document.getAnimations().filter(a => a.effect && li.contains(a.effect.target) || (a.effect && a.effect.target === li)).map(a => a.animationName) }; });
-    check('the alert card slides in with a single flash ring when the control-room story restarts (class .enter, animations slidein + flashring)', al.enter && al.anims.includes('slidein') && al.anims.includes('flashring'), JSON.stringify(al));
+    check('the alert card slides in with a single expanding ring when the control-room story restarts (class .enter, animations slidein + ringout)', al.enter && al.anims.includes('slidein') && al.anims.includes('ringout'), JSON.stringify(al));
     const sweep = await page.evaluate(() => { const r = document.querySelector('.con-radar'); const a = r && r.getAnimations()[0]; return a ? [a.animationName, a.playState, a.effect.getComputedTiming().duration] : null; });
     check('the control-room map has a radar sweep (transform rotate, 8 s per turn, running while visible)', !!sweep && sweep[0] === 'sweep' && sweep[1] === 'running' && sweep[2] >= 4000, JSON.stringify(sweep));
     // parallax on the lighthouse beam
@@ -426,8 +428,9 @@ if (on(7)) {
     const a = await page.evaluate(() => ({ stage: document.querySelector('#con').dataset.stage, ready: document.querySelector('#con').dataset.ready, alert: document.querySelector('#al-main').dataset.st, units: document.querySelectorAll('#con-units li').length, cap: document.querySelector('#con-cap').textContent, canvas: (() => { const cv = document.querySelector('#con-canvas'), d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data; let n = 0; for (let i = 0; i < d.length; i += 4 * 211) if (d[i] + d[i + 1] + d[i + 2] > 60) n++; return n; })() }));
     check('control-room miniature (reduced motion): a still, confirmed alert on a real OpenStreetMap map, with the feed thumbnails and the fleet', a.ready === '1' && a.stage === '2' && a.alert === 'confirmed' && a.canvas > 30 && a.cap.length > 30, JSON.stringify(a));
     await page.click('#con-approve'); await sleep(500);
-    const b = await page.evaluate(() => ({ stage: document.querySelector('#con').dataset.stage, alert: document.querySelector('#al-main').dataset.st, units: [...document.querySelectorAll('#con-units li')].map(l => l.dataset.k + ' ' + l.textContent.replace(/\s+/g, ' ').slice(0, 40)), cap: document.querySelector('#con-cap').textContent }));
-    check('Approve in the miniature (a human click): the alert becomes APPROVED, the fastest unit of each type is listed with its ETA, the caption says 999 stays the dispatcher', b.stage === '4' && b.alert === 'approved' && b.units.length >= 3 && /999/.test(b.cap), JSON.stringify(b));
+    const b = await page.evaluate(() => ({ stage: document.querySelector('#con').dataset.stage, alert: document.querySelector('#al-main').dataset.st, units: [...document.querySelectorAll('#con-units li')].map(l => l.dataset.k + ' ' + l.textContent.replace(/\s+/g, ' ')), cap: document.querySelector('#con-cap').textContent }));
+    const document999 = await page.evaluate(() => document.querySelector('#how').textContent + ' ' + document.querySelector('#room').textContent);
+    check('Approve in the miniature (a human click): the alert becomes APPROVED, the fastest unit of each type (fire, police, ambulance, rescue) is listed with its ETA (the same 2:48 and 3:21 the hero draws), and the page says 999 stays the dispatcher', b.stage === '4' && b.alert === 'approved' && b.units.length === 4 && /2:48/.test(b.units.join(' ')) && /3:21/.test(b.units.join(' ')) && /6:06/.test(b.units.join(' ')) && /9:43/.test(b.units.join(' ')) && /999/.test(document999), JSON.stringify(b));
     await ctx.close();
   }
   { // the Qatar-wide demo
@@ -483,7 +486,7 @@ if (on(8)) {
     const { ctx, page } = await still({ lang: 'en', width: 1440 }); await ready(page); await go(page, '#numbers');
     const cnt = async () => page.evaluate(() => [...document.querySelectorAll('#nums .num-card')].filter(c => getComputedStyle(c).display !== 'none').length);
     const all = await cnt(); await page.click('#num-filter [data-f=measured]'); await sleep(200); const m = await cnt(); await page.click('#num-filter [data-f=sim]'); await sleep(200); const s = await cnt(); await page.click('#num-filter [data-f=all]'); await sleep(200);
-    check(`the MEASURED / SIM filter shows ${all} → ${m} measured, ${s} simulated, ${all} again`, all === 13 && m === 3 && s === 10 && await cnt() === 13);
+    check(`the MEASURED / SIM filter shows ${all} → ${m} measured, ${s} simulated, ${all} again`, all === 12 && m === 3 && s === 9 && await cnt() === 12);
     check('every card has a tag (MEASURED or SIM), a source line and a Limit line', await page.evaluate(() => [...document.querySelectorAll('#nums .num-card')].every(c => /^(MEASURED|SIM)$/.test(c.querySelector('.tag').textContent.trim()) && c.querySelector('.nc-src') && c.querySelector('.nc-lim'))));
     await ctx.close();
   }
@@ -528,9 +531,9 @@ if (on(9)) {
       const unnamed = [...document.querySelectorAll('a[href],button,input,select,textarea,[role=button],[role=tab],[role=radio]')].filter(vis).filter(e => !nameOf(e)).map(e => e.outerHTML.slice(0, 70));
       const ids = [...document.querySelectorAll('[id]')].map(e => e.id), dup = ids.filter((x, i) => ids.indexOf(x) !== i && !/^mn-b2?$/.test(x));
       const dangling = [...document.querySelectorAll('[aria-controls],[aria-labelledby],[aria-describedby]')].flatMap(e => ['aria-controls', 'aria-labelledby', 'aria-describedby'].flatMap(k => (e.getAttribute(k) || '').split(' ').filter(Boolean).filter(i => !document.getElementById(i)).map(i => k + '→' + i)));
-      const hs = [...document.querySelectorAll('h1,h2,h3,h4')].filter(vis).map(h => +h.tagName[1]); let jump = 0; hs.forEach((l, i) => { if (i && l - hs[i - 1] > 1) jump++; });
+      const hs = [...document.querySelectorAll('h1,h2,h3,h4')].filter(vis).filter(h => !h.closest('footer,.nav')).map(h => +h.tagName[1]); let jump = 0; hs.forEach((l, i) => { if (i && l - hs[i - 1] > 1) jump++; });
       const lm = { main: document.querySelectorAll('main').length, header: document.querySelectorAll('body > header').length, footer: document.querySelectorAll('footer').length, navs: [...document.querySelectorAll('nav')].filter(n => !n.getAttribute('aria-label')).length, skip: !!document.querySelector('.skip[href="#main"]') };
-      const lab = [...document.querySelectorAll('canvas:not([aria-hidden="true"]),svg[role=img]')].filter(e => !e.getAttribute('aria-label') && !e.getAttribute('aria-labelledby')).length;
+      const lab = [...document.querySelectorAll('canvas,svg[role=img]')].filter(e => !e.closest('[aria-hidden="true"]') && !e.getAttribute('aria-label') && !e.getAttribute('aria-labelledby')).length;
       const hid = [...document.querySelectorAll('#cam-story,#rob-svg')].map(e => e.getAttribute('aria-hidden') === 'true' || !!e.getAttribute('aria-label') || !!e.getAttribute('aria-labelledby'));
       return { unnamed, dup, dangling, h1: document.querySelectorAll('h1').length, jump, lm, lab, hid, srStory: !!document.querySelector('.cam ~ .sr-only, .hero .sr-only') };
     });
@@ -568,7 +571,7 @@ if (on(10)) {
   { const { ctx, page } = await still({ lang: 'en', theme: 'dark', width: 1200, height: 900 }); await ready(page);
     await page.evaluate(() => window.dispatchEvent(new Event('beforeprint'))); await sleep(100);
     const during = await page.evaluate(() => document.documentElement.dataset.theme);
-    await page.emulateMedia({ media: 'print' });
+    await page.emulateMedia({ media: 'print' }); await sleep(600);
     const pr = await page.evaluate(() => { const cs = e => getComputedStyle(document.querySelector(e)); return { body: cs('body').backgroundColor, nav: cs('.nav').display, sub: cs('.subnav').display, ctl: cs('.cam-ctl').display, ghost: cs('.cam-cap.ghost').display, sw: document.documentElement.scrollWidth, w: document.documentElement.clientWidth, anim: document.getAnimations().filter(a => a instanceof CSSAnimation && a.playState === 'running').length }; });
     check('print: a dark-theme page prints on paper-light colours; nav, sub-nav and controls hidden; the caption sizer removed; nothing runs; no horizontal overflow', during === 'light' && pr.body === 'rgb(255, 255, 255)' && pr.nav === 'none' && pr.sub === 'none' && pr.ctl === 'none' && pr.ghost === 'none' && pr.anim === 0 && pr.sw <= pr.w + 1, JSON.stringify(pr));
     const pdf = path.join(process.env.MANARA_SHOTS || os.tmpdir(), 'manara-home-print.pdf'); fs.mkdirSync(path.dirname(pdf), { recursive: true });

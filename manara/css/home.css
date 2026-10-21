@@ -117,6 +117,7 @@
 .cam-steps li[data-st=done] .cs-n{background:var(--safe);color:var(--bg)}
 .cam-ctl{display:flex;align-items:center;gap:10px;margin-block-start:10px}
 .cam-ctl .icon-btn{flex:none;width:44px;height:44px}
+main .icon-btn{min-width:44px;min-height:44px}
 .cam-capw{flex:1;min-width:0;display:grid}
 .cam-cap{grid-area:1/1;min-width:0;font-size:.86rem;line-height:1.55;color:var(--ink-2)}
 .cam-cap.ghost{visibility:hidden;pointer-events:none;user-select:none}
@@ -230,9 +231,11 @@ html[dir=rtl] .step::after{transform:translateY(-50%) scaleX(-1)}
 .u-t{display:grid;min-width:0}
 .u-t b{font-size:.8rem;color:var(--head);font-weight:600;line-height:1.35;overflow-wrap:anywhere}
 .u-t small{font-size:.72rem;color:var(--muted)}
-.u-e{font-size:1.05rem;color:var(--accent)}
-.con .units li{opacity:.4}
-.con[data-stage="3"] .units li,.con[data-stage="4"] .units li{opacity:1;border-color:color-mix(in oklab,var(--brand) 45%,var(--line))}
+.u-e{font-size:1.05rem;color:var(--accent-t)}
+.con .units li{border-style:dashed;border-color:var(--line-2)}   /* pending: dashed and a quiet icon, never reduced text contrast */
+.con .units li .u-i{opacity:.55}
+.con[data-stage="3"] .units li,.con[data-stage="4"] .units li{border-style:solid;border-color:color-mix(in oklab,var(--brand) 45%,var(--line))}
+.con[data-stage="3"] .units li .u-i,.con[data-stage="4"] .units li .u-i{opacity:1}
 .con-act{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px}
 .con-act .btn{min-height:44px}
 .con-siren{display:flex;align-items:center;gap:8px;color:var(--ink-2);flex:1;min-width:220px}
@@ -515,6 +518,7 @@ html[data-lang=ar] .hz-res{font-family:var(--font)}
 .cam-story .st-drone-b{fill:var(--accent);stroke:var(--bg);stroke-width:.6}
 .cam-story .st-rotor{fill:var(--accent);stroke:var(--bg);stroke-width:.5}
 .cam-story .st-cap{fill:var(--muted);font-family:var(--font-m);font-size:3.2px}
+html[data-lang=ar] .cam-story .st-cap{font-family:var(--font-b,var(--font-h))}
 .cam-story .st-wall{fill:var(--surface);stroke:var(--line-2);stroke-width:.7}
 .cam-story .st-room{fill:var(--surface-2);stroke:var(--line-2);stroke-width:.5}
 .cam-story .st-corr{fill:var(--bg);stroke:var(--line);stroke-width:.4}
@@ -556,6 +560,9 @@ html[dir=rtl] .flow-rail .fr-fill{transform-origin:right;background:linear-gradi
 /* micro-interactions */
 .card,.num-card,.kpi,.hz,.alert,.units li,.chip{transition:transform .3s var(--ease),box-shadow .3s,border-color .25s,background-color .25s,color .25s}
 .num-card:hover,.hz:hover,.why-kpis .kpi:hover,.card:hover{transform:translateY(-3px);box-shadow:var(--shadow)}
+.js .rv.in:is(.card,.num-card,.kpi,.hz){transition:opacity .6s var(--ease),transform .3s var(--ease),box-shadow .3s,border-color .25s,background-color .25s,color .25s;transition-delay:var(--d,0s)}
+.js .rv.in:is(.card,.num-card,.kpi,.hz):hover{transform:translateY(-3px);box-shadow:var(--shadow)}
+.js .rv.in.step:hover,.js .rv.in.step:focus-within{transform:translateY(-4px)}
 .num-card:hover{border-color:color-mix(in oklab,var(--sc) 55%,var(--line))}
 .btn{position:relative;overflow:hidden}
 .btn-primary::after{content:"";position:absolute;inset-block:0;inset-inline-start:-60%;width:40%;background:linear-gradient(100deg,transparent,color-mix(in oklab,white 45%,transparent),transparent);transform:translateX(-120%) skewX(-18deg);transition:none;pointer-events:none}
@@ -573,17 +580,17 @@ html[dir=rtl] .btn-primary:hover::after{transform:translateX(-420%) skewX(18deg)
 .js .hero-facts li:nth-child(1){animation-delay:.2s}.js .hero-facts li:nth-child(2){animation-delay:.28s}.js .hero-facts li:nth-child(3){animation-delay:.36s}
 .js .hero-pos{animation-delay:.44s}
 @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
-/* control-room miniature: a radar sweep on the map, an alert card that slides in with one brief flash */
+/* control-room miniature: a radar sweep on the map, an alert card that slides in with one expanding ring (a single pulse, never a loop) */
 .con-radar{position:absolute;inset:-30%;z-index:1;pointer-events:none;border-radius:50%;opacity:.55;mix-blend-mode:screen;
   background:conic-gradient(from 0deg,transparent 0 292deg,color-mix(in oklab,var(--accent) 20%,transparent) 338deg,color-mix(in oklab,var(--accent) 46%,transparent) 360deg);animation:sweep 8s linear infinite}
 @keyframes sweep{to{transform:rotate(360deg)}}
 .con-map{isolation:isolate}
 .alert{position:relative}
 .alert.enter{animation:slidein .6s var(--ease) both}
-.alert.enter::after{content:"";position:absolute;inset:-1px;border-radius:inherit;border:2px solid var(--st);pointer-events:none;animation:flashring .9s .1s ease-out both}
+.alert.enter::after{content:"";position:absolute;inset:-1px;border-radius:inherit;border:2px solid var(--st);pointer-events:none;animation:ringout .9s .1s ease-out both}
 @keyframes slidein{from{opacity:0;transform:translateX(calc(var(--dir,1) * -26px))}to{opacity:1;transform:none}}
 html[dir=rtl] .alert.enter{--dir:-1}
-@keyframes flashring{from{opacity:.95;transform:scale(1)}to{opacity:0;transform:scale(1.07,1.22)}}
+@keyframes ringout{from{opacity:.95;transform:scale(1)}to{opacity:0;transform:scale(1.07,1.22)}}
 .alert.enter+.alert{animation:slidein .6s .12s var(--ease) both}
 .alert.enter+.alert+.alert{animation:slidein .6s .22s var(--ease) both}
 /* count-up numbers keep their width so nothing around them moves */
@@ -602,11 +609,11 @@ section[data-live="0"] *,section[data-live="0"] *::before,section[data-live="0"]
   .js .gap:not(.in) .gap-bar{transform:none}
 }
 @media print{
-  :root{--bg:#fff;--bg-2:#fff;--surface:#fff;--surface-2:#f5f5f5;--ink:#111;--ink-2:#222;--muted:#555;--head:#000;--line:#ccc;--line-2:#aaa}
+  :root,:root[data-theme]{--bg:#fff;--bg-2:#fff;--surface:#fff;--surface-2:#f5f5f5;--ink:#111;--ink-2:#222;--muted:#555;--head:#000;--line:#ccc;--line-2:#aaa}
   .cam-cap.ghost{display:none}
   .nav,.subnav,.cam-ctl,.rob-ctl,.qd-actions,.con-act .btn,.num-filter,.hz-seg,.hero-bg,.skip{display:none!important}
   .sec,.hero,.closing{padding-block:16px;break-inside:avoid-page}
-  .dv{background:#fff;color:#111}
+  .dv{--bg:#fff;--bg-2:#fff;--surface:#fff;--surface-2:#f5f5f5;--surface-3:#eee;--ink:#111;--ink-2:#222;--muted:#555;--head:#000;--line:#ccc;--line-2:#aaa;--glass:#fff;--glass-line:#ccc;background:#fff;color:#111}
   .credits{background:#fff;color:#111}
   .rv{opacity:1!important;transform:none!important}
 }

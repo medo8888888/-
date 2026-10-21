@@ -66,10 +66,15 @@
     },
     national: {"cmd":"ManaraNational.findFartherButFaster(7) · ManaraNational.ab({seed: 7, n: 150})","seed":7,"snapshot":"2026-10-08","data":{"facilities":138,"roadKm":6116,"officialNames":73,"missingInOsm":23,"dataChecks":tcn('qatar-data', 91),"engineChecks":tcn('national', 291)},"ab":{"n":150,"differsPct":64.7,"meanSavedSec":63,"medianSavedSec":0,"p90SavedSec":242},"ex":{"seed":7,"clock":"17:45:00","dow":{"ar":"الأحد","en":"Sunday"},"date":"2026-07-12","kind":"fire","incident":{"lon":51.52418,"lat":25.23645,"place":{"ar":"نعيجة","en":"Nuaija"},"muni":"doha"},"fastest":{"unitId":"fire:fire-w492127496","name":{"ar":"مركز إطفاء — (بلا اسم في OSM) — الوكرة","en":"Fire station — (unnamed in OSM) — Al Wakrah"},"etaSec":754,"freeFlowEtaSec":549,"roadKm":13.5,"straightKm":10,"congestedSegments":63,"worst":{"ar":"طريق الوكرة","en":"Al Wakra Road"},"base":[51.602522,25.180508],"route":[[51.6026,25.1805],[51.6026,25.1805],[51.6029,25.1805],[51.604,25.1783],[51.6043,25.1776],[51.6045,25.1772],[51.6046,25.1771],[51.6047,25.1772],[51.6048,25.1773],[51.6046,25.1776],[51.6037,25.1793],[51.6029,25.1807],[51.6017,25.183],[51.6012,25.184],[51.6002,25.186],[51.5976,25.1909],[51.5972,25.1918],[51.5971,25.192],[51.5971,25.192],[51.5968,25.1919],[51.5959,25.1916],[51.5917,25.19],[51.5904,25.1895],[51.5881,25.1886],[51.587,25.1883],[51.5868,25.1883],[51.5868,25.1882],[51.5853,25.1877],[51.5852,25.1877],[51.5834,25.1872],[51.5832,25.1872],[51.5815,25.187],[51.5794,25.1869],[51.5769,25.1869],[51.5761,25.1869],[51.5759,25.1869],[51.5749,25.1869],[51.5705,25.1869],[51.5687,25.1869],[51.5686,25.1869],[51.5677,25.1869],[51.5664,25.1869],[51.5658,25.1869],[51.5656,25.1869],[51.5647,25.1869],[51.5632,25.1869],[51.5608,25.1869],[51.56,25.1869],[51.5599,25.1869],[51.5563,25.1865],[51.5522,25.1854],[51.5512,25.1853],[51.5503,25.1855],[51.5491,25.1864],[51.5474,25.188],[51.5463,25.1898],[51.5445,25.1946],[51.5439,25.1964],[51.5424,25.2011],[51.541,25.2053],[51.5393,25.2107],[51.5391,25.2115],[51.5356,25.2181],[51.5337,25.2244],[51.5332,25.226],[51.5321,25.2283],[51.5307,25.2305],[51.5267,25.2346],[51.5256,25.2354],[51.5241,25.2364]]},"nearest":{"unitId":"fire:fire-n11533985781","name":{"ar":"مركز إطفاء — Fire Police Department","en":"Fire station — Fire Police Department"},"etaSec":840,"freeFlowEtaSec":485,"roadKm":10.2,"straightKm":5.7,"congestedSegments":58,"worst":{"ar":"شارع روضة الخيل","en":"Rawdat Al Khail Street"},"base":[51.533203,25.286667],"route":[[51.5334,25.286],[51.5315,25.2856],[51.5311,25.2854],[51.5311,25.2853],[51.5312,25.2852],[51.532,25.2843],[51.5323,25.2839],[51.5324,25.283],[51.5324,25.2828],[51.5319,25.2812],[51.5318,25.281],[51.5317,25.2802],[51.5314,25.2797],[51.5311,25.2796],[51.5306,25.2796],[51.5287,25.2796],[51.5285,25.2795],[51.5285,25.2791],[51.5284,25.2781],[51.5281,25.2753],[51.528,25.275],[51.5279,25.2749],[51.5279,25.2747],[51.5278,25.2745],[51.5276,25.2738],[51.5269,25.2709],[51.5264,25.2691],[51.5264,25.269],[51.5249,25.2646],[51.5248,25.2642],[51.5247,25.2639],[51.5245,25.2632],[51.5245,25.2631],[51.5245,25.2631],[51.5244,25.263],[51.5242,25.262],[51.5242,25.2599],[51.5242,25.2585],[51.5242,25.2572],[51.5241,25.2556],[51.5241,25.255],[51.5241,25.2545],[51.5241,25.2542],[51.5241,25.2539],[51.5241,25.2533],[51.5242,25.2438],[51.524,25.2409],[51.523,25.2383],[51.5221,25.2371],[51.5213,25.2365],[51.5206,25.2366],[51.5203,25.2374],[51.5207,25.2378],[51.5213,25.2379],[51.522,25.2376],[51.526,25.2348],[51.5264,25.2346],[51.5287,25.2325],[51.5324,25.2273],[51.5324,25.2258],[51.5322,25.2255],[51.5313,25.2259],[51.5317,25.2273],[51.5311,25.2278],[51.5324,25.2295],[51.5316,25.2298],[51.5302,25.2316],[51.5284,25.2331],[51.5256,25.2354],[51.5241,25.2364]]},"gainSec":86,"extraStraightKm":4.4,"extraRoadKm":3.3,"reason":"traffic","flips":true}}
   };
+  // The drone and robot numbers below are simulation results (SIM), copied from `ManaraNational.ab({seed: 7, n: 150})` (firstEyes), the DRONE REPORT line of
+  // tools/test-national.mjs and `ManaraSim.abRobot` over seeds 1-8 (fire-night-robot). tools/test-poster.mjs recomputes them and fails if they drift.
+  RESULTS.drone = { cmd: 'ManaraNational.ab({seed: 7, n: 150}) · test-national.mjs DRONE REPORT', droneFirstPct: 90, noDronePct: 33, droneP50: 244, groundP50: 440.5, thermalNoon: 2, thermalNight: 70 };
+  RESULTS.robot = { cmd: 'ManaraSim.abRobot({preset: \'fire-night-robot\', seed: 1..8})', seeds: 8, robotFirst: 5, crewsFirst: 3, p50Without: 346, p50With: 344 };
   var TIERS = [
     { n: 1, lo: 2, hi: 10, name: { ar: 'حاسوب فقط', en: 'Laptop only' } },
     { n: 2, lo: 80, hi: 227, name: { ar: 'لوحة الحارس (الإجمالي)', en: 'Sentinel board (total)' } },
-    { n: 3, lo: 95, hi: 270, name: { ar: 'كشك كامل (الإجمالي)', en: 'Full booth (total)' } }
+    { n: 3, lo: 95, hi: 270, name: { ar: 'كشك كامل (الإجمالي)', en: 'Full booth (total)' } },
+    { n: 4, lo: 174, hi: 474, name: { ar: 'درون وروبوت (الإجمالي)', en: 'Drone & rover (total)' } }
   ];
 
   /* ======================================================================= state */
@@ -86,9 +91,9 @@
   ];
   var S = DEF, K = 1, curScale = 1;
   var board, viewer, stagebox, pageRule, pins = [], HOME = {}, a0 = null;
-  var ORDER = ['m-problem', 'm-gap', 'm-inclusive', 'm-plug', 'm-limits', 'm-arch', 'm-proof', 'm-hazards', 'm-fast', 'm-try', 'm-results', 'm-hw'];
+  var ORDER = ['m-problem', 'm-gap', 'm-inclusive', 'm-plug', 'm-limits', 'm-arch', 'm-ctrl', 'm-fast', 'm-robot', 'm-try', 'm-results', 'm-hw'];
   var splitAt = 6;
-  var ALL = ['m-problem', 'm-gap', 'm-inclusive', 'm-plug', 'm-limits', 'm-hero', 'm-arch', 'm-proof', 'm-hazards', 'm-fast', 'm-try', 'm-results', 'm-hw', 'm-team'];
+  var ALL = ['m-problem', 'm-gap', 'm-inclusive', 'm-plug', 'm-limits', 'm-hero', 'm-arch', 'm-ctrl', 'm-fast', 'm-robot', 'm-try', 'm-results', 'm-hw', 'm-team'];
 
   function clamp(v, a, b) { return Math.min(b, Math.max(a, v)); }
   function cleanText(s, n) { return String(s == null ? '' : s).replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, n || 120); }
@@ -210,16 +215,16 @@
     var top = 29, bh = 44, bg = 7;
     var hdr = function (col, ar, en) { LB(svg, { ar: ar, en: en }, X(col.x, col.w) + col.w / 2, 11, { size: 12.5, ssize: 10, cls: 't-m t-b', scls: 't-m', step: 12 }); };
     var inputs = [
-      { ic: 'sos', t: { ar: 'استغاثة السكان', en: 'Resident SOS' } },
+      { ic: 'drone', t: { ar: 'مسيّرة ترى (مفهوم)', en: 'Drone sees (concept)' } },
+      { ic: 'chip', t: { ar: 'حارس ESP32', en: 'ESP32 sentinel' } },
       { ic: 'camera', t: { ar: 'كاميرا (رؤية بقواعد)', en: 'Camera (rule-based)' } },
-      { ic: 'drone', t: { ar: 'طائرة (مفهوم)', en: 'Drone (concept)' } },
-      { ic: 'chip', t: { ar: 'حارس ESP32', en: 'ESP32 sentinel' } }
+      { ic: 'sos', t: { ar: 'استغاثة السكان', en: 'Resident SOS' } }
     ];
     var outputs = [
-      { ic: 'doc', t: { ar: 'بطاقة التسليم ← 999', en: 'Hand-off card → 999' } },
+      { ic: 'radar', t: { ar: 'غرفة التحكم: مفتاحان + اعتماد', en: 'Control room: 2 keys + Approve' } },
       { ic: 'phone', t: { ar: 'هواتف السكان بلغتهم', en: 'Phones, own language' } },
-      { ic: 'pin', t: { ar: 'نقطة «آمن» دون إنترنت', en: 'Offline safe point' } },
-      { ic: 'siren', t: { ar: 'لافتات وصفّارة', en: 'Exit signs & siren' } }
+      { ic: 'route', t: { ar: 'أسرع وحدة ← تسليم 999', en: 'Fastest unit → 999 hand-off' } },
+      { ic: 'robot', t: { ar: 'روبوت يبحث (SIM)', en: 'Robot searches (SIM)' } }
     ];
     var steps = [
       [{ ar: 'أرصد', en: 'Sense' }], [{ ar: 'أتحقق', en: 'Prove' }], [{ ar: 'أُبلغ', en: 'Reach' }],
@@ -267,12 +272,53 @@
     L1(svg, { ar: 'الإنذار المحلي لا ينتظر شبكةً ولا طائرةً ولا إنسانًا', en: 'The local alarm never waits for a network, a drone or a person' }, 300, ydn + 16, { size: 12.5, cls: 't-b c-danger', w: 560 });
   }
 
-  // 05 — proof ladder: WATCHING → SUSPECT → CONFIRMED → PUBLIC ALERT, with the keys each step needs.
-  function drawProof() {
-    var svg = fig('proof'); if (!svg) return;
-    var c = ctx(), W = 600; svgReset(svg, W, 148);
-    var segW = 138, gap = 16, y = 60, h = 40;
+  // 08 — the control room in miniature (alert queue, two generated aerial views, the proof ladder). Everything on it is a SIMULATION; no photograph, no real alert.
+  function drawCtrl() {
+    var svg = fig('ctrl'); if (!svg) return;
+    var c = ctx(), W = 600; svgReset(svg, W, 312);
     var X = function (x, w) { return c.rtl ? W - x - w : x; };
+    var rows = [
+      { ic: 'drone', st: 'seg2', t: { ar: 'دخان — الحيّ الشمالي', en: 'Smoke — north block' }, s: { ar: 'اشتباه', en: 'SUSPECT' }, who: { ar: 'مسيّرة', en: 'Drone' } },
+      { ic: 'chip', st: 'seg3', t: { ar: 'حرارة — موقع عمل', en: 'Heat — worksite' }, s: { ar: 'مؤكَّد', en: 'CONFIRMED' }, who: { ar: 'حارس', en: 'Sentinel' } },
+      { ic: 'sos', st: 'seg4', t: { ar: 'شخص يحتاج مساعدة', en: 'Someone needs help' }, s: { ar: 'معتمَد', en: 'APPROVED' }, who: { ar: 'مواطن', en: 'Citizen' } }
+    ];
+    // ---- the alert queue (left column, 282 wide)
+    rows.forEach(function (r, i) {
+      var y = i * 52, x0 = X(0, 282), pad = 9, isz = 24;
+      mk('rect', { x: x0, y: y, width: 282, height: 46, rx: 10, 'class': 'row ' + 'cr-' + r.st }, svg);
+      var ix = c.rtl ? x0 + 282 - pad - isz : x0 + pad;
+      icon(svg, r.ic, ix, y + 5, isz, 'c-acc');
+      var tx0 = c.rtl ? x0 + 96 : x0 + pad + isz + 8, tx1 = c.rtl ? x0 + 282 - pad - isz - 8 : x0 + 282 - 96;
+      LB(svg, { ar: r.t.ar, en: r.t.en }, (tx0 + tx1) / 2, y + 23, { size: 13.5, ssize: 10.5, w: tx1 - tx0, cls: 't-h', min: 9, step: 12.5 });
+      T(svg, r.who[c.l], c.l, ix + isz / 2, y + 41, { size: 9, cls: 't-m', w: 46, min: 8.5 });
+      var cx = c.rtl ? x0 + 8 : x0 + 282 - 8 - 82;
+      mk('rect', { x: cx, y: y + 10, width: 82, height: 26, rx: 13, 'class': 'cr-chip ' + r.st }, svg);
+      LB(svg, { ar: r.s.ar, en: r.s.en }, cx + 41, y + 23, { size: 11.5, ssize: 9, w: 74, cls: 't-h', min: 8.5, step: 10 });
+    });
+    L1(svg, { ar: 'إنذار المسيّرة: صورة عادية + حرارية', en: 'DRONE ALERT: a camera frame + a thermal frame' }, c.rtl ? 282 : 0, 168, { size: 11.5, anchor: c.rtl ? 'r' : 'l', cls: 't-m t-b', w: 282 });
+    // ---- the two generated aerial views (right column)
+    var tw = 148, th = 100, tx = [X(300, tw), X(452, tw)];
+    [['rgb', { ar: 'كاميرا · ARR-1', en: 'Camera · UAV-1' }], ['thermal', { ar: 'حرارية', en: 'Thermal' }]].forEach(function (f, i) {
+      var g = mk('g', { 'class': 'tile ' + f[0] }, svg), x0 = tx[i];
+      mk('rect', { x: x0, y: 0, width: tw, height: th, rx: 8, 'class': f[0] === 'rgb' ? 'aer-ground' : 'aer-cold' }, g);
+      if (f[0] === 'rgb') {
+        mk('path', { d: 'M' + x0 + ' 70L' + (x0 + tw) + ' 60M' + (x0 + 46) + ' 0L' + (x0 + 62) + ' ' + th, 'class': 'aer-road' }, g);
+        [[8, 10, 22, 16], [36, 18, 18, 12], [96, 8, 26, 18], [112, 46, 22, 14], [12, 74, 24, 14], [84, 76, 20, 12]].forEach(function (b2) { mk('rect', { x: (c.rtl ? x0 + tw - b2[0] - b2[2] : x0 + b2[0]), y: b2[1], width: b2[2], height: b2[3], rx: 2, 'class': 'aer-bld' }, g); });
+        mk('ellipse', { cx: x0 + 78, cy: 40, rx: 14, ry: 8, 'class': 'aer-smoke sm1' }, g);
+        mk('ellipse', { cx: x0 + 88, cy: 29, rx: 11, ry: 6, 'class': 'aer-smoke sm2' }, g);
+        mk('rect', { x: x0 + 62, y: 18, width: 42, height: 32, rx: 3, 'class': 'aer-box' }, g);
+      } else {
+        mk('ellipse', { cx: x0 + 74, cy: 46, rx: 28, ry: 19, 'class': 'aer-warm' }, g);
+        mk('ellipse', { cx: x0 + 74, cy: 46, rx: 13, ry: 8, 'class': 'aer-hot' }, g);
+        mk('path', { d: 'M' + (x0 + 74) + ' 28V64M' + (x0 + 56) + ' 46H' + (x0 + 92), 'class': 'aer-cross' }, g);
+      }
+      mk('circle', { cx: x0 + (f[0] === 'rgb' ? 82 : 74), cy: f[0] === 'rgb' ? 36 : 46, r: 8, 'class': 'aer-ping' }, g);
+      mk('rect', { x: x0, y: th - 16, width: tw, height: 16, rx: 0, 'class': 'aer-bar' }, g);
+      T(svg, f[1][c.l] + '  ·  SIM', c.l, x0 + tw / 2, th - 5, { size: 9.5, cls: 'aer-cap', w: tw - 8, min: 7.5 });
+    });
+    L1(svg, { ar: 'مشهدان مولَّدان بالحاسوب (SIM): لم تطر مسيّرة', en: 'Two computer-generated views (SIM): no drone has flown' }, c.rtl ? 600 : 300, 118, { size: 11, anchor: c.rtl ? 'r' : 'l', cls: 't-m', w: 300, min: 8.5 });
+    // ---- the proof ladder (bottom)
+    var y0 = 188, segW = 138, gap = 16, y = y0 + 38, h2 = 40;
     var segs = [
       { cls: 'seg1', n: { ar: 'مراقبة', en: 'WATCHING' }, k: { ar: 'لا مفاتيح', en: 'no keys' }, keys: 0 },
       { cls: 'seg2', n: { ar: 'اشتباه', en: 'SUSPECT' }, k: { ar: 'مفتاح واحد', en: '1 key' }, keys: 1 },
@@ -281,18 +327,61 @@
     ];
     segs.forEach(function (s, i) {
       var x0 = X(i * (segW + gap), segW), cx = x0 + segW / 2;
-      mk('rect', { x: x0, y: y, width: segW, height: h, rx: 11, 'class': s.cls }, svg);
-      LB(svg, s.n, cx, y + h / 2, { size: 17, ssize: 11.5, w: segW - 14, cls: 't-h', step: 15, min: 11 });
-      // the keys needed to reach this step
+      mk('rect', { x: x0, y: y, width: segW, height: h2, rx: 11, 'class': s.cls }, svg);
+      LB(svg, s.n, cx, y + h2 / 2, { size: 17, ssize: 11.5, w: segW - 14, cls: 't-h', step: 15, min: 11 });
       var gapK = 31, n = s.keys, startX = cx - (n - 1) * gapK / 2;
-      for (var k = 0; k < n; k++) {
-        var kx = startX + k * gapK, human = k === 2;
-        mk('circle', { cx: kx, cy: 30, r: 12.5, 'class': human ? 'key key-h' : 'key' }, svg);
-        if (human) icon(svg, 'person', kx - 8, 22, 16, 'c-brand'); else icon(svg, 'key', kx - 8, 22, 16, 'c-acc');
+      for (var kk = 0; kk < n; kk++) {
+        var kx = startX + kk * gapK, human = kk === 2;
+        mk('circle', { cx: kx, cy: y0 + 8, r: 12.5, 'class': human ? 'key key-h' : 'key' }, svg);
+        if (human) icon(svg, 'person', kx - 8, y0, 16, 'c-brand'); else icon(svg, 'key', kx - 8, y0, 16, 'c-acc');
       }
-      if (n === 0) T(svg, '—', 'en', cx, 36, { size: 20, cls: 't-m' });
-      LB(svg, s.k, cx, 122, { size: 13, ssize: 10.5, w: segW - 6, cls: 't-b', min: 9.5, step: 13 });
-      if (i < 3) arrow(svg, c.rtl ? x0 - 2 : x0 + segW + 2, y + h / 2, c.rtl ? x0 - gap + 2 : x0 + segW + gap - 2, y + h / 2, 'ln', 6);
+      if (n === 0) T(svg, '—', 'en', cx, y0 + 14, { size: 20, cls: 't-m' });
+      LB(svg, s.k, cx, y + h2 + 22, { size: 13, ssize: 10.5, w: segW - 6, cls: 't-b', min: 9.5, step: 13 });
+      if (i < 3) arrow(svg, c.rtl ? x0 - 2 : x0 + segW + 2, y + h2 / 2, c.rtl ? x0 - gap + 2 : x0 + segW + gap - 2, y + h2 / 2, 'ln', 6);
+    });
+  }
+
+  // 10 — the rescue robot: a simulated floor plan with the search path, and the four honest steps. Concept + simulated prototype: nothing has been built or flown.
+  function drawRobot() {
+    var svg = fig('robot'); if (!svg) return;
+    var c = ctx(), W = 600; svgReset(svg, W, 200);
+    var PW = 360, X = function (x, w) { return c.rtl ? W - x - (w || 0) : x; };
+    var px = function (x) { return c.rtl ? W - x : x; };           // the plan itself is north-up and direction-neutral, but it sits on the reading-start side
+    mk('rect', { x: X(0, PW), y: 4, width: PW, height: 190, rx: 6, 'class': 'rb-wall' }, svg);
+    mk('rect', { x: X(0, PW), y: 76, width: PW, height: 34, 'class': 'rb-corr' }, svg);
+    [[0, 4, 110, 72], [125, 4, 110, 72], [250, 4, 110, 72], [0, 110, 110, 84], [125, 110, 110, 84], [250, 110, 110, 84]].forEach(function (r, k) {
+      mk('rect', { x: X(r[0], r[2]), y: r[1], width: r[2], height: r[3], rx: 3, 'class': 'rb-room' + (k === 5 ? ' target' : '') }, svg);
+    });
+    mk('ellipse', { cx: px(58), cy: 40, rx: 40, ry: 24, 'class': 'rb-smoke' }, svg);
+    mk('ellipse', { cx: px(190), cy: 93, rx: 54, ry: 11, 'class': 'rb-smoke' }, svg);
+    mk('rect', { x: X(338, 22), y: 76, width: 22, height: 34, 'class': 'rb-stair' }, svg);
+    T(svg, c.l === 'ar' ? 'درج' : 'Stairs', c.l, px(349), 72, { size: 9.5, cls: 'rb-lab', w: 24, min: 7.5 });
+    mk('path', { d: 'M' + px(180) + ' 112v-9M' + (c.rtl ? px(180) + 4 : px(180) - 4) + ' 103h8', 'class': 'rb-lock' }, svg);
+    T(svg, c.l === 'ar' ? 'مقفل' : 'Locked', c.l, px(180), 124, { size: 9.5, cls: 'rb-lab', w: 40, min: 7.5 });
+    mk('circle', { cx: px(46), cy: 152, r: 5, 'class': 'rb-safe' }, svg);
+    mk('circle', { cx: px(300), cy: 40, r: 5, 'class': 'rb-safe' }, svg);
+    var d = 'M' + px(8) + ' 93L' + px(80) + ' 93L' + px(80) + ' 52L' + px(106) + ' 52L' + px(80) + ' 52L' + px(80) + ' 93L' + px(200) + ' 93L' + px(200) + ' 152L' + px(278) + ' 152';
+    mk('path', { d: d, 'class': 'rb-route-bg' }, svg);
+    mk('path', { d: d, 'class': 'rb-route', pathLength: 1 }, svg);
+    mk('circle', { cx: px(292), cy: 152, r: 14, 'class': 'rb-ripple' }, svg);
+    mk('circle', { cx: px(292), cy: 152, r: 7, 'class': 'rb-person' }, svg);
+    mk('circle', { cx: px(278), cy: 152, r: 6, 'class': 'rb-body' }, svg);
+    T(svg, c.l === 'ar' ? 'شخص على مقعد متحرك' : 'Wheelchair user', c.l, px(292), 178, { size: 10.5, cls: 'rb-lab t-b', w: 100, min: 8 });
+    T(svg, c.l === 'ar' ? 'مدخل' : 'Entrance', c.l, px(26), 106, { size: 9.5, cls: 'rb-lab', w: 44, min: 7.5 });
+    // the four steps (right of the plan)
+    var steps = [
+      { ar: 'موافقة قائد الحادث', en: 'Commander approves' }, { ar: 'يفتّش الغرف بالأولوية', en: 'Searches by priority' },
+      { ar: 'شكل دافئ + صوت', en: 'A warm shape + a voice' }, { ar: 'يرشد ويُبلغ الفرق', en: 'Guides, reports to crews' }
+    ];
+    var sx0 = c.rtl ? 0 : PW + 16, sw = W - PW - 16;
+    steps.forEach(function (s, i) {
+      var y = 4 + i * 49;
+      mk('rect', { x: sx0, y: y, width: sw, height: 42, rx: 10, 'class': 'row' }, svg);
+      var ccx = c.rtl ? sx0 + sw - 20 : sx0 + 20;
+      mk('circle', { cx: ccx, cy: y + 21, r: 11, 'class': 'badge' }, svg);
+      T(svg, String(i + 1), 'en', ccx, y + 25.5, { size: 13, cls: 't-w t-b' });
+      var t0 = c.rtl ? sx0 + 8 : sx0 + 38, t1 = c.rtl ? sx0 + sw - 38 : sx0 + sw - 8;
+      LB(svg, s, (t0 + t1) / 2, y + 21, { size: 12, ssize: 9.5, w: t1 - t0, cls: 't-h', min: 8.5, step: 12 });
     });
   }
 
@@ -483,14 +572,14 @@
   // 10 — hardware tiers: cost ranges (estimates from the Build It parts table).
   function drawHW() {
     var svg = fig('hw'); if (!svg) return;
-    var c = ctx(), W = 600; svgReset(svg, W, 112);
+    var c = ctx(), W = 600; svgReset(svg, W, 143);
     var X = function (x, w) { return c.rtl ? W - x - w : x; };
-    var ax0 = 214, aw = 350, MAXV = 280, vx = function (v) { return ax0 + v / MAXV * aw; };
+    var ax0 = 214, aw = 350, MAXV = 500, vx = function (v) { return ax0 + v / MAXV * aw; };
     var v;
-    for (v = 0; v <= 200; v += 100) {
+    for (v = 0; v <= 400; v += 100) {
       var gx = c.rtl ? W - vx(v) : vx(v);
-      mk('line', { x1: gx, y1: 2, x2: gx, y2: 94, 'class': 'grid' }, svg);
-      T(svg, v === 0 ? '0' : 'US$ ' + v, 'en', gx, 108, { size: 12, cls: 'axis-t', w: 58 });
+      mk('line', { x1: gx, y1: 2, x2: gx, y2: 125, 'class': 'grid' }, svg);
+      T(svg, v === 0 ? '0' : 'US$ ' + v, 'en', gx, 139, { size: 12, cls: 'axis-t', w: 58 });
     }
     TIERS.forEach(function (t, i) {
       var y = 2 + i * 31, x1 = vx(t.lo), x2 = Math.max(x1 + 8, vx(t.hi));
@@ -533,6 +622,31 @@
         ar: 'إنذار عادي ' + fmt(o.pair[0]) + '، منارة ' + fmt(o.pair[1]), en: 'ordinary alarm ' + fmt(o.pair[0]) + ', MANARA ' + fmt(o.pair[1])
       }, 'sr-only'); li.appendChild(sr);
     });
+  }
+  function kpiLi(host, sc, value, label, countAttrs) {
+    var li = el('li', null, null, host); li.style.setProperty('--sc', 'var(' + sc + ')');
+    var b = el('b', 'num', null, li); b.setAttribute('dir', 'ltr');
+    (countAttrs || [[value]]).forEach(function (p, i) {
+      if (i) b.appendChild(document.createTextNode(p[2] || ' '));
+      var s = el('span', null, p[0], b); if (p[1] != null) { s.setAttribute('data-count', String(p[1])); s.setAttribute('data-suffix', p[3] || ''); }
+    });
+    li.appendChild(blNode('span', label, 'kl'));
+    return li;
+  }
+  function buildDroneRes() {
+    var D = RESULTS.drone, R = RESULTS.robot, host = $('#drone-kpi'), rb = $('#robot-kpi');
+    if (host) {
+      emptyNode(host);
+      kpiLi(host, '--info', D.droneFirstPct + '%', { ar: 'المسيّرة قبل أول وحدة أرضية (الوسيط ' + ltrNum(D.droneP50 + ' ' + 'ث') + ' مقابل ' + ltrNum(D.groundP50 + ' ث') + ')', en: 'drone before the first ground unit (median ' + D.droneP50 + ' s vs ' + D.groundP50 + ' s)' }, [[D.droneFirstPct + '%', D.droneFirstPct, '', '%']]);
+      kpiLi(host, '--warn', D.noDronePct + '%', { ar: 'من الحوادث خارج مدى كل المسيّرات', en: 'of incidents out of range of every drone' }, [[D.noDronePct + '%', D.noDronePct, '', '%']]);
+      kpiLi(host, '--danger', D.thermalNoon + '% / ' + D.thermalNight + '%', { ar: 'مفتاح الحرارة لشخص مستلقٍ: 13:00 يوليو / 02:00', en: 'thermal key, a person lying down: 13:00 July / 02:00' }, [[D.thermalNoon + '%', D.thermalNoon, ' / ', '%'], [D.thermalNight + '%', D.thermalNight, '', '%']]);
+    }
+    if (rb) {
+      emptyNode(rb);
+      kpiLi(rb, '--safe', R.robotFirst + ' / ' + R.seeds, { ar: 'الروبوت أول من وجد المستخدم على المقعد المتحرك (بذور 1–8)', en: 'the robot found the wheelchair user first (seeds 1–8)' }, [[R.robotFirst + ' / ' + R.seeds, R.robotFirst, '', ' / ' + R.seeds]]);
+      kpiLi(rb, '--warn', R.crewsFirst + ' / ' + R.seeds, { ar: 'سبقته الفرق إليه', en: 'the crews got there first' }, [[R.crewsFirst + ' / ' + R.seeds, R.crewsFirst, '', ' / ' + R.seeds]]);
+      kpiLi(rb, '--info', R.p50Without + ' → ' + R.p50With + ' s', { ar: 'زمن العثور الإجمالي (متوسط الوسيط): يكاد لا يتغير', en: 'overall time to locate (mean of the medians): barely changes' }, [[R.p50Without + '', R.p50Without, ' → ', ''], [R.p50With + ' s', R.p50With, '', ' s']]);
+    }
   }
   function buildResSrc() {
     var p = $('#res-src'); if (!p) return;
@@ -851,8 +965,8 @@
     pageRule.textContent = '@page{size:' + pg.w + 'mm ' + pg.h + 'mm;margin:0}';
   }
   function drawAll() {
-    drawGap(); drawArch(); drawProof(); drawNat(); drawDet(); drawAB(); drawHW();
-    buildDetChips(); buildHzRes(); buildResSrc(); buildNatSrc();
+    drawGap(); drawArch(); drawCtrl(); drawRobot(); drawNat(); drawDet(); drawAB(); drawHW();
+    buildDetChips(); buildHzRes(); buildDroneRes(); buildResSrc(); buildNatSrc();
   }
   function fmtMM(w, h) { return Math.round(w) + ' × ' + Math.round(h) + ' mm'; }
   function updateUI() {

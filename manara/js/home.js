@@ -170,6 +170,14 @@
     function tab() { if (document.hidden) document.documentElement.setAttribute('data-tab-hidden', ''); else document.documentElement.removeAttribute('data-tab-hidden'); }
     document.addEventListener('visibilitychange', tab); tab();
   }
+  function initSettle() {                                        // once a .rv card has finished revealing, drop its stagger delay so hover and focus react at once
+    document.addEventListener('transitionend', function (e) { var t = e.target; if (e.propertyName === 'opacity' && t.classList && t.classList.contains('rv') && t.classList.contains('in')) t.style.setProperty('--d', '0s'); }, true);
+  }
+  function initPrint() {                                         // a dark-theme page prints on paper-light tokens (the print block in home.css redefines them); restored afterwards
+    var saved = null, h = document.documentElement;
+    window.addEventListener('beforeprint', function () { if (saved === null) saved = h.getAttribute('data-theme') || ''; h.setAttribute('data-theme', 'light'); });
+    window.addEventListener('afterprint', function () { if (saved !== null) { if (saved) h.setAttribute('data-theme', saved); else h.removeAttribute('data-theme'); saved = null; } });
+  }
   function initFlow() {                                          // Sense → Prove → Reach → Guide → Count → Hand off: a rail grows and the six steps light up in turn
     var flow = $('#flow'), rail = $('#flow-rail'); if (!flow) return;
     var steps = $$('.step', flow), dots = rail ? $$('.fr-d', rail) : [], done = false;
@@ -405,7 +413,7 @@
             var pp2 = [[75, 32], [93, 66]][i2], k = popScale(prog(c, i2 ? 3.15 : 1.5, i2 ? 3.55 : 1.9)); S.chk[i2].setAttribute('transform', 'translate(' + pp2[0] + ' ' + pp2[1] + ') scale(' + k.toFixed(3) + ')');
           });
           var counted = out + (fA ? 1 : 0) + (fB ? 1 : 0);
-          E.cnt.textContent = counted + ' / 8'; E.cntL.textContent = c < 0 ? bi('خرجوا من المبنى', 'out of the building') : bi('عُدّوا مقابل السجلّ', 'counted against the register');
+          E.cnt.textContent = counted + ' / 8'; E.cntL.textContent = c < 0 ? bi('خرجوا من المبنى', 'out of the building') : bi('عُدّوا مقابل السجلّ', 'vs the register');
           var hp = prog(h, 0, 1.2), cp = [lerp(70, 140, ease(hp)), lerp(52, 28, ease(hp))];
           E.card.setAttribute('transform', 'translate(' + cp[0].toFixed(2) + ' ' + cp[1].toFixed(2) + ') scale(' + (popScale(prog(h, 0, 0.35)) * (1 - 0.15 * ease(hp))).toFixed(3) + ')'); E.card.style.opacity = h > 0 ? 1 - prog(h, 1.25, 1.5) : 0;
           var cr = prog(h, 1.2, 1.9); E.crewRing.setAttribute('r', (4.2 + 8 * cr).toFixed(2)); E.crewRing.style.opacity = cr > 0 && cr < 1 ? (0.8 * (1 - cr)).toFixed(3) : 0;
@@ -769,7 +777,7 @@
   function boot() {
     try { brandOverride(); } catch (e) { /* the shell keeps its own text */ }
     applyAria(); onLang(applyAria);
-    [initLive, initLogo, initCounts, initNumbersFilter, initSubnav, initPlaceholders, initFlow, cam.init, hz.init, rob.init, initCountUp, initParallax].forEach(function (fn) {
+    [initLive, initSettle, initPrint, initLogo, initCounts, initNumbersFilter, initSubnav, initPlaceholders, initFlow, cam.init, hz.init, rob.init, initCountUp, initParallax].forEach(function (fn) {
       if (typeof fn !== 'function') return;
       try { fn(); } catch (e) { if (window.console) console.error(e); }
     });

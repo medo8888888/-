@@ -169,17 +169,17 @@ html[dir=rtl] .mn-bar{transform-origin:right center}
 .gp-unknown li .i{width:1.35em;height:1.35em;color:var(--danger)}
 
 /* ---------- 4. pipeline ---------- */
-.pipe{flex:1;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:1em;align-content:center;counter-reset:p;position:relative}
-.pipe::before{content:"";position:absolute;inset-inline:6%;inset-block-start:3.6em;height:.25em;border-radius:99px;background:linear-gradient(90deg,var(--brand),var(--accent),var(--safe));opacity:.5}
-.pipe-dot{position:absolute;inset-block-start:2.9em;inset-inline-start:6%;width:1.4em;height:1.4em;border-radius:50%;background:var(--fire-1);box-shadow:0 0 1.4em var(--fire-2);animation:pipeRun 7s ease-in-out infinite;z-index:2}
+.pipe{flex:1;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:.7em;align-content:center;counter-reset:p;position:relative}
+.pipe::before{content:"";position:absolute;inset-inline:6%;inset-block-start:3em;height:.25em;border-radius:99px;background:linear-gradient(90deg,var(--brand),var(--accent),var(--safe));opacity:.5}
+.pipe-dot{position:absolute;inset-block-start:2.3em;inset-inline-start:6%;width:1.4em;height:1.4em;border-radius:50%;background:var(--fire-1);box-shadow:0 0 1.4em var(--fire-2);animation:pipeRun 7s ease-in-out infinite;z-index:2}
 @keyframes pipeRun{0%{inset-inline-start:6%}92%,100%{inset-inline-start:calc(94% - 1.4em)}}
 .pipe li{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;gap:.5em}
-.pipe-ico{width:7.2em;height:7.2em;border-radius:50%;display:grid;place-items:center;background:var(--surface);border:.18em solid var(--c,var(--brand));color:var(--c,var(--brand));box-shadow:var(--shadow);position:relative;z-index:1}
-.pipe-ico .i{width:3em;height:3em}
+.pipe-ico{width:6em;height:6em;border-radius:50%;display:grid;place-items:center;background:var(--surface);border:.18em solid var(--c,var(--brand));color:var(--c,var(--brand));box-shadow:var(--shadow);position:relative;z-index:1}
+.pipe-ico .i{width:2.6em;height:2.6em}
 .pipe-n{position:absolute;inset-block-start:-.3em;inset-inline-end:-.3em;width:1.8em;height:1.8em;border-radius:50%;display:grid;place-items:center;font-size:.85em;font-weight:700;background:var(--c,var(--brand));color:var(--on-brand)}
-.pipe-v{font-family:var(--font-h);font-size:1.8em;font-weight:700;color:var(--head);line-height:1.2}
+.pipe-v{font-family:var(--font-h);font-size:1.45em;font-weight:700;color:var(--head);line-height:1.2}
 .pipe-v small{display:block;font-size:.55em;font-weight:500;color:var(--muted);font-family:var(--font)}
-.pipe-d{font-size:1em;color:var(--ink-2);line-height:1.5;max-width:11em}
+.pipe-d{font-size:.88em;color:var(--ink-2);line-height:1.45;max-width:10em}
 .slide.is-active .pipe li{animation:slIn .6s var(--ease) both;animation-delay:calc(var(--i) * 140ms + 200ms)}
 .pipe-foot{display:flex;justify-content:space-between;gap:1.5em;flex-wrap:wrap;align-items:center;margin-top:auto}
 .pipe-foot p{padding:.7em 1.1em;border-radius:.9em;border:1px solid var(--line);background:color-mix(in oklab,var(--surface) 80%,transparent);font-size:1.08em;display:flex;gap:.7em;align-items:center}
@@ -906,3 +906,134 @@ html.pt-pv .nt-preview .ov-frame{max-width:340px}
 .deck[data-mode=reader] .na-grid{grid-template-columns:1fr}
 .deck[data-mode=reader] .na-maps{height:420px;flex:none}
 .deck[data-mode=reader] .na-gain-n b{font-size:2.6em}
+
+
+/* ======================================================================================================================
+   MOTION (screen only). transform / opacity (and one SVG stroke) only. Every loop is slower than 3 Hz (no flashing).
+   prefers-reduced-motion: base.css cuts every animation and transition to one 0.01 ms frame, so each ends on its FINAL frame;
+   the rules below also remove the travel offset and the loops explicitly. pitch.js stops its rAF work when the tab is hidden.
+   Printing is untouched: nothing here applies inside @media print (the slides are cloned into #print-root, which has no .is-active).
+   ====================================================================================================================== */
+/* direction of travel: the new slide enters from the side the reading direction moves towards (pitch.js sets --enter-x; RTL mirrors LTR) */
+.stage .slide{transform:translateX(var(--enter-x,0%)) scale(.985)}
+.stage .slide.is-active{transform:none}
+.stage .slide.is-leaving{transform:translateX(calc(var(--enter-x,0%) * -1)) scale(.985);transition:opacity .3s var(--ease),transform .35s var(--ease)}
+
+/* bullet build-in: every list item arrives in turn (pitch.js gives each one --bi) */
+.slide.is-active :is(.gp-list,.gp-unknown,.viz-notes,.ev-list,.rb-lims,.cr-queue,.cr-proof,.rb-steps)>li{animation:bulletIn .55s var(--ease) both;animation-delay:calc(var(--bi,0) * 120ms + 500ms)}
+@keyframes bulletIn{from{opacity:0;transform:translateY(.7em)}}
+
+/* the pipeline: the line draws on, then each step takes its turn to glow (one ring at a time, every 1.5 s) */
+.slide.is-active .pipe::before{transform-origin:left center;animation:growX 1.4s var(--ease) .3s both}
+html[dir=rtl] .slide.is-active .pipe::before{transform-origin:right center}
+.pipe-ico::after{content:"";position:absolute;inset:-.35em;border-radius:50%;border:.16em solid var(--c,var(--brand));opacity:0;transform:scale(.88);pointer-events:none}
+.slide.is-active .pipe-ico::after{animation:stepRing 10.5s ease-out infinite;animation-delay:calc(var(--i) * 1.5s + 1.8s)}
+@keyframes stepRing{0%{opacity:0;transform:scale(.88)}4%{opacity:.9}14%,100%{opacity:0;transform:scale(1.18)}}
+.stat-sep{font-size:.4em;color:var(--muted);font-style:normal;margin-inline:.3em;font-family:var(--font)}
+
+/* the timer ring around the speaker timer */
+.db-ring{width:22px;height:22px;flex:none;transform:rotate(-90deg)}
+.db-ring circle{fill:none;stroke-width:3}
+.db-ring .rt{stroke:var(--line-2)}
+.db-ring .rp{stroke:currentColor;stroke-linecap:round;stroke-dasharray:62.83;stroke-dashoffset:62.83;transition:stroke-dashoffset .9s linear}
+
+/* ---------- 5. the control room ---------- */
+.s-control{--sc:var(--info)}
+.cr-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:1.1em;align-items:stretch}
+.cr-wall{display:flex;flex-direction:column;gap:.6em;min-height:0}
+.cr-mini{display:flex;flex-direction:column;gap:.7em;flex:1;min-height:0}
+.cr-top{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:.8em;flex:1;min-height:0}
+.cr-queue{display:grid;gap:.45em;align-content:start}
+.cr-row{display:grid;grid-template-columns:auto 1fr auto;gap:.6em;align-items:center;padding:.5em .7em;border-radius:.7em;border:1px solid var(--line);background:var(--surface);border-inline-start:.28em solid var(--rc,var(--muted))}
+.cr-row[data-st=suspect]{--rc:var(--warn)}.cr-row[data-st=confirmed]{--rc:var(--accent)}.cr-row[data-st=approved]{--rc:var(--safe)}
+.cr-src{display:grid;place-items:center;width:2em;height:2em;border-radius:50%;background:color-mix(in oklab,var(--rc) 18%,var(--surface));color:var(--rc)}
+.cr-src .i{width:1.1em;height:1.1em}
+.cr-t{display:flex;flex-direction:column;min-width:0;line-height:1.3;font-size:.9em}
+.cr-t small{color:var(--muted);font-size:.82em}
+.cr-chip{font-size:.72em;font-weight:700;padding:.2em .6em;border-radius:99px;background:color-mix(in oklab,var(--rc) 18%,var(--surface));color:var(--head);border:1px solid var(--rc);white-space:nowrap}
+.cr-feeds{display:grid;grid-template-rows:1fr 1fr;gap:.5em;min-height:0}
+.cr-tile{position:relative;margin:0;border-radius:.7em;overflow:hidden;border:1px solid var(--line-2);background:var(--surface-3);min-height:0}
+.cr-svg{display:block;width:100%;height:100%;direction:ltr}
+.cr-tile figcaption{position:absolute;inset-inline:0;inset-block-end:0;padding:.15em .5em;font-size:.68em;color:#fff;background:rgba(10,14,21,.62);display:flex;justify-content:space-between;gap:.5em}
+.cr-ground{fill:color-mix(in oklab,var(--safe) 16%,var(--surface-2))}
+.cr-road{fill:none;stroke:var(--line-2);stroke-width:5}
+.cr-bld{fill:var(--surface-3);stroke:var(--line-2);stroke-width:1}
+.cr-smoke{fill:color-mix(in oklab,var(--muted) 62%,transparent)}
+.cr-box{fill:none;stroke:var(--danger);stroke-width:2;stroke-dasharray:5 3}
+.cr-tag{font:700 9px var(--font-m);fill:var(--danger);paint-order:stroke;stroke:var(--surface);stroke-width:3px}
+.cr-tag.th{fill:#fff;stroke:rgba(10,14,21,.85)}
+.cr-cold{fill:color-mix(in oklab,var(--info) 30%,#0b0a1c)}
+.cr-warm{fill:color-mix(in oklab,var(--brand) 55%,transparent)}
+.cr-hot{fill:var(--fire-1)}
+.cr-cross{fill:none;stroke:var(--on-brand);stroke-width:1.5;opacity:.9}
+.cr-ping{fill:none;stroke:var(--danger);stroke-width:2;transform-box:fill-box;transform-origin:center}
+.slide.is-active .cr-ping{animation:crPing 1.8s ease-out infinite}
+@keyframes crPing{from{opacity:.9;transform:scale(.7)}to{opacity:0;transform:scale(2.4)}}
+.slide.is-active .cr-smoke.s1{animation:crDrift 7s ease-in-out infinite alternate}
+.slide.is-active .cr-smoke.s2{animation:crDrift 9s ease-in-out infinite alternate-reverse}
+@keyframes crDrift{from{transform:translateX(-3px)}to{transform:translateX(4px)}}
+.cr-proof{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5em}
+.cr-proof li{display:flex;gap:.5em;align-items:center;padding:.45em .7em;border-radius:.7em;border:1px solid var(--line-2);background:var(--surface);font-size:.82em;line-height:1.3;color:var(--ink-2)}
+.cr-proof li .i{width:1.3em;height:1.3em;flex:none;color:var(--accent)}
+.cr-proof li[data-k="3"] .i{color:var(--brand)}.cr-proof li[data-k="4"]{border-color:var(--danger)}.cr-proof li[data-k="4"] .i{color:var(--danger)}
+.cr-side{display:grid;gap:.7em;align-content:stretch;grid-template-rows:repeat(3,1fr)}
+.cr-side .stat{padding:.55em 1em}.cr-side .stat-n{font-size:2.1em}.cr-side .stat p{font-size:.9em;line-height:1.4}
+.cr-wall .sl-src a,.rb-plan-card a,.s-robot .sl-band a{color:var(--accent-t)}
+
+/* ---------- 12. the rescue robot ---------- */
+.s-robot{--sc:var(--danger)}
+.rb-grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:1.1em;align-items:stretch}
+.rb-plan-card{display:flex;flex-direction:column;gap:.5em;min-height:0}
+.rb-plan{flex:1;min-height:0;display:flex}
+.rb-svg{width:100%;height:auto;max-height:100%;direction:ltr}
+.rb-wall{fill:var(--surface);stroke:var(--ink-2);stroke-width:2.5}
+.rb-corr{fill:color-mix(in oklab,var(--accent) 7%,var(--surface-2));stroke:var(--line-2);stroke-width:1}
+.rb-room{fill:var(--surface-2);stroke:var(--line-2);stroke-width:1.5}
+.rb-room.target{fill:color-mix(in oklab,var(--danger) 8%,var(--surface-2));stroke:var(--danger)}
+.rb-smoke{fill:color-mix(in oklab,var(--muted) 55%,transparent)}
+.rb-stair{fill:repeating-linear-gradient(0deg,var(--line-2) 0 3px,transparent 3px 6px);fill:color-mix(in oklab,var(--muted) 30%,var(--surface));stroke:var(--muted);stroke-width:1.5;stroke-dasharray:3 3}
+.rb-lock{stroke:var(--danger);stroke-width:3;fill:none;stroke-linecap:round}
+.rb-safe{fill:var(--safe);stroke:var(--surface);stroke-width:2}
+.rb-lab{font:600 10.5px var(--font);fill:var(--ink-2);paint-order:stroke;stroke:var(--surface);stroke-width:3px}
+.rb-lab.strong{fill:var(--head);font-weight:700}
+.rb-route-bg{fill:none;stroke:var(--line-2);stroke-width:2.5;stroke-dasharray:4 6;stroke-linecap:round}
+.rb-route{fill:none;stroke:var(--brand);stroke-width:4;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1;stroke-dashoffset:0}
+.rb-person{fill:var(--danger);stroke:var(--surface);stroke-width:2}
+.rb-ripple{fill:none;stroke:var(--danger);stroke-width:2;opacity:0;transform-box:fill-box;transform-origin:center}
+.rb-plan[data-found="1"] .rb-ripple{opacity:.8}
+.slide.is-active .rb-plan[data-found="1"] .rb-ripple{animation:crPing 1.8s ease-out infinite}
+.rb-body{fill:var(--brand);stroke:var(--surface);stroke-width:2.5}
+.rb-cone{fill:color-mix(in oklab,var(--accent) 22%,transparent);transform-box:fill-box;transform-origin:center}
+.slide.is-active .rb-cone{animation:rbCone 1.7s ease-in-out infinite alternate}
+@keyframes rbCone{from{transform:scale(.8);opacity:.6}to{transform:scale(1.15);opacity:1}}
+.rb-steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.45em}
+.rb-steps li{display:flex;gap:.45em;align-items:center;padding:.4em .6em;border-radius:.7em;border:1px solid var(--line-2);background:var(--surface);font-size:.78em;line-height:1.3;color:var(--muted);transition:border-color .3s,color .3s,background-color .3s}
+.rb-steps li .num{display:grid;place-items:center;flex:none;width:1.6em;height:1.6em;border-radius:50%;background:var(--surface-3);color:var(--head);font-weight:700}
+.rb-steps li[data-on="1"]{border-color:var(--brand);color:var(--head);background:color-mix(in oklab,var(--brand) 9%,var(--surface))}
+.rb-steps li[data-on="1"] .num{background:var(--brand);color:var(--on-brand)}
+.rb-side{display:grid;gap:.8em;grid-template-rows:auto 1fr;min-height:0}
+.rb-kpis{display:grid;gap:.55em}
+.rb-kpi{display:grid;grid-template-columns:7em 1fr;gap:.7em;align-items:center}
+.rb-kpi b{font-family:var(--font-m);font-size:1.7em;font-weight:600;line-height:1.1;color:var(--sc);white-space:nowrap;direction:ltr;text-align:start}
+.rb-kpi:nth-child(3){grid-template-columns:10.5em 1fr}.rb-kpi:nth-child(3) b{font-size:1.2em}
+.rb-kpi>span{font-size:.88em;color:var(--ink-2);line-height:1.4}
+.rb-lims{display:grid;gap:.4em}
+.rb-lims li{padding:.45em .8em;border-radius:.7em;border:1px dashed var(--warn);background:color-mix(in oklab,var(--warn) 7%,transparent);font-size:.86em;line-height:1.35;color:var(--head)}
+.deck[data-mode=reader] .cr-grid,.deck[data-mode=reader] .rb-grid{grid-template-columns:1fr}
+.deck[data-mode=reader] .cr-top{grid-template-columns:1fr}
+.deck[data-mode=reader] .cr-feeds{grid-template-rows:none;grid-template-columns:1fr 1fr}
+.deck[data-mode=reader] .cr-tile{aspect-ratio:2/1}
+.deck[data-mode=reader] .cr-proof,.deck[data-mode=reader] .rb-steps{grid-template-columns:1fr 1fr}
+.deck[data-mode=reader] .cr-side{grid-template-rows:none}
+
+/* reduced motion: no travel offset, no loops, every counter and the robot's walk at their final frame (also enforced in pitch.js) */
+@media(prefers-reduced-motion:reduce){
+  .stage .slide,.stage .slide.is-leaving{transform:none}
+  .slide.is-active .pipe-ico::after,.slide.is-active .cr-ping,.slide.is-active .cr-smoke,.slide.is-active .rb-cone,.slide.is-active .rb-plan[data-found="1"] .rb-ripple,.pipe-dot,.gp-line i{animation:none!important}
+  .pipe-dot{inset-inline-start:calc(94% - 1.4em)}
+  .db-ring .rp{transition:none}
+  .slide.is-active :is(.gp-list,.gp-unknown,.viz-notes,.ev-list,.rb-lims,.cr-queue,.cr-proof,.rb-steps)>li{animation:none!important}
+}
+@media print{
+  .slide *,.slide *::before,.slide *::after{animation:none!important;transition:none!important}
+}

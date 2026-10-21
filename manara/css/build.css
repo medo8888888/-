@@ -146,8 +146,9 @@ html[dir=rtl] .build-hero::after{--fade:right}
 .rules .table-wrap{margin-bottom:12px}
 
 /* ---------- tiers ---------- */
-.tier-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
-@media(max-width:960px){.tier-grid{grid-template-columns:1fr}}
+.tier-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px}
+@media(max-width:1180px){.tier-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:640px){.tier-grid{grid-template-columns:1fr}}
 .tier{display:flex;flex-direction:column;gap:12px;border-width:1.5px;transition:border-color .25s,box-shadow .25s,transform .25s var(--ease)}
 .tier[aria-current=true]{border-color:var(--brand);box-shadow:var(--shadow)}
 .tier-h{display:flex;align-items:center;gap:12px}
@@ -177,6 +178,7 @@ html[dir=rtl] .table tr.add td:first-child{box-shadow:inset -3px 0 0 var(--brand
 .tier-badge.t1{background:color-mix(in oklab,var(--brand) 18%,var(--surface));color:var(--brand-t)}
 .tier-badge.t2{background:color-mix(in oklab,var(--accent) 18%,var(--surface));color:var(--accent-t)}
 .tier-badge.t3{background:color-mix(in oklab,var(--info) 18%,var(--surface));color:var(--info-t)}
+.tier-badge.t4{background:color-mix(in oklab,var(--danger) 16%,var(--surface));color:var(--danger-t)}
 @media(max-width:700px){
   .rtable,.rtable tbody,.rtable tfoot,.rtable tr,.rtable td{display:block;width:100%}
   .rtable thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
@@ -315,3 +317,6 @@ html[dir=rtl] .ribbon li:not(:last-child)::after{content:"←"}
 .ov-lg i{width:10px;height:10px;border-radius:50%;background:var(--sc)}
 @media(prefers-reduced-motion:no-preference){.vb-led.blink{animation:vbb 1s steps(1,end) infinite}}
 @keyframes vbb{50%{opacity:.25}}
+
+/* Tier 4: the rover's block diagram keeps its natural size (the overview diagram is drawn at a different scale) */
+#rover-diagram svg{display:block;width:100%;max-width:760px;margin-inline:auto;height:auto}

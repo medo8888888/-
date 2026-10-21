@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title data-en="MANARA — Build It">منارة — بناء النموذج</title>
-<meta name="description" content="دليل بناء منارة: ثلاثة مستويات من الحاسوب وحده إلى كشك كامل، قطع بأسعار تقريبية، توصيل مفصّل، شيفرة ESP32 وبايثون، ومراقب حيّ يعمل بلا عتاد.">
+<meta name="description" content="دليل بناء منارة: أربعة مستويات من الحاسوب وحده إلى كشك كامل ثم عربة مقعد وحمولة درون، قطع بأسعار تقريبية، توصيل مفصّل، شيفرة ESP32 وبايثون، ومراقب حيّ يعمل بلا عتاد.">
 <meta name="theme-color" content="#0a0e15">
 <meta name="color-scheme" content="light dark">
 <script>(function(){var d=document.documentElement,t,l;try{t=localStorage.getItem('manara-theme');l=localStorage.getItem('manara-lang')}catch(e){}var q=/[?&]lang=(ar|en)/.exec(location.search);if(q)l=q[1];if(t!=='light'&&t!=='dark')t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';if(l!=='en')l='ar';d.dataset.theme=t;d.dataset.lang=l;d.lang=l;d.dir=l==='ar'?'rtl':'ltr';d.classList.add('js');setTimeout(function(){if(!window.__manaraReady)d.classList.remove('js')},2500)})();</script>
@@ -50,11 +50,11 @@
       <div class="sec-head">
         <span class="eyebrow" data-icon="layers"><span data-l="ar">الصورة الكبيرة</span><span data-l="en">The big picture</span></span>
         <h2 class="sec-title"><span data-l="ar">الفكرة كلها في مخطط واحد</span><span data-l="en">The whole idea in one picture</span></h2>
-        <p class="sec-lead"><span data-l="ar">حارس يرى ويقرّر في مكانه، ودرون (مفهوم) تُشغّله جهة مرخّصة يعطي نظرة ثانية من الخارج، وهواتف توقظ كل إنسان بلغته، وعدّ لمن خرج، وتسليم لفرق الطوارئ. القطعة الصلبة التي تبنيها هي الحارس؛ والباقي برمجيات تعمل في المتصفح.</span><span data-l="en">A sentinel that sees and decides on the spot, a drone (concept) flown by a licensed agency that adds a second view from outside, phones that wake each person in their own language, a headcount of who got out, and a hand-off to responders. The hardware you build is the sentinel; the rest runs in the browser.</span></p>
+        <p class="sec-lead"><span data-l="ar">حارس يرى ويقرّر في مكانه، ودرون (مفهوم) تُشغّله جهة مرخّصة يرى من الأعلى ويُنبّه غرفة التحكم، وغرفة تحكم تتحقق (مفتاحان ثم «اعتماد» بشري) وترسل الأسرع وصولًا، وهواتف توقظ كل إنسان بلغته وتعدّ من خرج، وروبوت إنقاذ يبحث في المبنى بعد موافقة. القطع الصلبة التي تبنيها هي الحارس ثم العربة التجريبية؛ والباقي برمجيات تعمل في المتصفح.</span><span data-l="en">A sentinel that sees and decides on the spot, a drone (concept) flown by a licensed agency that sees from above and alerts the control room, a control room that verifies (two keys, then a human Approve) and sends the fastest unit, phones that wake each person in their own language and count who got out, and a rescue robot that searches the building after approval. The hardware you build is the sentinel, then the bench rover; the rest runs in the browser.</span></p>
       </div>
       <figure class="ov-fig rv">
         <div class="ov-scroll" id="overview-host" role="group" aria-labelledby="ov-cap"></div>
-        <figcaption id="ov-cap"><span data-l="ar">الأرقام تعني الترتيب. الدائرة الملوّنة (T1 وT2 وT3) تقول في أي مستوى بناء تصبح الحلقة قطعةً حقيقية (المستويات أدناه).</span><span data-l="en">Numbers are the order. The coloured dot says at which build tier a link becomes a physical thing (tiers below).</span></figcaption>
+        <figcaption id="ov-cap"><span data-l="ar">الأرقام تعني الترتيب. الدائرة الملوّنة (T1 إلى T4) تقول في أي مستوى بناء تصبح الحلقة قطعةً حقيقية (المستويات أدناه).</span><span data-l="en">Numbers are the order. The coloured dot says at which build tier a link becomes a physical thing (tiers below).</span></figcaption>
       </figure>
       <div class="grid g3 ov-notes" data-stagger>
         <div class="card rv"><span class="ico" style="--sc:var(--accent)"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></span>
@@ -175,7 +175,7 @@
   <section class="sec" id="tiers">
     <div class="wrap wide">
       <div class="sec-head">
-        <span class="eyebrow" data-icon="layers"><span data-l="ar">ثلاثة مستويات</span><span data-l="en">Three tiers</span></span>
+        <span class="eyebrow" data-icon="layers"><span data-l="ar">أربعة مستويات</span><span data-l="en">Four tiers</span></span>
         <h2 class="sec-title"><span data-l="ar">ابدأ بالصغير، وكبِّر حين تثق بما بنيت</span><span data-l="en">Start small, grow when you trust what you built</span></h2>
         <p class="sec-lead"><span data-l="ar">كل مستوى يعمل وحده ويُعرَض أمام اللجنة. اختر مستواك، فتتغيّر قوائم القطع والتوصيل والخطوات أدناه معه.</span><span data-l="en">Every tier works alone and can be shown to the judges. Pick yours and the parts, wiring and steps below follow.</span></p>
       </div>
@@ -234,6 +234,100 @@
       <div class="table-wrap rv"><table class="table rtable" id="pin-table">
         <thead><tr><th><span data-l="ar">القطعة</span><span data-l="en">Part</span></th><th><span data-l="ar">إشارة القطعة</span><span data-l="en">Part signal</span></th><th><span data-l="ar">طرف ESP32</span><span data-l="en">ESP32 pin</span></th><th><span data-l="ar">ملاحظة التوصيل</span><span data-l="en">Wiring note</span></th><th><span data-l="ar">المستوى</span><span data-l="en">Tier</span></th></tr></thead>
         <tbody id="pin-body"></tbody></table></div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 5b. Tier 4: drone payload and bench rover -->
+  <section class="sec alt" id="tier4">
+    <div class="wrap wide">
+      <div class="sec-head">
+        <span class="eyebrow" data-icon="robot"><span data-l="ar">المستوى 4 · درون وروبوت إنقاذ</span><span data-l="en">Tier 4 · drone and rescue robot</span></span>
+        <h2 class="sec-title"><span data-l="ar">عربة مقعد تحاكي منطق روبوت الإنقاذ — ولا شيء يطير هنا</span><span data-l="en">A bench rover that models the rescue robot’s logic — and nothing flies here</span></h2>
+        <p class="sec-lead"><span data-l="ar">عربة صغيرة بمحرّكين على الطاولة تجسّد منطق الروبوت المحاكى في صفحة «مختبر الروبوت»: لا تتحرك قبل موافقة إنسان، وتبحث وتتفادى العوائق، وتتوقف عند الحرارة، وتتوقف وتُبلغ حين ترى شكلًا دافئًا. أما الدرون فمفهوم تشغّله جهة مرخّصة: عندنا منه <b>حمولة على الطاولة فقط</b>.</span><span data-l="en">A small two-motor rover on the table that models the logic of the simulated robot on the Robot Lab page: it does not move before a human approves, it searches and avoids obstacles, it stops at heat, and it stops and reports when it sees a warm shape. The drone is a concept for a licensed agency: we only have <b>a payload for it, on the bench</b>.</span></p>
+      </div>
+      <div class="note warn rv"><span data-l="ar"><b>ما هذه العربة وما ليست هو.</b> نموذج مقعد، وليست روبوت إنقاذ: لا تتسلق الدرج ولا تفتح الأبواب ولا تعرف أين هي. والكاميرا الحرارية ترى <b>شكلًا دافئًا لا شخصًا</b>، وفي غرفة حرارتها 34°م أو أكثر يتوقف هذا المفتاح لانعدام التباين. والسمّاعة تصدر نغمات لا كلامًا. لم تُنقذ أحدًا ولم تُجرَّب في حريق ولا تحمل موافقة أي جهة رسمية. الشيفرة كُتبت وفق واجهات المكتبات الموثّقة <b>ولم تُجرَّب على لوحة حقيقية</b>؛ المختبَر على الحاسوب منطقها فقط.</span><span data-l="en"><b>What this rover is, and is not.</b> A bench model, not a rescue robot: it cannot climb stairs, open doors or know where it is. The thermal camera sees <b>a warm shape, not a person</b>, and in a room at 34 °C or hotter that key switches itself off because there is no contrast. The speaker makes tones, not words. It has rescued nobody, has not been tried in a fire and carries no approval from any official body. The code was written to the documented library APIs and <b>has not been run on a real board</b>; only its logic is tested on a computer.</span></div>
+      <figure class="ov-fig rv" style="margin-block:18px">
+        <div class="ov-scroll" id="rover-diagram" role="group" aria-labelledby="rv-cap"></div>
+        <figcaption id="rv-cap"><span data-l="ar">مخطط كتل العربة. الإيقاف الطارئ والبطارية والعائق والحرارة قرارات <b>محلية</b> لا يُلغيها المتصفح.</span><span data-l="en">The rover’s block diagram. The E-stop, the battery, an obstacle and heat are <b>local</b> decisions that the browser cannot override.</span></figcaption>
+      </figure>
+
+      <h3 class="sub-h"><span data-l="ar">قواعد السلامة: اقرأها قبل أي توصيل</span><span data-l="en">Safety rules: read them before you wire anything</span></h3>
+      <div class="grid g2 safety-grid">
+        <div class="card rv" style="--sc:var(--danger)">
+          <h3><span data-l="ar">الدرون: على الطاولة والمراوح مفكوكة</span><span data-l="en">The drone: on the bench, propellers OFF</span></h3>
+          <ul class="plain-list">
+            <li><span data-l="ar">في أي اختبار على الطاولة لهيكل درون أو محرّك: <b>المراوح مفكوكة</b> والبطارية غير موصولة أثناء لمس أي جزء. تُركَّب المراوح في موقع الطيران وعلى يد المشغّل المرخّص فقط.</span><span data-l="en">In any bench test of a drone frame or motor: <b>propellers removed</b> and the battery disconnected while you touch anything. Propellers are fitted at the flying site, by the licensed operator only.</span></li>
+            <li><span data-l="ar">لا تشغّل درونًا داخل مبنى ولا قرب الناس. اختبارنا للحمولة: لوحة وكاميرا حرارية على حامل ببنك طاقة USB.</span><span data-l="en">Never arm a drone indoors or near people. Our payload test is a board and a thermal camera on a holder with a USB power bank.</span></li>
+            <li><span data-l="ar"><b>لا طيران دون إذن.</b> يسري القانون رقم 10 لسنة 2026 وقواعد هيئة الطيران المدني القطرية (المصدر S34). أي تصريح ينطبق على حالتك <b>يجب تأكيده مع الجهة</b>؛ لا نذكر هنا تفاصيل تصاريح.</span><span data-l="en"><b>No flying without permission.</b> Law No. 10 of 2026 and the Qatar Civil Aviation Authority’s rules apply (source S34). Which permit applies to you <b>must be confirmed with the authority</b>; we state no permit details here.</span></li>
+          </ul>
+        </div>
+        <div class="card rv" style="--sc:var(--warn)">
+          <h3><span data-l="ar">بطاريات الليثيوم (LiPo وLi-ion)</span><span data-l="en">Lithium batteries (LiPo and Li-ion)</span></h3>
+          <ul class="plain-list">
+            <li><span data-l="ar">بطارية <b>محميّة</b> بحامل ولوحة حماية وشاحن مخصّص. لا LiPo عارية على العربة.</span><span data-l="en">A <b>protected</b> pack: a holder, a protection board and a proper charger. No bare LiPo on the rover.</span></li>
+            <li><span data-l="ar">اشحنها على سطح غير قابل للاشتعال داخل كيس حماية، ولا تتركها تشحن دون مراقبة، ولا تشحن حزمة منتفخة أو مثقوبة أو ساخنة.</span><span data-l="en">Charge on a non-flammable surface inside a protective bag, never unattended, and never charge a swollen, punctured or hot pack.</span></li>
+            <li><span data-l="ar">حرارة الخليج: لا تتركها في سيارة مغلقة أو تحت الشمس، وخزّنها نصف مشحونة في علبة غير معدنية بعيدًا عن الحرارة. اتبع دليل صانع بطاريتك.</span><span data-l="en">Gulf heat: never leave it in a closed car or in the sun; store it half-charged in a non-metal box away from heat. Follow your battery maker’s guide.</span></li>
+            <li><span data-l="ar">فيوز بعد المفتاح، وافصلها حين لا تعمل.</span><span data-l="en">A fuse after the switch, and disconnect it when the rover is not in use.</span></li>
+          </ul>
+        </div>
+        <div class="card rv" style="--sc:var(--danger)">
+          <h3><span data-l="ar">العربة على الطاولة وعلى الأرض</span><span data-l="en">The rover on the table and on the floor</span></h3>
+          <ul class="plain-list">
+            <li><span data-l="ar">أول اختبار والعجلات <b>مرفوعة عن الأرض</b>، وزر الإيقاف الطارئ في متناول يدك.</span><span data-l="en">First test with the wheels <b>off the ground</b> and the E-stop within reach.</span></li>
+            <li><span data-l="ar">لا تتركها تعمل دون إشراف قرب الناس أو الأدراج أو الحواف؛ والمحرّكات المسنّنة قد تقرص الأصابع.</span><span data-l="en">Never leave it running unsupervised near people, stairs or edges; gear motors can pinch fingers.</span></li>
+            <li><span data-l="ar">المحرّكات على بطاريتها المنفصلة مع أرضي مشترك مع ESP32، ولا تُغذَّ من منفذ USB.</span><span data-l="en">The motors run from their own battery with a common ground to the ESP32, never from the USB port.</span></li>
+            <li><span data-l="ar">لا لهب ولا دخان حقيقي: بديل الحرارة كوب ساخن ودفّاية يد.</span><span data-l="en">No flame and no real smoke: the heat stand-ins are a hot mug and a hand warmer.</span></li>
+          </ul>
+        </div>
+        <div class="card rv" style="--sc:var(--info)">
+          <h3><span data-l="ar">ما نقوله للجنة بصدق</span><span data-l="en">What we tell the judges, honestly</span></h3>
+          <ul class="plain-list">
+            <li><span data-l="ar">«مفهوم ونموذج أولي محاكى في المتصفح؛ هذه العربة نموذج مقعد لمنطق الروبوت، وليست روبوت إنقاذ.»</span><span data-l="en">“A concept and a simulated prototype in the browser; this rover is a bench model of the robot’s logic, not a rescue robot.”</span></li>
+            <li><span data-l="ar">«لا تتسلق الدرج، وفي الغرفة الحارة يتوقف مفتاحها الحراري، وهي ترى شكلًا دافئًا لا شخصًا.»</span><span data-l="en">“It cannot climb stairs, in a hot room its thermal key switches off, and it sees a warm shape, not a person.”</span></li>
+            <li><span data-l="ar">«أرقام المحاكاة موسومة SIM، وأسعار القطع تقريبية فتحقّق من الموردين.»</span><span data-l="en">“Simulation numbers are labelled SIM, and part prices are approximate: check suppliers.”</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <h3 class="sub-h"><span data-l="ar">قطع المستوى 4 (أسعار تقريبية: تحقّق من الموردين)</span><span data-l="en">Tier 4 parts (approximate prices: check suppliers)</span></h3>
+      <p class="sec-lead"><span data-l="ar">كل رقم هنا <b>نطاق تقريبي</b> للتخطيط وليس عرض سعر: الأسعار والشحن والجمارك إلى قطر تتغيّر. وُسمت «رُصد» القطع نفسها التي رأينا سعرها في المستوى 2، وما سواها «تقدير».</span><span data-l="en">Every figure here is an <b>approximate range</b> for planning, not a quote: prices, shipping and customs to Qatar change. “Seen” marks the same parts whose price we saw in Tier 2; everything else is an “estimate”.</span></p>
+      <div class="kpis totals" id="t4-totals" aria-live="polite"></div>
+      <div class="table-wrap rv"><table class="table rtable" id="t4-parts-table">
+        <thead><tr><th><span data-l="ar">القطعة</span><span data-l="en">Part</span></th><th><span data-l="ar">العدد</span><span data-l="en">Qty</span></th><th><span data-l="ar">السعر التقريبي (US$)</span><span data-l="en">Approximate price (US$)</span></th><th><span data-l="ar">لماذا نحتاجها</span><span data-l="en">What it is for</span></th><th><span data-l="ar">ملاحظة</span><span data-l="en">Note</span></th></tr></thead>
+        <tbody id="t4-parts-body"></tbody>
+      </table></div>
+
+      <h3 class="sub-h"><span data-l="ar">التوصيل: خريطة أطراف العربة (لوحة ESP32 ثانية)</span><span data-l="en">Wiring: the rover’s pin map (a second ESP32 board)</span></h3>
+      <div class="grid g2">
+        <div class="note warn rv"><b><span data-l="ar">3.3 فولت و5 فولت وجهد البطارية</span><span data-l="en">3.3 V, 5 V and the battery voltage</span></b>
+          <span data-l="ar"><br>صدى HC-SR04 إشارة 5 فولت فمرّرها عبر مقسّم (1 كيلو + 2 كيلو). وجهد البطارية يصل إلى 8.4 فولت فلا يدخل ESP32 مباشرة: استعمل مقسّم 100 كيلو + 47 كيلو. أطراف ESP32 تتحمّل 3.3 فولت فقط.</span>
+          <span data-l="en"><br>The HC-SR04 echo is a 5 V signal, so pass it through a divider (1 k + 2 k). The battery can reach 8.4 V and must never go straight into the ESP32: use a 100 k + 47 k divider. ESP32 pins tolerate 3.3 V only.</span></div>
+        <div class="note rv"><b><span data-l="ar">أرضي مشترك وطاقة منفصلة</span><span data-l="en">One common ground, separate power</span></b>
+          <span data-l="ar"><br>البطارية تغذّي المشغّل والمحوّل الهابط (إلى VIN)، وكل الأرضيات تلتقي في نقطة واحدة. ركّب مفتاحًا وفيوزًا على سلك + البطارية. وإن دار محرّك إلى الخلف فبدّل سلكيه.</span>
+          <span data-l="en"><br>The pack feeds the driver and the step-down converter (to VIN); all grounds meet at one point. Fit a switch and a fuse on the pack’s + wire. If a motor turns the wrong way, swap its two wires.</span></div>
+      </div>
+      <div class="table-wrap rv"><table class="table rtable" id="rover-pin-table">
+        <thead><tr><th><span data-l="ar">القطعة</span><span data-l="en">Part</span></th><th><span data-l="ar">إشارة القطعة</span><span data-l="en">Part signal</span></th><th><span data-l="ar">طرف ESP32 (GPIO)</span><span data-l="en">ESP32 pin (GPIO)</span></th><th><span data-l="ar">ملاحظة التوصيل</span><span data-l="en">Wiring note</span></th></tr></thead>
+        <tbody id="rover-pin-body"></tbody></table></div>
+
+      <h3 class="sub-h"><span data-l="ar">الشيفرة: manara_rover.ino (على نمط الحارس وبروتوكول v1)</span><span data-l="en">Firmware: manara_rover.ino (in the sentinel’s style, protocol v1)</span></h3>
+      <div class="grid g2">
+        <div class="card rv">
+          <h3><span data-l="ar">كيف تقرّر العربة</span><span data-l="en">How the rover decides</span></h3>
+          <ol class="plain-list">
+            <li><span data-l="ar"><b>stowed</b>: لا حركة. لا تخرج منها إلا برسالة <code>approve</code> طازجة تتكرر كل ثانية تقريبًا (مفتاح الإنسان). إن انقطعت 3 ثوانٍ عادت إلى stowed.</span><span data-l="en"><b>stowed</b>: no motion. It leaves it only on a fresh <code>approve</code> repeated about once a second (the human key). If it stops for 3 s the rover returns to stowed.</span></li>
+            <li><span data-l="ar"><b>searching</b>: تتقدم، وتبطئ قرب العائق (≈ 45 سم)، وتدور مبتعدة عند ≈ 20 سم، وتدور بعيدًا عن بقعة ساخنة (≥ 57°م) ولا تتقدم نحوها أبدًا.</span><span data-l="en"><b>searching</b>: drives forward, slows near an obstacle (≈ 45 cm), turns away at ≈ 20 cm, and turns away from a hot spot (≥ 57 °C), never driving at it.</span></li>
+            <li><span data-l="ar"><b>holding</b>: ترى شكلًا دافئًا يثبت ثانية ونصفًا، فتتوقف وتومض وتصدر 3 نغمات وتُبلغ. تبقى حتى يقول إنسان «search» أو «recall»: رجال الإطفاء هم من يقرّر.</span><span data-l="en"><b>holding</b>: it sees a warm shape that persists for 1.5 s, stops, blinks, beeps three times and reports. It stays until a human says “search” or “recall”: firefighters decide.</span></li>
+            <li><span data-l="ar"><b>fault</b>: بطارية دون 6.2 فولت. لا تخرج منه إلا ببطارية مشحونة وموافقة جديدة.</span><span data-l="en"><b>fault</b>: a battery below 6.2 V. It leaves it only with a charged battery and a new approval.</span></li>
+          </ol>
+        </div>
+        <div class="card rv">
+          <h3><span data-l="ar">ما اختُبر وما لم يُختبر</span><span data-l="en">What is tested and what is not</span></h3>
+          <p class="small"><span data-l="ar"><b>اختُبر على الحاسوب</b> (<code>python3 manara/tools/test_kit.py</code>): مزج العجلات، وحساب الصدى، ومناطق البطء والتوقف، وتقدير البطارية، وقاعدة البقعة الساخنة (تساوي قاعدة الموقع)، وقاعدة الشكل الدافئ وحدّ الغرفة الحارة، وآلة الحالات (لا حركة دون موافقة، المفتاح المتكرر، الإيقاف الطارئ، البطارية، العوائق، الحرارة، التفاف عدّاد الزمن)، والمحلّل والكاتب، وتجميع الشيفرة بتشكيلات عدة.</span><span data-l="en"><b>Tested on a computer</b> (<code>python3 manara/tools/test_kit.py</code>): wheel mixing, the echo maths, the slow and stop zones, the battery estimate, the hot-spot rule (equal to the website’s), the warm-shape rule and the hot-room limit, the state machine (no motion without approval, the repeated key, the E-stop, the battery, obstacles, heat, the clock wrapping round), the parser and the writer, and compiling the sketch in several configurations.</span></p>
+          <p class="small"><span data-l="ar"><b>لم يُختبر</b>: المحرّكات، والتوصيل، وسلوك العربة على أرض حقيقية، ودقة الحسّاسات، وكل ما يخص الطيران. ملف الشيفرة في قسم «الحقيبة البرمجية» أدناه.</span><span data-l="en"><b>Not tested</b>: the motors, the wiring, what the rover does on a real floor, the sensors’ accuracy, and anything to do with flying. The file is in “The code kit” below.</span></p>
+        </div>
+      </div>
+      <pre class="code rv" id="rover-proto" aria-label="rover protocol v1"></pre>
     </div>
   </section>
 

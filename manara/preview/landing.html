@@ -318,12 +318,13 @@ input[type=range]{width:100%;accent-color:var(--brand)}
 .plain-list li{position:relative;padding-inline-start:18px;color:var(--ink-2)}
 .plain-list li::before{content:"";position:absolute;inset-inline-start:0;inset-block-start:.72em;width:7px;height:7px;border-radius:50%;background:var(--sc,var(--brand))}
 .ns-note{margin-block:16px}
+.sr-story{white-space:normal}
 
 /* ======================================================================= HERO */
 .hero{position:relative;isolation:isolate;overflow:clip;padding-block:clamp(26px,4.5vw,58px) clamp(34px,5vw,70px)}
-.hero-bg{position:absolute;inset:0;z-index:-1;pointer-events:none;
+.hero-bg{position:absolute;inset:-80px 0;z-index:-1;pointer-events:none;transform:translate3d(0,var(--py,0px),0);will-change:transform;
   background:radial-gradient(58% 52% at 82% -4%,color-mix(in oklab,var(--brand) 20%,transparent),transparent 72%),radial-gradient(46% 56% at 4% 62%,color-mix(in oklab,var(--accent) 13%,transparent),transparent 72%)}
-.hero-bg .grid-bg{position:absolute;inset:0;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:58px 58px;opacity:.42;
+.hero-bg .grid-bg{position:absolute;inset:0;transform:translate3d(0,var(--py2,0px),0);background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:58px 58px;opacity:.42;
   -webkit-mask-image:radial-gradient(72% 70% at 50% 28%,black,transparent);mask-image:radial-gradient(72% 70% at 50% 28%,black,transparent)}
 .hero-bg .beam{position:absolute;inset-block-start:-34%;inset-inline-end:-12%;width:92%;height:150%;transform-origin:78% 0;
   background:conic-gradient(from 196deg at 78% 0%,transparent 0 8deg,color-mix(in oklab,var(--brand) 24%,transparent) 20deg,transparent 38deg);filter:blur(28px);opacity:.85;animation:beam 16s ease-in-out infinite alternate}
@@ -353,7 +354,7 @@ input[type=range]{width:100%;accent-color:var(--brand)}
 .cam-live{display:inline-flex;align-items:center;gap:8px;min-width:0}
 .cam-live b{color:var(--head)}
 .cam-sector{color:var(--muted)}
-.cam-tele{margin-inline-start:auto;color:var(--muted);font-size:.76rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.cam-tele{flex:1;text-align:end;color:var(--muted);font-size:.76rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .cam-view{position:relative;border-radius:14px;overflow:hidden;aspect-ratio:16/10;background:var(--bg-2);isolation:isolate;container-type:inline-size}
 .cam-view canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .cam-view .cam-rgb{filter:saturate(1.06) contrast(1.05)}
@@ -373,7 +374,7 @@ input[type=range]{width:100%;accent-color:var(--brand)}
 .cam-state[data-s=suspect]{--sc:var(--warn)}
 .cam-state[data-s=confirmed]{--sc:var(--danger)}
 .cam-state[data-s=sent]{--sc:var(--safe)}
-.cam-clock{position:absolute;z-index:4;inset-block-start:16px;inset-inline-end:16px;padding:3px 9px;border-radius:8px;font-size:.76rem;color:var(--head);background:color-mix(in oklab,var(--bg) 62%,transparent)}
+.cam-clock{position:absolute;z-index:4;inset-block-start:16px;inset-inline-end:16px;/* the clock is dir=ltr (digits), so its OWN inline axis is LTR: put it on the side opposite the state chip in both languages */padding:3px 9px;border-radius:8px;font-size:.76rem;color:var(--head);background:color-mix(in oklab,var(--bg) 62%,transparent)}
 .cam-pip{position:absolute;z-index:4;inset-block-end:14px;inset-inline-end:14px;width:27%;aspect-ratio:8/5;border-radius:10px;overflow:hidden;border:1px solid var(--line-2);background:var(--bg);opacity:0;transform:translateY(8px);transition:opacity .35s,transform .35s}
 .cam-pip canvas{position:absolute;inset:0;width:100%;height:100%}
 .cam-pip-l{position:absolute;inset-block-end:3px;inset-inline-start:5px;font-family:var(--font-m);font-size:.6rem;color:var(--head);text-shadow:0 1px 2px black}
@@ -396,7 +397,7 @@ input[type=range]{width:100%;accent-color:var(--brand)}
 .cam-alert .ca-t{display:grid;gap:1px;min-width:0}
 .cam-alert b{font-family:var(--font-h);font-size:.88rem}
 .cam-alert small{color:var(--ink-2);font-size:.76rem;line-height:1.4}
-.cam-steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-block:12px 0}
+.cam-steps{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;margin-block:12px 0}
 .cam-steps li{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--muted);font-size:.84rem;transition:background-color .25s,border-color .25s,color .25s;min-width:0}
 .cam-steps .cs-n{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;flex:none;font-size:.72rem;background:var(--surface-3);color:var(--ink-2)}
 .cam-steps b{font-family:var(--font-h);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -406,7 +407,10 @@ input[type=range]{width:100%;accent-color:var(--brand)}
 .cam-steps li[data-st=done] .cs-n{background:var(--safe);color:var(--bg)}
 .cam-ctl{display:flex;align-items:center;gap:10px;margin-block-start:10px}
 .cam-ctl .icon-btn{flex:none;width:44px;height:44px}
-.cam-cap{flex:1;min-width:0;font-size:.86rem;line-height:1.55;color:var(--ink-2)}
+main .icon-btn{min-width:44px;min-height:44px}
+.cam-capw{flex:1;min-width:0;display:grid}
+.cam-cap{grid-area:1/1;min-width:0;font-size:.86rem;line-height:1.55;color:var(--ink-2)}
+.cam-cap.ghost{visibility:hidden;pointer-events:none;user-select:none}
 .cam-note{margin-block-start:8px;font-size:.78rem;line-height:1.6;color:var(--muted)}
 
 /* ======================================================================= SUB-NAV */
@@ -417,6 +421,7 @@ input[type=range]{width:100%;accent-color:var(--brand)}
 .subnav a[aria-current=true]{color:var(--brand-t);background:color-mix(in oklab,var(--brand) 14%,transparent)}
 html{scroll-padding-top:calc(var(--nav-h) + 64px)}
 html[data-lang=ar] .cam-state,html[data-lang=ar] .cam-key .ck-t small{font-family:var(--font)}
+html[dir=rtl] .cam-clock{inset-inline-end:auto;inset-inline-start:16px}
 
 /* ======================================================================= WHY */
 .gap{margin-block:0 22px;padding:clamp(16px,2.4vw,24px);border:1px solid var(--line);border-radius:var(--r);background:var(--surface);box-shadow:var(--shadow-sm)}
@@ -433,6 +438,7 @@ html[data-lang=ar] .cam-state,html[data-lang=ar] .cam-key .ck-t small{font-famil
 .gap-gap i{font-style:normal;font-size:.76rem;color:var(--muted);white-space:nowrap}
 .gap-axis{position:relative;height:18px}
 .gap-axis>span{position:absolute;inset-inline-start:calc(var(--p) / 12 * 100%);transform:translateX(-50%);font-size:.74rem;color:var(--muted);font-family:var(--font-m)}
+.gap-axis>span:first-child{transform:none}.gap-axis>span:last-child{transform:translateX(-100%)}
 .why-kpis .kpi{height:100%}
 .why-kpis .kpi b{font-size:1.7rem}
 .why-kpis .kpi span{font-size:.9rem;line-height:1.6}
@@ -515,9 +521,11 @@ html[dir=rtl] .step::after{transform:translateY(-50%) scaleX(-1)}
 .u-t{display:grid;min-width:0}
 .u-t b{font-size:.8rem;color:var(--head);font-weight:600;line-height:1.35;overflow-wrap:anywhere}
 .u-t small{font-size:.72rem;color:var(--muted)}
-.u-e{font-size:1.05rem;color:var(--accent)}
-.con .units li{opacity:.4}
-.con[data-stage="3"] .units li,.con[data-stage="4"] .units li{opacity:1;border-color:color-mix(in oklab,var(--brand) 45%,var(--line))}
+.u-e{font-size:1.05rem;color:var(--accent-t)}
+.con .units li{border-style:dashed;border-color:var(--line-2)}   /* pending: dashed and a quiet icon, never reduced text contrast */
+.con .units li .u-i{opacity:.55}
+.con[data-stage="3"] .units li,.con[data-stage="4"] .units li{border-style:solid;border-color:color-mix(in oklab,var(--brand) 45%,var(--line))}
+.con[data-stage="3"] .units li .u-i,.con[data-stage="4"] .units li .u-i{opacity:1}
 .con-act{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px}
 .con-act .btn{min-height:44px}
 .con-siren{display:flex;align-items:center;gap:8px;color:var(--ink-2);flex:1;min-width:220px}
@@ -578,6 +586,7 @@ html[dir=rtl] .step::after{transform:translateY(-50%) scaleX(-1)}
 #rob-svg .rb-ring{fill:none;stroke:var(--danger);stroke-width:2}
 #rob-svg .rb-lock{fill:var(--warn);stroke:var(--bg);stroke-width:1.5}
 #rob-svg .rb-beacon{fill:var(--safe);stroke:var(--bg);stroke-width:1.5}
+#rob-svg .rb-scan{fill:none;stroke:var(--accent);stroke-width:1.5}
 #rob-svg .rb-say{fill:var(--surface-3);stroke:var(--line-2)}
 #rob-svg .rb-say-t{fill:var(--head);font-family:var(--font-h);font-size:12px}
 #rob-svg .rb-cmd{fill:var(--brand);font-family:var(--font-m);font-size:11px}
@@ -674,7 +683,8 @@ html[data-lang=ar] .hz-res{font-family:var(--font)}
 .ph-status.done{border-color:var(--safe);color:var(--safe-t)}
 .team-dl{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.3fr);gap:8px 14px;align-items:baseline}
 .team-dl dt{color:var(--muted);font-size:.9rem}
-.team-dl dd{color:var(--head)}
+.team-dl dd{color:var(--head);min-width:0}
+.team-dl .ph{max-inline-size:100%;overflow-wrap:anywhere;word-break:break-all}
 .team-dl.own{margin-block:12px}
 .ph{display:inline-block;padding:1px 10px;border-radius:8px;font-family:var(--font-m);font-size:.86rem;direction:ltr;unicode-bidi:isolate;color:var(--warn-t);background:color-mix(in oklab,var(--warn) 14%,transparent);border:1px dashed var(--warn)}
 .ph.filled{color:var(--head);background:transparent;border-style:solid;border-color:var(--line-2)}
@@ -730,7 +740,7 @@ html[data-lang=ar] .hz-res{font-family:var(--font)}
 @media(max-width:620px){
   .hero-title{font-size:clamp(3rem,16vw,4.4rem)}
   .cam{padding:8px;border-radius:20px}
-  .cam-steps{gap:4px}
+  .cam-steps{gap:4px;grid-template-columns:repeat(3,minmax(0,1fr))}
   .cam-steps li{padding:6px 6px;gap:5px;font-size:.78rem}
   .cam-steps .cs-n{width:18px;height:18px;font-size:.66rem}
   .cam-tele{display:none}
@@ -750,23 +760,150 @@ html[data-lang=ar] .hz-res{font-family:var(--font)}
   .con-stages span{font-size:.66rem;padding:5px 2px}
   .closing-cta .btn{flex:1 1 140px}
 }
+@media(max-width:620px){
+  .cam-ctl{display:grid;grid-template-columns:44px minmax(0,1fr);align-items:start;gap:8px 10px}
+  .cam-ctl .icon-btn{grid-column:1}
+  .cam-capw{grid-column:2;grid-row:1/3}
+}
 @media(max-width:400px){
   .wrap{padding-inline:16px}
   .cam-state{font-size:.7rem;padding:4px 9px}
   .cam-clock{display:none}
 }
 
+
+/* ======================================================================= MOTION: the story layer, the pipeline lighting, micro-interactions (transform / opacity only) */
+.cam-story{position:absolute;inset:0;width:100%;height:100%;z-index:1;opacity:0;transition:opacity .55s}
+.cam-view:not([data-view="cam"]) .cam-story{opacity:1}
+.cam-view:not([data-view="cam"]) :is(.cam-rgb,.cam-ovl,.cam-pip,.cam-keys,.cam-alert){opacity:0!important}
+.cam-state[data-s=route]{--sc:var(--info)}
+.cam-state[data-s=guide]{--sc:var(--safe)}
+.cam-state[data-s=count]{--sc:var(--accent)}
+.cam-state[data-s=done]{--sc:var(--safe)}
+.cam-steps li{transition:background-color .3s,border-color .3s,color .3s,transform .3s var(--ease)}
+.cam-steps li[data-st=now]{transform:translateY(-2px)}
+/* the SVG story (classes are painted from the device tokens) */
+.cam-story g.st-map,.cam-story g.st-bld{transition:opacity .5s}
+.cam-view[data-fade="1"] .cam-story{opacity:0!important}
+.cam-story .st-sea{fill:var(--bg-2)}
+.cam-story .st-land{fill:var(--surface-2);stroke:var(--line-2);stroke-width:.5}
+.cam-story .st-road{fill:none;stroke:var(--line-2);stroke-width:.7;stroke-linecap:round;stroke-linejoin:round}
+.cam-story .st-block{fill:var(--surface-3);opacity:.7}
+.cam-story .st-patrol{fill:none;stroke:var(--accent);stroke-width:.4;stroke-dasharray:1.4 1.8;opacity:.55}
+.cam-story .st-route{fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.cam-story .st-route.fire{stroke:var(--brand)}
+.cam-story .st-route.police{stroke:var(--info)}
+.cam-story .st-route.ambulance{stroke:var(--danger)}
+.cam-story .st-route-bg{fill:none;stroke:var(--bg);stroke-width:2.8;stroke-linecap:round;stroke-linejoin:round;opacity:.7}
+.cam-story .st-st{stroke:var(--bg);stroke-width:.8}
+.cam-story .st-st.fire{fill:var(--brand)}.cam-story .st-st.police{fill:var(--info)}.cam-story .st-st.ambulance{fill:var(--danger)}
+.cam-story .st-unit{stroke:var(--bg);stroke-width:.8}
+.cam-story .st-unit.fire{fill:var(--brand)}.cam-story .st-unit.police{fill:var(--info)}.cam-story .st-unit.ambulance{fill:var(--danger)}
+.cam-story .st-eta{fill:var(--head);font-family:var(--font-m);font-size:3.6px;font-weight:600}
+.cam-story .st-etabg{fill:var(--bg);opacity:.82}
+.cam-story .st-inc{fill:var(--danger);stroke:var(--bg);stroke-width:.8}
+.cam-story .st-ring{fill:none;stroke:var(--danger);stroke-width:.9}
+.cam-story .st-smoke{fill:var(--muted)}
+.cam-story .st-lock{fill:none;stroke:var(--warn);stroke-width:.9;stroke-linecap:round}
+.cam-story .st-drone-b{fill:var(--accent);stroke:var(--bg);stroke-width:.6}
+.cam-story .st-rotor{fill:var(--accent);stroke:var(--bg);stroke-width:.5}
+.cam-story .st-cap{fill:var(--muted);font-family:var(--font-m);font-size:3.2px}
+html[data-lang=ar] .cam-story .st-cap{font-family:var(--font-b,var(--font-h))}
+.cam-story .st-wall{fill:var(--surface);stroke:var(--line-2);stroke-width:.7}
+.cam-story .st-room{fill:var(--surface-2);stroke:var(--line-2);stroke-width:.5}
+.cam-story .st-corr{fill:var(--bg);stroke:var(--line);stroke-width:.4}
+.cam-story .st-beam{fill:url(#st-beam-g)}
+.cam-story .st-guide{fill:none;stroke:var(--safe);stroke-width:1.1;stroke-linecap:round;stroke-dasharray:2.6 2.2}
+.cam-story .st-door{fill:var(--safe)}
+.cam-story .st-zone{fill:color-mix(in oklab,var(--safe) 14%,transparent);stroke:var(--safe);stroke-width:.5;stroke-dasharray:1.5 1.5}
+.cam-story .st-p{stroke:var(--bg);stroke-width:.6}
+.cam-story .st-p.walk{fill:var(--brand)}
+.cam-story .st-p.out{fill:var(--safe)}
+.cam-story .st-p.stay{fill:var(--warn)}
+.cam-story .st-p.found{fill:var(--danger)}
+.cam-story .st-pring{fill:none;stroke:var(--warn);stroke-width:.7}
+.cam-story .st-robot{fill:var(--accent);stroke:var(--bg);stroke-width:.6}
+.cam-story .st-robot-e{fill:var(--bg)}
+.cam-story .st-scan{fill:none;stroke:var(--accent);stroke-width:.5}
+.cam-story .st-chk-bg{fill:var(--safe);stroke:var(--bg);stroke-width:.6}
+.cam-story .st-chk{fill:none;stroke:var(--bg);stroke-width:1.1;stroke-linecap:round;stroke-linejoin:round}
+.cam-story .st-count{direction:ltr;unicode-bidi:isolate;fill:var(--head);font-family:var(--font-m);font-size:5.4px;font-weight:600}
+.cam-story .st-count-l{fill:var(--ink-2);font-family:var(--font);font-size:3.4px}
+.cam-story .st-card{fill:var(--head);stroke:var(--accent);stroke-width:.6}
+.cam-story .st-card-l{fill:var(--bg)}
+.cam-story .st-crew{fill:var(--info);stroke:var(--bg);stroke-width:.6}
+.cam-story .st-tag{fill:var(--head);font-family:var(--font-m);font-size:3.4px}
+/* pipeline: a rail that grows, steps that light up in sequence */
+.flow-rail{position:relative;display:flex;align-items:center;justify-content:space-between;height:26px;margin-block:0 16px;padding-inline:20px}
+.flow-rail::before{content:"";position:absolute;inset-inline:26px;inset-block-start:11px;height:4px;border-radius:4px;background:var(--line)}
+.flow-rail .fr-fill{position:absolute;inset-inline:26px;inset-block-start:11px;height:4px;border-radius:4px;background:linear-gradient(90deg,var(--accent),var(--brand));transform:scaleX(var(--fr,0));transform-origin:left;transition:transform .7s var(--ease)}
+html[dir=rtl] .flow-rail .fr-fill{transform-origin:right;background:linear-gradient(270deg,var(--accent),var(--brand))}
+.flow-rail .fr-d{position:relative;width:16px;height:16px;border-radius:50%;background:var(--surface);border:2px solid var(--line-2);transition:background-color .3s,border-color .3s,transform .4s var(--ease)}
+.flow-rail .fr-d.on{background:var(--brand);border-color:var(--brand);transform:scale(1.25)}
+.step{transition:transform .35s var(--ease),box-shadow .35s,border-color .35s}
+.step::after{opacity:.28;transition:opacity .4s}
+.step .step-ico{transition:background-color .4s,color .4s,transform .45s var(--ease)}
+.step[data-lit="1"]{box-shadow:var(--shadow-sm),0 0 0 1px color-mix(in oklab,var(--sc) 40%,transparent),0 14px 34px -18px color-mix(in oklab,var(--sc) 60%,transparent)}
+.step[data-lit="1"]::after{opacity:1}
+.step[data-lit="1"] .step-ico{background:var(--sc);color:var(--surface);transform:scale(1.08) rotate(-4deg)}
+.step:hover,.step:focus-within{transform:translateY(-4px)}
+/* micro-interactions */
+.card,.num-card,.kpi,.hz,.alert,.units li,.chip{transition:transform .3s var(--ease),box-shadow .3s,border-color .25s,background-color .25s,color .25s}
+.num-card:hover,.hz:hover,.why-kpis .kpi:hover,.card:hover{transform:translateY(-3px);box-shadow:var(--shadow)}
+.js .rv.in:is(.card,.num-card,.kpi,.hz){transition:opacity .6s var(--ease),transform .3s var(--ease),box-shadow .3s,border-color .25s,background-color .25s,color .25s;transition-delay:var(--d,0s)}
+.js .rv.in:is(.card,.num-card,.kpi,.hz):hover{transform:translateY(-3px);box-shadow:var(--shadow)}
+.js .rv.in.step:hover,.js .rv.in.step:focus-within{transform:translateY(-4px)}
+.num-card:hover{border-color:color-mix(in oklab,var(--sc) 55%,var(--line))}
+.btn{position:relative;overflow:hidden}
+.btn-primary::after{content:"";position:absolute;inset-block:0;inset-inline-start:-60%;width:40%;background:linear-gradient(100deg,transparent,color-mix(in oklab,white 45%,transparent),transparent);transform:translateX(-120%) skewX(-18deg);transition:none;pointer-events:none}
+.btn-primary:hover::after{transform:translateX(420%) skewX(-18deg);transition:transform .8s var(--ease)}
+html[dir=rtl] .btn-primary::after{inset-inline-start:auto;inset-inline-end:-60%}
+html[dir=rtl] .btn-primary:hover::after{transform:translateX(-420%) skewX(18deg)}
+.icon-btn{transition:transform .25s var(--ease),border-color .2s,color .2s,background-color .2s}
+.icon-btn:hover{transform:scale(1.07)}
+.hz-shot canvas{transition:opacity .3s}
+.hz-shot.swap canvas{animation:hzswap .45s var(--ease)}
+@keyframes hzswap{from{opacity:.25;transform:scale(1.03)}to{opacity:1;transform:none}}
+/* hero entrance (secondary items only: the title, tagline and camera paint at once, so LCP is not delayed) */
+.js .hero-slogan,.js .hero-cta,.js .hero-facts li,.js .hero-pos{animation:rise .7s var(--ease) both}
+.js .hero-cta{animation-delay:.12s}
+.js .hero-facts li:nth-child(1){animation-delay:.2s}.js .hero-facts li:nth-child(2){animation-delay:.28s}.js .hero-facts li:nth-child(3){animation-delay:.36s}
+.js .hero-pos{animation-delay:.44s}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+/* control-room miniature: a radar sweep on the map, an alert card that slides in with one expanding ring (a single pulse, never a loop) */
+.con-radar{position:absolute;inset:-30%;z-index:1;pointer-events:none;border-radius:50%;opacity:.55;mix-blend-mode:screen;
+  background:conic-gradient(from 0deg,transparent 0 292deg,color-mix(in oklab,var(--accent) 20%,transparent) 338deg,color-mix(in oklab,var(--accent) 46%,transparent) 360deg);animation:sweep 8s linear infinite}
+@keyframes sweep{to{transform:rotate(360deg)}}
+.con-map{isolation:isolate}
+.alert{position:relative}
+.alert.enter{animation:slidein .6s var(--ease) both}
+.alert.enter::after{content:"";position:absolute;inset:-1px;border-radius:inherit;border:2px solid var(--st);pointer-events:none;animation:ringout .9s .1s ease-out both}
+@keyframes slidein{from{opacity:0;transform:translateX(calc(var(--dir,1) * -26px))}to{opacity:1;transform:none}}
+html[dir=rtl] .alert.enter{--dir:-1}
+@keyframes ringout{from{opacity:.95;transform:scale(1)}to{opacity:0;transform:scale(1.07,1.22)}}
+.alert.enter+.alert{animation:slidein .6s .12s var(--ease) both}
+.alert.enter+.alert+.alert{animation:slidein .6s .22s var(--ease) both}
+/* count-up numbers keep their width so nothing around them moves */
+[data-count]{display:inline-block;font-variant-numeric:tabular-nums}
+/* everything that loops pauses while its section is off-screen and while the tab is hidden */
+section[data-live="0"] *,section[data-live="0"] *::before,section[data-live="0"] *::after,html[data-tab-hidden] *,html[data-tab-hidden] *::before,html[data-tab-hidden] *::after{animation-play-state:paused!important}
+
 /* ======================================================================= MOTION + PRINT */
 @media(prefers-reduced-motion:reduce){
-  .hero-bg .beam{animation:none}
+  .hero-bg .beam,.con-radar{animation:none}
+  .hero-bg{transform:none!important}
+  .js .hero-slogan,.js .hero-cta,.js .hero-facts li,.js .hero-pos{animation:none}
+  .btn-primary::after{display:none}
+  .flow-rail .fr-fill{transition:none}
   .gap-bar{transition:none}
   .js .gap:not(.in) .gap-bar{transform:none}
 }
 @media print{
-  :root{--bg:#fff;--bg-2:#fff;--surface:#fff;--surface-2:#f5f5f5;--ink:#111;--ink-2:#222;--muted:#555;--head:#000;--line:#ccc;--line-2:#aaa}
+  :root,:root[data-theme]{--bg:#fff;--bg-2:#fff;--surface:#fff;--surface-2:#f5f5f5;--ink:#111;--ink-2:#222;--muted:#555;--head:#000;--line:#ccc;--line-2:#aaa}
+  .cam-cap.ghost{display:none}
   .nav,.subnav,.cam-ctl,.rob-ctl,.qd-actions,.con-act .btn,.num-filter,.hz-seg,.hero-bg,.skip{display:none!important}
   .sec,.hero,.closing{padding-block:16px;break-inside:avoid-page}
-  .dv{background:#fff;color:#111}
+  .dv{--bg:#fff;--bg-2:#fff;--surface:#fff;--surface-2:#f5f5f5;--surface-3:#eee;--ink:#111;--ink-2:#222;--muted:#555;--head:#000;--line:#ccc;--line-2:#aaa;--glass:#fff;--glass-line:#ccc;background:#fff;color:#111}
   .credits{background:#fff;color:#111}
   .rv{opacity:1!important;transform:none!important}
 }
@@ -798,9 +935,10 @@ html[data-lang=ar] .hz-res{font-family:var(--font)}
         <span class="tag warn cam-sim">SIM</span>
         <span class="cam-tele num" dir="ltr" id="cam-tele" aria-hidden="true">ALT 80 m · 18 m/s · BAT 86%</span>
       </div>
-      <div class="cam-view" id="cam-view">
+      <div class="cam-view" id="cam-view" data-view="cam">
         <canvas id="cam-rgb" class="cam-rgb" width="576" height="360" role="img" aria-label="مشهد جوي محاكى لحريق ودخان في حيّ عمراني، وعليه مربعات الكشف" data-aria-ar="مشهد جوي محاكى لحريق ودخان في حيّ عمراني، وعليه مربعات الكشف" data-aria-en="Simulated aerial view of fire and smoke in an urban block, with the detection boxes on it">Simulated aerial view</canvas>
         <canvas id="cam-ovl" class="cam-ovl" aria-hidden="true"></canvas>
+        <svg id="cam-story" class="cam-story" viewBox="0 0 160 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false"></svg>
         <span class="cam-state" id="cam-state" data-s="watch" aria-hidden="true"></span>
         <span class="cam-clock num" id="cam-clock" dir="ltr" aria-hidden="true">00:00</span>
         <div class="cam-pip" aria-hidden="true"><canvas id="cam-th" width="192" height="120"></canvas><span class="cam-pip-l">THERMAL</span></div>
@@ -814,19 +952,21 @@ html[data-lang=ar] .hz-res{font-family:var(--font)}
         </div>
         <i class="cam-c tl" aria-hidden="true"></i><i class="cam-c tr" aria-hidden="true"></i><i class="cam-c bl" aria-hidden="true"></i><i class="cam-c br" aria-hidden="true"></i>
       </div>
-      <ol class="cam-steps" id="cam-steps" data-aria-ar="مراحل المشهد" data-aria-en="Scene stages" aria-label="مراحل المشهد">
-        <li data-k="patrol"><span class="cs-n num">1</span><b><span data-l="ar">دورية</span><span data-l="en">Patrol</span></b></li>
-        <li data-k="sees"><span class="cs-n num">2</span><b><span data-l="ar">ترى</span><span data-l="en">Sees</span></b></li>
-        <li data-k="proves"><span class="cs-n num">3</span><b><span data-l="ar">تتحقق</span><span data-l="en">Proves</span></b></li>
-        <li data-k="alerts"><span class="cs-n num">4</span><b><span data-l="ar">تُنبّه</span><span data-l="en">Alerts</span></b></li>
+      <ol class="cam-steps" id="cam-steps" data-aria-ar="مراحل القصة" data-aria-en="Story stages" aria-label="مراحل القصة">
+        <li data-k="sense"><span class="cs-n num">1</span><b><span data-l="ar">ترى</span><span data-l="en">Sense</span></b></li>
+        <li data-k="prove"><span class="cs-n num">2</span><b><span data-l="ar">تتحقق</span><span data-l="en">Prove</span></b></li>
+        <li data-k="reach"><span class="cs-n num">3</span><b><span data-l="ar">يصل الأسرع</span><span data-l="en">Reach</span></b></li>
+        <li data-k="guide"><span class="cs-n num">4</span><b><span data-l="ar">تُرشد</span><span data-l="en">Guide</span></b></li>
+        <li data-k="count"><span class="cs-n num">5</span><b><span data-l="ar">تعدّ</span><span data-l="en">Count</span></b></li>
+        <li data-k="hand"><span class="cs-n num">6</span><b><span data-l="ar">تُسلّم</span><span data-l="en">Hand off</span></b></li>
       </ol>
       <div class="cam-ctl">
         <button class="icon-btn" type="button" id="cam-play" aria-pressed="true"  aria-label="إيقاف المشهد مؤقتًا"></button>
         <button class="icon-btn" type="button" id="cam-restart" data-aria-ar="أعد المشهد من البداية" data-aria-en="Restart the scene" aria-label="أعد المشهد من البداية" data-icon="reset"></button>
-        <p class="cam-cap" id="cam-cap" aria-live="off"></p>
+        <div class="cam-capw" id="cam-capw"><p class="cam-cap" id="cam-cap" aria-live="off"></p></div>
       </div>
       <p class="cam-note"><span data-l="ar">مشهد جوي يُولَّد بالشيفرة (SIM) وليس لقطة حقيقية؛ أمّا الكاشف فقواعد رؤية حاسوبية حقيقية (ليست ذكاءً اصطناعيًا) تعمل الآن في صفحتك. لم تحلّق مسيّرة حقيقية، ولا إنذار عامًّا قبل مفتاحين وموافقة إنسان.</span><span data-l="en">An aerial scene generated in code (SIM), not real footage; the detector is real rule-based computer vision (not AI) running in this page right now. No real drone has flown, and no public alert leaves before two keys and a human Approve.</span></p>
-      <p class="sr-only"><span data-l="ar">وصف نصي للمشهد: مسيّرة تدور فوق حيّ عمراني، ثم يظهر دخان ولهب. الكاشف المبني على قواعد الرؤية الحاسوبية يعطي «اشتباهًا»، ثم تؤكد الكاميرا الحرارية بؤرة ساخنة، فيتوفر مفتاحان مستقلان، وتُرسل المسيّرة إنذارًا إلى غرفة التحكم الذي ينتظر موافقة إنسان. صافرة الموقع المحلية لا تنتظر.</span><span data-l="en">Text description: a drone patrols above an urban block, then smoke and flames appear. The rule-based computer-vision detector reports SUSPECT, then the thermal camera confirms a hot spot, so two independent keys are in; the drone sends an alert to the control room, which waits for a human Approve. The local siren never waits.</span></p>
+      <p class="sr-only sr-story"><span data-l="ar">وصف نصي للقصة (تتكرر في حلقة): مسيّرة تدور فوق حيّ عمراني، ثم يظهر دخان ولهب. الكاشف المبني على قواعد الرؤية الحاسوبية يعطي «اشتباهًا»، ثم تؤكد الكاميرا الحرارية بؤرة ساخنة، فيتوفر مفتاحان مستقلان، وتُرسل المسيّرة إنذارًا إلى غرفة التحكم الذي ينتظر موافقة إنسان؛ وصافرة الموقع المحلية لا تنتظر. بعد الموافقة تُرسم على خريطة تخطيطية مسارات الوحدات الأسرع وصولًا فتتحرك نحو الحادث؛ ثم تضيء المسيّرة مسارًا إلى المخرج فيخرج الناس ويُعدّون؛ ثم يدخل الروبوت ويجد شخصين لا يستطيعان الخروج، فيكتمل العدّ وتُسلَّم البطاقة لقائد الإنقاذ.</span><span data-l="en">Text description (it loops): a drone patrols above an urban block, then smoke and flames appear. The rule-based computer-vision detector reports SUSPECT, then the thermal camera confirms a hot spot, so two independent keys are in; the drone sends an alert to the control room, which waits for a human Approve; the local siren never waits. After Approve, routes of the fastest-arriving units are drawn on a schematic map and the units move to the incident; then the drone lights a path to the exit, people walk out and are counted; then the robot enters and finds two people who cannot get out, the count completes and the card goes to the rescue lead.</span></p>
     </div>
 
     <div class="hero-body">
@@ -891,7 +1031,7 @@ html[data-lang=ar] .hz-res{font-family:var(--font)}
       <p class="small muted" id="gap-cap"><span data-l="ar">ثلاثة مصادر مختلفة لا حادثة واحدة، نضعها معًا لنشرح الفكرة فقط: لا نقول إن أي حريق بعينه استغرق هذه الأزمنة. الجزء المخطّط: مدى الأرقام المنشورة. شريط المسيّرة نتيجة محاكاة (SIM) بافتراضات ظاهرة، وليس قياسًا لمسيّرة حقيقية.</span><span data-l="en">Three different sources, not one event; we show them together only to explain the idea. We do not say any particular fire took these times. Hatched part: the published ranges. The drone bar is a simulation result (SIM) with visible assumptions, not a measurement of a real drone.</span></p>
     </figure>
 
-    <div class="grid g3 why-kpis">
+    <div class="grid g3 why-kpis" data-stagger>
       <div class="kpi rv"><b class="num" dir="ltr">49%</b><span><span data-l="ar">من وفيات الحرائق السكنية (الولايات المتحدة، 2017–2019) وقعت بين 11 ليلًا و7 صباحًا — بحث دولي (USFA، S7). لهذا يهمّنا النائم.</span><span data-l="en">of US residential fire deaths (2017–2019) happened 11 p.m.–7 a.m. — international research (USFA, S7). This is why the sleeper matters.</span></span></div>
       <div class="kpi rv"><b class="num" dir="ltr">1,636 / 2,473</b><span><span data-l="ar">حرائق عام 2023 في الإمارات وقعت في البيوت (الدفاع المدني الإماراتي عبر ذا ناشيونال، S11): في الخليج تقع الحرائق حيث ينام الناس.</span><span data-l="en">UAE fires in 2023 that were in homes (UAE civil defence via The National, S11): in the Gulf fires happen where people sleep.</span></span></div>
       <div class="kpi rv"><b class="num" dir="ltr">67%</b><span><span data-l="ar">من الحالات الحقيقية في السويد وصلت فيها مسيّرة جهاز الصدمات قبل الإسعاف، بوسيط 3 دقائق و14 ثانية أبكر — بحث دولي (S15). المسيّرات تصل أولًا.</span><span data-l="en">of real cases in Sweden where a drone-delivered AED arrived before the ambulance, a median 3 min 14 s earlier — international research (S15). Drones arrive first.</span></span></div>
@@ -908,7 +1048,8 @@ html[data-lang=ar] .hz-res{font-family:var(--font)}
       <p class="sec-lead"><span data-l="ar">السلسلة نفسها تعمل لكل خطر؛ الذي يتغيّر هو «كتيّب» الخطر. كل خطوة تقودك إلى صفحتها الحقيقية في المشروع، وفيها ما يمكنك تجربته بنفسك.</span><span data-l="en">The same chain runs for every hazard; only the hazard's playbook changes. Each step takes you to its real page in the project, with something you can try yourself.</span></p>
     </div>
 
-    <ol class="flow" id="flow">
+    <div class="flow-rail rv" id="flow-rail" aria-hidden="true"><i class="fr-fill"></i><b class="fr-d"></b><b class="fr-d"></b><b class="fr-d"></b><b class="fr-d"></b><b class="fr-d"></b><b class="fr-d"></b></div>
+    <ol class="flow" id="flow" data-stagger>
       <li class="step rv" data-step="1" style="--sc:var(--accent)">
         <span class="step-n num" aria-hidden="true">1</span>
         <span class="step-ico" data-icon="drone" aria-hidden="true"></span>
@@ -1008,6 +1149,7 @@ html[data-lang=ar] .hz-res{font-family:var(--font)}
           <div class="con-map" id="con-map">
             <canvas id="con-canvas" width="640" height="420" role="img" data-aria-ar="خريطة الدوحة الحقيقية (OpenStreetMap) عليها الحادث ومسار المسيّرة ومسارات الوحدات الموصى بها" data-aria-en="The real map of Doha (OpenStreetMap) with the incident, the drone's path and the recommended unit routes" aria-label="خريطة الدوحة الحقيقية (OpenStreetMap) عليها الحادث ومسار المسيّرة ومسارات الوحدات الموصى بها">Map</canvas>
             <canvas id="con-ovl" class="con-ovl" aria-hidden="true"></canvas>
+            <i class="con-radar" aria-hidden="true"></i>
             <p class="map-loading" id="con-loading" role="status"><span data-l="ar">نجهّز الخريطة الحقيقية…</span><span data-l="en">Preparing the real map…</span></p>
           </div>
           <div class="con-stages" id="con-stages" aria-hidden="true">
@@ -1026,7 +1168,7 @@ html[data-lang=ar] .hz-res{font-family:var(--font)}
             <figure class="feed"><canvas id="con-f-rgb" width="288" height="180" role="img" data-aria-ar="بثّ المسيّرة العادي" data-aria-en="The drone's RGB feed" aria-label="بثّ المسيّرة العادي"></canvas><figcaption class="num" dir="ltr">RGB</figcaption></figure>
             <figure class="feed"><canvas id="con-f-th" width="288" height="180" role="img" data-aria-ar="بثّ المسيّرة الحراري" data-aria-en="The drone's thermal feed" aria-label="بثّ المسيّرة الحراري"></canvas><figcaption class="num" dir="ltr">THERMAL</figcaption></figure>
           </div>
-          <h3 class="con-h"><span data-l="ar">الأسطول</span><span data-l="en">Fleet</span></h3>
+          <h3 class="con-h"><span data-l="ar">الأسطول (SIM)</span><span data-l="en">Fleet (SIM)</span></h3>
           <ul class="fleet" id="con-fleet">
             <li><b class="num" dir="ltr">DR-04</b><span class="fl-s" id="fl-s1"><span data-l="ar">على الموقع</span><span data-l="en">on station</span></span><span class="fl-b num" dir="ltr">72%</span></li>
             <li><b class="num" dir="ltr">DR-11</b><span class="fl-s"><span data-l="ar">راسية</span><span data-l="en">docked</span></span><span class="fl-b num" dir="ltr">100%</span></li>
@@ -1055,7 +1197,7 @@ html[data-lang=ar] .hz-res{font-family:var(--font)}
     </div>
 
     <div class="room-foot rv">
-      <ul class="room-points">
+      <ul class="room-points" data-stagger>
         <li><b data-icon="check"><span data-l="ar">الموافقة للإنسان</span><span data-l="en">Approve is human</span></b><span><span data-l="ar">المسيّرة قد تُقلع وحدها لتتحقق؛ الإنذار العام وإرسال الوحدات لا يخرجان قبل «موافق».</span><span data-l="en">A drone may launch on its own to verify; the public alert and the dispatch never leave before Approve.</span></span></li>
         <li><b data-icon="eye"><span data-l="ar">كل بثّ يقول مصدره</span><span data-l="en">Every feed says what it is</span></b><span><span data-l="ar">عاديّ أو حراري أو مدمج، وكل مربّع كشف يحمل مفتاحه وثقته، وكل شيء محاكى موسوم SIM.</span><span data-l="en">RGB, thermal or fused; every detection box carries its key and confidence; everything simulated is marked SIM.</span></span></li>
         <li><b data-icon="users"><span data-l="ar">أدوار</span><span data-l="en">Roles</span></b><span><span data-l="ar">مشاهد، ومشغّل (يوافق)، وقائد حادث (يوافق على الروبوت): محاكاة بلا مصادقة حقيقية.</span><span data-l="en">viewer, operator (approves), incident commander (approves the robot): simulated, no real authentication.</span></span></li>
@@ -1075,7 +1217,7 @@ html[data-lang=ar] .hz-res{font-family:var(--font)}
           <h2 class="sec-title" id="robot-t"><span data-l="ar">يدخل حيث لا ينبغي أن يدخل الناس أولًا</span><span data-l="en">It goes in where people should not go first</span></h2>
           <p class="sec-lead"><span data-l="ar">المسيّرة تُخرج مَن يستطيع المشي. فماذا عمّن ينام في غرفة ملأها الدخان، أو على كرسي متحرك في الطابق الثالث، أو لا يردّ؟ هنا يأتي روبوت الإنقاذ: <b>مفهوم بنموذج أولي محاكى</b>، لم يُبنَ ولم يُجرَّب.</span><span data-l="en">The drone guides those who can walk. What about someone asleep in a smoke-filled room, in a wheelchair on the third floor, or not answering? That is the rescue robot: <b>a concept with a simulated prototype</b>, not built and not tested.</span></p>
         </div>
-        <ul class="rob-list rv">
+        <ul class="rob-list rv" data-stagger>
           <li data-icon="target"><span><b><span data-l="ar">يبحث بالأولوية:</span><span data-l="en">Searches by priority:</span></b> <span data-l="ar">غرف غير المُحصَين ومَن يحتاج مساعدة أولًا، ثم الباقي.</span><span data-l="en">rooms of the unaccounted and those who need help first, then the rest.</span></span></li>
           <li data-icon="thermo"><span><b><span data-l="ar">يجد الناس بالحرارة والصوت:</span><span data-l="en">Finds people by heat and sound:</span></b> <span data-l="ar">كاميرا حرارية وأخرى عادية بمصباحها وميكروفون.</span><span data-l="en">a thermal camera, an RGB camera with its own lamp, and a microphone.</span></span></li>
           <li data-icon="speaker"><span><b><span data-l="ar">يُحدّث ويرشد:</span><span data-l="en">Talks and guides:</span></b> <span data-l="ar">«أنا روبوت الدفاع المدني، اتبع الضوء الأخضر» بلغة الشخص وصيغته، ويترك منارات لمسار آمن.</span><span data-l="en">“I am a Civil Defence robot, follow the green light” in the person's language and format, and drops beacons for a safe route.</span></span></li>
@@ -1115,7 +1257,7 @@ html[data-lang=ar] .hz-res{font-family:var(--font)}
       <p class="sec-lead"><span data-l="ar">لكل خطر كتيّب: ماذا ترى المسيّرة، وما المفتاح الثاني، وما الإجراء الواقي. هذه صور جوية تُولَّد الآن بالشيفرة (SIM) ويحلّلها الكاشف نفسه. بدّل بين العادي والحراري لترى ما تراه كل كاميرا وما لا تراه.</span><span data-l="en">Each hazard has a playbook: what the drone sees, what the second key is, what the protective action is. These aerial frames are generated in code now (SIM) and analysed by the same detector. Switch between RGB and thermal to see what each camera sees and what it cannot.</span></p>
     </div>
 
-    <div class="grid g3 hz-grid" id="hz-grid">
+    <div class="grid g3 hz-grid" id="hz-grid" data-stagger>
 
       <article class="card hz rv" data-hz="fire" style="--sc:var(--danger)">
         <div class="hz-shot"><canvas class="hz-cv" width="320" height="200" role="img" aria-label="" data-aria-ar="حريق ودخان في حيّ عمراني، كما تراه المسيّرة (محاكاة)" data-aria-en="Fire and smoke in an urban block as the drone sees it (simulation)"></canvas><span class="hz-badge tag warn">SIM</span></div>
@@ -1288,7 +1430,7 @@ html[data-lang=ar] .hz-res{font-family:var(--font)}
       <button class="chip" type="button" data-f="sim" aria-pressed="false"><span class="dot" style="--sc:var(--warn)"></span>SIM</button>
     </div>
 
-    <div class="nums" id="nums">
+    <div class="nums" id="nums" data-stagger>
       <article class="num-card rv" data-k="measured">
         <header><span class="tag safe">MEASURED</span><span class="nc-src small muted"><span data-l="ar">اختبارنا الآلي</span><span data-l="en">our automated tests</span></span></header>
         <b class="num-big num" dir="ltr" data-tc="total">1,348</b>
@@ -1400,7 +1542,7 @@ html[data-lang=ar] .hz-res{font-family:var(--font)}
     <article class="card rv trust-regional">
       <h3 data-icon="globe"><span data-l="ar">منارة تحيط بالمنظومات القائمة ولا تنافسها</span><span data-l="en">MANARA surrounds the systems that exist and competes with none</span></h3>
       <div class="reg-grid">
-        <p><b><span data-l="ar">الصقور تكافح النار، والمنارة تُخرج الجميع.</span><span data-l="en">The falcons fight the fire; the lighthouse gets everyone out.</span></b> <span data-l="ar">الدفاع المدني السعودي نشر مسيّرة «صقر» في حج 2025 (S13)، وفي دبي «شاهين» وفي أبوظبي «سُهيل»، وأرى الدفاع المدني القطري مسيّرتَي إطفاء في ميليبول 2024 (S39)، و«حصّانتك» تربط أكثر من 150,000 مبنى بمركز إنذار مركزي، ومشروع طلاب قطر في آيسف 2025 لكشف تسرّب H₂S بمسيّرة نال المركز الرابع عالميًا (S43). كلها الأرض التي نقف عليها. هذه المنظومات تكافح وترصد؛ ومنارة هي طبقة «آخر مئة متر» حولها: التحقق، والإرشاد بلغة كل إنسان، والبحث عمّن لا يخرج، والإحصاء، والتسليم.</span><span data-l="en">Saudi Civil Defense deployed the “Saqr/Falcon” drone at Hajj 2025 (S13), Dubai has “Shaheen” and Abu Dhabi “Suhail”, Qatar Civil Defence showed two firefighting drones at Milipol 2024 (S39), Hassantuk links more than 150,000 buildings to a central alarm centre, and the Qatari students' ISEF 2025 drone project for H₂S leak detection won fourth place globally (S43). They are the ground we stand on. Those systems fight and detect; MANARA is the “last 100 metres” layer around them: proving, guiding each person in their own language, searching for those who cannot get out, counting, and handing off.</span></p>
+        <p><b><span data-l="ar">الصقور تكافح النار، والمنارة تُخرج الجميع.</span><span data-l="en">The falcons fight the fire; the lighthouse gets everyone out.</span></b> <span data-l="ar">الدفاع المدني السعودي نشر مسيّرة «صقر» في حج 2025 (S13)، وفي دبي «شاهين» وفي أبوظبي «سُهيل»، وعرض الدفاع المدني القطري مسيّرتَي إطفاء في ميليبول 2024 (S39)، و«حصّانتك» تربط المباني بمركز إنذار مركزي، ومشروع طلاب قطر في آيسف 2025 لكشف تسرّب H₂S بمسيّرة نال المركز الرابع عالميًا (S43). كلها الأرض التي نقف عليها. هذه المنظومات تكافح وترصد؛ ومنارة هي طبقة «آخر مئة متر» حولها: التحقق، والإرشاد بلغة كل إنسان، والبحث عمّن لا يخرج، والإحصاء، والتسليم.</span><span data-l="en">Saudi Civil Defense deployed the “Saqr/Falcon” drone at Hajj 2025 (S13), Dubai has “Shaheen” and Abu Dhabi “Suhail”, Qatar Civil Defence showed two firefighting drones at Milipol 2024 (S39), Hassantuk links buildings to a central alarm centre, and the Qatari students' ISEF 2025 drone project for H₂S leak detection won fourth place globally (S43). They are the ground we stand on. Those systems fight and detect; MANARA is the “last 100 metres” layer around them: proving, guiding each person in their own language, searching for those who cannot get out, counting, and handing off.</span></p>
         <p><b>999</b> <span data-l="ar">يبقى المرسِل. منارة تُرسل حزمة موثّقة جاهزة (وCAP بحالة «تمرين») ولا تتصل بالنيابة عن أحد، ولا تدّعي أي ربط قائم، وليست خدمة رسمية.</span><span data-l="en">stays the dispatcher. MANARA sends a ready verified package (and a CAP file with status “Exercise”), never calls on anyone's behalf, claims no existing link, and is not an official service.</span></p>
       </div>
     </article>
@@ -1430,7 +1572,7 @@ html[data-lang=ar] .hz-res{font-family:var(--font)}
     </div>
     <div class="card rv judge-path">
       <h3 data-icon="clock"><span data-l="ar">ثلاث دقائق للمحكّم</span><span data-l="en">Three minutes for a judge</span></h3>
-      <ol class="path">
+      <ol class="path" data-stagger>
         <li><span data-l="ar">شاهد المسيّرة ترى وتُنبّه، في أعلى هذه الصفحة.</span><span data-l="en">Watch the drone see and alert, at the top of this page.</span></li>
         <li><a href="../control.html#demo"><span data-l="ar">غرفة التحكم:</span><span data-l="en">Control Room:</span></a> <span data-l="ar">اضغط «موافق» كما يفعل المشغّل.</span><span data-l="en">press Approve as the operator does.</span></li>
         <li><a href="../detect.html#fool"><span data-l="ar">مختبر الأدلة:</span><span data-l="en">Evidence Lab:</span></a> <span data-l="ar">حاوِل خداع الكاشف.</span><span data-l="en">try to fool the detector.</span></li>
@@ -3677,7 +3819,7 @@ window.MANARA_TEST_COUNTS = {
     TOKS.mono = cs.getPropertyValue('--font-m').trim() || 'monospace';
     TOKS.font = cs.getPropertyValue('--font-h').trim() || 'sans-serif';
   }
-  function tk(n) { return TOKS[n] || '#888'; }
+  function tk(n) { return TOKS[n] || 'currentcolor'; }
 
   /* ======================================================================= a small player: play / pause / off-screen / hidden tab / reduced motion */
   // opts: node (watched by IntersectionObserver), dur (s), hold (s: how long the last frame stays), onTick(t, dt), onEnd(), loop (bool|function)
@@ -3792,6 +3934,74 @@ window.MANARA_TEST_COUNTS = {
     render(); onLang(render);
   }
 
+
+  /* ---------- motion: everything that loops pauses off-screen and in a hidden tab; the pipeline lights up; numbers count up; the hero backdrop drifts ---------- */
+  function initLive() {                                          // CSS animations inside a section pause while it is off-screen (home.css: section[data-live="0"]) and while the tab is hidden
+    var secs = $$('main > section');
+    if ('IntersectionObserver' in window) {
+      var io = new IntersectionObserver(function (es) { es.forEach(function (e) { e.target.setAttribute('data-live', e.isIntersecting ? '1' : '0'); }); }, { rootMargin: '120px' });
+      secs.forEach(function (sec) { sec.setAttribute('data-live', '0'); io.observe(sec); });
+    }
+    function tab() { if (document.hidden) document.documentElement.setAttribute('data-tab-hidden', ''); else document.documentElement.removeAttribute('data-tab-hidden'); }
+    document.addEventListener('visibilitychange', tab); tab();
+  }
+  function initSettle() {                                        // once a .rv card has finished revealing, drop its stagger delay so hover and focus react at once
+    document.addEventListener('transitionend', function (e) { var t = e.target; if (e.propertyName === 'opacity' && t.classList && t.classList.contains('rv') && t.classList.contains('in')) t.style.setProperty('--d', '0s'); }, true);
+  }
+  function initPrint() {                                         // a dark-theme page prints on paper-light tokens (the print block in home.css redefines them); restored afterwards
+    var saved = null, h = document.documentElement;
+    window.addEventListener('beforeprint', function () { if (saved === null) saved = h.getAttribute('data-theme') || ''; h.setAttribute('data-theme', 'light'); });
+    window.addEventListener('afterprint', function () { if (saved !== null) { if (saved) h.setAttribute('data-theme', saved); else h.removeAttribute('data-theme'); saved = null; } });
+  }
+  function initFlow() {                                          // Sense → Prove → Reach → Guide → Count → Hand off: a rail grows and the six steps light up in turn
+    var flow = $('#flow'), rail = $('#flow-rail'); if (!flow) return;
+    var steps = $$('.step', flow), dots = rail ? $$('.fr-d', rail) : [], done = false;
+    function setN(n) {
+      steps.forEach(function (s, i) { s.setAttribute('data-lit', i < n ? '1' : '0'); });
+      dots.forEach(function (d, i) { d.classList.toggle('on', i < n); });
+      if (rail) rail.style.setProperty('--fr', String(n <= 1 ? 0 : (Math.min(n, 6) - 1) / 5));
+    }
+    function all() { done = true; setN(6); }
+    function run() {
+      if (done) return; done = true;
+      if (reduced()) { setN(6); return; }
+      var n = 0; (function next() { n++; setN(n); if (n < 6) setTimeout(next, 430); })();
+    }
+    if (reduced() || !('IntersectionObserver' in window)) { all(); }
+    else {
+      setN(0);
+      var io = new IntersectionObserver(function (es) { if (es[0].isIntersecting) { io.disconnect(); run(); } }, { threshold: 0.2, rootMargin: '0px 0px -10% 0px' }); io.observe(flow);
+    }
+    if (mq.addEventListener) mq.addEventListener('change', function () { if (reduced()) all(); });
+  }
+  function initCountUp() {                                       // numbers count up when they enter the viewport; the final text is always the one in the HTML (and what a screen reader or reduced motion sees)
+    if (!('IntersectionObserver' in window)) return;
+    var sel = '.num-big [data-ev], .num-big [data-tc], #qd-kpis [data-nat], .why-kpis b, .qd-kpis b';
+    $$(sel).forEach(function (n) {
+      if (n.closest('.hero') || /[^\d.,%\s]/.test((n.textContent || '').replace(/[\u00a0]/g, ' ').replace(/km/, ''))) return;     // pure numbers only ("49%", "1,348", "6,116")
+      if (n.querySelector('*')) return;
+      n.setAttribute('data-count', '');
+      var io = new IntersectionObserver(function (es) {
+        if (!es[0].isIntersecting) return; io.disconnect();
+        if (reduced()) return;
+        var fin = n.textContent, m = /^([^\d]*)([\d,]+(?:\.\d+)?)([^\d]*)$/.exec(fin); if (!m) return;
+        var val = parseFloat(m[2].replace(/,/g, '')), dec = m[2].indexOf('.') >= 0 ? m[2].length - m[2].indexOf('.') - 1 : 0, t0 = now(), dur = 900 + Math.min(700, val / 3);
+        n.style.minWidth = fin.length + 'ch';
+        (function step() {
+          var u = clamp((now() - t0) / dur, 0, 1), e = 1 - Math.pow(1 - u, 3);
+          if (u >= 1 || reduced()) { n.textContent = fin; n.style.minWidth = ''; return; }
+          n.textContent = m[1] + M.num(val * e, dec) + m[3]; requestAnimationFrame(step);
+        })();
+      }, { threshold: 0.6 }); io.observe(n);
+    });
+  }
+  function initParallax() {                                      // the lighthouse beam and the grid drift at different speeds while the hero scrolls away (transform only)
+    var bg = $('.hero-bg'); if (!bg) return;
+    var tick = 0;
+    function upd() { tick = 0; if (reduced()) { bg.style.removeProperty('--py'); bg.style.removeProperty('--py2'); return; } var y = window.scrollY || 0; if (y > 1100) return; bg.style.setProperty('--py', (y * 0.2).toFixed(1) + 'px'); bg.style.setProperty('--py2', (-y * 0.07).toFixed(1) + 'px'); }
+    window.addEventListener('scroll', function () { if (!tick) tick = requestAnimationFrame(upd); }, { passive: true });
+  }
+
   /* ======================================================================= detections: a small, token-coloured overlay (the same boxes ManaraDroneScene.analyze returns) */
   var KIND_TOK = { fire: 'danger', smoke: 'muted', hotspot: 'warn', 'hot-object': 'brand', person: 'safe', 'cold-plume': 'accent' };
   function boxLabel(DS, b, lang) { var lb = DS.LABEL && DS.LABEL[b.kind]; return (lb ? lb[lang] : b.kind) + (b.score != null && b.source === 'rgb' ? ' ' + Math.round(b.score * 100) + '%' : ''); }
@@ -3837,20 +4047,23 @@ window.MANARA_TEST_COUNTS = {
   }
   function frameToCanvas(fr, c) { c.width = fr.width; c.height = fr.height; c.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(fr.data), fr.width, fr.height), 0, 0); return c; }
 
-  /* ======================================================================= 2. THE HERO: the live drone camera */
+  /* ======================================================================= 2. THE HERO: one looping story on a drone-camera monitor */
+  // 0–6.4 s the drone's camera (the real detector runs on it), 6.4–11.2 s a schematic map (routes draw, units travel), 11.2–14 s the last 100 metres
+  // (a guidance beam, people walk out), 14–17.6 s the robot rolls in and finds the two who cannot walk out, then the hand-off card. Everything after the
+  // camera is a scripted illustration (SIM) and says so on screen; the camera part is the detector's own output.
   var cam = (function () {
     var DS = window.ManaraDroneScene, root = $('#cam');
     var C = { ready: false };
     if (!root) return C;
     if (!DS || !window.ManaraFire) { root.setAttribute('data-state', 'unavailable'); return C; }
-    var cvs = $('#cam-rgb'), ovl = $('#cam-ovl'), thc = $('#cam-th'), view = $('#cam-view'), ctx = cvs.getContext('2d'), octx = ovl.getContext('2d'), thx = thc.getContext('2d');
+    var cvs = $('#cam-rgb'), ovl = $('#cam-ovl'), thc = $('#cam-th'), view = $('#cam-view'), ctx = cvs.getContext('2d'), octx = ovl.getContext('2d');
     var FW = 576, FH = 360, SEED = 3, HOUR = 16.5, FPS = 12;
-    // the story clock (seconds): patrol → the camera swings to the smoke (dissolve) → hover → analysis → alert → hold → loop
-    var T_CUT = 3.2, T_FADE = 0.7, T_HOVER = T_CUT + T_FADE, SENT_DELAY = 1.3, T_STILL = 9.4, LOOP = 15.2, T_FADEOUT = 14.4;
+    var T_CUT = 2.2, T_FADE = 0.5, T_HOVER = T_CUT + T_FADE, SENT_DELAY = 1.0, T_STILL = 5.6;
+    var T_REACH = 6.4, T_GUIDE = 11.2, T_COUNT = 14.0, T_HAND = 17.6, T_FADEOUT = 19.2, LOOP = 20.0;
     var ob = document.createElement('canvas'); ob.width = FW; ob.height = FH; var obx = ob.getContext('2d');
     var ob2 = document.createElement('canvas'); ob2.width = FW; ob2.height = FH; var obx2 = ob2.getContext('2d');
-    var sc = null, scOK = null, an = null, st, W = 0, H = 0, D = 1, last = null, player = null, accum = 0, fT = 0;
-    function reset() { st = { k1: false, k2: false, confirmedAt: -1, sentAt: -1, res: null, stage: 0 }; if (an) an.reset(); last = null; accum = 0; fT = -1; }
+    var sc = null, scOK = null, an = null, st, W = 0, H = 0, D = 1, player = null, fT = -1, story = null, lastDraw = -1, HUD = {};
+    function reset() { st = { k1: false, k2: false, confirmedAt: -1, sentAt: -1, res: null, th: null }; if (an) an.reset(); fT = -1; lastDraw = -1; HUD = {}; }
     reset();
     function build() {
       if (sc) return true;
@@ -3860,22 +4073,143 @@ window.MANARA_TEST_COUNTS = {
         return true;
       } catch (e) { if (window.console) console.error(e); root.setAttribute('data-state', 'error'); return false; }
     }
-    function resize() {
-      var s = sizeCanvas(cvs, view), s2 = sizeCanvas(ovl, view); W = s[0]; H = s[1]; D = s[2]; void s2;
+    function resize() { var s = sizeCanvas(cvs, view); sizeCanvas(ovl, view); W = s[0]; H = s[1]; D = s[2]; }
+
+    /* ---------- the scripted part: a schematic map, the last 100 metres, the robot (SVG, transform / opacity / dash offsets only) ---------- */
+    var prog = function (t, a, b) { return clamp((t - a) / (b - a), 0, 1); };
+    function poly(pts) { var len = 0, seg = [], i, d; for (i = 1; i < pts.length; i++) { d = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); seg.push({ a: pts[i - 1], b: pts[i], d: d, s0: len }); len += d; } return { pts: pts, seg: seg, len: len }; }
+    function pointAt(P, s) { s = clamp(s, 0, P.len); for (var i = 0; i < P.seg.length; i++) { var q = P.seg[i]; if (s <= q.s0 + q.d || i === P.seg.length - 1) { var u = q.d ? (s - q.s0) / q.d : 0; return [lerp(q.a[0], q.b[0], u), lerp(q.a[1], q.b[1], u)]; } } return P.pts[0]; }
+    function d_(pts) { return 'M' + pts.map(function (p) { return p[0] + ' ' + p[1]; }).join('L'); }
+    function popScale(x) { x = clamp(x, 0, 1); var c1 = 1.70158, c3 = c1 + 1; return x <= 0 ? 0 : 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); }
+    function buildStory() {
+      var svg = $('#cam-story'); if (!svg) return null; clear(svg);
+      var S = { E: {} }, E = S.E, i;
+      var defs = sv('defs', null, svg), lg = sv('linearGradient', { id: 'st-beam-g', x1: 0, y1: 0, x2: 0, y2: 1 }, defs);
+      var a = sv('stop', { offset: 0 }, lg); a.style.stopColor = 'var(--accent)'; a.style.stopOpacity = '.62';
+      var b = sv('stop', { offset: 1 }, lg); b.style.stopColor = 'var(--accent)'; b.style.stopOpacity = '0';
+      var gm = sv('g', { class: 'st-map' }, svg), gb = sv('g', { class: 'st-bld' }, svg); E.gm = gm; E.gb = gb;
+      /* ---- the schematic map ---- */
+      sv('rect', { class: 'st-sea', x: 0, y: 0, width: 160, height: 100 }, gm);
+      sv('path', { class: 'st-land', d: 'M70 4L78 4L84 10L88 22L90 36L94 50L98 62L96 76L88 88L74 94L60 88L56 74L52 60L50 46L53 32L58 20L64 10Z' }, gm);
+      ['M54 62L96 62', 'M66 62L66 50L90 50', 'M78 62L78 30', 'M60 26L60 36L86 36', 'M72 8L72 92', 'M52 50L96 50'].forEach(function (d) { sv('path', { class: 'st-road', d: d }, gm); });
+      [[64, 40, 5, 3.5], [80, 40, 6, 4], [64, 54, 5, 4], [84, 54, 5, 3.5], [66, 70, 6, 4], [82, 70, 5, 4]].forEach(function (r) { sv('rect', { class: 'st-block', x: r[0], y: r[1], width: r[2], height: r[3], rx: 0.6 }, gm); });
+      E.patrol = sv('ellipse', { class: 'st-patrol', cx: 72, cy: 44, rx: 20, ry: 15 }, gm);
+      var ROUTES = [
+        { k: 'fire', pts: [[60, 62], [66, 62], [66, 50], [72, 50], [72, 44]], eta: '2:48', a: 0.6, tr: [1.9, 4.4], lab: [60, 70] },
+        { k: 'police', pts: [[88, 60], [78, 60], [78, 44], [72, 44]], eta: '3:21', a: 0.9, tr: [2.2, 4.6], lab: [88, 68] },
+        { k: 'ambulance', pts: [[60, 26], [60, 36], [72, 36], [72, 44]], eta: '6:06', a: 1.2, tr: [2.5, 4.8], lab: [60, 20.5] }
+      ];
+      S.routes = ROUTES.map(function (r) {
+        r.P = poly(r.pts);
+        r.bg = sv('path', { class: 'st-route-bg', d: d_(r.pts) }, gm);
+        r.ln = sv('path', { class: 'st-route ' + r.k, d: d_(r.pts) }, gm); r.ln.setAttribute('stroke-dasharray', r.P.len.toFixed(1)); r.ln.setAttribute('stroke-dashoffset', r.P.len.toFixed(1));
+        r.st = sv('circle', { class: 'st-st ' + r.k, cx: r.pts[0][0], cy: r.pts[0][1], r: 3 }, gm);
+        r.g = sv('g', { class: 'st-etag' }, gm); sv('rect', { class: 'st-etabg', x: r.lab[0] - 7, y: r.lab[1] - 3.6, width: 14, height: 5.6, rx: 1.4 }, r.g);
+        var tx = sv('text', { class: 'st-eta', x: r.lab[0], y: r.lab[1] + 0.6, 'text-anchor': 'middle' }, r.g); tx.textContent = r.eta;
+        r.u = sv('circle', { class: 'st-unit ' + r.k, r: 2.1, cx: r.pts[0][0], cy: r.pts[0][1] }, gm);
+        return r;
+      });
+      E.puffs = []; for (i = 0; i < 3; i++) E.puffs.push(sv('circle', { class: 'st-smoke', cx: 72, cy: 40, r: 2 }, gm));
+      E.ring1 = sv('circle', { class: 'st-ring', cx: 72, cy: 44, r: 3 }, gm); E.ring2 = sv('circle', { class: 'st-ring', cx: 72, cy: 44, r: 3 }, gm);
+      sv('circle', { class: 'st-inc', cx: 72, cy: 44, r: 2.7 }, gm);
+      E.lock = sv('g', { class: 'st-lockg' }, gm);
+      ['M-6.5 -3.5V-6.5H-3.5', 'M3.5 -6.5H6.5V-3.5', 'M6.5 3.5V6.5H3.5', 'M-3.5 6.5H-6.5V3.5'].forEach(function (d) { sv('path', { class: 'st-lock', d: d }, E.lock); });
+      E.drone = sv('g', { class: 'st-drone' }, gm);
+      [[-2.6, -2.6], [2.6, -2.6], [-2.6, 2.6], [2.6, 2.6]].forEach(function (o) { sv('circle', { class: 'st-rotor', cx: o[0], cy: o[1], r: 1.5 }, E.drone); });
+      sv('rect', { class: 'st-drone-b', x: -1.7, y: -1.7, width: 3.4, height: 3.4, rx: 0.7 }, E.drone);
+      E.mcap = sv('text', { class: 'st-cap', x: 80, y: 97, 'text-anchor': 'middle' }, gm);
+      /* ---- the last 100 metres ---- */
+      sv('rect', { class: 'st-sea', x: 0, y: 0, width: 160, height: 100 }, gb);
+      sv('rect', { class: 'st-zone', x: 118, y: 72, width: 38, height: 24, rx: 2 }, gb);
+      E.zl = sv('text', { class: 'st-cap', x: 137, y: 70, 'text-anchor': 'middle' }, gb);
+      sv('rect', { class: 'st-wall', x: 22, y: 20, width: 96, height: 64, rx: 2.5 }, gb);
+      sv('rect', { class: 'st-corr', x: 26, y: 46, width: 88, height: 12, rx: 1 }, gb);
+      for (i = 0; i < 5; i++) { sv('rect', { class: 'st-room', x: 26 + i * 17.7, y: 25, width: 16.9, height: 19.5, rx: 1 }, gb); sv('rect', { class: 'st-room', x: 26 + i * 17.7, y: 60.5, width: 16.9, height: 19.5, rx: 1 }, gb); }
+      sv('rect', { class: 'st-door', x: 66, y: 83.2, width: 8, height: 2.6, rx: 1 }, gb);
+      S.exitP = poly([[70, 52], [70, 84], [100, 89], [132, 84]]);
+      E.guide = sv('path', { class: 'st-guide', d: d_(S.exitP.pts) }, gb);
+      E.beam = sv('polygon', { class: 'st-beam', points: '36,15 50,52 90,52' }, gb);
+      E.crew = sv('g', { class: 'st-crewg' }, gb); sv('circle', { class: 'st-crew', cx: 140, cy: 28, r: 4.2 }, E.crew); E.crewRing = sv('circle', { class: 'st-scan', cx: 140, cy: 28, r: 4 }, gb);
+      E.crewT = sv('text', { class: 'st-tag', x: 140, y: 38.5, 'text-anchor': 'middle' }, gb);
+      var starts = [[35, 35], [53, 35], [88, 35], [35, 69], [106, 69], [70, 69]], ends = [[124, 80], [134, 80], [144, 80], [124, 88], [134, 88], [144, 88]];
+      S.walk = starts.map(function (p, k) {
+        var pts = p[1] < 50 ? [[p[0], p[1]], [p[0], 52], [70, 52], [70, 84], [100, 89], ends[k]] : (p[0] === 70 ? [[70, 69], [70, 84], [100, 89], ends[k]] : [[p[0], p[1]], [p[0], 52], [70, 52], [70, 84], [100, 89], ends[k]]);
+        var P = poly(pts), c = sv('circle', { class: 'st-p walk', cx: p[0], cy: p[1], r: 2.1 }, gb); return { P: P, c: c, k: k };
+      });
+      S.stay = [[70, 35], [88, 69]].map(function (p) { return { x: p[0], y: p[1], ring: sv('circle', { class: 'st-pring', cx: p[0], cy: p[1], r: 3 }, gb), c: sv('circle', { class: 'st-p stay', cx: p[0], cy: p[1], r: 2.4 }, gb) }; });
+      S.robotP = poly([[70, 92], [70, 52], [70, 40], [70, 52], [88, 52], [88, 64]]);
+      E.scan = sv('circle', { class: 'st-scan', cx: 70, cy: 90, r: 3 }, gb);
+      E.robot = sv('g', { class: 'st-robotg' }, gb); sv('rect', { class: 'st-robot', x: -3.4, y: -2.4, width: 6.8, height: 4.8, rx: 1.4 }, E.robot); sv('circle', { class: 'st-robot-e', cx: -1.2, cy: -0.2, r: 0.7 }, E.robot); sv('circle', { class: 'st-robot-e', cx: 1.2, cy: -0.2, r: 0.7 }, E.robot);
+      S.chk = [[75, 32], [93, 66]].map(function (p) { var g = sv('g', null, gb); sv('circle', { class: 'st-chk-bg', cx: 0, cy: 0, r: 3.4 }, g); sv('path', { class: 'st-chk', d: 'M-1.7 0L-0.5 1.3L1.8 -1.4' }, g); g.setAttribute('transform', 'translate(' + p[0] + ' ' + p[1] + ') scale(0)'); return g; });
+      E.cnt = sv('text', { class: 'st-count', x: 138, y: 55, 'text-anchor': 'middle' }, gb); E.cntL = sv('text', { class: 'st-count-l', x: 138, y: 60, 'text-anchor': 'middle' }, gb);
+      E.card = sv('g', { class: 'st-cardg' }, gb); sv('rect', { class: 'st-card', x: -4, y: -5, width: 8, height: 10, rx: 1 }, E.card); [-2.6, -0.6, 1.4].forEach(function (y) { sv('rect', { class: 'st-card-l', x: -2.6, y: y, width: 5.2, height: 0.9 }, E.card); });
+      E.drone2 = sv('g', { class: 'st-drone' }, gb);
+      [[-2.6, -2.6], [2.6, -2.6], [-2.6, 2.6], [2.6, 2.6]].forEach(function (o) { sv('circle', { class: 'st-rotor', cx: o[0], cy: o[1], r: 1.5 }, E.drone2); });
+      sv('rect', { class: 'st-drone-b', x: -1.7, y: -1.7, width: 3.4, height: 3.4, rx: 0.7 }, E.drone2);
+      S.texts = function () {
+        E.mcap.textContent = bi('خريطة تخطيطية (SIM) — الخريطة الحقيقية في قسم «قطر كلها»', 'schematic map (SIM) — the real map is in the “All of Qatar” section');
+        E.zl.textContent = bi('نقطة التجمّع', 'assembly point'); E.crewT.textContent = '';
+      };
+      S.texts();
+      S.update = function (t) {
+        var m = t - T_REACH, g = t - T_GUIDE, c = t - T_COUNT, h = t - T_HAND, vw = view.getAttribute('data-view');
+        E.gm.style.opacity = vw === 'map' ? 1 : 0; E.gb.style.opacity = vw === 'bld' ? 1 : 0;
+        if (vw === 'map' || (vw === 'bld' && g < 0.8)) {
+          var u1 = prog(m, 1.0, 1.5), ang = (m / 1.0) * Math.PI * 1.8 - Math.PI / 2, pp = [72 + 20 * Math.cos(ang), 44 + 15 * Math.sin(ang)];
+          if (m >= 1.0) { var a1 = (1.0 / 1.0) * Math.PI * 1.8 - Math.PI / 2, p1 = [72 + 20 * Math.cos(a1), 44 + 15 * Math.sin(a1)]; pp = [lerp(p1[0], 76, ease(u1)), lerp(p1[1], 37, ease(u1))]; }
+          E.drone.setAttribute('transform', 'translate(' + pp[0].toFixed(2) + ' ' + (pp[1] + Math.sin(t * 2.2) * 0.5).toFixed(2) + ')');
+          E.patrol.style.opacity = m < 1.4 ? 0.55 : 0.18;
+          var s = lerp(3.4, 1, ease(prog(m, 1.1, 1.8)));
+          E.lock.setAttribute('transform', 'translate(72 44) scale(' + s.toFixed(3) + ')'); E.lock.style.opacity = prog(m, 1.0, 1.3);
+          var ph1 = (Math.max(0, m) * 0.7) % 1, ph2 = (ph1 + 0.5) % 1;
+          E.ring1.setAttribute('r', (3 + 13 * ph1).toFixed(2)); E.ring1.style.opacity = (0.75 * (1 - ph1)).toFixed(3); E.ring2.setAttribute('r', (3 + 13 * ph2).toFixed(2)); E.ring2.style.opacity = (0.75 * (1 - ph2)).toFixed(3);
+          E.puffs.forEach(function (p, i2) { var ph = (Math.max(0, m) * 0.5 + i2 / 3) % 1; p.setAttribute('cy', (41 - ph * 15).toFixed(2)); p.setAttribute('cx', (72 + Math.sin(ph * 6 + i2) * 2).toFixed(2)); p.setAttribute('r', (1.4 + ph * 3.4).toFixed(2)); p.style.opacity = (0.5 * (1 - ph) * prog(m, 0.1, 0.6)).toFixed(3); });
+          S.routes.forEach(function (r) {
+            var p = prog(m, r.a, r.a + 1.3); r.ln.setAttribute('stroke-dashoffset', (r.P.len * (1 - ease(p))).toFixed(1)); r.ln.style.opacity = p > 0 ? 1 : 0; r.bg.style.opacity = p > 0 ? 0.7 : 0;
+            r.g.style.opacity = p > 0.15 ? 1 : 0; r.st.style.opacity = prog(m, r.a - 0.3, r.a);
+            var q = prog(m, r.tr[0], r.tr[1]), pt = pointAt(r.P, r.P.len * q); r.u.setAttribute('cx', pt[0].toFixed(2)); r.u.setAttribute('cy', pt[1].toFixed(2)); r.u.style.opacity = p >= 1 ? 1 : 0;
+          });
+        }
+        if (vw === 'bld' || g > -0.8) {
+          var dp = [36, 12 + Math.sin(t * 2.4) * 0.8]; E.drone2.setAttribute('transform', 'translate(' + dp[0] + ' ' + dp[1].toFixed(2) + ')');
+          E.beam.style.opacity = (prog(g, 0.2, 0.7) * (1 - prog(c, 0, 0.7)) * (0.8 + 0.2 * Math.sin(g * 3))).toFixed(3);
+          E.guide.style.opacity = prog(g, 0.3, 0.8) * (1 - 0.6 * prog(c, 0, 0.8)); E.guide.setAttribute('stroke-dashoffset', (-g * 12).toFixed(1));
+          var out = 0;
+          S.walk.forEach(function (w) {
+            var q = prog(g, 0.5 + w.k * 0.18, 2.4 + w.k * 0.18), pt = pointAt(w.P, w.P.len * q); w.c.setAttribute('cx', pt[0].toFixed(2)); w.c.setAttribute('cy', pt[1].toFixed(2));
+            var done = q >= 0.995; if (done) out++; w.c.setAttribute('class', 'st-p ' + (done ? 'out' : 'walk'));
+          });
+          var rp = c < 0 ? 0 : c < 0.8 ? lerp(0, 40, prog(c, 0, 0.8)) : c < 1.3 ? lerp(40, 52, prog(c, 0.8, 1.3)) : c < 1.9 ? 52 : c < 2.3 ? lerp(52, 64, prog(c, 1.9, 2.3)) : c < 2.7 ? lerp(64, 82, prog(c, 2.3, 2.7)) : lerp(82, 94, prog(c, 2.7, 3.1));
+          var rpos = pointAt(S.robotP, rp); E.robot.setAttribute('transform', 'translate(' + rpos[0].toFixed(2) + ' ' + rpos[1].toFixed(2) + ')'); E.robot.style.opacity = c > 0 ? 1 : 0;
+          var sp = (Math.max(0, c) * 1.3) % 1; E.scan.setAttribute('cx', rpos[0].toFixed(2)); E.scan.setAttribute('cy', rpos[1].toFixed(2)); E.scan.setAttribute('r', (2.5 + 9 * sp).toFixed(2)); E.scan.style.opacity = c > 0 && c < 3.6 ? (0.7 * (1 - sp)).toFixed(3) : 0;
+          var fA = c >= 1.5, fB = c >= 3.15;
+          [fA, fB].forEach(function (f, i2) {
+            var sy = S.stay[i2], ph = (Math.max(0, g) * 0.9) % 1; sy.c.setAttribute('class', 'st-p ' + (f ? 'found' : 'stay')); sy.ring.setAttribute('r', (3 + 3 * ph).toFixed(2)); sy.ring.style.opacity = f ? 0 : (0.8 * (1 - ph)).toFixed(3);
+            var pp2 = [[75, 32], [93, 66]][i2], k = popScale(prog(c, i2 ? 3.15 : 1.5, i2 ? 3.55 : 1.9)); S.chk[i2].setAttribute('transform', 'translate(' + pp2[0] + ' ' + pp2[1] + ') scale(' + k.toFixed(3) + ')');
+          });
+          var counted = out + (fA ? 1 : 0) + (fB ? 1 : 0);
+          E.cnt.textContent = counted + ' / 8'; E.cntL.textContent = c < 0 ? bi('خرجوا من المبنى', 'out of the building') : bi('عُدّوا مقابل السجلّ', 'vs the register');
+          var hp = prog(h, 0, 1.2), cp = [lerp(70, 140, ease(hp)), lerp(52, 28, ease(hp))];
+          E.card.setAttribute('transform', 'translate(' + cp[0].toFixed(2) + ' ' + cp[1].toFixed(2) + ') scale(' + (popScale(prog(h, 0, 0.35)) * (1 - 0.15 * ease(hp))).toFixed(3) + ')'); E.card.style.opacity = h > 0 ? 1 - prog(h, 1.25, 1.5) : 0;
+          var cr = prog(h, 1.2, 1.9); E.crewRing.setAttribute('r', (4.2 + 8 * cr).toFixed(2)); E.crewRing.style.opacity = cr > 0 && cr < 1 ? (0.8 * (1 - cr)).toFixed(3) : 0;
+          E.crewT.textContent = h > 1.2 ? bi('وصلت البطاقة إلى الفرق', 'card reached the crews') : ''; E.crewT.style.opacity = prog(h, 1.2, 1.6);
+        }
+      };
+      return S;
     }
+
+    /* ---------- the detector part ---------- */
     function paint(t, res) {
-      // the picture: patrol (a slow drift), dissolve to the fire scene while the camera settles, then a steady hover (the flicker test needs a still camera)
       var cut = clamp((t - T_CUT) / T_FADE, 0, 1), pt = clamp(t / T_CUT, 0, 1);
       var zoom = lerp(1.14 - 0.05 * pt, 1.0, ease(cut)), px = lerp(-0.035 + 0.07 * pt, 0, ease(cut)), py = lerp(0.02 - 0.03 * pt, 0, ease(cut));
-      var sw = FW / zoom, sh = FH / zoom, sx = clamp((FW - sw) / 2 + px * FW, 0, FW - sw), sy = clamp((FH - sh) / 2 + py * FH, 0, FH - sh);
-      var tf = Math.max(0, t - T_CUT);
+      var sw = FW / zoom, sh = FH / zoom, sx = clamp((FW - sw) / 2 + px * FW, 0, FW - sw), sy = clamp((FH - sh) / 2 + py * FH, 0, FH - sh), tf = Math.max(0, t - T_CUT);
       ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
       if (cut < 1) { obx.putImageData(new ImageData(scOK.renderRGB(t).data, FW, FH), 0, 0); ctx.globalAlpha = 1; ctx.drawImage(ob, sx, sy, sw, sh, 0, 0, cvs.width, cvs.height); }
       if (cut > 0) { obx2.putImageData(new ImageData(sc.renderRGB(tf).data, FW, FH), 0, 0); ctx.globalAlpha = ease(cut); ctx.drawImage(ob2, sx, sy, sw, sh, 0, 0, cvs.width, cvs.height); ctx.globalAlpha = 1; }
       octx.setTransform(D, 0, 0, D, 0, 0);
       if (res) drawDet(DS, octx, res, W, H, { filter: function (b) { return b.kind !== 'person'; }, noCross: true }); else octx.clearRect(0, 0, W, H);
     }
-    function analyseAt(t) {                                   // one analysis step at story time t (t >= T_HOVER)
+    function analyseAt(t) {
       var tf = t - T_CUT, rgb = sc.renderRGB(tf), th = sc.renderThermal(tf), res = an.push(rgb, th, Math.round(tf * 1000), { lang: M.lang() });
       st.res = res; st.th = th;
       if (res.evidence.vision.seen) st.k1 = true;
@@ -3888,50 +4222,65 @@ window.MANARA_TEST_COUNTS = {
       sees: T('دخان ولهب يدخلان الصورة: تتوقف المسيّرة وتحوم (الومض يحتاج كاميرا ثابتة).', 'Smoke and flames enter the frame: the drone stops and hovers (flicker needs a steady camera).'),
       suspect: T('اشتباه: مفتاح واحد لا يكفي لإنذار عام، فيبقى «اشتباهًا».', 'SUSPECT: one key is not enough for a public alert, so it stays a suspicion.'),
       confirmed: T('مؤكَّد: مفتاحان مستقلان، رؤية حاسوبية وحرارة.', 'CONFIRMED: two independent keys, computer vision and thermal.'),
-      sent: T('وصل إنذار المسيّرة إلى غرفة التحكم وينتظر موافقة إنسان. صافرة الموقع المحلية لا تنتظر.', 'The drone alert reached the control room and waits for a human Approve. The local siren never waits.')
+      sent: T('وصل إنذار المسيّرة إلى غرفة التحكم وينتظر موافقة إنسان. صافرة الموقع المحلية لا تنتظر.', 'The drone alert reached the control room and waits for a human Approve. The local siren never waits.'),
+      reach: T('بعد «موافق» تُرسم مسارات الأسرع وصولًا بحسب المرور (محاكاة تخطيطية؛ 999 يبقى المرسِل).', 'After Approve, the fastest units’ routes are drawn given traffic (schematic SIM; 999 stays the dispatcher).'),
+      guide: T('آخر مئة متر: تضيء المسيّرة مسارًا إلى مخرج مفتوح فعلًا، ويخرج الناس.', 'The last 100 metres: the drone lights a path to an exit that is really open, and people walk out.'),
+      count: T('الروبوت يجد مَن لا يستطيع الخروج، والعدّاد يقابل الخارجين بالسجلّ.', 'The robot finds those who cannot get out; the counter checks everyone against the register.'),
+      hand: T('بطاقة موثّقة تُسلَّم لقائد الإنقاذ: أين الخطر، ومَن لم يُحصَ، ومَن يحتاج مساعدة.', 'A verified card goes to the rescue lead: where the danger is, who is unaccounted, who needs help.')
     };
     var STATE_TXT = {
-      watch: T('مراقبة', 'WATCHING'), suspect: T('اشتباه', 'SUSPECT'), confirmed: T('مؤكَّد · مفتاحان', 'CONFIRMED · 2 KEYS'), sent: T('أُرسل إلى غرفة التحكم', 'SENT TO CONTROL ROOM')
+      watch: T('مراقبة', 'WATCHING'), suspect: T('اشتباه', 'SUSPECT'), confirmed: T('مؤكَّد · مفتاحان', 'CONFIRMED · 2 KEYS'), sent: T('أُرسل إلى غرفة التحكم', 'SENT TO CONTROL ROOM'),
+      route: T('الأسرع يصل · SIM', 'FASTEST ROLLS · SIM'), guide: T('المسيّرة تُرشد · SIM', 'DRONE GUIDES · SIM'), count: T('الروبوت يعدّ · SIM', 'ROBOT COUNTS · SIM'), done: T('سُلّمت البطاقة · SIM', 'HANDED OFF · SIM')
     };
-    var HUD = {};
+    function ghosts() {                                          // every caption of the loop, invisibly stacked in ONE grid cell with the live one: the box is always as tall as the tallest caption, so the hero never reflows (CLS 0)
+      var w = $('#cam-capw'); if (!w) return;
+      $$('.cam-cap.ghost', w).forEach(function (g) { g.remove(); });
+      Object.keys(CAP).forEach(function (k) { var g = el('p', 'cam-cap ghost', L(CAP[k])); g.setAttribute('aria-hidden', 'true'); w.appendChild(g); });
+    }
+    function phaseOf(t) {
+      var sent = st.sentAt >= 0 && t >= st.sentAt, both = st.k1 && st.k2;
+      if (t >= T_HAND) return { s: 'done', stage: 5, cap: 'hand', view: 'bld' };
+      if (t >= T_COUNT) return { s: 'count', stage: 4, cap: 'count', view: 'bld' };
+      if (t >= T_GUIDE) return { s: 'guide', stage: 3, cap: 'guide', view: 'bld' };
+      if (t >= T_REACH) return { s: 'route', stage: 2, cap: 'reach', view: 'map' };
+      if (t < T_CUT) return { s: 'watch', stage: 0, cap: 'patrol', view: 'cam' };
+      if (sent) return { s: 'sent', stage: 1, cap: 'sent', view: 'cam' };
+      if (both) return { s: 'confirmed', stage: 1, cap: 'confirmed', view: 'cam' };
+      if (st.k1 || st.k2) return { s: 'suspect', stage: 1, cap: 'suspect', view: 'cam' };
+      return { s: t < T_CUT + 0.35 ? 'watch' : 'suspect', stage: t < T_HOVER ? 0 : 1, cap: 'sees', view: 'cam' };
+    }
     function hud(t) {
-      var res = st.res, sent = st.sentAt >= 0 && t >= st.sentAt, both = st.k1 && st.k2;
-      var s = t < T_CUT + 0.35 ? 'watch' : sent ? 'sent' : both ? 'confirmed' : 'suspect';
-      var stage = t < T_CUT ? 0 : sent ? 3 : (st.k1 || st.k2) ? 2 : 1;
-      var capKey = t < T_CUT ? 'patrol' : sent ? 'sent' : both ? 'confirmed' : (st.k1 || st.k2) ? 'suspect' : 'sees';
-      var chip = $('#cam-state'); if (HUD.s !== s) { chip.setAttribute('data-s', s); HUD.s = s; HUD.stxt = null; }
-      var txt = L(STATE_TXT[s]); if (HUD.stxt !== txt) { chip.textContent = txt; HUD.stxt = txt; }
-      if (HUD.stage !== stage) { HUD.stage = stage; $$('#cam-steps li').forEach(function (li, i) { li.setAttribute('data-st', i < stage ? 'done' : i === stage ? 'now' : 'todo'); }); }
-      if (HUD.cap !== capKey + M.lang()) { HUD.cap = capKey + M.lang(); $('#cam-cap').textContent = L(CAP[capKey]); }
+      var res = st.res, ph = phaseOf(t), lg = M.lang();
+      var chip = $('#cam-state'); if (HUD.s !== ph.s) { chip.setAttribute('data-s', ph.s); HUD.s = ph.s; HUD.stxt = null; }
+      var txt = L(STATE_TXT[ph.s]); if (HUD.stxt !== txt) { chip.textContent = txt; HUD.stxt = txt; }
+      if (HUD.stage !== ph.stage) { HUD.stage = ph.stage; $$('#cam-steps li').forEach(function (li, i) { li.setAttribute('data-st', i < ph.stage ? 'done' : i === ph.stage ? 'now' : 'todo'); }); }
+      if (HUD.cap !== ph.cap + lg) { HUD.cap = ph.cap + lg; $('#cam-cap').textContent = L(CAP[ph.cap]); }
+      if (HUD.view !== ph.view) { HUD.view = ph.view; view.setAttribute('data-view', ph.view); }
+      var k1 = $('#cam-k1'), k2 = $('#cam-k2'), sent = st.sentAt >= 0 && t >= st.sentAt;
       root.setAttribute('data-pip', t >= T_HOVER ? '1' : '0');
-      var k1 = $('#cam-k1'), k2 = $('#cam-k2');
       k1.setAttribute('data-on', st.k1 ? '1' : '0'); k2.setAttribute('data-on', st.k2 ? '1' : '0');
       $('#cam-k1v').textContent = res ? (st.k1 ? Math.round(res.evidence.vision.confidence * 100) + '%' : (res.evidence.vision.suspect ? bi('اشتباه', 'suspect') : '—')) : '—';
       $('#cam-k2v').textContent = res && res.thermal && res.thermal.maxC != null && (st.k2 || res.thermal.kind === 'hotspot') ? Math.round(res.thermal.maxC) + ' °C' : '—';
       var al = $('#cam-alert'); al.setAttribute('data-on', sent ? '1' : '0');
       if (sent) $('#cam-alert-s').textContent = bi('غرفة التحكم: ينتظر «موافق» من إنسان · بعد ' + Math.max(1, Math.round(st.sentAt - T_CUT)) + ' ث من أول رؤية (SIM)', 'Control room: waiting for a human Approve · ' + Math.max(1, Math.round(st.sentAt - T_CUT)) + ' s after first sight (SIM)');
       $('#cam-clock').textContent = mmss(t);
-      $('#cam-tele').textContent = t < T_CUT ? 'ALT 80 m · 18 m/s · BAT 86%' : 'ALT 80 m · HOVER · BAT 85%';
+      $('#cam-tele').textContent = ph.view === 'map' ? 'SCHEMATIC · SIM' : ph.view === 'bld' ? 'LAST 100 m · SIM' : t < T_CUT ? 'ALT 80 m · 18 m/s · BAT 86%' : 'ALT 80 m · HOVER · BAT 85%';
       view.setAttribute('data-fade', t > T_FADEOUT && !reduced() ? '1' : '0');
     }
-    var lastDraw = -1;
     function drawAll(t, force) {
       if (!force && t > 0 && Math.abs(t - lastDraw) < 0.045) return; lastDraw = t;
-      var res = t >= T_HOVER ? st.res : null;
-      paint(t, res);
-      if (t >= T_HOVER && st.th) { DS.toCanvas(st.th, thc); }
       hud(t);
+      if (t < T_REACH + 0.6) { var res = t >= T_HOVER ? st.res : null; paint(t, res); if (t >= T_HOVER && st.th) DS.toCanvas(st.th, thc); }
+      if (story && t >= T_REACH - 0.7) story.update(t);
     }
-    // advance the story to time t, stepping the detector at FPS (so a jump never skips the temporal state)
-    function advance(t) {
-      if (t < T_HOVER) { if (st.res) { reset(); } drawAll(t); return; }
-      var from = fT < T_HOVER - 1 / FPS ? T_HOVER : fT + 1 / FPS, f, n = 0;
-      for (f = from; f <= t + 1e-6 && n < 400; f += 1 / FPS, n++) { analyseAt(f); fT = f; }
+    function advance(t) {                                         // step the detector at FPS so a jump never skips its temporal state
+      if (t < T_HOVER) { if (st.res) reset(); drawAll(t); return; }
+      var lim = Math.min(t, T_REACH + 0.2), from = fT < T_HOVER - 1 / FPS ? T_HOVER : fT + 1 / FPS, f, n = 0;
+      for (f = from; f <= lim + 1e-6 && n < 400; f += 1 / FPS, n++) { analyseAt(f); fT = f; }
       drawAll(t);
     }
-    function onTick(t) { if (!sc) return; advance(t); }
-    function still() {                                           // reduced motion: one frame at the moment everything is in (the detector replays the last two seconds)
-      if (!build()) return; resize(); reset();
+    function still() {                                            // reduced motion: one frame at the moment the alert is out (the detector replays the last two and a half seconds)
+      if (!build()) return; resize(); reset(); view.setAttribute('data-view', 'cam');
       var f0 = Math.max(T_HOVER, T_STILL - 2.6), f;
       for (f = f0; f <= T_STILL + 1e-6; f += 1 / FPS) { analyseAt(f); fT = f; }
       drawAll(T_STILL, true);
@@ -3940,13 +4289,10 @@ window.MANARA_TEST_COUNTS = {
     C.init = function () {
       readTokens(root);
       if (!build()) return;
-      resize();
-      player = Player({ node: root, dur: LOOP, hold: 0, loop: true, onTick: onTick, onRestart: reset, onState: syncBtn });
+      resize(); story = buildStory(); ghosts();
+      player = Player({ node: root, dur: LOOP, hold: 0, loop: true, onTick: function (t) { advance(t); }, onRestart: reset, onState: syncBtn });
       C.player = player; syncBtn();
-      $('#cam-play').addEventListener('click', function () {
-        if (reduced() && !player.playing && player.t === 0) { reset(); }
-        player.toggle();
-      });
+      $('#cam-play').addEventListener('click', function () { player.toggle(); });
       $('#cam-restart').addEventListener('click', function () { reset(); player.restart(); });
       function applyMode() {
         if (reduced()) { player.pause(); still(); }
@@ -3956,12 +4302,13 @@ window.MANARA_TEST_COUNTS = {
       if (reduced()) { player.pause(); still(); } else { advance(0); player.kick(); }
       if ('ResizeObserver' in window) new ResizeObserver(function () { resize(); if (player && !player.playing) drawAll(player.t || (reduced() ? T_STILL : 0), true); }).observe(view);
       else window.addEventListener('resize', function () { resize(); });
-      onLang(function () { HUD.cap = null; HUD.stxt = null; syncBtn(); drawAll(!player.playing && reduced() && player.t === 0 ? T_STILL : player.t, true); });
+      onLang(function () { HUD.cap = null; HUD.stxt = null; ghosts(); syncBtn(); if (story) story.texts(); drawAll(!player.playing && reduced() && player.t === 0 ? T_STILL : player.t, true); });
       onTheme(function () { readTokens(root); });
       C.ready = true; root.setAttribute('data-state', 'ready');
     };
-    C.state = function () { return { t: player ? player.t : 0, playing: player ? player.playing : false, k1: st.k1, k2: st.k2, confirmedAt: st.confirmedAt, sentAt: st.sentAt, res: st.res }; };
-    C.still = still; C.times = { T_CUT: T_CUT, T_HOVER: T_HOVER, SENT_DELAY: SENT_DELAY, T_STILL: T_STILL, LOOP: LOOP };
+    C.state = function () { return { t: player ? player.t : 0, playing: player ? player.playing : false, k1: st.k1, k2: st.k2, confirmedAt: st.confirmedAt, sentAt: st.sentAt, res: st.res, view: view.getAttribute('data-view') }; };
+    C.still = still; C.times = { T_CUT: T_CUT, T_HOVER: T_HOVER, SENT_DELAY: SENT_DELAY, T_STILL: T_STILL, T_REACH: T_REACH, T_GUIDE: T_GUIDE, T_COUNT: T_COUNT, T_HAND: T_HAND, LOOP: LOOP };
+    C.seek = function (t) { if (!player) return; player.pause(); reset(); player.t = t; advance(0); advance(t); drawAll(t, true); };
     return C;
   })();
 
@@ -4038,6 +4385,7 @@ window.MANARA_TEST_COUNTS = {
       var vb = el('small', 'v', L(verdict)); out.appendChild(vb);
     }
     function render(card) { if (!card.S) return; paint(card); text(card); }
+    function flash(card) { var sh = $('.hz-shot', card.art); if (!sh || reduced()) return; sh.classList.remove('swap'); void sh.offsetWidth; sh.classList.add('swap'); setTimeout(function () { sh.classList.remove('swap'); }, 600); }
     function ensure(card) {
       if (card.S || card.busy) return; card.busy = true;
       setTimeout(function () {
@@ -4053,12 +4401,12 @@ window.MANARA_TEST_COUNTS = {
         var card = { id: id, art: art, cv: $('.hz-cv', art), res: $('.hz-res', art), cam: c.cam, hour: c.hours ? c.opts.timeOfDay : null, order: i, S: null };
         Z.cards[id] = card;
         $$('.hz-seg:not(.hz-time) .chip', art).forEach(function (b) {
-          b.addEventListener('click', function () { card.cam = b.getAttribute('data-cam'); $$('.hz-seg:not(.hz-time) .chip', art).forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); }); render(card); });
+          b.addEventListener('click', function () { card.cam = b.getAttribute('data-cam'); $$('.hz-seg:not(.hz-time) .chip', art).forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); }); flash(card); render(card); });
         });
         $$('.hz-time .chip', art).forEach(function (b) {
           b.addEventListener('click', function () {
             card.hour = +b.getAttribute('data-hour'); $$('.hz-time .chip', art).forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
-            card.S = null; card.busy = false; ensure(card);
+            card.S = null; card.busy = false; flash(card); ensure(card);
           });
         });
         // reflect the card's default state on its chips and load when it is near the viewport
@@ -4137,6 +4485,7 @@ window.MANARA_TEST_COUNTS = {
       // trail, beacons, robot
       parts.trail = sv('path', { class: 'rb-trail', d: '' }, g);
       parts.beacons = []; for (var b = 0; b < 3; b++) parts.beacons.push(sv('circle', { class: 'rb-beacon', cx: xR302 + 70 + b * 60, cy: COR[3] + 11, r: 4 }, g));
+      parts.scan = sv('circle', { class: 'rb-scan', r: 8, cx: 0, cy: 0 }, g);
       parts.robot = sv('g', { class: 'rb-robot' }, g);
       sv('rect', { x: -12, y: -8, width: 24, height: 16, rx: 5 }, parts.robot); sv('circle', { cx: -5, cy: 0, r: 2.6 }, parts.robot); sv('circle', { cx: 5, cy: 0, r: 2.6 }, parts.robot);
       sv('path', { d: 'M-12 9h24', stroke: tk('accent'), 'stroke-width': 3, 'stroke-linecap': 'round' }, parts.robot);
@@ -4152,6 +4501,7 @@ window.MANARA_TEST_COUNTS = {
       if (!parts.robot) return;
       var s = sAt(p), pos = at(s);
       parts.robot.setAttribute('transform', 'translate(' + pos[0].toFixed(1) + ' ' + pos[1].toFixed(1) + ')');
+      var sp = (p * 18) % 1; parts.scan.setAttribute('cx', pos[0].toFixed(1)); parts.scan.setAttribute('cy', pos[1].toFixed(1)); parts.scan.setAttribute('r', (8 + 24 * sp).toFixed(1)); parts.scan.style.opacity = p >= 0.995 || p <= 0.07 ? 0 : (0.55 * (1 - sp)).toFixed(3);
       // trail up to s
       var d = 'M' + PATH[0][0] + ' ' + PATH[0][1];
       SEG.forEach(function (q) { if (s >= q.s0) { var e = at(Math.min(s, q.s0 + q.d)); d += 'L' + e[0].toFixed(1) + ' ' + e[1].toFixed(1); } });
@@ -4202,7 +4552,7 @@ window.MANARA_TEST_COUNTS = {
   function boot() {
     try { brandOverride(); } catch (e) { /* the shell keeps its own text */ }
     applyAria(); onLang(applyAria);
-    [initLogo, initCounts, initNumbersFilter, initSubnav, initPlaceholders, cam.init, hz.init, rob.init].forEach(function (fn) {
+    [initLive, initSettle, initPrint, initLogo, initCounts, initNumbersFilter, initSubnav, initPlaceholders, initFlow, cam.init, hz.init, rob.init, initCountUp, initParallax].forEach(function (fn) {
       if (typeof fn !== 'function') return;
       try { fn(); } catch (e) { if (window.console) console.error(e); }
     });
@@ -11067,6 +11417,7 @@ P7G1CJ0T7LgThNqCU0U_ExCf3SyFrV8I5TsMGsDmCmBiDb1lBgrB9V8UhFmK-C8C7EhB7DwB0kBrfkgB
       var st = data.stages[s], ls = M.lang();
       var key = s <= 1 ? 'suspect' : s === 2 ? 'confirmed' : s === 3 ? 'approved' : 'dispatched';
       var li = $('#al-main'); li.setAttribute('data-st', s <= 1 ? 'suspect' : s === 2 ? 'confirmed' : 'approved');
+      if (s === 0 && !reduced()) { li.classList.remove('enter'); void li.offsetWidth; li.classList.add('enter'); setTimeout(function () { li.classList.remove('enter'); }, 1300); }
       var stEl = $('#al-main-st'); clear(stEl);
       var sp = el('span', null, L(STATE_TXT[key]) + (s === 1 || s === 0 ? ' · ' + bi('مفتاح واحد', '1 key') : '')); stEl.appendChild(sp);
       $('#al-main-age').textContent = mmss(st.alert ? st.alert.ageSec : 0);

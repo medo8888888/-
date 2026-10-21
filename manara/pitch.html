@@ -77,7 +77,7 @@
                       <p class="sl-kick sl-in"><span class="sl-num num">01</span><span data-l="ar">مسابقة الابتكار · قطر</span><span data-l="en">Innovation competition · Qatar</span></p>
                       <h2 class="ti-name sl-in" id="st-1"><span data-l="ar">منارة</span><span data-l="en">MANARA</span></h2>
                       <p class="ti-tag sl-in"><span data-l="ar">ترى الخطر… توقظ الجميع… وتُضيء طريق النجاة</span><span data-l="en">Sees the danger. Wakes everyone. Lights the safe way out.</span></p>
-                      <p class="ti-sub sl-in"><span data-l="ar"><b>منصة واحدة لكل قطر</b>، من الدوحة إلى الشمال: «آخر مئة متر» لكل أنواع الطوارئ — حريق ودخان، غاز، سيول، غبار، حرّ، وشخص يحتاج مساعدة.</span><span data-l="en"><b>One platform for the whole of Qatar</b>, from Doha to Al Shamal: the last 100 metres of every kind of emergency — fire and smoke, gas, flash flood, dust, heat, and someone who needs help.</span></p>
+                      <p class="ti-sub sl-in"><span data-l="ar"><b>منصة واحدة لكل قطر</b>: مسيّرة ترى وتُنبّه غرفة التحكم، ومفتاحان وموافقة إنسان قبل أي إنذار، وأسرع وحدة عبر قطر، ثم روبوت يبحث في المبنى ونعدّ الجميع — لكل أنواع الطوارئ: حريق ودخان، غاز، سيول، غبار، حرّ، وشخص يحتاج مساعدة.</span><span data-l="en"><b>One platform for the whole of Qatar</b>: a drone sees and alerts the control room, two keys and a human before any public alert, the fastest unit across Qatar, then a robot searches the building and we count everyone — for every kind of emergency: fire and smoke, gas, flash flood, dust, heat, and someone who needs help.</span></p>
                       <ul class="ti-chips sl-in">
                         <li><span data-l="ar">نموذج أولي</span><span data-l="en">Prototype</span></li>
                         <li><span data-l="ar">خريطة قطر الحقيقية (لقطة OSM)</span><span data-l="en">Real map of Qatar (OSM snapshot)</span></li>
@@ -164,23 +164,57 @@
                   <div class="sl-bg" aria-hidden="true"></div>
                   <header class="sl-head">
                     <p class="sl-kick sl-in"><span class="sl-num num">04</span><span data-l="ar">الحل</span><span data-l="en">The solution</span></p>
-                    <h2 class="sl-title sl-in" id="st-4"><span data-l="ar">منارة: ست خطوات، ومسار واحد</span><span data-l="en">MANARA: six steps, one pipeline</span></h2>
+                    <h2 class="sl-title sl-in" id="st-4"><span data-l="ar">منارة: من السماء إلى آخر مئة متر</span><span data-l="en">MANARA: from the sky to the last 100 metres</span></h2>
                   </header>
                   <div class="sl-body">
                     <ol class="pipe sl-in" id="pipe"></ol>
                     <div class="pipe-foot sl-in">
                       <p class="pipe-local"><span class="dot live" style="--sc:var(--safe)"></span><span data-l="ar"><b>الإنذار المحلي لا ينتظر أحدًا:</b> لا شبكة ولا طائرة ولا موافقة.</span><span data-l="en"><b>The local alarm never waits:</b> not for a network, a drone or an approval.</span></p>
-                      <p class="pipe-one"><span data-l="ar">الشيفرة نفسها لستة أخطار: <b>منصة واحدة، لا ستة أجهزة</b>.</span><span data-l="en">The same code serves six hazards: <b>one platform, not six gadgets</b>.</span></p>
+                      <p class="pipe-one"><span data-l="ar">الشيفرة نفسها لستة أخطار: <b>منصة واحدة، لا ستة أجهزة</b>. المسيّرة والروبوت: مفهوم ونموذج محاكى.</span><span data-l="en">The same code serves six hazards: <b>one platform, not six gadgets</b>. Drone and robot: a concept and a simulated prototype.</span></p>
                     </div>
                   </div>
                 </section>
 
-                <!-- ---------- 5. Proof before panic ---------- -->
-                <section class="slide s-proof" id="slide-5" data-slide="proof" aria-roledescription="slide" aria-labelledby="st-5">
+                <!-- ---------- 5. The control room ---------- -->
+                <section class="slide s-control" id="slide-5" data-slide="control" aria-roledescription="slide" aria-labelledby="st-5">
                   <div class="sl-bg" aria-hidden="true"></div>
                   <header class="sl-head">
-                    <p class="sl-kick sl-in"><span class="sl-num num">05</span><span data-l="ar">الدليل قبل الذعر</span><span data-l="en">Proof before panic</span></p>
-                    <h2 class="sl-title sl-in" id="st-5"><span data-l="ar">مفتاح واحد لا يكفي أبدًا</span><span data-l="en">One key is never enough</span></h2>
+                    <p class="sl-kick sl-in"><span class="sl-num num">05</span><span data-l="ar">غرفة التحكم</span><span data-l="en">The control room</span></p>
+                    <h2 class="sl-title sl-in" id="st-5"><span data-l="ar">المسيّرة ترى… وغرفة التحكم تتحقق قبل أن تُنذر</span><span data-l="en">The drone sees… the control room proves before it alarms</span></h2>
+                  </header>
+                  <div class="sl-body cr-grid">
+                    <div class="cr-wall sl-card sl-in">
+                      <p class="viz-h"><span data-l="ar">ما تراه غرفة التحكم (نموذج مصغّر)</span><span data-l="en">What the control room sees (miniature)</span> <span class="tag warn">SIM</span></p>
+                      <div class="cr-mini" id="cr-mini"></div>
+                      <p class="sl-src"><span data-l="ar">الصورتان مشهدان جويان <b>مولَّدان بالحاسوب</b> وموسومان SIM تحلّلهما شيفرة الكاشف نفسها؛ لم تطر أي مسيّرة. الصفحة الحقيقية: <a href="control.html" target="_blank" rel="noopener">غرفة التحكم</a>.</span><span data-l="en">The two pictures are aerial scenes <b>generated by the computer</b>, labelled SIM and analysed by the real detector code; no drone has flown. The real page: <a href="control.html" target="_blank" rel="noopener">the Control Room</a>.</span></p>
+                    </div>
+                    <div class="cr-side">
+                      <article class="stat sl-card sl-in" style="--sc:var(--info)">
+                        <b class="stat-n num" dir="ltr"><span data-count="90" data-suffix="%">90%</span></b>
+                        <p><span data-l="ar">المسيّرة على الموقع قبل أول وحدة أرضية، في الحوادث التي تصلها (الوسيط 244 ث مقابل 440.5 ث)</span><span data-l="en">the drone is on station before the first ground unit, in the incidents it can reach (median 244 s vs 440.5 s)</span></p>
+                        <small class="sl-src"><span data-l="ar">SIM · ManaraNational.ab (بذرة 7، 150 حادثًا)</span><span data-l="en">SIM · ManaraNational.ab (seed 7, 150 incidents)</span></small>
+                      </article>
+                      <article class="stat sl-card sl-in" style="--sc:var(--warn)">
+                        <b class="stat-n num" dir="ltr"><span data-count="33" data-suffix="%">33%</span></b>
+                        <p><span data-l="ar">من الحوادث خارج مدى كل المسيّرات: لا مسيّرة لها</span><span data-l="en">of incidents are out of range of every drone: they get none</span></p>
+                        <small class="sl-src"><span data-l="ar">SIM · افتراض المدى والبطارية (قابل للتعديل)</span><span data-l="en">SIM · a range and battery assumption (adjustable)</span></small>
+                      </article>
+                      <article class="stat sl-card sl-in" style="--sc:var(--danger)">
+                        <b class="stat-n num" dir="ltr"><span data-count="2" data-suffix="%">2%</span> <i class="stat-sep">vs</i> <span data-count="70" data-suffix="%">70%</span></b>
+                        <p><span data-l="ar">مفتاح الحرارة لشخص مستلقٍ: 13:00 في يوليو مقابل 02:00 — حدّ نقوله بصراحة</span><span data-l="en">the thermal key for a person lying down: 13:00 in July vs 02:00 — a limit we say openly</span></p>
+                        <small class="sl-src"><span data-l="ar">SIM · test-national.mjs (سطر DRONE REPORT)</span><span data-l="en">SIM · test-national.mjs (DRONE REPORT line)</span></small>
+                      </article>
+                    </div>
+                  </div>
+                  <p class="sl-band sl-in"><span data-l="ar"><b>لا إنذار عامًّا قبل مفتاحين مستقلين وموافقة إنسان.</b> الإنذار المحلي لا ينتظر، و999 يبقى المرسِل.</span><span data-l="en"><b>No public alert before two independent keys and a human Approve.</b> The local alarm never waits, and 999 stays the dispatcher.</span></p>
+                </section>
+
+                <!-- ---------- 6. Proof before panic ---------- -->
+                <section class="slide s-proof" id="slide-6" data-slide="proof" aria-roledescription="slide" aria-labelledby="st-6">
+                  <div class="sl-bg" aria-hidden="true"></div>
+                  <header class="sl-head">
+                    <p class="sl-kick sl-in"><span class="sl-num num">06</span><span data-l="ar">الدليل قبل الذعر</span><span data-l="en">Proof before panic</span></p>
+                    <h2 class="sl-title sl-in" id="st-6"><span data-l="ar">مفتاح واحد لا يكفي أبدًا</span><span data-l="en">One key is never enough</span></h2>
                   </header>
                   <div class="sl-body pf-grid">
                     <div class="pf-demo sl-card sl-in" data-no-swipe>
@@ -228,12 +262,12 @@
                   </div>
                 </section>
 
-                <!-- ---------- 6. Hazards ---------- -->
-                <section class="slide s-hazards" id="slide-6" data-slide="hazards" aria-roledescription="slide" aria-labelledby="st-6">
+                <!-- ---------- 7. Hazards ---------- -->
+                <section class="slide s-hazards" id="slide-7" data-slide="hazards" aria-roledescription="slide" aria-labelledby="st-7">
                   <div class="sl-bg" aria-hidden="true"></div>
                   <header class="sl-head">
-                    <p class="sl-kick sl-in"><span class="sl-num num">06</span><span data-l="ar">ستة أخطار</span><span data-l="en">Six hazards</span></p>
-                    <h2 class="sl-title sl-in" id="st-6"><span data-l="ar">ستة أخطار… منصة واحدة</span><span data-l="en">Six hazards… one platform</span></h2>
+                    <p class="sl-kick sl-in"><span class="sl-num num">07</span><span data-l="ar">ستة أخطار</span><span data-l="en">Six hazards</span></p>
+                    <h2 class="sl-title sl-in" id="st-7"><span data-l="ar">ستة أخطار… منصة واحدة</span><span data-l="en">Six hazards… one platform</span></h2>
                   </header>
                   <div class="sl-body">
                     <div class="hz-grid" id="hz-grid"></div>
@@ -241,12 +275,12 @@
                   </div>
                 </section>
 
-                <!-- ---------- 7. Live moment ---------- -->
-                <section class="slide s-live" id="slide-7" data-slide="live" aria-roledescription="slide" aria-labelledby="st-7">
+                <!-- ---------- 8. Live moment ---------- -->
+                <section class="slide s-live" id="slide-8" data-slide="live" aria-roledescription="slide" aria-labelledby="st-8">
                   <div class="sl-bg" aria-hidden="true"></div>
                   <header class="sl-head">
-                    <p class="sl-kick sl-in"><span class="sl-num num">07</span><span data-l="ar">اللحظة الحيّة</span><span data-l="en">The live moment</span> <span class="tag danger live-tag"><span class="dot live"></span><span data-l="ar">حيّ</span><span data-l="en">LIVE</span></span> <span class="tag warn">SIM</span></p>
-                    <h2 class="sl-title sl-in" id="st-7"><span data-l="ar">الآن دورك: أنتَ الحَكَم</span><span data-l="en">Now you drive: you are the judge</span></h2>
+                    <p class="sl-kick sl-in"><span class="sl-num num">08</span><span data-l="ar">اللحظة الحيّة</span><span data-l="en">The live moment</span> <span class="tag danger live-tag"><span class="dot live"></span><span data-l="ar">حيّ</span><span data-l="en">LIVE</span></span> <span class="tag warn">SIM</span></p>
+                    <h2 class="sl-title sl-in" id="st-8"><span data-l="ar">الآن دورك: أنتَ الحَكَم</span><span data-l="en">Now you drive: you are the judge</span></h2>
                   </header>
                   <div class="sl-body lv-grid">
                     <div class="lv-left">
@@ -269,12 +303,12 @@
                   </div>
                 </section>
 
-                <!-- ---------- 8. Every person ---------- -->
-                <section class="slide s-people" id="slide-8" data-slide="people" aria-roledescription="slide" aria-labelledby="st-8">
+                <!-- ---------- 9. Every person ---------- -->
+                <section class="slide s-people" id="slide-9" data-slide="people" aria-roledescription="slide" aria-labelledby="st-9">
                   <div class="sl-bg" aria-hidden="true"></div>
                   <header class="sl-head">
-                    <p class="sl-kick sl-in"><span class="sl-num num">08</span><span data-l="ar">كل إنسان</span><span data-l="en">Every person</span></p>
-                    <h2 class="sl-title sl-in" id="st-8"><span data-l="ar">بلغته… وبالصيغة التي يحتاجها</span><span data-l="en">In their language… in the format they need</span></h2>
+                    <p class="sl-kick sl-in"><span class="sl-num num">09</span><span data-l="ar">كل إنسان</span><span data-l="en">Every person</span></p>
+                    <h2 class="sl-title sl-in" id="st-9"><span data-l="ar">بلغته… وبالصيغة التي يحتاجها</span><span data-l="en">In their language… in the format they need</span></h2>
                   </header>
                   <div class="sl-body">
                     <div class="pe-grid" id="pe-grid"></div>
@@ -292,12 +326,12 @@
                   </div>
                 </section>
 
-                <!-- ---------- 9. Fastest responder ---------- -->
-                <section class="slide s-dispatch" id="slide-9" data-slide="dispatch" aria-roledescription="slide" aria-labelledby="st-9">
+                <!-- ---------- 10. Fastest responder ---------- -->
+                <section class="slide s-dispatch" id="slide-10" data-slide="dispatch" aria-roledescription="slide" aria-labelledby="st-10">
                   <div class="sl-bg" aria-hidden="true"></div>
                   <header class="sl-head">
-                    <p class="sl-kick sl-in"><span class="sl-num num">09</span><span data-l="ar">أقرب جهة استجابة</span><span data-l="en">Nearest responder</span> <span class="tag warn">SIM</span></p>
-                    <h2 class="sl-title sl-in" id="st-9"><span data-l="ar">الأسرع وصولًا بحسب الازدحام… لا الأقرب مسافة</span><span data-l="en">Fastest given traffic… not nearest by distance</span></h2>
+                    <p class="sl-kick sl-in"><span class="sl-num num">10</span><span data-l="ar">أقرب جهة استجابة</span><span data-l="en">Nearest responder</span> <span class="tag warn">SIM</span></p>
+                    <h2 class="sl-title sl-in" id="st-10"><span data-l="ar">الأسرع وصولًا بحسب الازدحام… لا الأقرب مسافة</span><span data-l="en">Fastest given traffic… not nearest by distance</span></h2>
                   </header>
                   <div class="sl-body dp-grid">
                     <div class="dp-map-card sl-card sl-in" data-no-swipe>
@@ -322,12 +356,12 @@
                   </div>
                 </section>
 
-                <!-- ---------- 10. The whole of Qatar: fastest given traffic on the REAL map ---------- -->
-                <section class="slide s-national" id="slide-10" data-slide="national" aria-roledescription="slide" aria-labelledby="st-10">
+                <!-- ---------- 11. The whole of Qatar: fastest given traffic on the REAL map ---------- -->
+                <section class="slide s-national" id="slide-11" data-slide="national" aria-roledescription="slide" aria-labelledby="st-11">
                   <div class="sl-bg" aria-hidden="true"></div>
                   <header class="sl-head">
-                    <p class="sl-kick sl-in"><span class="sl-num num">10</span><span data-l="ar">كل قطر</span><span data-l="en">The whole of Qatar</span> <span class="tag info"><span data-l="ar">خريطة حقيقية</span><span data-l="en">Real map</span></span> <span class="tag warn">SIM</span></p>
-                    <h2 class="sl-title sl-in" id="st-10"><span data-l="ar">الأسرع وصولًا بحسب الازدحام… على خريطة قطر الحقيقية</span><span data-l="en">Fastest given traffic… on the real map of Qatar</span></h2>
+                    <p class="sl-kick sl-in"><span class="sl-num num">11</span><span data-l="ar">كل قطر</span><span data-l="en">The whole of Qatar</span> <span class="tag info"><span data-l="ar">خريطة حقيقية</span><span data-l="en">Real map</span></span> <span class="tag warn">SIM</span></p>
+                    <h2 class="sl-title sl-in" id="st-11"><span data-l="ar">الأسرع وصولًا بحسب الازدحام… على خريطة قطر الحقيقية</span><span data-l="en">Fastest given traffic… on the real map of Qatar</span></h2>
                   </header>
                   <div class="sl-body na-grid">
                     <div class="na-map-card sl-card sl-in" data-no-swipe>
@@ -351,12 +385,48 @@
                   </div>
                 </section>
 
-                <!-- ---------- 10. Evidence ---------- -->
-                <section class="slide s-evidence" id="slide-11" data-slide="evidence" aria-roledescription="slide" aria-labelledby="st-11">
+                <!-- ---------- 12. The rescue robot ---------- -->
+                <section class="slide s-robot" id="slide-12" data-slide="robot" aria-roledescription="slide" aria-labelledby="st-12">
                   <div class="sl-bg" aria-hidden="true"></div>
                   <header class="sl-head">
-                    <p class="sl-kick sl-in"><span class="sl-num num">11</span><span data-l="ar">الأدلة</span><span data-l="en">Evidence</span></p>
-                    <h2 class="sl-title sl-in" id="st-11"><span data-l="ar">ما قِسناه… وما لم نقِسه بعد</span><span data-l="en">What we measured… and what we haven't yet</span></h2>
+                    <p class="sl-kick sl-in"><span class="sl-num num">12</span><span data-l="ar">الروبوت</span><span data-l="en">The rescue robot</span></p>
+                    <h2 class="sl-title sl-in" id="st-12"><span data-l="ar">الروبوت يبحث حيث لا يجب أن نذهب أولًا</span><span data-l="en">The robot searches where people should not go first</span></h2>
+                  </header>
+                  <div class="sl-body rb-grid">
+                    <div class="rb-plan-card sl-card sl-in">
+                      <p class="viz-h"><span data-l="ar">مبنى محاكى: بعد موافقة قائد الحادث</span><span data-l="en">A simulated building: after the incident commander approves</span> <span class="tag warn">SIM</span></p>
+                      <div class="rb-plan" id="rb-plan"></div>
+                      <ol class="rb-steps" id="rb-steps"></ol>
+                    </div>
+                    <div class="rb-side">
+                      <article class="sl-card sl-in rb-ab">
+                        <p class="viz-h"><span data-l="ar">المقارنة على بذور 1–8 (SIM): العالم نفسه مع الروبوت وبدونه</span><span data-l="en">The A/B over seeds 1–8 (SIM): the same world with and without the robot</span></p>
+                        <div class="rb-kpis">
+                          <div class="rb-kpi" style="--sc:var(--safe)"><b class="num" dir="ltr"><span data-count="5" data-suffix=" / 8">5 / 8</span></b><span><span data-l="ar">الروبوت أول من وجد المستخدم على المقعد المتحرك</span><span data-l="en">the robot found the wheelchair user first</span></span></div>
+                          <div class="rb-kpi" style="--sc:var(--warn)"><b class="num" dir="ltr"><span data-count="3" data-suffix=" / 8">3 / 8</span></b><span><span data-l="ar">سبقته الفرق إليه</span><span data-l="en">the crews got there first</span></span></div>
+                          <div class="rb-kpi" style="--sc:var(--info)"><b class="num" dir="ltr"><span data-count="346" data-suffix=" s">346 s</span> → <span data-count="344" data-suffix=" s">344 s</span></b><span><span data-l="ar">زمن العثور الإجمالي (متوسط الوسيط): يكاد لا يتغير</span><span data-l="en">overall time to locate (mean of the medians): barely changes</span></span></div>
+                        </div>
+                      </article>
+                      <article class="sl-card sl-in rb-lim">
+                        <p class="viz-h"><span data-l="ar">حدودنا بصراحة</span><span data-l="en">Our limits, plainly</span></p>
+                        <ul class="rb-lims">
+                          <li><span data-l="ar">العجلات لا تتسلق الدرج</span><span data-l="en">Wheels cannot climb stairs</span></li>
+                          <li><span data-l="ar">في غرفة 34°م لا تباين للكاميرا الحرارية</span><span data-l="en">In a 34 °C room the thermal camera has no contrast</span></li>
+                          <li><span data-l="ar">كشف بقواعد واحتمال بذرة، وليس ذكاءً اصطناعيًا</span><span data-l="en">Detection is rules and a seeded probability, not AI</span></li>
+                          <li><span data-l="ar">لا يوجد روبوت إنقاذ: عربة تجريبية تحاكي منطقه فقط</span><span data-l="en">No rescue robot exists: a bench rover models only its logic</span></li>
+                        </ul>
+                      </article>
+                    </div>
+                  </div>
+                  <p class="sl-band sl-in"><span data-l="ar"><b>يُساعد ورجال الإطفاء هم من يقرّر.</b> جرّب القياس بنفسك في <a href="robot.html" target="_blank" rel="noopener">مختبر الروبوت</a>.</span><span data-l="en"><b>It assists; firefighters decide.</b> Run the measurement yourself in the <a href="robot.html" target="_blank" rel="noopener">Robot Lab</a>.</span></p>
+                </section>
+
+                <!-- ---------- 13. Evidence ---------- -->
+                <section class="slide s-evidence" id="slide-13" data-slide="evidence" aria-roledescription="slide" aria-labelledby="st-13">
+                  <div class="sl-bg" aria-hidden="true"></div>
+                  <header class="sl-head">
+                    <p class="sl-kick sl-in"><span class="sl-num num">13</span><span data-l="ar">الأدلة</span><span data-l="en">Evidence</span></p>
+                    <h2 class="sl-title sl-in" id="st-13"><span data-l="ar">ما قِسناه… وما لم نقِسه بعد</span><span data-l="en">What we measured… and what we haven't yet</span></h2>
                   </header>
                   <div class="sl-body ev-grid">
                     <article class="ev-col ev-real sl-card sl-in">
@@ -385,18 +455,18 @@
                   </div>
                 </section>
 
-                <!-- ---------- 11. Build + plug in ---------- -->
-                <section class="slide s-build" id="slide-12" data-slide="build" aria-roledescription="slide" aria-labelledby="st-12">
+                <!-- ---------- 14. Build + plug in ---------- -->
+                <section class="slide s-build" id="slide-14" data-slide="build" aria-roledescription="slide" aria-labelledby="st-14">
                   <div class="sl-bg" aria-hidden="true"></div>
                   <header class="sl-head">
-                    <p class="sl-kick sl-in"><span class="sl-num num">12</span><span data-l="ar">البناء والتكامل</span><span data-l="en">Build and plug-in</span></p>
-                    <h2 class="sl-title sl-in" id="st-12"><span data-l="ar">بسيطة في البناء… ومصمَّمة لتتصل بما هو موجود</span><span data-l="en">Simple to build… designed to plug into what exists</span></h2>
+                    <p class="sl-kick sl-in"><span class="sl-num num">14</span><span data-l="ar">البناء والتكامل</span><span data-l="en">Build and plug-in</span></p>
+                    <h2 class="sl-title sl-in" id="st-14"><span data-l="ar">بسيطة في البناء… ومصمَّمة لتتصل بما هو موجود</span><span data-l="en">Simple to build… designed to plug into what exists</span></h2>
                   </header>
                   <div class="sl-body bd-grid">
                     <div class="bd-left sl-card sl-in">
                       <p class="viz-h"><span data-l="ar">الحارس: لوحة ESP32 وحسّاسات رخيصة</span><span data-l="en">The sentinel: an ESP32 board and cheap sensors</span></p>
                       <div class="sentinel" id="sentinel"></div>
-                      <p class="bd-cost"><span data-l="ar"><b>التكلفة:</b> أغلى قطعة هي الكاميرا الحرارية: <b class="num" dir="ltr">US$ 74.95</b> (Adafruit، أكتوبر 2026). الباقي في الغالب بضعة دولارات (تقديرات؛ الشحن والجمارك غير مشمولة). القائمة الكاملة في صفحة البناء.</span><span data-l="en"><b>Cost:</b> the biggest single part is the thermal camera: <b class="num" dir="ltr">US$ 74.95</b> (Adafruit, October 2026). Most of the rest are a few dollars (estimates; shipping and customs not included). Full list on the Build page.</span></p>
+                      <p class="bd-cost"><span data-l="ar"><b>التكلفة:</b> أغلى قطعة هي الكاميرا الحرارية: <b class="num" dir="ltr">US$ 74.95</b> (Adafruit، أكتوبر 2026). الباقي في الغالب بضعة دولارات (تقديرات؛ الشحن والجمارك غير مشمولة). القائمة الكاملة في صفحة البناء. <b>المرحلة 4:</b> عربة تجريبية تحاكي منطق الروبوت (نحو <b class="num" dir="ltr">US$ 79–204</b> تقديريًّا): لا تتحرك دون موافقة، ولا شيء يطير.</span><span data-l="en"><b>Cost:</b> the biggest single part is the thermal camera: <b class="num" dir="ltr">US$ 74.95</b> (Adafruit, October 2026). Most of the rest are a few dollars (estimates; shipping and customs not included). Full list on the Build page. <b>Tier 4:</b> a bench rover that models the robot's logic (about <b class="num" dir="ltr">US$ 79–204</b>, an estimate): it does not move without approval, and nothing flies.</span></p>
                     </div>
                     <div class="bd-right sl-card sl-in">
                       <p class="viz-h"><span data-l="ar">منارة تتّصل ولا تستبدل</span><span data-l="en">MANARA plugs in; it replaces none</span></p>
@@ -406,12 +476,12 @@
                   </div>
                 </section>
 
-                <!-- ---------- 12. Roadmap + ask + thanks ---------- -->
-                <section class="slide s-close" id="slide-13" data-slide="close" aria-roledescription="slide" aria-labelledby="st-13">
+                <!-- ---------- 15. Roadmap + ask + thanks ---------- -->
+                <section class="slide s-close" id="slide-15" data-slide="close" aria-roledescription="slide" aria-labelledby="st-15">
                   <div class="sl-bg" aria-hidden="true"></div>
                   <header class="sl-head">
-                    <p class="sl-kick sl-in"><span class="sl-num num">13</span><span data-l="ar">الخطوة التالية</span><span data-l="en">Next steps</span></p>
-                    <h2 class="sl-title sl-in" id="st-13"><span data-l="ar">إلى أين نمضي… وماذا نطلب منكم</span><span data-l="en">Where we go next… and what we ask of you</span></h2>
+                    <p class="sl-kick sl-in"><span class="sl-num num">15</span><span data-l="ar">الخطوة التالية</span><span data-l="en">Next steps</span></p>
+                    <h2 class="sl-title sl-in" id="st-15"><span data-l="ar">إلى أين نمضي… وماذا نطلب منكم</span><span data-l="en">Where we go next… and what we ask of you</span></h2>
                   </header>
                   <div class="sl-body cl-grid">
                     <ol class="road sl-in" id="road"></ol>

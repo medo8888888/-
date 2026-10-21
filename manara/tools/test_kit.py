@@ -1454,6 +1454,22 @@ def test_page_links():
             if fn.endswith((".ino", ".py", ".md")):
                 actual.add(os.path.relpath(os.path.join(dp, fn), SITE).replace(os.sep, "/"))
     check("every kit file is offered for download on the page", actual <= paths, sorted(actual - paths))
+    # Tier 4: the rover's wiring table on the page equals the firmware's PIN_ map, and the safety wording is there
+    bj = read(os.path.join(SITE, "js", "build.js"))
+    bh = read(os.path.join(SITE, "build.html"))
+    m = re.search(r"var ROVER_PINS = \[(.*?)\n  \];", bj, re.S)
+    page_pins = set()
+    if m:
+        for g in re.findall(r"gpio: '([^']*)'", m.group(1)):
+            page_pins |= set(int(x) for x in re.findall(r"\d+", g))
+    fw = {int(v) for v in re.findall(r"^#define\s+PIN_[A-Z0-9_]+\s+(\d+)", strip_code(read(ROVER)), re.M)}
+    check("build.js ROVER_PINS lists exactly the GPIO numbers of the rover's PIN_ map (%d pins)" % len(fw), m is not None and page_pins == fw, (sorted(page_pins - fw), sorted(fw - page_pins)))
+    check("build.html has the Tier 4 section (#tier4) with the rover table, the parts table and the protocol sample", all(x in bh for x in ('id="tier4"', 'id="rover-pin-body"', 'id="t4-parts-body"', 'id="rover-proto"')))
+    low = bh.lower()
+    check("Tier 4 safety wording: propellers off, no flying without permission, LiPo, must be confirmed with the authority, approximate / check suppliers",
+          all(x in low for x in ("propellers removed", "no flying without permission", "lipo", "must be confirmed with the authority", "check suppliers")))
+    parts4 = re.findall(r"\{ t: 4, n: ", bj)
+    check("Tier 4 has %d parts and every one is priced as a range (lo/hi) flagged seen / est / opt, never a single price" % len(parts4), len(parts4) >= 8 and all(re.search(r"lo: \d+, hi: \d+, k: '(seen|est|opt)'", l) for l in bj.splitlines() if "{ t: 4, n:" in l))
 
 
 def main():

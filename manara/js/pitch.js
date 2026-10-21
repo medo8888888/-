@@ -12,7 +12,7 @@
  * Slide 10 (the whole of Qatar) draws the REAL OpenStreetMap snapshot (data/qatar-*.js, ODbL) and a real farther-but-faster example computed by
  * window.ManaraNational.findFartherButFaster(seed); the static baseline (seed 7) is the same call, so the slide works without the engine.
  * Keys:  ←/→ (reading direction) · Space/PgDn/PgUp · Home/End · 1–9 · F full screen · N notes · O overview · P print
- *        L language · S timer · ? help · Esc close/exit.  Hash: #slides #script #qa #booth  #s7 (slide 7)  #q-D1 (a question).
+ *        L language · S timer · ? help · Esc close/exit.  Hash: #slides #script #qa #booth  #s7 (slide 8)  #q-D1 (a question).
  */
 (function () {
   'use strict';
@@ -21,7 +21,8 @@
   var doc = document, html = doc.documentElement;
   var $ = function (s, r) { return (r || doc).querySelector(s); };
   var $$ = function (s, r) { return Array.prototype.slice.call((r || doc).querySelectorAll(s)); };
-  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var reduceMQ = matchMedia('(prefers-reduced-motion: reduce)'), reduce = reduceMQ.matches;
+  if (reduceMQ.addEventListener) reduceMQ.addEventListener('change', function () { reduce = reduceMQ.matches; if (window.ManaraPitch && window.ManaraPitch.motion) window.ManaraPitch.motion.refresh(); });
   var S = window.ManaraSim || null;
   function lang() { return M.lang(); }
   function L(o) { return M.L(o); }
@@ -129,7 +130,7 @@
     'pt.help': { ar: 'اختصارات لوحة المفاتيح (?)', en: 'Keyboard shortcuts (?)' }, 'pt.theme': { ar: 'الوضع الليلي/النهاري', en: 'Dark/light mode' },
     'pt.path': { ar: 'مسار العرض', en: 'Presentation path' }, 'pt.path3': { ar: 'مسار ثلاث دقائق الصارم', en: 'Strict 3-minute path' },
     'pt.path7': { ar: 'مسار سبع دقائق الممتد', en: 'Extended 7-minute path' }, 'pt.tabs': { ar: 'أقسام العرض', en: 'Pitch sections' },
-    'pt.timer': { ar: 'مؤقّت المقدّم (S)', en: 'Speaker timer (S)' }, 'pt.progress': { ar: 'تقدّم الشرائح', en: 'Slide progress' },
+    'pt.crq': { ar: 'قائمة إنذارات غرفة التحكم (نموذج)', en: 'Control-room alert queue (miniature)' }, 'pt.timer': { ar: 'مؤقّت المقدّم (S)', en: 'Speaker timer (S)' }, 'pt.progress': { ar: 'تقدّم الشرائح', en: 'Slide progress' },
     'pt.close': { ar: 'إغلاق', en: 'Close' }, 'pt.slides': { ar: 'الشرائح', en: 'Slides' }, 'pt.stage': { ar: 'شرائح العرض التقديمي', en: 'Pitch slides' }, 'pt.slide': { ar: 'شريحة', en: 'Slide' }, 'pt.of': { ar: 'من', en: 'of' },
     'pt.start': { ar: 'ابدأ', en: 'Start' }, 'pt.pause': { ar: 'إيقاف مؤقت', en: 'Pause' }, 'pt.reset': { ar: 'من الصفر', en: 'Reset' },
     'pt.ahead': { ar: 'أبكر من الخطة', en: 'Ahead of plan' }, 'pt.behind': { ar: 'متأخر عن الخطة', en: 'Behind plan' }, 'pt.ontime': { ar: 'ضمن الخطة', en: 'On plan' },
@@ -144,47 +145,56 @@
   // say3 = the exact line for the 3-minute path; more7 = what to add in the 7-minute path; act = stage directions;
   // weak = what to say first (honest disclosure); qa = related Q&A ids.
   var SL = [
-    { id: 'title', t3: 10, t7: 10, title: { ar: 'منارة', en: 'MANARA' },
-      say3: { ar: 'السلام عليكم، نحن فريق «منارة»: منصة واحدة لكل قطر، ترى الخطر… توقظ الجميع… وتُضيء طريق النجاة.',
-              en: 'Peace be upon you — we are team MANARA: one platform for the whole of Qatar. It sees danger, wakes everyone, and lights the safe way out.' },
+    { id: 'title', t3: 8, t7: 8, title: { ar: 'منارة', en: 'MANARA' },
+      say3: { ar: 'السلام عليكم، نحن فريق «منارة»: مسيّرة ترى، وغرفة تتحقق، وروبوت يبحث… ولا أحدَ يُترك خلفنا.',
+              en: 'Peace be upon you. We are MANARA: a drone sees, a control room proves, a robot searches. No one left behind.' },
       more7: { ar: 'فكرتنا بسيطة: الطوارئ كثيرة، وما ينقص ليس الكشف وحده، بل أن يصل كل إنسان قريب من الخطر إلى بر الأمان — في أي مكان من الدوحة إلى الشمال. نبني على خريطة قطر الحقيقية، ونقول بوضوح ما هو حقيقي وما هو محاكاة.',
               en: 'Our idea is simple: emergencies come in many forms, and what is missing is not detection alone but getting every person near the danger to safety — anywhere from Doha to Al Shamal. We build on the real map of Qatar, and we say clearly what is real and what is simulated.' },
       act: { ar: 'اعرض الشريحة قبل أن تبدأ الساعة. شغّل المؤقّت عند أول كلمة (S). انظر إلى الحَكَم لا إلى الشاشة.', en: 'Show this slide before the clock starts. Start the timer on your first word (S). Look at the judges, not the screen.' },
       weak: null, qa: ['W5'] },
-    { id: 'problem', t3: 17, t7: 32, title: { ar: 'المشكلة: دقائق قليلة', en: 'The problem: only minutes' },
-      say3: { ar: 'الخطر لا يختار وقتًا: حريق ونحن نيام، غاز لا يُشَمّ، سيل في نفق، حرّ، أو سقوط. تقول الأبحاث إن أمامك دقيقة أو دقيقتين فقط للنجاة. وفي بيانات أمريكية: 49% من وفيات الحرائق السكنية بين 11 مساءً و7 صباحًا.',
-              en: 'Danger doesn\'t pick a time: a fire while we sleep, a gas leak we can\'t smell, water in an underpass, heat, a fall. Research: only one or two minutes to escape. US data: 49% of home-fire deaths happen between 11 p.m. and 7 a.m.' },
+    { id: 'problem', t3: 13, t7: 28, title: { ar: 'المشكلة: دقائق قليلة', en: 'The problem: only minutes' },
+      say3: { ar: 'الخطر لا يختار وقتًا: حريق ونحن نيام، غاز لا يُشَمّ، سيل في نفق، حرّ، أو سقوط. أمامنا دقيقة أو دقيقتان للنجاة، وقد استغرق وصول الدفاع المدني 7 إلى 10 دقائق عام 2017.',
+              en: 'Danger doesn\'t pick a time: a fire at night, gas we can\'t smell, a flood, heat, a fall. One or two minutes to escape (research); Civil Defence took 7 to 10 minutes in 2017.' },
       more7: { ar: 'وفي قطر سُجّل 46.6% من السكان في سكن عمال جماعي (تعداد 2020). وفي حريق سكني بالخليج عام 2024، نحو الرابعة فجرًا، مات معظم الضحايا اختناقًا بالدخان وهم نيام، وكان باب السطح مقفلًا. هذه وقائع منشورة نذكرها باحترام ودون صور. ووصل الدفاع المدني في قطر عام 2017 خلال 7 إلى 10 دقائق؛ ونحن نتحدث عن الدقائق التي تسبق وصول أي فريق.',
               en: 'In Qatar, 46.6% of residents were counted in shared worker accommodation (Census 2020). In a 2024 Gulf residential fire, about 4 a.m., most victims died of smoke while asleep, and a rooftop door was locked. These are published facts, stated respectfully and without images. Civil Defence reached incidents in Qatar in 7 to 10 minutes in 2017; we are talking about the minutes before any crew arrives.' },
       act: { ar: 'اذكر المصدر مع كل رقم. لا تعرض صورًا لحوادث. الشريطان على الشريحة من مصدرين مختلفين: توضيح لا قياس واحد.', en: 'Name the source with every number. Show no images of incidents. The two bars come from different sources: an illustration, not one measurement.' },
       weak: { ar: 'الرقمان على الشريحة من مصدرين مختلفين (بحث دولي وتقرير قطري عام 2017): نعرضهما للتوضيح ولا نقول إنهما قياس واحد.', en: 'The two bars come from different sources (international research and a 2017 Qatar report): we show them to illustrate, not as one measurement.' },
       qa: ['W8'] },
-    { id: 'gap', t3: 15, t7: 32, title: { ar: 'الفجوة: آخر مئة متر', en: 'The gap: the last 100 metres' },
-      say3: { ar: 'في قطر 999 والدفاع المدني ونظام تحذير وطني. لكن رسالة واحدة للجميع لا تعرف مَن النائم، ومَن لا يقرأ العربية، وأيّ مخرج مقفل: هذه «آخر مئة متر». الصقور تكافح النار… والمنارة تُخرج الجميع.',
-              en: 'Qatar has 999, Civil Defence, and a national warning system. But one message for all can\'t know who is asleep, who reads no Arabic, or which exit is locked: the last 100 metres. Falcons fight fire; the lighthouse gets everyone out.' },
+    { id: 'gap', t3: 11, t7: 28, title: { ar: 'الفجوة: آخر مئة متر', en: 'The gap: the last 100 metres' },
+      say3: { ar: 'في قطر 999 والدفاع المدني ونظام تحذير وطني، لكن رسالة واحدة للجميع لا تعرف مَن النائم ولا أيّ مخرج مقفل: هذه «آخر مئة متر». نكمّل ولا نستبدل.',
+              en: 'Qatar has 999, Civil Defence and a national warning system. One message cannot know who is asleep or which exit is locked: the last 100 metres. We complete them.' },
       more7: { ar: 'ما لدينا موثّق: 999، والدفاع المدني ومعه مسيّرات إطفاء عُرضت في ميليبول 2024، وإسعاف مؤسسة حمد، ونظام تحذير يرسل رسائل بالعربية والإنجليزية، وإنذارات المباني التي تصل إلى غرفة العمليات، والرقم 992 للصمّ. كلها تعمل بعد أن يعرف أحدٌ بالخطر. ولا يخبر أيٌّ منها شخصًا نائمًا في الغرفة 203 أيّ درج يستخدم، ولا يوقظ الأصمّ، ولا يعدّ مَن خرج.',
               en: 'What exists is documented: 999, Civil Defence with the firefighting drones shown at Milipol 2024, the HMC ambulance service, a warning system that sends Arabic and English messages, building alarms that reach the operations room, and 992 for Deaf callers. All of them work once someone knows about the danger. None of them tells a sleeper in room 203 which stair to use, wakes a Deaf resident, or counts who got out.' },
       act: { ar: 'قل «نكمّل ولا نستبدل». لا تنتقد أي نظام قائم.', en: 'Say "we complete, we don\'t replace". Never criticise an existing system.' },
       weak: { ar: 'لا نقول إن هذه الأنظمة ناقصة؛ لكل منها عمل مختلف، ونحن نكمّل «آخر مئة متر» فقط.', en: 'We do not say these systems are lacking: each has a different job, and we only complete the last 100 metres.' },
       qa: ['W1', 'W2', 'W3', 'W5'] },
-    { id: 'solution', t3: 11, t7: 25, title: { ar: 'الحل: ست خطوات ومسار واحد', en: 'The solution: six steps, one pipeline' },
-      say3: { ar: 'منارة تتحقق أولًا، ثم توقظ كل شخص بلغته، وتدلّه على طريق آمن، وتعدّ مَن خرج، وتسلّم الجهات حزمة موثّقة. شيفرة واحدة لستة أخطار.',
-              en: 'MANARA proves first, wakes each person in their language, shows a safe route, counts who got out, and hands the authorities a verified package. One code, six hazards.' },
-      more7: { ar: 'أرصد: حسّاسات رخيصة تعمل ليلًا ونهارًا وإنذارها المحلي لا ينتظر أحدًا. أتحقق: مفتاحان مستقلان ثم إنسان. أُبلغ: لكل شخص لغته وصيغته وسلّم إيقاظ ليلي. أُرشد: طريق آمن لهذا الخطر بالذات. أعدّ: «أنا بخير» أو «أحتاج مساعدة». أُسلّم: حزمة موثّقة وأسرع وحدة استجابة، و999 يبقى المرسِل.',
-              en: 'Sense: cheap sensors watch day and night and their local alarm never waits. Prove: two independent keys, then a human. Reach: each person\'s language and format, plus a night wake-up ladder. Guide: a route that is safe for this very hazard. Count: "I\'m safe" or "I need help". Hand off: a verified package and the fastest responder, with 999 staying the dispatcher.' },
-      act: { ar: 'أشِر إلى الخطوات الست بالترتيب. اذكر «منصة واحدة لا ستة أجهزة».', en: 'Point to the six steps in order. Say "one platform, not six gadgets".' },
+    { id: 'solution', t3: 10, t7: 20, title: { ar: 'الحل: من السماء إلى آخر مئة متر', en: 'The solution: from the sky to the last 100 metres' },
+      say3: { ar: 'من السماء إلى آخر مئة متر: مسيّرة ترى وتُنبّه، وغرفة تحكم تتحقق، وأسرع وحدة تتحرك، وتُرشد المسيّرة الناس، ويبحث الروبوت، ونعدّ الجميع.',
+              en: 'From the sky to the last 100 metres: the drone sees, the control room proves, the fastest unit rolls, the robot searches, everyone is counted.' },
+      more7: { ar: 'ترى المسيّرة (أو الحارس أو مواطن) خطرًا من ستة أنواع وتُنبّه غرفة التحكم بصورة عادية وحرارية. تتحقق الغرفة بمفتاحين مستقلين ثم يعتمد إنسان. تتحرك أسرع وحدة بحسب المرور في قطر كلها، و999 يبقى المرسِل. تُرشد المسيّرة الناس في «آخر مئة متر»، ويبحث الروبوت في المبنى بعد موافقة قائد الحادث، ثم نعدّ كل شخص ونسلّم للفرق. والإنذار المحلي لا ينتظر أحدًا.',
+              en: 'A drone (or a sentinel, or a citizen) sees one of six kinds of hazard and alerts the control room with a camera and a thermal frame. The room proves it with two independent keys and a human Approve. The fastest unit given traffic rolls across all of Qatar, with 999 staying the dispatcher. The drone guides people out through the last 100 metres, the robot searches the building after the incident commander approves, and we count everyone and hand off. The local alarm never waits.' },
+      act: { ar: 'أشِر إلى الخطوات السبع بالترتيب: مسيّرة، غرفة تحكم، دليل، أسرع وحدة، إرشاد، روبوت، عدّ. اذكر «منصة واحدة لا ستة أجهزة».',
+              en: 'Point to the seven steps in order: drone, control room, proof, fastest unit, guide, robot, count. Say "one platform, not six gadgets".' },
       weak: null, qa: ['W6'] },
-    { id: 'proof', t3: 12, t7: 36, title: { ar: 'الدليل قبل الذعر', en: 'Proof before panic' },
-      say3: { ar: 'قاعدتنا: الدليل قبل الذعر. مفتاحان مستقلان، ثم موافقة إنسان. وكاشف الصور عندنا رؤية حاسوبية بقواعد وليس ذكاءً اصطناعيًا؛ دقته على صور جديدة 66.7% فقط، ولهذا لا يقرّر وحده.',
-              en: 'Proof before panic. Two independent keys, then a human. Our detector is rule-based computer vision, not AI; on new photos it is right only 66.7% of the time, so it never decides alone.' },
+    { id: 'control', t3: 14, t7: 34, title: { ar: 'المسيّرة ترى وغرفة التحكم تتحقق', en: 'The drone sees, the control room proves' },
+      say3: { ar: 'تُرسل المسيّرة إنذارًا بصورة عادية وحرارية. وغرفة التحكم لا تُنذر الناس إلا بمفتاحين مستقلين واعتماد إنسان. في المحاكاة تصل المسيّرة أولًا في 90% من الحوادث التي تصلها، و33% خارج المدى.',
+              en: 'The drone alerts with camera and thermal frames. The public is alerted only after two independent keys and a human Approve. In simulation the drone is first in 90% of reachable incidents; 33% are out of range.' },
+      more7: { ar: 'في غرفة التحكم قائمة إنذارات بمصادرها (مسيّرة، حارس، مواطن) وحالتها: اشتباه ثم مؤكَّد ثم معتمَد؛ وجدار تغذيات للمسيّرات بصورة عادية وحرارية مع تراكب الكشف؛ وأسطول ولوحة إرسال وسجل اتصالات وتسليم مناوبة. هذه أرقام المحاكاة (150 حادثًا، بذرة 7): المسيّرة سابقة للوحدة الأرضية في 90% من الحوادث التي تصلها (الوسيط 244 ث مقابل 440.5 ث)، و33% خارج مدى كل المسيّرات فلا مسيّرة لها. ومفتاح الحرارة لشخص مستلقٍ ينجح 2% عند 13:00 في يوليو مقابل 70% عند 02:00. وفي يوم محاكى بإنذارات كاذبة مرتفعة أُسقط 96.6% منها بالدليل، وأُرسلت وحدات خطأً في 8. ولم نُطِر أي مسيّرة.',
+              en: 'The control room has an alert queue with sources (drone, sentinel, citizen) and states: suspect, then confirmed, then approved; a feed wall with camera and thermal views and detection overlays; a fleet board, dispatch, a comms log and a shift handover. These are simulation numbers (150 incidents, seed 7): the drone is on station before the first ground unit in 90% of the incidents it can reach (median 244 s against 440.5 s), and 33% are out of range of every drone, so they get none. The thermal key for a person lying down works 2% of the time at 13:00 in July against 70% at 02:00. In a simulated day with raised false alerts, 96.6% were dismissed on evidence and units were sent in error for 8. We have flown no drone.' },
+      act: { ar: 'أشِر إلى الصف الأول في قائمة الإنذارات (مسيّرة)، ثم إلى مفتاحي الإثبات و«اعتماد». لا تقل إن مسيّرة طارت: الصورة مشهد محاكى بقواعد الكاشف نفسه.', en: 'Point at the top row of the alert queue (the alert from the drone), then at the two proof keys and Approve. Never say a drone flew: the picture is a simulated scene analysed by the real rule-based detector.' },
+      weak: { ar: 'الأرقام الثلاثة محاكاة SIM (150 حادثًا، بذرة 7): 33% من الحوادث خارج مدى كل المسيّرات، ومفتاح الحرارة لشخص مستلقٍ 2% عند 13:00 في يوليو مقابل 70% عند 02:00. لم نُطِر أي مسيّرة.', en: 'All three numbers are simulation (SIM; 150 incidents, seed 7): 33% of incidents are out of range of every drone, and the thermal key for a person lying down works 2% of the time at 13:00 in July against 70% at 02:00. We flew no drone.' },
+      qa: ['R1', 'R4', 'R5', 'R6', 'R7', 'R8', 'R10', 'P3'] },
+    { id: 'proof', t3: 11, t7: 32, title: { ar: 'الدليل قبل الذعر', en: 'Proof before panic' },
+      say3: { ar: 'الدليل قبل الذعر. وكاشفنا رؤية حاسوبية بقواعد وليس ذكاءً اصطناعيًا، ودقته على صور جديدة 66.7% فقط، ولهذا لا يقرّر وحده.',
+              en: 'Proof before panic. Our detector is rule-based computer vision, not AI, and right only 66.7% on new photos, so it never decides alone.' },
       more7: { ar: 'جرّبوا الشريحة: مفتاح واحد يعطي «اشتباه» فقط. كوب ساخن يخدع المفتاح الحراري، وفيديو حريق على هاتف يخدع الكاميرا، وإن خُدع المفتاحان معًا يبقى التنبيه العام بانتظار إنسان. أرقام الكاشف الصادقة: أصاب 12 من 18 صورة محجوزة؛ وجد صور النار الست كلها، لكنه أخطأ في 3 من 12 صورة بلا نار، ولم يجد دخان الصور الثلاث. وفي مختبر الأدلة يستطيع أيٌّ منكم أن يحاول خداعه.',
               en: 'Try the slide: one key gives only SUSPECT. A hot mug fools the heat key and a fire video on a phone fools the camera; if both keys are fooled together, the public alert still waits for a human. The detector\'s honest numbers: right on 12 of 18 held-out photos; it found all six fire photos but was wrong on 3 of 12 fire-free photos and missed the smoke in all three smoke photos. In the Evidence Lab any of you can try to fool it.' },
       act: { ar: 'اضغط مفتاحًا واحدًا ثم الثاني ثم «اعتماد» على الشريحة. لا تفتح مختبر الأدلة في المسار الصارم — لحظة حيّة واحدة فقط.', en: 'Press one key, then the second, then Approve on the slide. Do not open the Evidence Lab in the strict path — only ONE live moment.' },
       weak: { ar: 'قل أولًا: كاشف الصور دقته 66.7% على صور لم يرها، ولهذا لا يقرّر وحده أبدًا.', en: 'Say it first: the image detector is right only 66.7% on photos it has not seen, so it never decides alone.' },
       qa: ['P1', 'P2', 'P3', 'P4'] },
-    { id: 'hazards', t3: 8, t7: 20, title: { ar: 'ستة أخطار، منصة واحدة', en: 'Six hazards, one platform' },
-      say3: { ar: 'ستة أخطار على مسار واحد: حريق ودخان، غاز، سيول، غبار، حرّ، وشخص يحتاج مساعدة. اختاروا أنتم الكارثة.',
-              en: 'Six hazards, one pipeline: fire and smoke, gas, flash flood, dust, heat, and someone who needs help. You choose the disaster.' },
+    { id: 'hazards', t3: 5, t7: 14, title: { ar: 'ستة أخطار، منصة واحدة', en: 'Six hazards, one platform' },
+      say3: { ar: 'ستة أخطار على مسار واحد. اختاروا أنتم الكارثة.',
+              en: 'Six hazards, one pipeline. You choose the disaster.' },
       more7: { ar: 'لكل خطر مفتاحاه وإجراؤه الواقي: في الحريق نخرج من مخرج مفتوح فعلًا؛ في الغاز نبتعد عموديًا على الريح بلا مفاتيح ولا لهب؛ في السيول نصعد ونتجنب الأنفاق؛ في الغبار نحتمي في الداخل؛ في الحرّ نوقف العمل ونذهب إلى مكان مبرَّد؛ وفي الاستغاثة نُحضر المساعدة إلى الشخص. الحريق والغاز والحرّ والاستغاثة لها عرض بمستشعرات حقيقية على الطاولة بمواد آمنة، أما السيول والغبار فمحاكاة بحسّاس بسيط.',
               en: 'Each hazard has its own two keys and protective action: in a fire we leave by an exit that is really open; with gas we move crosswind, no switches, no flames; in a flood we go higher and avoid underpasses; in dust we shelter indoors; in heat we stop work and go to a cool shelter; and for an SOS we bring help to the person. Fire, gas, heat and SOS have a table demo with real sensors and safe stand-ins; flood and dust are simulated with a simple sensor.' },
       act: { ar: 'اطلب من الحَكَم أن يختار خطرًا ثم انتقل إلى اللحظة الحيّة. لا تشرح البطاقات الست كلها في المسار الصارم.', en: 'Ask a judge to choose a hazard, then move to the live moment. Do not explain all six cards in the strict path.' },
@@ -196,52 +206,60 @@
       act: { ar: 'افتح غرفة العمليات في تبويب جاهز مسبقًا (نفس الرابط). سلّم الفأرة للحَكَم. إن تعطّل شيء فانتقل إلى «إذا تعطّل العرض» في تبويب النص.', en: 'Open Mission Control in a pre-opened tab (same link). Hand the mouse to the judge. If anything fails, use "If the demo fails" in the Script tab.' },
       weak: { ar: 'قبل أن يبدأ الحَكَم: هذه محاكاة — اللهب ممنوع هنا — وكل رقم عليه SIM.', en: 'Before the judge starts: this is a simulation — flames are banned here — and every number is marked SIM.' },
       qa: ['P3', 'D1', 'D2', 'H4'] },
-    { id: 'people', t3: 0, t7: 30, title: { ar: 'كل إنسان بلغته وصيغته', en: 'Every person, their language and format' },
+    { id: 'people', t3: 0, t7: 22, title: { ar: 'كل إنسان بلغته وصيغته', en: 'Every person, their language and format' },
       say3: null, more7: { ar: 'أربعة أشخاص في المبنى الافتراضي: رافي عامل يقرأ المالايالامية فتصله رسالة بلغته (مسودة) مع بطاقة مصورة؛ هدى ساكنة صمّاء فتصلها اهتزازات قوية ونص ورموز، والوميض اختياري مع تحذير؛ أبو سالم كبير سن على كرسي متحرك فيُوجَّه إلى شرفة الإيواء ويُبلَغ الدفاع المدني بمكانه؛ ولينا طفلة تتبع معلمتها وتُحصى على جهاز المعلمة. وسلّم الإيقاظ يصعد حتى يؤكد الشخص: صوت واهتزاز، ثم أعلى مع ضوء بعد 30 ثانية، ثم الحارس يطرق الأبواب بعد 60 ثانية، ثم قائمة للدفاع المدني بعد 90 ثانية. و92.7% من السكان غير قطريين، فالعربية والإنجليزية وحدهما لا تصلان إلى الجميع.',
               en: 'Four people in the virtual building: Ravi, a worker who reads Malayalam, gets a message in his language (draft) with a picture card; Huda, a Deaf resident, gets strong vibration, text and pictograms, with the strobe optional and a warning; Abu Salem, an older man in a wheelchair, is sent to the refuge balcony and Civil Defence is told where he is; and Lina, a child, follows her teacher and is counted on the teacher\'s tablet. The wake-up ladder climbs until the person confirms: sound and vibration, then louder with light at 30 seconds, then the guard knocks at 60 seconds, then a list goes to Civil Defence at 90 seconds. And 92.7% of residents are non-Qatari, so Arabic and English alone do not reach everyone.' },
       act: { ar: 'في المسار الصارم تُرى هذه الهواتف أثناء اللحظة الحيّة؛ تخطَّ الشريحة. في الممتد: أشِر إلى كل بطاقة.', en: 'In the strict path these phones are seen during the live moment; skip the slide. In the extended path: point to each card.' },
       weak: { ar: 'اللغات الست مسودات لم يراجعها متحدثون أصليون بعد.', en: 'The six community languages are drafts that native speakers have not reviewed yet.' },
       qa: ['H5', 'H6', 'H4', 'H1'] },
-    { id: 'dispatch', t3: 0, t7: 35, title: { ar: 'الأسرع وصولًا لا الأقرب', en: 'Fastest, not nearest' },
+    { id: 'dispatch', t3: 0, t7: 26, title: { ar: 'الأسرع وصولًا لا الأقرب', en: 'Fastest, not nearest' },
       say3: null, more7: { ar: 'بعد اعتماد الحادث تقترح منارة أيّ وحدة تذهب: إطفاء وإسعاف وشرطة، مع المستشفى المناسب للمصاب. المعيار: مَن يصل أولًا بحسب الازدحام لا الأقرب على الخريطة. نحسب زمن كل طريق بالطول مقسومًا على السرعة والازدحام، ونحذف الطرق المغلقة، ونتجاوز الوحدات المشغولة، ونختار أقل زمن وصول، ونعرض صاحب المركز الثاني والسبب. حرّكوا الساعة إلى السابعة صباحًا: تصبح محطة «ب» أبعد بنحو كيلومتر لكنها أسرع. وإن أُغلق طريق أو ازدحم أثناء الطريق نعيد الحساب كل ثانية وقد نغيّر الوحدة. كل هذا محاكاة بمرور افتراضي، و999 يبقى هو المرسِل.',
               en: 'Once an incident is approved, MANARA recommends which unit goes: fire, ambulance and police, plus the right hospital for the patient. The rule: whoever gets there first given traffic, not whoever is nearest on the map. We compute each road\'s time as length divided by speed and traffic, remove closed roads, skip busy units, pick the smallest ETA, and show the runner-up and the reason. Move the clock to 07:00: Station B becomes about a kilometre farther but faster. If a road closes or jams on the way we recompute every second and may change the unit. All of it is simulated with fictional traffic, and 999 stays the dispatcher.' },
       act: { ar: 'حرّك شريط الساعة ثم انقر طريقًا لتزحمه أو تغلقه وراقب تغيّر الاختيار.', en: 'Move the time slider, then click a road to jam or close it and watch the choice change.' },
       weak: { ar: 'المرور والمحطات والمستشفيات افتراضية (SIM)؛ والواقع يحتاج مزوّد مرور حيًّا وبيانات مركبات الجهة، و999 هو المرسِل.', en: 'Traffic, stations and hospitals are fictional (SIM); the real thing needs a live traffic provider and the authority\'s vehicle data, and 999 is the dispatcher.' },
       qa: ['D1', 'D2', 'D3', 'D4', 'D5', 'D6'] },
-    { id: 'national', t3: 15, t7: 45, title: { ar: 'كل قطر: الأسرع على خريطة حقيقية', en: 'The whole of Qatar: the fastest, on a real map' },
-      say3: { ar: 'الآن على خريطة قطر الحقيقية: حريق في الدوحة الساعة 5:45 مساءً. أقرب مركز يبعد 5.7 كم، فتختار منارة مركزًا يبعد 10 كم لأنه يصل أبكر بـ 86 ثانية بحسب الازدحام. المرور محاكى والطرق حقيقية.',
-              en: 'Now on the real map of Qatar: a fire in Doha at 5:45 p.m. The nearest station is 5.7 km away; MANARA picks one 10 km away, because it arrives 86 seconds sooner given traffic. Simulated traffic, real roads.' },
+    { id: 'national', t3: 11, t7: 34, title: { ar: 'كل قطر: الأسرع على خريطة حقيقية', en: 'The whole of Qatar: the fastest, on a real map' },
+      say3: { ar: 'على خريطة قطر الحقيقية: حريق في الدوحة 5:45 مساءً. أقرب مركز 5.7 كم، فتختار منارة مركزًا يبعد 10 كم لأنه أسرع بـ 86 ثانية. المرور محاكى والطرق حقيقية.',
+              en: 'On the real map: a fire in Doha, 5:45 p.m. The nearest station is 5.7 km away; MANARA picks one 10 km away, 86 seconds sooner. Simulated traffic.' },
       more7: { ar: 'الخريطة و138 منشأة و6,116 كم من الطرق الرئيسية لقطة من OpenStreetMap تُعرض مع رخصتها. أما المرور والوحدات المشغولة وأماكن المركبات فمحاكاة. نحسب زمن الطريق من كل مركز متاح بخوارزمية ديكسترا ونختار أقل زمن وصول. في الطريق الحر يفوز الأقرب؛ وازدحام شارع روضة الخيل هو الذي يقلب الترتيب. اضغطوا الزر لمثال حقيقي آخر؛ و999 يبقى هو المرسِل.',
               en: 'The map, 138 facilities and 6,116 km of major roads are a snapshot of OpenStreetMap, shown with its licence. Traffic, busy units and vehicle positions are simulated. We price the road from every available station with Dijkstra and pick the smallest arrival time. In free flow the nearer station wins; the jam on Rawdat Al Khail Street flips it. Press the button for another real example; 999 stays the dispatcher.' },
       act: { ar: 'أشِر إلى الخط الرمادي (الأقرب مسافة) ثم الخط البرتقالي (الأسرع). اضغط «ابحث عن مثال حقيقي آخر» إن طُلب، ثم افتح خريطة قطر في غرفة العمليات.', en: 'Point at the grey line (nearest by distance) and then the orange line (fastest). Press "Find another real example" if asked, then open the Qatar map in Mission Control.' },
       weak: { ar: 'قل أولًا: الطرق والمنشآت حقيقية كما في OpenStreetMap (وفيها نقص موثّق)، أما المرور والوحدات وتوفّرها فمحاكاة SIM. والمركز في المثال بلا اسم في OSM ونعرّفه بموقعه فقط.', en: 'Say it first: roads and facilities are real as in OpenStreetMap (with documented gaps); traffic, units and their availability are simulated (SIM). The station in the example has no name in OSM and is identified by position only.' },
       qa: ['N1', 'N2', 'N3', 'N6', 'N13', 'D1'] },
-    { id: 'evidence', t3: 21, t7: 35, title: { ar: 'ما قِسناه وما لم نقِسه', en: 'What we measured, and what we haven\'t' },
-      say3: { ar: 'ما قِسناه فعلًا: دقة الكاشف 66.7% على صور جديدة. وفي المحاكاة وصل 90% من السكان إلى الأمان خلال 317 ثانية مع منارة مقابل 626 مع الإنذار العادي — SIM: فحص للآلية لا إثبات. ولم ننجز بعد: حرائق حقيقية، واختبارات مع الناس، ومراجعة اللغات. نقولها صراحةً.',
-              en: 'What we measured: the detector is right 66.7% of the time on new photos. In the simulation, 90% of residents reached safety in 317 seconds with MANARA versus 626 with an ordinary alarm — SIM, a mechanism check, not proof. Not done yet: real fires, tests with people, native-speaker review. We say it openly.' },
-      more7: { ar: 'ما لم نفعله بعد: لم نجرّب على حرائق حقيقية — اللهب ممنوع وخطير — ولم نُجرِ اختبار الفهم (يحتاج موافقة أخلاقيات المدرسة)، ولم تُراجَع اللغات من متحدثين أصليين، ولم نقِس زمن الاستجابة على اللوحة بعد. جرّبوا سيناريو وبذرة أخرى: ستجدون حالات يظهر فيها فرق كبير (الحريق الليلي والغاز) وحالات يصغر فيها الفرق أو يتغير باختلاف البذرة (الغبار والحرّ). ونذكر مقايضة صريحة: صفّارة المبنى تُسمع بعد 14 ثانية في العالمين، ورسالة منارة الشخصية الأولى تصل بعد 39 ثانية لأنها تتحقق أولًا. وعلى خريطة قطر نفسها (150 حادثًا محاكى، البذرة 7): تختلف الوحدة الأولى عن الأقرب في 64.7% من الحوادث، ومتوسط التوفير 63 ثانية، لكن الوسيط صفر: الفائدة في الذيل (المئين التسعون 242 ثانية).',
-              en: 'What we haven\'t done: we have not tested on real fires — flames are banned and dangerous — we have not run the comprehension test (it needs school ethics approval), native speakers have not reviewed the languages, and we have not measured response latency on the board yet. Try another scenario and seed: you will find cases with a big gap (the night fire and gas) and cases where the gap is small or changes with the seed (dust, heat). And we state one honest trade-off: the building siren is heard after 14 seconds in both worlds, while MANARA\'s first personal message arrives after 39 seconds because it verifies first. On the map of Qatar itself (150 simulated incidents, seed 7): the first responder differs from the nearest in 64.7% of incidents and the mean saving is 63 seconds, but the median is zero — the benefit is in the tail (90th percentile 242 seconds).' },
+    { id: 'robot', t3: 12, t7: 36, title: { ar: 'الروبوت يبحث داخل المبنى', en: 'The robot searches inside' },
+      say3: { ar: 'داخل المبنى يبحث الروبوت بعد موافقة قائد الحادث. في محاكاتنا لا يتغير الزمن الإجمالي تقريبًا، لكنه وجد المقعد المتحرك أولًا في 5 بذور من 8. لا يتسلق الدرج، وهو مفهوم ومحاكاة.',
+              en: 'Inside, the robot searches after the incident commander approves. In simulation overall time barely changes, but it found the wheelchair user first in 5 of 8 seeds. It cannot climb stairs.' },
+      more7: { ar: 'الروبوت مفهوم ونموذج محاكى: لم يُبنَ روبوت إنقاذ. بعد موافقة قائد الحادث ينزل عند المدخل ويفتّش الغرف بالأولوية (مَن لم يُحصَ ومن يحتاج مساعدة)، ويجد الأشخاص بالحرارة والصوت بقواعد بسيطة وليس بالذكاء الاصطناعي، ويرشدهم ويبلغ غرفة التحكم والفرق، ويُبلغ عن الأبواب المقفلة ولا يكسرها. نتيجة المقارنة (بذور 1–8، SIM): زمن العثور الإجمالي يكاد لا يتغير (متوسط الوسيط 346 ث بلا الروبوت و344 ث معه) لأن منارة تحصي معظم الناس عبر هواتفهم؛ لكن الروبوت وجد المستخدم على المقعد المتحرك أولًا في 5 بذور من 8، وسبقته الفرق في 3. والعجلات لا تتسلق الدرج، وفي غرفة 34°م تفقد الكاميرا الحرارية التباين. وعندنا عربة تجريبية تحاكي منطقه فقط: تنتظر الموافقة وتتوقف عند العائق وتصدر نغمات لا كلامًا.',
+              en: 'The robot is a concept and a simulated prototype: no rescue robot has been built. After the incident commander approves it deploys at the entrance and searches rooms in priority order (unaccounted and needs-help first), finds people with thermal and audio by simple rules, not AI, guides them, reports to the control room and the crews, and reports locked doors without breaking them. The A/B over seeds 1 to 8 (SIM): the overall time to locate residents barely changes (mean of the medians 346 s without the robot, 344 s with it) because MANARA already counts most people through their phones; but the robot found the wheelchair user first in 5 of 8 seeds, and the crews were first in 3. A wheeled robot cannot climb stairs, and in a 34 °C room the thermal camera has no contrast. We built a bench rover that models only its logic: it waits for approval, stops at obstacles and makes tones, not speech.' },
+      act: { ar: 'أشِر إلى المسار على المخطط ثم إلى بطاقة بذور 1–8. قل إن الروبوت مفهوم ومحاكاة، وإن العربة التجريبية تحاكي منطقه فقط. افتح «مختبر الروبوت» إن طُلب.', en: 'Point to the path on the plan, then to the seeds 1–8 card. Say the robot is a concept and a simulation, and that the bench rover models only its logic. Open the Robot Lab if asked.' },
+      weak: { ar: 'قل أولًا: لا يوجد روبوت إنقاذ. المحاكاة تقول إن الزمن الإجمالي لا يتغير تقريبًا، وإن العربة التجريبية ليست روبوت إنقاذ ولا تتسلق الدرج.', en: 'Say it first: there is no rescue robot. The simulation says the overall time barely changes, and the bench rover is not a rescue robot and cannot climb stairs.' },
+      qa: ['R11', 'R12', 'R9', 'R13', 'R14'] },
+    { id: 'evidence', t3: 17, t7: 26, title: { ar: 'ما قِسناه وما لم نقِسه', en: 'What we measured, and what we haven\'t' },
+      say3: { ar: 'ما قِسناه: دقة الكاشف 66.7% على صور جديدة. وفي المحاكاة وصل 90% من السكان إلى الأمان خلال 317 ثانية مع منارة مقابل 626 — SIM: فحص آلية لا إثبات. ولم نجرّب حرائق حقيقية ولا أشخاصًا ولا طيرانًا فعليًا.',
+              en: 'What we measured: the detector is right 66.7% on new photos. In simulation 90% of residents reached safety in 317 seconds with MANARA versus 626 — SIM, a mechanism check. Not done: real fires, tests with people, any real flight.' },
+      more7: { ar: 'ما لم نفعله بعد: لم نجرّب على حرائق حقيقية — اللهب ممنوع وخطير — ولم نُطِر أي مسيّرة ولم نبنِ روبوت إنقاذ، ولم نُجرِ اختبار الفهم (يحتاج موافقة أخلاقيات المدرسة)، ولم تُراجَع اللغات من متحدثين أصليين. جرّبوا سيناريو وبذرة أخرى: ستجدون حالات فيها فارق كبير (الحريق الليلي والغاز) وحالات الفارق فيها صغير، ونعرضها جميعًا.',
+              en: 'What we haven\'t done: we have not tested on real fires — flames are banned and dangerous — we have flown no drone and built no rescue robot, we have not run the comprehension test (it needs school ethics approval), and native speakers have not reviewed the languages. Try another scenario and seed: you will find cases with a big gap (the night fire and gas) and cases where the gap is small, and we show them all.' },
       act: { ar: 'قل أولًا إن كل رقم محاكى موسوم SIM. لا تخفِ الأرقام المحرجة؛ هذا ما يكسب ثقة الحَكَم.', en: 'Say first that every simulated number is marked SIM. Do not hide the awkward numbers; that is what earns the judges\' trust.' },
       weak: { ar: 'قل أولًا: المحاكاة فحص للآلية لا برهان أثر، ولم نختبر على حرائق حقيقية ولا على أشخاص.', en: 'Say it first: the simulation is a mechanism check, not proof of impact, and we have not tested on real fires or on people.' },
       qa: ['P2', 'P4', 'P7', 'H3', 'B9'] },
-    { id: 'build', t3: 10, t7: 25, title: { ar: 'البناء والتكامل', en: 'Build and plug-in' },
-      say3: { ar: 'نموذج من قطع بسيطة، يعمل دون إنترنت ويُصدّر تنبيهًا بصيغة CAP. نتصل بأنظمة الدولة ولا نستبدلها. الخطوة التالية: تجربة في مبنى واحد.',
-              en: 'A prototype from simple parts that works offline and exports a CAP alert. We plug into national systems, replacing none. Next: a pilot in one building.' },
-      more7: { ar: 'الحارس لوحة ESP32 وحسّاسات حرارة ودخان وغاز ورطوبة وماء وزر استغاثة، وإنذاره المحلي يعمل بلا شبكة. أغلى قطعة هي الكاميرا الحرارية بـ 74.95 دولارًا (Adafruit). نُنتج تنبيهًا قياسيًا بصيغة CAP بحالة «تمرين» لتحمله أنظمة الدولة، ولا نقلّد نغمة الإنذار الوطني. المسيّرة مفهوم لجهة مرخَّصة مثل الدفاع المدني، والحارس يعمل بدونها. وأي ربط حقيقي يحتاج اتفاقًا مع الجهة.',
-              en: 'The sentinel is an ESP32 board with heat, smoke, gas, humidity and water sensors and an SOS button, and its local alarm needs no network. The most expensive part is the thermal camera at US$ 74.95 (Adafruit). We produce a standard CAP alert with status "Exercise" that national systems could carry, and we never copy the national alert tone. The drone is a concept for a licensed agency such as Civil Defence, and the sentinel works without it. Any real link needs an agreement with the authority.' },
+    { id: 'build', t3: 8, t7: 20, title: { ar: 'البناء والتكامل', en: 'Build and plug-in' },
+      say3: { ar: 'نموذج من قطع بسيطة يعمل دون إنترنت، وعربة تجريبية لمنطق الروبوت. نتصل بأنظمة الدولة ولا نستبدلها. الخطوة التالية: تجربة في مبنى واحد.',
+              en: 'Simple parts, works offline, plus a bench rover for the robot\'s logic. We plug into national systems. Next: a one-building pilot.' },
+      more7: { ar: 'الحارس لوحة ESP32 وحسّاسات حرارة ودخان وغاز ورطوبة وماء وزر استغاثة، وإنذاره المحلي يعمل بلا شبكة. أغلى قطعة هي الكاميرا الحرارية بـ 74.95 دولارًا (Adafruit). نُنتج تنبيهًا قياسيًا بصيغة CAP بحالة «تمرين» لتحمله أنظمة الدولة، ولا نقلّد نغمة الإنذار الوطني. المسيّرة مفهوم لجهة مرخَّصة مثل الدفاع المدني، والحارس يعمل بدونها. وأي ربط حقيقي يحتاج اتفاقًا مع الجهة. وتضيف المرحلة 4 عربة تجريبية (نحو 79–204 دولارات تقديريًّا) تحاكي منطق الروبوت: تنتظر موافقة إنسان وتتوقف عند العائق والحرارة وتصدر نغمات؛ وهي ليست روبوت إنقاذ، ولا شيء يطير.',
+              en: 'The sentinel is an ESP32 board with heat, smoke, gas, humidity and water sensors and an SOS button, and its local alarm needs no network. The most expensive part is the thermal camera at US$ 74.95 (Adafruit). We produce a standard CAP alert with status "Exercise" that national systems could carry, and we never copy the national alert tone. The drone is a concept for a licensed agency such as Civil Defence, and the sentinel works without it. Any real link needs an agreement with the authority. Tier 4 adds a bench rover (about US$ 79–204, an estimate) that models the robot\'s logic: it waits for a human approve, stops at obstacles and heat and beeps; it is not a rescue robot, and nothing flies.' },
       act: { ar: 'اذكر صفحة البناء لمن يريد القطع والأسعار. لا تذكر مجموع تكلفة لم تحسبه.', en: 'Point to the Build page for parts and prices. Do not quote a total you have not computed.' },
       weak: { ar: 'المسيّرة مفهوم فقط: لم نُطِر أي طائرة، والقانون 10 لسنة 2026 يشترط الترخيص.', en: 'The drone is a concept only: we flew nothing, and Law No. 10 of 2026 requires licences.' },
-      qa: ['R1', 'R2', 'R3', 'B3', 'B6', 'B8'] },
-    { id: 'close', t3: 6, t7: 15, title: { ar: 'الخطوة التالية والشكر', en: 'Next steps and thanks' },
-      say3: { ar: 'لا نائمَ يُنسى، ولا أحدَ يُترك خلفنا. شكرًا لكم — يسعدنا سؤالكم.',
-              en: 'No one left asleep. No one left behind. Thank you — we are glad to take questions.' },
+      qa: ['R1', 'R2', 'R3', 'R13', 'B3', 'B6', 'B8'] },
+    { id: 'close', t3: 5, t7: 12, title: { ar: 'الخطوة التالية والشكر', en: 'Next steps and thanks' },
+      say3: { ar: 'لا نائمَ يُنسى، ولا أحدَ يُترك خلفنا. شكرًا لكم.',
+              en: 'No one left asleep. No one left behind. Thank you.' },
       more7: { ar: 'الخطوات: مراجعة اللغات من متحدثين أصليين، ثم قياس الحسّاسات وجدول زمن الاستجابة، ثم اختبار الفهم بموافقة أخلاقية، ثم تمرين في مبنى واحد مع حارسه ومراجعة الدفاع المدني. ونطلب منكم: توجيهًا وتصريحًا لتمرين آمن، ومراجعين للغات، وإرشادًا لموافقة الأخلاقيات. ونحترم عمل الدفاع المدني وفريق آيسف 2025: منارة تعمل حولهم لا ضدهم.',
               en: 'The steps: native-speaker review of the languages, then sensor measurements and a latency table, then the comprehension test with ethics approval, then a drill in one building with its guard and a Civil Defence review. We ask you for guidance and permission for a safe drill, reviewers for the languages, and advice on getting ethics approval. We respect Civil Defence and the ISEF 2025 team: MANARA works around them, not against them.' },
       act: { ar: 'ابتسم وانتظر الأسئلة. إن سُئلت عن نقطة ضعف فابدأ بالجملة الأولى من تبويب «أسئلة الحَكَم».', en: 'Smile and wait for questions. If asked about a weak spot, start with the first sentence from the Judge Q&A tab.' },
       weak: null, qa: ['B9', 'B10'] }
   ];
 
-  // The ONE live moment (slide 7), second by second (offsets inside the 55-second block)
+  // The ONE live moment (slide 8), second by second (offsets inside the 55-second block)
   var LIVE = [
     { t0: 0, t1: 10, title: { ar: 'اختر الكارثة', en: 'Pick the disaster' },
       tip: { ar: 'الحريق الليلي (04:00) جاهز؛ ويمكن اختيار الغاز أو السيول أو الغبار أو الحرّ أو الاستغاثة.', en: 'The night fire (04:00) is ready; you can pick gas, flood, dust, heat or SOS instead.' },
@@ -262,7 +280,7 @@
     { t0: 45, t1: 55, title: { ar: 'شاهد أسرع وحدة استجابة على خريطة قطر', en: 'See the fastest responder on the map of Qatar' },
       tip: { ar: 'إطفاء وإسعاف وشرطة مع سبب الاختيار — الأسرع بحسب الازدحام لا الأقرب. كله محاكاة على خريطة حقيقية.', en: 'Fire, ambulance and police with the reason — fastest given traffic, not nearest. All simulated, on a real map.' },
       say: { ar: 'اضغط «العودة إلى قطر»: هذه الخريطة الحقيقية. وهنا أسرع وحدة استجابة بحسب الازدحام — لا الأقرب مسافة — مع سبب الاختيار. كلها محاكاة، و999 يبقى هو المرسِل.', en: 'Press "Back to Qatar": this is the real map. And here is the fastest responder given traffic — not the nearest — with the reason. All simulated; 999 stays the dispatcher.' },
-      act: { ar: 'اضغط «العودة إلى قطر» في غرفة العمليات ثم افتح تبويب «الاستجابة». وإن لم تعمل فانتقل إلى الشريحة 10: الخريطة نفسها.', en: 'Press "Back to Qatar" in Mission Control, then open the Dispatch tab. If it does not work, go to slide 10: the same map.' } }
+      act: { ar: 'اضغط «العودة إلى قطر» في غرفة العمليات ثم افتح تبويب «الاستجابة». وإن لم تعمل فانتقل إلى الشريحة 11: الخريطة نفسها.', en: 'Press "Back to Qatar" in Mission Control, then open the Dispatch tab. If it does not work, go to slide 11: the same map.' } }
   ];
   SL.forEach(function (s) { if (s.live) s.say3 = { ar: LIVE.map(function (x) { return x.say.ar; }).join(' '), en: LIVE.map(function (x) { return x.say.en; }).join(' ') }; });
 
@@ -276,10 +294,10 @@
       act: { ar: 'انتقل إلى التبويب الثاني المفتوح مسبقًا بالرابط نفسه. وإن لم يكن مفتوحًا فأعد تحميل الصفحة: الرابط يستعيد السيناريو (`#scenario=fire-night&seed=1`).', en: 'Switch to the second pre-opened tab with the same link. If there is none, reload: the link restores the scenario (`#scenario=fire-night&seed=1`).' } },
     { n: 2, title: { ar: 'الهواتف لا تتحدث مع الشاشة', en: 'The phones don\'t talk to the screen' },
       say: { ar: 'الهواتف لا تتلقى الرسائل هنا — يحدث هذا إذا منع المتصفح الرسائل بين النوافذ. هذا بالضبط ما سنختبره في التجربة الميدانية. هذه الصفحة الاحتياطية تُظهر الخطوات نفسها.', en: 'The phones are not receiving messages — this happens when the browser blocks messages between windows. That is exactly what a field pilot would test. This backup page shows the same steps.' },
-      act: { ar: 'افتح جدار الهواتف في نافذة واحدة (هواتف السكان)، أو ارجع إلى الشريحة 7 واستعمل مقطع المبنى (اقفل الدرج «أ» ثم «أنا بخير»).', en: 'Open the phone wall in a single window (Resident phones), or go back to slide 7 and use the building section (Lock Stair A, then "I\'m safe").' } },
+      act: { ar: 'افتح جدار الهواتف في نافذة واحدة (هواتف السكان)، أو ارجع إلى الشريحة 8 واستعمل مقطع المبنى (اقفل الدرج «أ» ثم «أنا بخير»).', en: 'Open the phone wall in a single window (Resident phones), or go back to slide 8 and use the building section (Lock Stair A, then "I\'m safe").' } },
     { n: 3, title: { ar: 'غرفة العمليات لا تفتح', en: 'Mission Control will not open' },
       say: { ar: 'تعذّر فتح العرض الحي. سأريكم تسجيلًا سجّلناه بالمحاكاة نفسها، وأشرح ما يحدث خطوة بخطوة.', en: 'The live view won\'t open. I\'ll show a recording we made of the same simulation and walk you through each step.' },
-      act: { ar: 'شغّل الفيديو الاحتياطي (60–90 ثانية) المحفوظ على سطح المكتب وعلى هاتفك. ثم اشرح الخطوات الخمس من قائمة اللحظة الحيّة وأنت تشير إليها. وخريطة قطر الحقيقية في الشريحة 10 تعمل دون غرفة العمليات.', en: 'Play the fallback video (60–90 seconds) saved on the desktop and on your phone. Then walk through the five steps of the live moment, pointing at each. The real map of Qatar on slide 10 works without Mission Control.' } },
+      act: { ar: 'شغّل الفيديو الاحتياطي (60–90 ثانية) المحفوظ على سطح المكتب وعلى هاتفك. ثم اشرح الخطوات الخمس من قائمة اللحظة الحيّة وأنت تشير إليها. وخريطة قطر الحقيقية في الشريحة 11 تعمل دون غرفة العمليات.', en: 'Play the fallback video (60–90 seconds) saved on the desktop and on your phone. Then walk through the five steps of the live moment, pointing at each. The real map of Qatar on slide 11 works without Mission Control.' } },
     { n: 4, title: { ar: 'لا شيء يعمل (حاسوب أو كهرباء)', en: 'Nothing works (computer or power)' },
       say: { ar: 'حتى لو تعطّل كل شيء — وهذا ما يحدث في الأزمات — فالفكرة تقوم على إنذار محلي لا يعتمد على شيء. اسمحوا لي أن أشرحها بالكلام وبهذه الورقة.', en: 'Even if everything fails — which is what happens in a crisis — the idea rests on a local alarm that depends on nothing. Let me explain it by speaking, with this sheet.' },
       act: { ar: 'اقرأ النص من الورق المطبوع (تبويب النص → طباعة)، وسلّم الحَكَم نسخة أسئلة الحَكَم المطبوعة، واعرض اللوحة المطبوعة.', en: 'Read the script from paper (Script tab → Print), hand the judge the printed Judge Q&A, and point to the printed display board.' } }
@@ -300,12 +318,13 @@
     { i: 'target', ar: 'مَن لا يزال بالداخل؟', en: 'Who is still inside?' }
   ];
   var PIPE = [
-    { i: 'radar', c: '--info', v: ['أرصد', 'Sense'], d: { ar: 'حسّاسات رخيصة تراقب ليلًا ونهارًا', en: 'Cheap sensors watch day and night' } },
-    { i: 'shield', c: '--accent', v: ['أتحقق', 'Prove'], d: { ar: 'مفتاحان مستقلان، ثم موافقة إنسان', en: 'Two independent keys, then a human' } },
-    { i: 'bell', c: '--brand', v: ['أُبلغ', 'Reach'], d: { ar: 'لكل شخص لغته وصيغته، وسلّم إيقاظ ليلي', en: 'Each person\'s language and format, plus a night wake-up ladder' } },
-    { i: 'route', c: '--warn', v: ['أُرشد', 'Guide'], d: { ar: 'طريق آمن لهذا الخطر، يُعاد حسابه فورًا', en: 'A route that is safe for this hazard, recomputed instantly' } },
-    { i: 'users', c: '--safe', v: ['أعُدّ', 'Count'], d: { ar: '«أنا بخير» أو «أحتاج مساعدة» مقابل السجلّ', en: '"I\'m safe" or "I need help", against the register' } },
-    { i: 'download', c: '--danger', v: ['أُسلّم', 'Hand off'], d: { ar: 'حزمة موثّقة + أسرع وحدة؛ و999 هو المرسِل', en: 'A verified package + the fastest unit; 999 stays the dispatcher' } }
+    { i: 'drone', c: '--info', v: ['ترى', 'Sees'], d: { ar: 'مسيّرة (أو حارس أو مواطن) ترى دخانًا أو نارًا أو غازًا أو سيلًا أو غبارًا أو حرارة أو شخصًا يحتاج مساعدة', en: 'A drone (or a sentinel, or a citizen) sees smoke, fire, gas, flood, dust, heat or someone who needs help' } },
+    { i: 'radar', c: '--brand', v: ['تُنبّه', 'Alerts'], d: { ar: 'إنذار إلى غرفة التحكم بصورة عادية وحرارية', en: 'An alert to the control room with a camera and a thermal frame' } },
+    { i: 'shield', c: '--accent', v: ['تتحقق', 'Proves'], d: { ar: 'مفتاحان مستقلان، ثم «اعتماد» إنسان. الإنذار المحلي لا ينتظر', en: 'Two independent keys, then a human Approve. The local alarm never waits' } },
+    { i: 'route', c: '--warn', v: ['أسرع وحدة', 'Fastest unit'], d: { ar: 'مستشفى وشرطة وإطفاء عبر قطر؛ و999 يبقى المرسِل', en: 'Hospital, police and fire across Qatar; 999 stays the dispatcher' } },
+    { i: 'bell', c: '--safe', v: ['تُرشد', 'Guides'], d: { ar: 'المسيّرة وهواتف السكان تُخرج الناس في «آخر مئة متر»', en: 'The drone and the residents\' phones guide people out the last 100 metres' } },
+    { i: 'robot', c: '--danger', v: ['يبحث', 'Searches'], d: { ar: 'الروبوت يفتّش المبنى بعد موافقة قائد الحادث (مفهوم + SIM)', en: 'The robot searches the building after the incident commander approves (concept + SIM)' } },
+    { i: 'users', c: '--safe', v: ['نعدّ', 'Counts'], d: { ar: 'كل شخص محصى ثم تسليم موثّق للفرق', en: 'Everyone counted, then a verified hand-off to the crews' } }
   ];
   var HZ = [
     { id: 'fire', ar: 'حريق ودخان', en: 'Fire & smoke', tag: 'live',
@@ -418,6 +437,11 @@
     ['≤ 7 y / QAR 300,000', { ar: 'عقوبة بعض مخالفات المسيّرات', en: 'penalty for some drone offences' }, 'The Peninsula 2026 (S34)', { ar: 'قطر', en: 'Qatar' }],
     ['66.7% (12/18)', { ar: 'دقة كاشفنا على صور محجوزة', en: 'our detector on held-out photos' }, { ar: 'اختبار مشروعنا', en: 'our own test' }, { ar: 'عيّنة صغيرة', en: 'a small sample' }],
     ['317 s vs 626 s', { ar: 'زمن وصول 90% إلى الأمان (منارة مقابل الإنذار العادي)', en: 'time for 90% to reach safety (MANARA vs ordinary alarm)' }, { ar: 'محاكاتنا — بذرة 1', en: 'our simulation — seed 1' }, { ar: 'SIM — فحص آلية', en: 'SIM — a mechanism check' }],
+    ['90% · 244 s vs 440.5 s', { ar: 'المسيّرة على الموقع قبل أول وحدة أرضية في الحوادث التي تصلها (الوسيط)', en: 'the drone is on station before the first ground unit in the incidents it can reach (median)' }, { ar: 'ManaraNational.ab({seed: 7, n: 150})', en: 'ManaraNational.ab({seed: 7, n: 150})' }, { ar: 'SIM — فحص آلية', en: 'SIM — a mechanism check' }],
+    ['33%', { ar: 'من الحوادث خارج مدى كل المسيّرات (لا مسيّرة لها)', en: 'of incidents out of range of every drone (they get none)' }, { ar: 'ManaraNational.ab({seed: 7, n: 150})', en: 'ManaraNational.ab({seed: 7, n: 150})' }, { ar: 'SIM — افتراض المدى', en: 'SIM — a range assumption' }],
+    ['2% vs 70%', { ar: 'مفتاح الحرارة لشخص مستلقٍ: 13:00 يوليو مقابل 02:00', en: 'thermal key for a person lying down: 13:00 July vs 02:00' }, { ar: 'test-national.mjs (سطر DRONE REPORT)', en: 'test-national.mjs (DRONE REPORT line)' }, { ar: 'SIM — حدّ صادق', en: 'SIM — an honest limit' }],
+    ['5 of 8 · 3 of 8', { ar: 'بذور 1–8: الروبوت أول من وجد المستخدم على المقعد المتحرك · الفرق أولًا', en: 'seeds 1–8: the robot found the wheelchair user first · the crews were first' }, { ar: 'ManaraSim.abRobot، fire-night-robot', en: 'ManaraSim.abRobot, fire-night-robot' }, { ar: 'SIM — فحص آلية', en: 'SIM — a mechanism check' }],
+    ['US$ 79–204', { ar: 'قطع المرحلة 4 (عربة تجريبية وحمولة على الطاولة)', en: 'Tier 4 parts (a bench rover and a bench payload)' }, { ar: 'صفحة البناء (تقدير؛ تحقّق من الموردين)', en: 'the Build page (an estimate; check suppliers)' }, { ar: 'تقدير للتخطيط', en: 'a planning estimate' }],
     ['US$ 74.95', { ar: 'الكاميرا الحرارية MLX90640', en: 'the MLX90640 thermal camera' }, 'Adafruit, Oct 2026', { ar: 'تقدير للتخطيط', en: 'a planning estimate' }],
     ['138 / 6,116 km', { ar: 'منشآت (72 مستشفى، 21 إطفاء، 41 شرطة، 3 إسعاف، 1 مركز طوارئ) وطرق رئيسية', en: 'facilities (72 hospitals, 21 fire, 41 police, 3 ambulance, 1 ED clinic) and major roads' }, { ar: 'OpenStreetMap — لقطة 2026-10-08 (ODbL)', en: 'OpenStreetMap — snapshot 2026-10-08 (ODbL)' }, { ar: 'بيانات خريطة حقيقية، وفيها نقص', en: 'real map data, with gaps' }],
     ['23 / 73', { ar: 'أسماء في قوائم رسمية بلا مقابل في OSM', en: 'names on official lists with no match in OSM' }, { ar: 'فحص الاكتمال (manara/docs/MANARA-DATA.md §6)', en: 'our completeness check (manara/docs/MANARA-DATA.md §6)' }, { ar: 'قوائم وجدناها لا عيّنة', en: 'lists we could find, not a sample' }],
@@ -441,14 +465,16 @@
       { id: 'm2', ar: 'شغّل لوحة التوأم قبل 15 دقيقة: الكاميرا الحرارية نحو 4 دقائق، وMQ نحو 3 دقائق للتسخين', en: 'Power the twin board 15 minutes early: about 4 minutes warm-up for the thermal camera, 3 for the MQ sensors', sub: { ar: 'قراءات استرشادية فقط', en: 'indicative readings only' } },
       { id: 'm3', ar: 'افتح الصفحات من المجلد دون إنترنت: العرض، غرفة العمليات (`#scenario=fire-night&seed=1`) في تبويبين، جدار الهواتف، مختبر الأدلة', en: 'Open the pages from the offline folder: the pitch, Mission Control (`#scenario=fire-night&seed=1`) in two tabs, the phone wall, the Evidence Lab' },
       { id: 'm4', ar: 'أوقف السكون والإشعارات، وارفع السطوع، واضبط الصوت (ليس نغمة الإنذار الوطنية)', en: 'Turn off sleep and notifications, raise the brightness, set a safe volume (never the national alert tone)' },
-      { id: 'm5', ar: 'استخدم Chrome أو Edge، وبدّل بين العربية والإنجليزية للتأكد', en: 'Use Chrome or Edge and switch between Arabic and English to check' } ] },
+      { id: 'm5', ar: 'استخدم Chrome أو Edge، وبدّل بين العربية والإنجليزية للتأكد', en: 'Use Chrome or Edge and switch between Arabic and English to check' },
+      { id: 'm6', ar: 'افتح «غرفة التحكم» (`control.html`) و«مختبر الروبوت» (`robot.html`) في تبويبين جاهزين، وشغّل كلًّا منهما مرة قبل الحَكَم', en: 'Open the Control Room (`control.html`) and the Robot Lab (`robot.html`) in two pre-opened tabs, and run each once before the judges' },
+      { id: 'm7', ar: 'قل أولًا إن المسيّرة والروبوت مفهوم ونموذج محاكى: لا مسيّرة طارت ولا روبوت إنقاذ بُني', en: 'Say first that the drone and the robot are a concept and a simulated prototype: no drone has flown and no rescue robot has been built' } ] },
     { id: 'offline', icon: 'signal', h: { ar: 'تجربة بلا إنترنت', en: 'The offline test' }, items: [
       { id: 'o1', ar: 'فعّل وضع الطيران ونفّذ مسار الثلاث دقائق كاملًا مرة واحدة', en: 'Turn on airplane mode and run the whole 3-minute path once' },
       { id: 'o2', ar: 'اختبر الرسائل بين النوافذ: اعتمد في غرفة العمليات وتأكد أن الهواتف تتحدّث', en: 'Test cross-window messages: approve in Mission Control and check that the phones update' },
       { id: 'o3', ar: 'اشحن الهواتف إلى 80% على الأقل وعطّل القفل التلقائي', en: 'Charge the phones to at least 80% and turn off auto-lock' },
       { id: 'o4', ar: 'فحص البيانات دون إنترنت: ملفات `data/qatar-geo.js` و`qatar-facilities.js` و`qatar-roads.js` موجودة في المجلد المنسوخ (نحو 692 كيلوبايت معًا)', en: 'Offline data check: `data/qatar-geo.js`, `qatar-facilities.js` and `qatar-roads.js` are in the copied folder (about 692 KB together)', sub: { ar: 'بدونها لا تُرسم خريطة قطر', en: 'Without them the map of Qatar does not draw' } },
       { id: 'o5', ar: 'في وضع الطيران افتح غرفة العمليات (خريطة قطر): تُرسم الحدود والمنشآت والطرق، ويظهر نص OpenStreetMap وتاريخ اللقطة 2026-10-08', en: 'In airplane mode open Mission Control (the map of Qatar): the outline, facilities and roads draw, and the OpenStreetMap credit and snapshot date 2026-10-08 show' },
-      { id: 'o6', ar: 'افتح الشريحة 10 واضغط «ابحث عن مثال حقيقي آخر» (يستغرق نحو ثانيتين) وتأكد أن النتيجة تظهر دون إنترنت', en: 'Open slide 10 and press "Find another real example" (about two seconds) and check that the result appears offline' } ] },
+      { id: 'o6', ar: 'افتح الشريحة 11 واضغط «ابحث عن مثال حقيقي آخر» (يستغرق نحو ثانيتين) وتأكد أن النتيجة تظهر دون إنترنت', en: 'Open slide 11 and press "Find another real example" (about two seconds) and check that the result appears offline' } ] },
     { id: 'power', icon: 'battery', h: { ar: 'الكهرباء', en: 'Power' }, items: [
       { id: 'p1', ar: 'مشترك وكابل تمديد احتياطي، وكوابل بيانات (لا كوابل شحن فقط)', en: 'A spare power strip and extension lead, and data cables (not charge-only)' },
       { id: 'p2', ar: 'بطاريات محمولة بعيدة عن الشمس والسيارة الساخنة (المعتاد حتى نحو 40 °م)', en: 'Power banks kept out of the sun and a hot car (typically rated to about 40 °C)' },
@@ -462,7 +488,8 @@
       { id: 's1', ar: 'لا لهب ولا غاز قابل للاشتعال ولا دخان حقيقي: كوب ساخن، بخار معقّم في زجاجة مغلقة، مجفّف شعر بإذن، كوب ماء', en: 'No flames, no flammable gas, no real smoke: a hot mug, sanitiser vapour in a sealed bottle, a hair dryer with permission, a cup of water' },
       { id: 's2', ar: 'الوميض مغلق افتراضيًا؛ ضع لافتة «عرض ضوء وامض» قرب جدار الهواتف', en: 'The strobe is off by default; put a "flashing light demo" sign near the phone wall' },
       { id: 's3', ar: 'لا تشغّل نغمة الإنذار الوطني أبدًا؛ كل تنبيه في العرض عليه شارة «تمرين»', en: 'Never play the national alert tone; every demo alert carries the EXERCISE banner' },
-      { id: 's4', ar: 'لا مسيّرة تطير في القاعة: المسيّرة مفهوم فقط', en: 'No drone flies in the hall: the drone is a concept only' } ] },
+      { id: 's4', ar: 'لا مسيّرة تطير في القاعة: المسيّرة مفهوم فقط', en: 'No drone flies in the hall: the drone is a concept only' },
+      { id: 's5', ar: 'لا مراوح ولا طيران على الطاولة. العربة التجريبية (إن عُرضت) على حصيرة محدّدة والعجلات مرفوعة أو بإشراف، وزر الإيقاف الطارئ في متناول اليد', en: 'No propellers and no flying at the booth. The bench rover (if shown) on a marked mat with its wheels lifted or under supervision, and the E-stop within reach' } ] },
     { id: 'last', icon: 'flag', h: { ar: 'قبل وصول الحَكَم بخمس دقائق', en: 'Five minutes before the judges' }, items: [
       { id: 'l1', ar: 'أعد ضبط غرفة العمليات (الحريق الليلي، البذرة 1) وامسح الإشارات القديمة', en: 'Reset Mission Control (night fire, seed 1) and clear old check-ins' },
       { id: 'l2', ar: 'ضع الموقّت على 00:00 وجرّب الضغط على S مرة واحدة', en: 'Put the timer at 00:00 and press S once to check' },
@@ -486,7 +513,7 @@
       say: { ar: 'الهواتف لا تتلقى الرسائل هنا — هذا ما سنختبره في التجربة الميدانية.', en: 'The phones are not receiving messages here — that is what a field pilot would test.' } },
     { sev: 'high', t: { ar: 'العرض الحي يتجمّد أو يتعطل', en: 'The live demo freezes or crashes' },
       why: { ar: 'محاكاة ثقيلة، تبويبات كثيرة، أو ذاكرة قليلة.', en: 'A heavy simulation, too many tabs, or low memory.' },
-      fix: { ar: 'تبويب ثانٍ مفتوح مسبقًا بالرابط نفسه، وسرعة المحاكاة 4×، وأغلق ما لا تحتاج. وفيديو احتياطي على سطح المكتب. وإن كانت الخريطة الوطنية فارغة فتحقق من أن ملفات البيانات الثلاثة (`data/qatar-geo.js` و`qatar-facilities.js` و`qatar-roads.js`) داخل المجلد المنسوخ؛ والشريحة 10 مثال احتياطي على الخريطة نفسها.', en: 'A second tab pre-opened with the same link, simulation speed 4×, close what you do not need. A fallback video on the desktop. If the national map is blank, check that the three data files (`data/qatar-geo.js`, `qatar-facilities.js`, `qatar-roads.js`) are inside the copied folder; slide 10 is a backup example on the same map.' },
+      fix: { ar: 'تبويب ثانٍ مفتوح مسبقًا بالرابط نفسه، وسرعة المحاكاة 4×، وأغلق ما لا تحتاج. وفيديو احتياطي على سطح المكتب. وإن كانت الخريطة الوطنية فارغة فتحقق من أن ملفات البيانات الثلاثة (`data/qatar-geo.js` و`qatar-facilities.js` و`qatar-roads.js`) داخل المجلد المنسوخ؛ والشريحة 11 مثال احتياطي على الخريطة نفسها.', en: 'A second tab pre-opened with the same link, simulation speed 4×, close what you do not need. A fallback video on the desktop. If the national map is blank, check that the three data files (`data/qatar-geo.js`, `qatar-facilities.js`, `qatar-roads.js`) are inside the copied folder; slide 11 is a backup example on the same map.' },
       say: { ar: 'الصفحة تأخرت — الإنذار المحلي لا ينتظر الحاسوب. سأنتقل إلى النسخة الاحتياطية.', en: 'The page stalled — the local alarm never waits for the computer. I\'ll switch to the backup.' } },
     { sev: 'high', t: { ar: 'الشاشة أو الـ HDMI لا تعمل', en: 'The screen or HDMI does not work' },
       why: { ar: 'منفذ مختلف، دقة غير مدعومة، أو لا إشارة.', en: 'A different port, an unsupported resolution, or no signal.' },
@@ -536,7 +563,7 @@
     { id: 'proof', icon: 'shield', ar: 'الدليل والدقة', en: 'Proof and accuracy' },
     { id: 'dispatch', icon: 'route', ar: 'أقرب جهة استجابة', en: 'Nearest responder' },
     { id: 'national', icon: 'map', ar: 'قطر كلها والبيانات', en: 'All of Qatar and the data' },
-    { id: 'drone', icon: 'drone', ar: 'المسيّرة والقانون', en: 'Drone and law' },
+    { id: 'drone', icon: 'drone', ar: 'المسيّرة وغرفة التحكم والروبوت', en: 'Drone, control room and robot' },
     { id: 'people', icon: 'users', ar: 'الناس والخصوصية والأخلاقيات', en: 'People, privacy and ethics' },
     { id: 'build', icon: 'wrench', ar: 'البناء والتكلفة والصدق', en: 'Build, cost and honesty' }
   ];
@@ -545,7 +572,7 @@
     { ar: 'لم نجرّب على حرائق حقيقية ولا على أشخاص؛ والاختبارات الميدانية في خطتنا.', en: 'We have not tested on real fires or on people; field tests are in our plan.' },
     { ar: 'حسّاسات الغاز رخيصة وقراءاتها استرشادية، ومنارة لا تحلّ محل أجهزة معتمدة.', en: 'The gas sensors are cheap and their readings indicative, and MANARA does not replace certified devices.' },
     { ar: 'المرور والمحطات والسكان في العرض محاكاة (SIM) — فحص آلية لا برهان أثر.', en: 'Traffic, stations and residents in the demo are simulated (SIM) — a mechanism check, not proof of impact.' },
-    { ar: 'اللغات الست مسودات تنتظر مراجعة متحدث أصلي، والمسيّرة مفهوم لجهة مرخَّصة.', en: 'The six community languages are drafts awaiting native review, and the drone is a concept for a licensed agency.' },
+    { ar: 'اللغات الست مسودات تنتظر مراجعة متحدث أصلي، والمسيّرة والروبوت مفهوم ونموذج محاكى لم يُطِر ولم يُنقذ شيئًا.', en: 'The six community languages are drafts awaiting native review, and the drone and the robot are a concept with a simulated prototype: nothing has flown or rescued anyone.' },
     { ar: '999 يبقى المرسِل؛ ونحن نتصل بالأنظمة ولا نستبدلها، وأي ربط يحتاج اتفاقًا.', en: '999 stays the dispatcher; we plug into systems rather than replace them, and any link needs an agreement.' },
     { ar: 'خريطة قطر لقطة من OpenStreetMap وفيها نقص قِسناه؛ أما المرور وتوفّر الوحدات ومواقعها فمحاكاة.', en: 'The map of Qatar is an OpenStreetMap snapshot with gaps that we measured; traffic and the availability and position of units are simulated.' }
   ];
@@ -564,7 +591,7 @@
       q: { ar: 'لماذا لا نكتفي برسالة نصية أو ببثّ عبر شبكة الهاتف؟', en: 'Why not just send a text message or a cell broadcast?' },
       a: { ar: 'يجب أن نفعل ذلك — ومنارة مصمَّمة لتسليم رسالتها إلى مثل هذه القنوات عبر صيغة CAP القياسية. لكن البثّ رسالة واحدة بصيغة واحدة لكل من في المنطقة. لا يستطيع أن يصعد مع النائم حتى يستجيب، ولا أن يوقظ الأصمّ باهتزاز وبطاقة مصورة، ولا أن يخاطب قارئ المالايالامية بلغته، ولا أن يعرف أن مخرجًا أُقفل للتوّ، ولا أن يعدّ مَن خرج. فالبثّ للمنطقة، ومنارة للشخص، و999 للاستجابة. ولم نختبر الإرسال عبر شبكة بثّ حقيقية.',
            en: 'We should — and MANARA is designed to hand its message to exactly such channels through the standard CAP format. But a broadcast is one message in one format for everyone in an area. It cannot climb until a sleeper responds, wake a Deaf resident with vibration and a picture card, speak to a Malayalam reader in their language, know that an exit just locked, or count who got out. So: broadcast for the area, MANARA for the person, 999 for the response. We have not tested over a real broadcast network.' } },
-    { id: 'W4', g: 'why', slide: 12, src: [],
+    { id: 'W4', g: 'why', slide: 14, src: [],
       q: { ar: 'هل تريدون استبدال 999 أو الدفاع المدني أو نظام التحذير الوطني؟', en: 'Are you trying to replace 999, Civil Defence or the national warning system?' },
       a: { ar: 'لا. 999 يبقى المرسِل، والدفاع المدني يكافح الحريق، ونظام التحذير الوطني يخاطب الجميع. منارة تكمّل «آخر مئة متر»: تتحقق، وتوقظ كل شخص، وترشده، وتعدّه، وتسلّم الجهات حزمة موثّقة. وكل ربط حقيقي بأنظمة الدولة يحتاج اتفاقًا مع الجهة، ولا ندّعي أن شيئًا منه قد تم.',
            en: 'No. 999 stays the dispatcher, Civil Defence fights the fire, and the national warning system speaks to everyone. MANARA completes the last 100 metres: it proves, wakes each person, guides them, counts them, and hands the authorities a verified package. Any real link to state systems needs an agreement with the authority, and we do not claim any has been made.' } },
@@ -577,233 +604,285 @@
       q: { ar: 'التنبيه وتوجيه المخارج موجودان في بعض المباني الذكية. فما الجديد عندكم؟', en: 'Alerting and exit guidance already exist in some smart-building products. What is new?' },
       a: { ar: 'لا ندّعي السبق، فأجزاء منها موجودة. ادعاؤنا أضيق: مسار واحد مفتوح يعمل دون إنترنت ويجمع (1) رفض التنبيه على حسّاس واحد، (2) رسالة تتكيّف مع كل شخص: لغته وصيغته وقدرته، (3) إعادة توجيه فورية حين يتغيّر مخرج، (4) عدّ مَن خرج، (5) تسليم حزمة موثّقة مع توصية بأسرع وحدة — لستة أخطار لا لخطر واحد. ونسنده باختبارات آلية وصفحة أدلة صادقة، لكننا لم نُجرِ تجربة ميدانية بعد.',
            en: 'We don\'t claim to be first; parts of this exist. Our claim is narrower: one open pipeline that works offline and combines (1) refusing to alert on a single sensor, (2) a message that adapts to each person — language, format, ability, (3) instant re-routing when an exit changes, (4) a headcount, and (5) a verified package with a fastest-unit recommendation — for six hazards, not one. We back it with automated tests and an honest evidence page, but we have not done a field trial yet.' } },
-    { id: 'W7', g: 'why', slide: 12, src: [],
+    { id: 'W7', g: 'why', slide: 14, src: [],
       q: { ar: 'هل يتوافق المشروع مع برامج المدينة الذكية مثل «تسمو»؟', en: 'Does it fit smart-city programmes such as TASMU?' },
       a: { ar: 'تسمو (برنامج قطر الذكية بقيادة وزارة المواصلات والاتصالات) سياق لنا لا شريك: لا ندّعي توافقًا معه. أقصى ما نقوله إن منارة حالة استخدام مرشّحة لمنصة مدينة ذكية، ولا ندّعي أي اتفاق.',
            en: 'TASMU (the Smart Qatar Programme, led by the Ministry of Transport and Communications) is context for us, not a partner: we claim no compatibility with it. At most, MANARA is a candidate use case for a smart-city platform, and we claim no agreement of any kind.' } },
-    { id: 'W8', g: 'why', slide: 6, src: ['S28', 'S30', 'S18', 'S19', 'S41'],
+    { id: 'W8', g: 'why', slide: 7, src: ['S28', 'S30', 'S18', 'S19', 'S41'],
       q: { ar: 'لماذا هذه الأخطار الستة؟ وماذا عن الزلازل؟', en: 'Why these six hazards? What about earthquakes?' },
       a: { ar: 'لأن «آخر مئة متر» هي المشكلة نفسها في كلها: أن يستيقظ الناس ويفهموا ويتحركوا في الاتجاه الصحيح ويُعدّوا. واخترنا ما له سجلّ في قطر: سيول أكتوبر 2018 (84 ملم في أبو هامور)، وعاصفة أبريل 2015 الغبارية (PM10 فوق 7,000)، وحرّ الصيف وقواعد وزارة العمل، وتسرّب الغاز، والحريق، وحالات الاستغاثة في المنازل. أما الزلازل فقد وصفت إدارة الأرصاد قطر بأنها منخفضة الخطر (2013) فلم نبنِ لها سيناريو. وبعض هذه الأخطار محاكاة (السيول والغبار) ونقولها.',
            en: 'Because the last 100 metres is the same problem in all of them: people must wake, understand, move the right way and be counted. We chose hazards with a Qatar record: the October 2018 floods (84 mm in Abu Hamour), the April 2015 dust storm (PM10 above 7,000), summer heat and the Ministry of Labour rules, gas leaks, fires, and emergencies at home. Qatar\'s Meteorology Department called Qatar a low-risk country for earthquakes (2013), so we built no scenario for them. Some hazards are simulated (flood, dust), and we say so.' } },
     /* ---------------- proof ---------------- */
-    { id: 'P1', g: 'proof', slide: 5, src: [],
+    { id: 'P1', g: 'proof', slide: 6, src: [],
       q: { ar: 'هل كاشف الحريق «ذكاء اصطناعي»؟', en: 'Is your fire detector "AI"?' },
       a: { ar: 'لا. هو رؤية حاسوبية بقواعد: نماذج لون وحركة وتذبذب وطبقات تحقق (شكل، استمرار، فيتو حراري). دقته على صور اختبار لم يرها أثناء الضبط 66.7% فقط ونقول ذلك، ويرفض كاشف الفيديو الأجسام الحمراء الثابتة. وهو لا يقرر وحده: لا بد من مفتاحين مستقلين ثم موافقة بشرية قبل أي تنبيه عام. وقد نجرّب نموذجًا متعلمًا لاحقًا ونقيسه في مختبر الخدع بالشروط نفسها.',
            en: 'No. It is rule-based computer vision: colour models, motion, flicker and verification layers (shape, persistence, a thermal veto). Its accuracy on held-out still images is 66.7% and we say so; the video detector rejects static red objects. And it never decides alone: two independent keys, then a human approval, before any public alert. We may try a learned model later and score it in the Decoy Lab on equal terms.' } },
-    { id: 'P2', g: 'proof', weak: true, slide: 5, src: [],
+    { id: 'P2', g: 'proof', weak: true, slide: 6, src: [],
       first: { ar: 'قبل أن تسألوا: كاشف الصور يصيب 66.7% فقط على صور جديدة، ولهذا لا يقرّر وحده.', en: 'Before you ask: the image detector is right only 66.7% on new photos, so it never decides alone.' },
       q: { ar: 'ما دقة الكاشف وما معدل الإنذارات الكاذبة؟', en: 'How accurate is the detector, and what is the false-alarm rate?' },
       a: { ar: 'يصيب كاشفنا 66.7% على صور محجوزة لم يُضبط عليها (12 من 18): وجد صور النار الست كلها، لكنه أخطأ في 3 من 12 صور بلا نار، ولم يجد دخانًا في صور الدخان الثلاث. هي عيّنة صغيرة فلا نعمّمها. ولهذا لا تطلق رؤيته وحدها أي تنبيه عام: نحتاج مفتاحًا ثانيًا مستقلًا (حرارة أو دخان) ثم إنسانًا. وفي اختبار المسار الحي لم تصل 14 من 14 تجربة خداع (قميص أحمر، سيارة، وشاح، LED، كشّاف، جدار، مصباح وامض) إلى «نار»، لكنها مشاهد مولَّدة بالشيفرة لا لقطات حقيقية. ولم نقِس معدل الإنذارات الكاذبة في مبنى حقيقي على مدى أيام؛ وهذا في خطتنا.',
            en: 'Our detector is right 66.7% of the time on held-out photos it was not tuned on (12 of 18): it found all six fire photos, but was wrong on 3 of 12 fire-free photos and missed the smoke in all three smoke photos. That is a small sample, so we do not generalise it. This is why its vision alone never triggers a public alert: we need a second independent key (heat or smoke), then a human. In the live-pipeline test 14 of 14 decoy trials (red shirt, car, scarf, LED, flashlight, wall, flickering lamp) never reached FIRE, but those scenes are generated in code, not real footage. We have not measured a false-alarm rate in a real building over days; that is in our plan.' } },
-    { id: 'P3', g: 'proof', slide: 5, src: [],
+    { id: 'P3', g: 'proof', slide: 6, src: [],
       q: { ar: 'مَن يقرر إرسال التنبيه؟ والثواني ثمينة، فلماذا ننتظر إنسانًا؟', en: 'Who decides to alert? Seconds count — why wait for a human?' },
       a: { ar: 'داخل المبنى لا شيء ينتظر: الصفّارة المحلية وأسهم المخارج وإنذار الحسّاس تعمل فورًا كأي جهاز إنذار. أما التنبيه العام خارج المبنى (الهواتف والجيران والجهات) فيحتاج موافقة المشغّل، لأن تنبيهًا عامًا كاذبًا يعلّم الناس تجاهل التنبيه الحقيقي التالي. وبطاقة الاعتماد تعرض المفتاحين اللذين اتفقا لتُقرأ في ثوانٍ. لم نقِس زمن مشغّل حقيقي؛ في العرض يعتمد مشغّل محاكى بعد زمن افتراضي قابل للتعديل (20 ثانية).',
            en: 'Inside the building nothing waits: the local siren, the exit arrows and the sentinel buzzer fire at once, like any fire alarm. Only the public alert beyond the building (phones, neighbours, the authority) needs the operator\'s approval, because a false public alert teaches people to ignore the next real one. The approval card shows the two keys that agreed so it can be read in seconds. We have not measured a real operator\'s time; in the demo a simulated operator approves after an adjustable assumption (20 seconds).' } },
-    { id: 'P4', g: 'proof', weak: true, slide: 11, src: [],
+    { id: 'P4', g: 'proof', weak: true, slide: 13, src: [],
       first: { ar: 'لم نجرّب على حرائق حقيقية.', en: 'We have not tested on real fires.' },
       q: { ar: 'هل جُرِّب المشروع على حرائق حقيقية؟', en: 'Has it been tested on real fires?' },
       a: { ar: 'لا — ونقولها. لا يُسمح بلهب ولا غاز قابل للاشتعال ولا دخان حقيقي في القاعة، فنستعمل بدائل آمنة: كوب ساخن، وبخار معقّم، ومجفّف شعر، وكوب ماء، ومحاكاة موسومة SIM. اختُبر الكاشف على صور ومقاطع لا على حرائق مبانٍ حقيقية. واختبار اللهب الحقيقي يحتاج مختبرًا خاضعًا للإشراف وموافقة السلامة في المدرسة أو الدفاع المدني، وهو في خطواتنا التالية. وادعاءاتنا محصورة فيما قسناه.',
            en: 'No — and we say so. No flames, flammable gas or real smoke are allowed in the hall, so we use safe stand-ins: a hot mug, sanitiser vapour, a hair dryer, a cup of water, and a simulation marked SIM. The detector was tested on photos and clips, not on real building fires. Real-flame testing needs a supervised lab and safety approval from the school or Civil Defence, and it is in our next steps. Our claims are limited to what we measured.' } },
-    { id: 'P5', g: 'proof', weak: true, slide: 6, src: ['S60', 'S61', 'S62', 'S63'],
+    { id: 'P5', g: 'proof', weak: true, slide: 7, src: ['S60', 'S61', 'S62', 'S63'],
       first: { ar: 'قراءات الحسّاسات عندنا استرشادية، ومنارة لا تحلّ محل أجهزة معتمدة.', en: 'Our sensor readings are indicative, and MANARA does not replace certified devices.' },
       q: { ar: 'الحسّاسات رخيصة. هل يمكن الاعتماد عليها؟', en: 'The sensors are cheap hobby parts. Can they be trusted?' },
       a: { ar: 'ليست موثوقة وحدها. حسّاسات MQ حسّاسة لغازات متعددة وتنجرف مع الحرارة والرطوبة، وتطلب صحائف بياناتها تسخينًا لا يقل عن 48 ساعة؛ وتسخين الدقائق الثلاث على الطاولة يعطي قراءات استرشادية فقط. لهذا يحتاج كل إنذار إلى مفتاحين مستقلين، ونكتب «استرشادي» على قراءات ppm، ومنارة مكمِّلة: لا تحلّ محل جهاز إنذار حريق أو كاشف غاز معتمد.',
            en: 'Not on their own. MQ-type gas sensors respond to several gases and drift with temperature and humidity, and their datasheets ask for at least 48 hours of burn-in; the three-minute warm-up at the booth gives indicative readings only. That is why every alarm needs two independent keys, why we label ppm values "indicative", and why MANARA is a complement: it never replaces a certified fire alarm or gas detector.' } },
-    { id: 'P6', g: 'proof', weak: true, slide: 5, src: [],
+    { id: 'P6', g: 'proof', weak: true, slide: 6, src: [],
       first: { ar: 'لم نقِس بعد معدل الإنذارات الكاذبة في مبنى حقيقي.', en: 'We have not yet measured the false-alarm rate in a real building.' },
       q: { ar: 'ماذا عن «إرهاق الإنذارات»؟ ألن يتجاهل الناس التنبيهات؟', en: 'What about false-alarm fatigue? Won\'t people start ignoring alerts?' },
       a: { ar: 'هذا خطر حقيقي. نعالجه بثلاثة أمور: مفتاحان مستقلان وموافقة إنسان قبل أي تنبيه عام؛ ومناطق مستهدفة (المبنى أو الكتلة لا المدينة)؛ وثلاثة مستويات (مراقبة، احتماء، إخلاء) فتكون أغلب التنبيهات هادئة. ولا ننبّه أبدًا على حسّاس واحد. أما ما لم نفعله فقياس معدل الإنذارات الكاذبة على مدى أسابيع في مبنى حقيقي؛ وهذا ما ستقيسه التجربة الميدانية.',
            en: 'It is a real risk. We attack it three ways: two independent keys and a human before any public alert; targeted zones (the building or block, not the city); and three levels (watch, shelter, evacuate), so most alerts are calm. We never alert on a single sensor. What we have not done is measure the false-alarm rate over weeks in a real building; a field pilot would.' } },
-    { id: 'P7', g: 'proof', weak: true, slide: 11, src: [],
+    { id: 'P7', g: 'proof', weak: true, slide: 13, src: [],
       first: { ar: 'كل رقم محاكى موسوم SIM: فحص آلية لا برهان أثر.', en: 'Every simulated number is marked SIM: a mechanism check, not proof of impact.' },
       q: { ar: 'محاكاتكم تُظهر أن منارة أفضل. أليست مصمَّمة لتنجح؟', en: 'Your simulation shows MANARA is better. Isn\'t it rigged to win?' },
       a: { ar: 'لا يمكنها إثبات الأثر ونكتب ذلك في كل صفحة: SIM فحص للآلية فقط. تُشغّل البذرة نفسها في عالمين (إنذار عادي مقابل منارة)، وكل افتراض شريط قابل للتعديل. والنتائج تختلف باختلاف السيناريو والبذرة: في الحريق الليلي والغاز والاستغاثة فرق واضح، وفي الغبار وحريق المدرسة صغير، وفي الحرّ يتغير باختلاف البذرة (جرّبوا البذرتين 1 و7 على شريحة الأدلة). ونعرض مقايضة محرجة: صفّارة المبنى تُسمع بعد 14 ثانية في العالمين، أما أول رسالة شخصية من منارة فتصل بعد 39 ثانية لأنها تتحقق أولًا.',
            en: 'It cannot prove impact, and we say so on every page: SIM is a mechanism check only. It runs the same seed in two worlds (ordinary alarm vs MANARA), and every assumption is an adjustable slider. Results differ by scenario and seed: the night fire, gas and SOS runs show a clear gap, dust and the school fire a small one, and heat changes with the seed (try seeds 1 and 7 on the Evidence slide). And we show an awkward trade-off: the building siren is heard after 14 seconds in both worlds, while MANARA\'s first personal message arrives after 39 seconds because it verifies first.' } },
-    { id: 'P8', g: 'proof', slide: 6, src: ['S18', 'S19', 'S20'],
+    { id: 'P8', g: 'proof', slide: 7, src: ['S18', 'S19', 'S20'],
       q: { ar: 'في قطر منع للعمل وقت الظهيرة وحدّ WBGT. ماذا تضيفون؟', en: 'Qatar already bans midday work and sets a WBGT limit. What do you add?' },
       a: { ar: 'المنع جدول زمني، وحدّ 32.1 °م يتطلب قياسًا في موقع العمل (قطر تريبيون؛ منظمة العمل الدولية). منارة تحوّل القياس إلى رسالة شخصية «توقف واذهب إلى الظل» بلغة العامل، وتحصي مَن وصل إلى مكان التبريد. ووجدت دراسة منظمة العمل الدولية 2019 أن العمال الذين يستطيعون تنظيم وتيرتهم وأخذ الاستراحة كانوا أقل عرضة للإجهاد الحراري، فنصمّم تذكيرًا لا إجبارًا. وقيمة WBGT من مستشعر حرارة ورطوبة تقدير نكتبه على الشاشة؛ الرقم القانوني يحتاج مقياسًا بكرة سوداء.',
            en: 'The ban is a schedule, and the 32.1 °C limit needs a measurement at the workplace (Qatar Tribune; ILO). MANARA turns a measurement into a personal "stop and go to shade" message in the worker\'s language and counts who reached the cooling shelter. The ILO study (2019) found workers who could self-pace and rest had lower heat strain, so we design a nudge, not enforcement. A WBGT from a temperature/humidity sensor is an estimate, and the screen says so; the legal figure needs a black-globe thermometer.' } },
-    { id: 'P9', g: 'proof', weak: true, slide: 6, src: ['S46', 'S47', 'S48', 'S49', 'S50'],
+    { id: 'P9', g: 'proof', weak: true, slide: 7, src: ['S46', 'S47', 'S48', 'S49', 'S50'],
       first: { ar: 'العتبات إرشاد دولي للبالغين، وليست معتمدة.', en: 'The thresholds are international guidance for adults, and are not certified.' },
       q: { ar: 'من أين عتباتكم (الغاز، الغبار، الحرارة)؟ وهل هي آمنة؟', en: 'Where do your thresholds (gas, dust, heat) come from? Are they safe?' },
       a: { ar: 'مأخوذة من إرشادات دولية للبالغين الأصحاء (NIOSH وOSHA ووكالة حماية البيئة الأمريكية ومنظمة الصحة العالمية) ومن قانون قطر للحرارة، وكل رقم يظهر مع مصدره. وقد يتضرر الأطفال وكبار السن والمرضى عند مستويات أقل. نكتب على الشاشة أنها «إرشاد دولي»، ومنارة غير معتمدة ولا تحلّ محل جهاز معتمد.',
            en: 'They come from international guidance for healthy adults (NIOSH, OSHA, the US EPA, WHO) and from Qatar\'s heat rules, and every number is shown with its source. Children, older people and sick people can be harmed at lower levels. The screen says "international guidance", and MANARA is not certified and does not replace a certified device.' } },
     /* ---------------- dispatch ---------------- */
-    { id: 'D1', g: 'dispatch', slide: 9, src: ['S24'],
+    { id: 'D1', g: 'dispatch', slide: 10, src: ['S24'],
       q: { ar: 'كيف تختار منارة أيّ مستشفى وأيّ وحدة شرطة وإطفاء تستجيب؟', en: 'How does MANARA choose which hospital, police and fire unit responds?' },
       a: { ar: 'بمَن يصل أسرع بحسب الازدحام، لا بمَن هو أقرب على الخريطة. لكل نوع وحدة (إطفاء/إنقاذ، إسعاف، شرطة) نأخذ كل محطة ونحسب زمن الطريق بخوارزمية ديكسترا على شبكة الطرق: زمن كل طريق = الطول ÷ (السرعة الحرة × الازدحام)، ونحذف الطرق المغلقة، ونتجاوز الوحدات المشغولة، ونختار أقل زمن وصول. ونعرض صاحب المركز الثاني والمسافة ليرى المشغّل السبب (مثلًا: «المحطة ب أبعد بنحو كيلومتر لكنها أسرع بـ 47 ثانية بسبب ازدحام الذروة على الشريان الغربي» — SIM). وللمصاب نختار أقرب مستشفى قادر على استقباله (قسم طوارئ 24 ساعة، صدمات، أطفال) مع افتراض سعة موسوم. المحطات والمستشفيات والمرور في العرض افتراضية ومحاكاة.',
            en: 'By who gets there fastest given traffic — not who is closest on the map. For each unit type (fire/rescue, ambulance, police) we take every station and compute road travel time with Dijkstra over the road graph: each road\'s time is length ÷ (free-flow speed × traffic); closed roads are removed, busy units skipped, and the smallest ETA wins. We show the runner-up and the distance so the operator sees why (for example "Station B is about a kilometre farther but 47 seconds faster because of rush-hour traffic on West Arterial" — SIM). For a patient we choose the nearest hospital that can take them (24-hour emergency department, trauma, paediatric) with a labelled capacity assumption. Stations, hospitals and traffic in the demo are fictional and simulated.' } },
-    { id: 'D2', g: 'dispatch', slide: 9, src: ['S28'],
+    { id: 'D2', g: 'dispatch', slide: 10, src: ['S28'],
       q: { ar: 'ماذا لو أُغلق طريق أو تغيّر الازدحام والوحدة في الطريق؟', en: 'What if a road is closed or traffic changes while the unit is on its way?' },
       a: { ar: 'يُعاد حساب زمن الوصول كل ثانية، وتُعيد الوحدات في الطريق توجيه نفسها حول الازدحام الجديد، وتُحذف الطرق المغلقة (سيول، حريق، طوق) من الشبكة. وإذا صار مركز أبعد أسرع بهامش واضح، أو أصبحت الوحدة المختارة مشغولة، تعيد منارة الإرسال تلقائيًا وتخبر المشغّل بالسبب. وبعد أمطار أكتوبر 2018 غمرت المياه أنفاقًا في الدوحة (ذا بينينسولا)، فإغلاق طريق يغيّر فعلًا أي جهة هي الأسرع. جرّبوا على شريحة الاستجابة: انقروا طريقًا لتزحموه أو تغلقوه. كله محاكاة، والمرسِل الفعلي 999.',
            en: 'Estimated arrival is recomputed every second, en-route units re-route around new jams, and closed roads (flood, fire, cordon) are removed from the graph. If a farther station becomes faster by a clear margin, or the chosen unit becomes busy, MANARA re-dispatches automatically and tells the operator why. After the October 2018 rain several tunnels in Doha flooded (The Peninsula), so a closed road really does change which unit is fastest. Try it on the dispatch slide: click a road to jam or close it. It is all simulated, and the real dispatcher is 999.' } },
-    { id: 'D3', g: 'dispatch', weak: true, slide: 9, src: ['S24'],
+    { id: 'D3', g: 'dispatch', weak: true, slide: 10, src: ['S24'],
       first: { ar: 'المرور في العرض محاكى (SIM)، ولا نملك بيانات مرور حيّة.', en: 'The traffic in the demo is simulated (SIM); we have no live traffic data.' },
       q: { ar: 'هل ادعاء «الأسرع» حقيقي وأنتم تحاكون المرور؟', en: 'Is "fastest responder" real when your traffic is simulated?' },
       a: { ar: 'المرور في العرض محاكاة ونكتب SIM عليه. في الواقع يلزم مزوّد مرور حيّ وبيانات مواقع المركبات من الجهة نفسها، وهذا يحتاج اتفاقًا. اخترنا الترتيب بالدقائق لأن أهداف قطر نفسها بالدقائق: هدف الإسعاف الوصول إلى 75% من البلاغات خلال 10 دقائق في المدن (وكالة الأنباء القطرية 2023). وما نثبته في العرض هو الآلية: أن الخوارزمية تختار الأسرع لا الأقرب حين يتغير الازدحام، لا أن الأزمنة صحيحة في الواقع. ويبقى 999 هو المرسِل.',
            en: 'The traffic in our demo is a simulation, labelled SIM. A real system needs a live traffic provider and the authority\'s own vehicle-location data, which takes an agreement. We rank by minutes because Qatar\'s own targets are in minutes — the ambulance target is to reach 75% of calls within 10 minutes in urban areas (QNA, 2023). What the demo shows is the mechanism — that the algorithm picks the fastest, not the nearest, when traffic changes — not that the times are right in reality. 999 stays the dispatcher.' } },
-    { id: 'D4', g: 'dispatch', slide: 9, src: ['S27', 'S72'],
+    { id: 'D4', g: 'dispatch', slide: 10, src: ['S27', 'S72'],
       q: { ar: 'مَن يرسل الوحدات فعلًا؟', en: 'Who actually dispatches?' },
       a: { ar: 'الرقم 999: غرفة عمليات وزارة الداخلية ترسل الدفاع المدني، وخدمة الإسعاف في مؤسسة حمد ترسل الإسعاف. منارة لا تتصل بهم ولا تحلّ محلهم؛ تُعدّ حزمة موثّقة (ماذا، أين، حالة المخارج والطرق، مَن بلا حساب ومَن يحتاج مساعدة) وتوصي بوحدة. وللتوصية حالات: مقترحة ← معتمدة ← مُرسلة ← في الطريق ← في الموقع ← أُنهيت، لكل منها وقتها. والربط الحقيقي بنظام الإرسال لدى الجهة يحتاج اتفاقًا، ولا ندّعي أنه حدث. ولا نعرف التقسيم الداخلي الدقيق بين الجهات لكل نوع حادث، وسنتأكد منه من جهة رسمية.',
            en: '999: the Ministry of Interior\'s control room dispatches Civil Defence, and HMC\'s ambulance service dispatches ambulances. MANARA does not call them or replace them; it prepares a verified package (what, where, exit and road states, who is unaccounted, who needs help) and recommends a unit. A recommendation moves through states — recommended, approved, dispatched, en route, on scene, cleared — each timestamped. Real integration with an authority\'s dispatch system needs an agreement, and we do not claim it exists. We also do not know the exact internal split between bodies for each incident type and would confirm it with an official contact.' } },
-    { id: 'D5', g: 'dispatch', slide: 9, src: ['S72', 'S73'],
+    { id: 'D5', g: 'dispatch', slide: 10, src: ['S72', 'S73'],
       q: { ar: 'كيف تختارون المستشفى؟ أليس الأقرب هو الأفضل دائمًا؟', en: 'How do you pick the hospital? Isn\'t the nearest always best?' },
       a: { ar: 'ليس دائمًا: قد لا يملك الأقرب ما يحتاجه المصاب. نستخدم علامات القدرة: قسم طوارئ 24 ساعة، ومركز صدمات من المستوى الأول، وطوارئ أطفال، مع افتراض سعة (أسرّة شاغرة) موسوم كافتراض، ثم نختار الأسرع وصولًا بين من يناسب. تنشر مؤسسة حمد قائمة بمستشفياتها التي لها أقسام طوارئ، وتذكر أن مركز الصدمات في مستشفى حمد العام من المستوى الأول؛ أما الإحداثيات وعدد الأسرّة فلم نجدها منشورة، فمستشفيات العرض افتراضية. وفي الواقع يقرر المسعفون والإسعاف الوجهة.',
            en: 'Not always: the nearest may lack what the patient needs. We use capability flags — 24-hour emergency department, Level I trauma centre, paediatric emergency — plus a capacity assumption (free beds) labelled as an assumption, then pick the fastest among those that fit. HMC publishes which hospitals have emergency departments and that the Trauma Center at Hamad General Hospital is Level I; coordinates and bed counts were not published in what we read, so the demo hospitals are fictional. In reality the paramedics and the ambulance service decide the destination.' } },
-    { id: 'D6', g: 'dispatch', weak: true, slide: 9, src: [],
+    { id: 'D6', g: 'dispatch', weak: true, slide: 10, src: [],
       first: { ar: 'لم نحاكِ حوادث متزامنة كثيرة.', en: 'We have not simulated many simultaneous incidents.' },
       q: { ar: 'ماذا لو وقع حادثان معًا أو كانت الوحدة الأقرب مشغولة؟', en: 'What if two incidents happen at once, or the best unit is busy?' },
       a: { ar: 'لكل وحدة علامة توفر (افتراض موسوم وقابل للتعديل بمفتاح في غرفة العمليات). تُتجاوز الوحدة المشغولة وتُختار التالية الأسرع، وتذكر البطاقة ذلك. لكننا لم نحاكِ حوادث متزامنة كثيرة؛ هذا عمل نظام إرسال حقيقي لدى الجهة (CAD).',
            en: 'Each unit has an availability flag (a labelled, adjustable assumption with a switch in Mission Control). A busy unit is skipped and the next-fastest is chosen, and the card says so. But we have not simulated many simultaneous incidents; that is the job of the authority\'s real dispatch system (CAD).' } },
     /* ---------------- the whole of Qatar and the data ---------------- */
-    { id: 'N1', g: 'national', weak: true, slide: 10, src: [],
+    { id: 'N1', g: 'national', weak: true, slide: 11, src: [],
       first: { ar: 'بيانات الخريطة لقطة من OpenStreetMap وفيها نقص قِسناه: 23 من 73 اسمًا في قوائم رسمية بلا مقابل فيها.', en: 'The map data is an OpenStreetMap snapshot with gaps we measured: 23 of 73 names on official lists have no match in it.' },
       q: { ar: 'من أين تأتي بيانات الخريطة؟ وما مدى اكتمالها؟', en: 'Where does the map data come from, and how complete is it?' },
       a: { ar: 'من OpenStreetMap: لقطة بتاريخ 8 أكتوبر 2026 يبنيها سكربت في المستودع إلى ثلاثة ملفات: حدود قطر و8 بلديات و135 مكانًا، و138 منشأة (72 مستشفى، ومركز واحد بطوارئ، و21 مركز إطفاء، و41 مركز شرطة، و3 نقاط إسعاف)، وشبكة طرق رئيسية طولها 6,116 كم (23,135 تقاطعًا). وقارنّا المنشآت بقوائم رسمية وجدناها (مؤسسة حمد، والدفاع المدني، وأدلة منشورة): من 73 اسمًا طابق 36 مباشرة و5 باسم مختلف، و9 موجودة في OSM بوسم آخر فلم تدخل، و23 غير موجودة في OSM إطلاقًا. وهذه القوائم هي ما وجدناه لا عيّنة عشوائية. أمثلة: مركزا طوارئ أطفال من ستة بلا عنصر في OSM؛ و21 مركز إطفاء في الخريطة مقابل 23 مركزًا رسميًا للدفاع المدني (ذا بينينسولا 2021)؛ و3 نقاط إسعاف فقط. ما ينقص موسوم «مفقود» ولا نخترع له إحداثيات. هذه فجوات في البيانات لا ادعاءات عن الخدمة الحقيقية.',
            en: 'From OpenStreetMap: a snapshot dated 8 October 2026 that a script in the repository turns into three files — the outline of Qatar, 8 municipalities and 135 places; 138 facilities (72 hospitals, 1 clinic with an emergency department, 21 fire stations, 41 police posts, 3 ambulance points); and a major-road network of 6,116 km (23,135 junctions). We checked the facilities against the official lists we could find (HMC, Civil Defence, published directories): of 73 names, 36 matched directly and 5 under a different name, 9 are in OSM under other tags so they did not enter, and 23 are not in OSM at all. These lists are what we could find, not a random sample. Examples: 2 of the 6 paediatric emergency centres have no OSM feature; the map has 21 fire stations against 23 official Civil Defence centres (The Peninsula, 2021); and only 3 ambulance points. Anything missing is marked MISSING and we invent no coordinates. These are gaps in the data, not claims about the real service.' } },
-    { id: 'N2', g: 'national', weak: true, slide: 10, src: [],
+    { id: 'N2', g: 'national', weak: true, slide: 11, src: [],
       first: { ar: 'المرور في العرض محاكى؛ لا نملك بيانات مرور حيّة لقطر.', en: 'The traffic in the demo is simulated; we have no live traffic data for Qatar.' },
       q: { ar: 'هل المرور حقيقي؟', en: 'Is the traffic real?' },
       a: { ar: 'لا. المرور محاكى ويُكتب عليه SIM في كل مكان. زمن عبور كل مقطع طريق = الطول ÷ (السرعة الحرة × الازدحام)، والازدحام = (1 − الخسارة) × ضوضاء × زحام المشغّل × بطء الحادث × الطقس × الطوق؛ والخسارة = ضغط اليوم (نوع اليوم والساعة) × حساسية صنف الطريق × عمق حضري/ريفي. أشكال الذروة افتراضات اطّلعنا في صحيفة بحثية عنها على دراسة لجامعة قطر عن 318 تقاطعًا (ذروات نحو 06:30–08:30 و12:30–14:30 و17:15–19:15) لكننا لم نفتح الدراسة نفسها، فهي مصدر ثانوي غير مؤكد. السرعات الحرة من وسم maxspeed في OSM حيث وُجد (نحو 36% من المقاطع) وإلا فافتراض موسوم بحسب صنف الطريق، وهو ليس قانون قطر. وفي الواقع نستبدل هذه الدالة بمزوّد مرور حيّ، ونخطط لمقارنة الأزمنة المحاكاة بتطبيق ملاحة عند ساعات ثابتة على 10 مسارات على الأقل (بروتوكول في التقرير، والجدول فارغ حتى نقيس).',
            en: 'No. The traffic is simulated and says SIM everywhere. Each road segment\'s time = length ÷ (free-flow speed × congestion), where congestion = (1 − loss) × noise × operator jam × incident slow-down × weather × cordon, and loss = the day\'s pressure (day type and hour) × the road class\'s sensitivity × an urban/rural depth. The peak shapes are assumptions informed by a Qatar University study of 318 intersections (peaks around 06:30–08:30, 12:30–14:30 and 17:15–19:15) that we found through a search but did not open itself, so it is an unconfirmed secondary source. Free-flow speeds come from OSM\'s maxspeed tag where it exists (about 36% of segments) and otherwise from a labelled class default, which is not Qatari law. In reality we would replace this function with a live traffic provider, and we plan to compare simulated times with a navigation app at fixed hours on at least 10 routes (the protocol is in the report; the table is blank until we measure).' } },
-    { id: 'N3', g: 'national', slide: 10, src: [],
+    { id: 'N3', g: 'national', slide: 11, src: [],
       q: { ar: 'كيف تُدمج مواقع الوحدات الحقيقية؟', en: 'How would real unit positions be integrated?' },
       a: { ar: 'في المحاكاة كل وحدة سجلّ بسيط: موقع وحالة (متاحة/مشغولة/في الطريق). والاستبدال الحقيقي أن يأتي هذا السجل من نظام الإرسال لدى الجهة (CAD) وتتبّع مركباتها (AVL) بدل المحاكاة، وتبقى الخوارزمية نفسها. وهذا يحتاج اتفاقًا مع الجهة، ومراجعة قانونية لحماية البيانات لأن مواقع المركبات حساسة، وقناة آمنة وموقّعة. وكنا سنطلب الحد الأدنى فقط: رقم الوحدة وموقعها وعلامة التوفر. ولا نتتبّع اليوم أي مركبة حقيقية ولا نستخدم أي حادث حقيقي، والمرسِل الفعلي يبقى 999 فهو من يقرّر.',
            en: 'In the simulation each unit is a simple record: a position and a state (available / busy / en route). The real replacement is for that record to come from the authority\'s dispatch system (CAD) and vehicle tracking (AVL) instead of the simulation, with the same algorithm on top. That needs an agreement with the authority, a legal review of data protection because vehicle positions are sensitive, and a secure, signed channel. We would ask for the minimum only: unit id, position and an availability flag. Today we track no real vehicle and use no real incident, and the real dispatcher stays 999, which decides.' } },
-    { id: 'N4', g: 'national', slide: 10, src: [],
+    { id: 'N4', g: 'national', slide: 11, src: [],
       q: { ar: 'مَن يملك البيانات؟', en: 'Who owns the data?' },
       a: { ar: 'بيانات الخريطة © مساهمو OpenStreetMap، منشورة برخصة ODbL 1.0: يملكها مساهموها وتُرخَّص للجميع بشروط. ملفاتنا الثلاثة (الحدود والمنشآت والطرق) «عمل منتَج» من قاعدة بيانات OSM، فنُبقي نص النسب ونشارك أي قاعدة بيانات مشتقة بالرخصة نفسها. أما الشيفرة والمحاكاة والنصوص فعملنا. ولم ننسخ إحداثيات من أي قائمة رسمية؛ استخدمنا القوائم الرسمية (أسماء فقط) للتحقق من الاكتمال. والأرقام الافتراضية (السعة، المرور، التوفر) من افتراضاتنا وليست بيانات أحد. وفي نشر حقيقي تكون مصدر الحقيقة بيانات الجهة الجغرافية نفسها وتبقى OSM احتياطًا.',
            en: 'The map data is © OpenStreetMap contributors, published under the ODbL 1.0 licence: its contributors own it and it is licensed to everyone on conditions. Our three files (outline, facilities, roads) are a Produced Work of the OSM database, so we keep the attribution text and share any derived database under the same licence. The code, the simulation and the texts are our own work. We copied no coordinates from any official list; we used the official lists (names only) to check completeness. The simulated numbers (capacity, traffic, availability) are our own assumptions, not anyone\'s data. In a real deployment the authority\'s own geographic data would be the source of truth and OSM only a fallback.' } },
-    { id: 'N5', g: 'national', slide: 10, src: [],
+    { id: 'N5', g: 'national', slide: 11, src: [],
       q: { ar: 'كيف تلتزمون بشروط ODbL والنسب؟', en: 'How do you comply with the ODbL licence and attribution?' },
       a: { ar: 'نكتب «Contains data © OpenStreetMap contributors, ODbL 1.0» ورابط حقوق OSM وتاريخ اللقطة على كل صفحة ترسم الخريطة، وفي ملف data/CREDITS.txt والبيانات نفسها. وكل منشأة تحتفظ بمعرّف OSM، وسكربت البناء وأوامر الاستعلام موثّقة في manara/docs/MANARA-DATA.md فيستطيع أي شخص إعادة البناء والتحقق. ونشارك أي قاعدة بيانات مشتقة بالرخصة نفسها. لسنا محامين: اتبعنا إرشاد OSM للنسب، ونحتاج مراجعة قانونية قبل أي استخدام تجاري.',
            en: 'We show "Contains data © OpenStreetMap contributors, ODbL 1.0", the OSM copyright link and the snapshot date on every page that draws the map, and in data/CREDITS.txt and the data files themselves. Every facility keeps its OSM id, and the build script and the exact queries are documented in manara/docs/MANARA-DATA.md, so anyone can rebuild and check. We share any derived database under the same licence. We are not lawyers: we followed OSM\'s attribution guidance, and a commercial use would need a legal review.' } },
-    { id: 'N6', g: 'national', weak: true, slide: 10, src: [],
+    { id: 'N6', g: 'national', weak: true, slide: 11, src: [],
       first: { ar: 'OSM قد تكون خاطئة أو قديمة؛ والمركز في مثالنا بلا اسم في OSM ونعرّفه بموقعه فقط.', en: 'OSM can be wrong or out of date; the station in our example has no name in OSM and is identified by position only.' },
       q: { ar: 'ماذا لو كانت OpenStreetMap خاطئة؟', en: 'What if OpenStreetMap is wrong?' },
       a: { ar: 'قد تكون خاطئة أو قديمة: المواقع مواقع مخرِّطين لا مسح ميداني، وبعض الأسماء ناقصة (مركز الإطفاء في مثالنا بلا اسم في OSM)، واتجاهات الشوارع أحادية الاتجاه قد تنقصها الجهة المقابلة لأن الملف يحوي الطرق الرئيسية فقط. نعالج ذلك بشفافية: أعلام في البيانات، وعبور قصير عكس الاتجاه للمستجيبين بسرعة 20 كم/س موسوم ومحدود، ووصلات افتراضية (علم 256) تُرسم متقطعة، وإعادة بناء اللقطة بأمر واحد. ولا توجد قيود انعطاف ولا إشارات مرور، والمسار مدخل محاكاة لا تعليمات ملاحة. وفي نشر حقيقي تتقدم بيانات الجهة، ونخطط للتحقق بمقارنة الأزمنة بتطبيق ملاحة.',
            en: 'It can be wrong or out of date: positions are mappers\' positions, not a survey; some names are missing (the fire station in our example has no name in OSM); and one-way streets may lack their opposite carriageway because the file holds major roads only. We handle that openly: flags in the data, a short, labelled and limited contraflow allowance for responders at 20 km/h, virtual connectors (flag 256) drawn dashed, and a one-command rebuild of the snapshot. There are no turn restrictions or traffic signals, and a route is a simulation input, not a navigation instruction. In a real deployment the authority\'s data would take precedence, and we plan to validate by comparing times with a navigation app.' } },
-    { id: 'N7', g: 'national', weak: true, slide: 10, src: [],
+    { id: 'N7', g: 'national', weak: true, slide: 11, src: [],
       first: { ar: 'لم نختبر خارج قطر، والتوسع إلى الخليج يحتاج عملًا حقيقيًا.', en: 'We have not tested beyond Qatar, and a GCC extension would need real work.' },
       q: { ar: 'هل يتوسّع خارج قطر، إلى دول الخليج؟', en: 'Does it scale beyond Qatar, to the GCC?' },
       a: { ar: 'بنيةً نعم، فعليًا لم نختبر. سكربت البناء يأخذ معرّف حدود في OSM وقواعد وسوم المنشآت ويعيد توليد الملفات الثلاثة، والمحرك عام (إحداثيات وبيان طرق). للتوسع إلى دولة خليجية يلزم: تغيير حدودها، ومقارنة المنشآت بقوائمها الرسمية، وملف مرور مختلف وعطلة نهاية أسبوع مختلفة (الجمعة والسبت في قطر)، وعتبات حرارة وغبار تلك الدولة وقوانينها ولغاتها. والحجم: ملفات قطر 692 كيلوبايت (الطرق وحدها 513)، فبلد أكبر يحتاج تقسيمًا وتحميلًا عند الطلب. وعلى جهازنا يستغرق اختيار الوحدات لحادث واحد 14 ملّي ثانية وسطيًا على 23 ألف عقدة (قياس اختبارنا). لم نختبر إلا قطر.',
            en: 'In design yes; in practice we have not tested it. The build script takes an OSM boundary id and the facility tag rules and regenerates the three files, and the engine is generic (coordinates and a road graph). Extending to another Gulf state needs: its boundary, a check of its facilities against its official lists, a different traffic profile and weekend (Friday and Saturday in Qatar), that state\'s heat and dust thresholds, laws and languages. On size: the Qatar files are 692 KB (roads alone 513), so a larger country would need tiling and loading on demand. On our machine choosing units for one incident takes a median 14 ms on 23 thousand nodes (our test\'s measurement). We have tested only Qatar.' } },
-    { id: 'N8', g: 'national', slide: 10, src: [],
+    { id: 'N8', g: 'national', slide: 11, src: [],
       q: { ar: 'هل تتتبّع منارة مواقع الناس؟ وما عن خصوصية الموقع؟', en: 'Does MANARA track people? What about location privacy?' },
       a: { ar: 'لا. لا بيانات شخصية في الخريطة الوطنية: الحوادث افتراضية، ولا نتتبّع أي مركبة أو شخص حقيقي. ونافذة «أقرب المنشآت» على هاتف الساكن تستخدم موقع الهاتف بموافقته فقط، وتحسب على الجهاز نفسه من الملفات المضمَّنة، فلا يغادر موقعه الجهاز ولا يُخزَّن. وتسجيل الحضور يرسل رقم الغرفة والحالة بلا أسماء. وفي نشر حقيقي تحتاج أي بيانات موقع إلى مراجعة قانونية وفق قواعد قطر لحماية البيانات واتفاقات مع الجهات، ولم نُجرِ ذلك بعد.',
            en: 'No. The national map holds no personal data: the incidents are fictional, and we track no real vehicle or person. The "nearby facilities" card on a resident\'s phone uses the phone\'s location only with consent, and computes on the device itself from the bundled files, so the location never leaves the device and is not stored. Check-in sends a room number and a status, no names. In a real deployment any location data needs a legal review under Qatar\'s data-protection rules and agreements with the authorities, and we have not done that yet.' } },
-    { id: 'N9', g: 'national', slide: 10, src: [],
+    { id: 'N9', g: 'national', slide: 11, src: [],
       q: { ar: 'لماذا لا تستخدمون خرائط Google؟', en: 'Why not use Google Maps?' },
       a: { ar: 'لأسباب عملية لا لأن الفكرة سيئة. أولًا يجب أن يعمل العرض دون إنترنت على الطاولة وعند انقطاع الشبكة، وواجهات الخرائط تحتاج اتصالًا. ثانيًا نحتاج رسم الشبكة نفسها وتغيير تكلفتها (إغلاق طريق، ازدحام، مطر) لنشرح الخوارزمية ونحاكي، وخدمة المسارات تعطينا جوابًا لا الشبكة. ثالثًا بيانات OSM مفتوحة ويمكن للحَكَم فحصها وإعادة بنائها. ولم نراجع شروط استخدام أي مزوّد تجاري تفصيلًا فلا نحكم عليها. وفي النشر الحقيقي ينبغي أن يأتي زمن الوصول من مزوّد مرور حيّ (قد يكون Google أو غيره أو بيانات الجهة)، ونقول ذلك صراحة.',
            en: 'For practical reasons, not because the idea is bad. First, the demo must work with no internet at the booth and in an outage, and map APIs need a connection. Second, we need the network itself and the ability to change its costs (close a road, add a jam, rain) to explain the algorithm and simulate, and a routing service gives us an answer, not the network. Third, OSM data is open, so a judge can inspect and rebuild it. We have not reviewed any commercial provider\'s terms in detail, so we do not judge them. In a real deployment the arrival time should come from a live traffic provider (it could be Google, another, or the authority\'s data), and we say so openly.' } },
-    { id: 'N10', g: 'national', slide: 10, src: [],
+    { id: 'N10', g: 'national', slide: 11, src: [],
       q: { ar: 'هل يعمل دون إنترنت؟', en: 'Can it run without internet?' },
-      a: { ar: 'نعم. الصفحات والبيانات (ثلاثة ملفات JavaScript حجمها معًا نحو 692 كيلوبايت) والمحرك كلها ملفات محلية تعمل من المجلد مباشرة (file://) دون خادم ودون مكتبات ودون طلبات شبكة. الخطوط من Google اختيارية وتحل محلها خطوط النظام عند غيابها. لا شيء في الخريطة الوطنية يحتاج شبكة. وقائمة الطاولة تتضمن تشغيل وضع الطيران وفتح الخريطة الوطنية والشريحة 10 قبل الحَكَم. ما يتعطل دون شبكة هو الربط بالجهات الحقيقية، وهو غير موجود أصلًا.',
-           en: 'Yes. The pages, the data (three JavaScript files, about 692 KB together) and the engine are all local files that run straight from the folder (file://) with no server, no libraries and no network requests. The Google fonts are optional and system fonts replace them if absent. Nothing in the national map needs a network. The booth checklist includes an airplane-mode run that opens the national map and slide 10 before the judges arrive. What fails without a network is the link to real authorities, which does not exist yet anyway.' } },
-    { id: 'N11', g: 'national', weak: true, slide: 10, src: [],
+      a: { ar: 'نعم. الصفحات والبيانات (ثلاثة ملفات JavaScript حجمها معًا نحو 692 كيلوبايت) والمحرك كلها ملفات محلية تعمل من المجلد مباشرة (file://) دون خادم ودون مكتبات ودون طلبات شبكة. الخطوط من Google اختيارية وتحل محلها خطوط النظام عند غيابها. لا شيء في الخريطة الوطنية يحتاج شبكة. وقائمة الطاولة تتضمن تشغيل وضع الطيران وفتح الخريطة الوطنية والشريحة 11 قبل الحَكَم. ما يتعطل دون شبكة هو الربط بالجهات الحقيقية، وهو غير موجود أصلًا.',
+           en: 'Yes. The pages, the data (three JavaScript files, about 692 KB together) and the engine are all local files that run straight from the folder (file://) with no server, no libraries and no network requests. The Google fonts are optional and system fonts replace them if absent. Nothing in the national map needs a network. The booth checklist includes an airplane-mode run that opens the national map and slide 11 before the judges arrive. What fails without a network is the link to real authorities, which does not exist yet anyway.' } },
+    { id: 'N11', g: 'national', weak: true, slide: 11, src: [],
       first: { ar: 'مواقع الإسعاف في عرضنا محاكاة؛ فخريطة OSM فيها 3 نقاط إسعاف فقط.', en: 'The ambulance positions in our demo are simulated; the OSM map has only 3 ambulance points.' },
       q: { ar: 'الإسعاف: كيف تحاكون أسرع سيارة إسعاف وفي OSM ثلاث نقاط فقط؟', en: 'Ambulances: how do you simulate the fastest one when OSM has only three ambulance points?' },
       a: { ar: 'هذا قيد حقيقي. خريطة OSM لا تحوي شبكة محطات إسعاف مؤسسة حمد. لذا نضع في المحاكاة سيارات الإسعاف في النقاط الثلاث وفي المستشفيات التي فيها قسم طوارئ مؤكد وتستقبل الحالات العامة (12 مستشفى)، وهذا افتراض موسوم (ambulanceBasing) قابل للتغيير. فأزمنة الإسعاف ليست ادعاءً عن أماكن انتظارها الحقيقية. والمستشفى الوجهة يُختار بين من لهم قسم طوارئ مؤكد (18 مدخلًا فقط في البيانات؛ ستة منها مقيَّدة أو للولادة أو للأطفال فقط)، والأخرى «غير معروف» وتُستبعد ما لم يُغيَّر الإعداد، وتُعلَّم «مفترض». والسعة افتراض موسوم.',
            en: 'This is a real limitation. The OSM map does not hold HMC\'s ambulance station network. So in the simulation ambulances are based at the three points and at the hospitals with a confirmed emergency department that take general patients (12 hospitals), which is a labelled, adjustable assumption (ambulanceBasing). The ambulance times are therefore not a claim about where ambulances really wait. The destination hospital is chosen among those with a confirmed ED (only 18 entries in the data, six of them restricted, obstetric-only or paediatric-only); the others are "unknown" and are excluded unless the setting is changed, in which case they are flagged "assumed". Capacity is a labelled assumption.' } },
-    { id: 'N12', g: 'national', weak: true, slide: 10, src: [],
+    { id: 'N12', g: 'national', weak: true, slide: 11, src: [],
       first: { ar: 'لم نتحقق بعد من أزمنة الوصول المحاكاة بقياسات حقيقية.', en: 'We have not yet validated the simulated arrival times against real measurements.' },
       q: { ar: 'كيف تعرفون أن أزمنة الوصول المحاكاة واقعية؟', en: 'How do you know the simulated arrival times are realistic?' },
       a: { ar: 'لا نعرف بعد، وهذا صريح. ما فعلناه فحوص سلامة: أطوال الطرق بين المدن معقولة (الدوحة–دخان 82.3 كم على الطريق مقابل 75.7 كم بخط مستقيم، أي نحو 1.09 مرة)، ومسارا الذهاب والعودة يختلفان قليلًا، وفحصنا الخوارزمية مقابل البحث الشامل. وما سنفعله: مقارنة الأزمنة المحاكاة بالأزمنة المعتادة في تطبيق ملاحة عند ساعات ثابتة على 10 مسارات على الأقل، وتسجيلها في جدول التقرير الفارغ، ثم الإبلاغ عن الخطأ مهما كان. حتى ذلك الحين نثبت الآلية فقط: أن الأسرع غير الأقرب حين يتغير الازدحام.',
            en: 'We do not know yet, and we say so. What we did are sanity checks: road lengths between cities are plausible (Doha to Dukhan is 82.3 km by road against 75.7 km in a straight line, about 1.09 times), the outward and return routes differ only a little, and we checked the algorithm against brute-force search. What we will do: compare simulated times with the typical times in a navigation app at fixed hours on at least 10 routes, record them in the blank table in the report, and report the error whatever it is. Until then we prove only the mechanism: that the fastest is not the nearest when congestion changes.' } },
-    { id: 'N13', g: 'national', weak: true, slide: 10, src: [],
+    { id: 'N13', g: 'national', weak: true, slide: 11, src: [],
       first: { ar: 'في المحاكاة الوطنية الوسيط واحد في الحالتين؛ الفائدة في الذيل لا في المتوسط الشائع.', en: 'In the national simulation the median is the same in both policies; the benefit is in the tail, not the typical case.' },
       q: { ar: 'تقولون إن «الأسرع» أفضل من «الأقرب»؛ فما الفرق الفعلي في محاكاتكم الوطنية؟', en: 'You say "fastest" beats "nearest" — what is the actual difference in your national simulation?' },
       a: { ar: 'نتيجة صريحة: على 150 حادثًا محاكى (البذرة 7، الأحد 07:30، حريق وغاز وسيول واستغاثة) يختلف اختيار الوحدة الأولى عن الأقرب في 64.7% من الحوادث، وفي 31.1% من اختيارات الوحدات يكون المختار أبعد لكنه أسرع. متوسط زمن وصول أول وحدة 1,133 ثانية للأقرب مقابل 1,071 لمنارة (توفير 63 ثانية)، والمئين التسعون 2,480 مقابل 2,333؛ لكن الوسيط واحد (725.5 ثانية) في الحالتين. أي أن الفائدة تتركز في الذيل، وفي مواقع بعيدة عن الطرق، والعينة تخلط الأماكن بنقاط عشوائية على اليابسة. وهي محاكاة (SIM) فحص للآلية لا برهان على الأثر، وتتغير مع البذرة والساعة والمرور (يمكنكم تغييرها في غرفة العمليات).',
            en: 'An honest result: on 150 simulated incidents (seed 7, Sunday 07:30, fire, gas, flood and SOS) the first unit chosen differs from the nearest in 64.7% of incidents, and in 31.1% of unit choices the one chosen is farther but faster. The mean arrival time of the first unit is 1,133 seconds for the nearest against 1,071 for MANARA (a saving of 63 seconds), and the 90th percentile 2,480 against 2,333; but the median is the same (725.5 seconds) in both. So the benefit is concentrated in the tail, and in places far from roads, and the sample mixes named places with random points on land. It is a simulation (SIM), a mechanism check, not proof of impact, and it changes with the seed, the hour and the traffic (you can change them in Mission Control).' } },
     /* ---------------- drone ---------------- */
-    { id: 'R1', g: 'drone', slide: 12, src: ['S15', 'S16'],
+    { id: 'R1', g: 'drone', slide: 14, src: ['S15', 'S16'],
       q: { ar: 'لماذا مسيّرة أصلًا؟', en: 'Why a drone at all?' },
       a: { ar: 'المنتج هو المستشعر الثابت، والمسيّرة اختيارية وتتبع جهة مرخَّصة. ما تضيفه ولا يستطيعه حسّاس ثابت: رؤية الخارج (السطح والشرفات والسلالم الخارجية والطرق المغمورة)، وبحث حراري عن أشخاص في الخارج، وفي حالات الاستغاثة منعش آلي مع بث حي. وتُظهر دراسات دولية (وليست قطرية) أن المسيّرات سبقت الإسعاف في 67% من الحالات الحقيقية (Lancet Digit Health 2023) وبفارق 16:39 دقيقة في رحلات محاكاة (JAMA 2017). ولم نبنِ مسيّرة تطير.',
            en: 'The sentinel is the product; the drone is optional and belongs to a licensed agency. What it adds that a fixed sensor cannot: a view of the outside (roof, balconies, external stairs, flooded roads), a thermal search for people outdoors, and for an SOS an AED with a live view. International studies (not Qatar) found drones beat the ambulance in 67% of real emergencies (Lancet Digit Health 2023) and by 16:39 minutes in simulated flights (JAMA 2017). We built no flying drone.' } },
-    { id: 'R2', g: 'drone', weak: true, slide: 12, src: ['S34', 'S39'],
+    { id: 'R2', g: 'drone', weak: true, slide: 14, src: ['S34', 'S39'],
       first: { ar: 'المسيّرة مفهوم فقط، ولم نُطِر أي طائرة.', en: 'The drone is a concept only, and we flew nothing.' },
       q: { ar: 'هل الطيران قانوني؟ والقانون الجديد صارم.', en: 'Is it legal to fly? The new law is strict.' },
       a: { ar: 'القانون رقم 10 لسنة 2026 يضع الترخيص والتسجيل تحت الهيئة العامة للطيران المدني، وبعض المخالفات عقوبتها حتى 7 سنوات وغرامة 300,000 ريال (ذا بينينسولا 2026). لذلك المسيّرة في منارة مفهوم تشغّله جهة مرخَّصة مثل الدفاع المدني — الذي يملك أصلًا مسيّرات إطفاء — وليست جزءًا لازمًا: المستشعر الثابت يعمل بدونها. ولم نُطِر أي مسيّرة ولا نركّب أي أداة إسقاط. وكانت اللوائح التنفيذية للقانون لم تصدر بعد.',
            en: 'Law No. 10 of 2026 puts licensing and registration under the Civil Aviation Authority, with some offences carrying up to seven years and QAR 300,000 (The Peninsula, 2026). So in MANARA the drone is a concept for a licensed agency such as Civil Defence — which already has firefighting drones — and it is optional: the fixed sentinel works without it. We flew nothing and fit no drop device. The law\'s executive regulations were still to be announced.' } },
-    { id: 'R3', g: 'drone', slide: 12, src: ['S61', 'S65', 'S68'],
+    { id: 'R3', g: 'drone', slide: 14, src: ['S61', 'S65', 'S68'],
       q: { ar: 'بطارية المسيّرة ومستشعراتكم في حرّ قطر؟', en: 'What about drone battery and your sensors in Qatar\'s heat?' },
       a: { ar: 'المسيّرة لا تقوم بدوريات: المستشعرات الثابتة تراقب 24 ساعة، والمسيّرة تنطلق من قاعدة عند تأكد الخطر ثم تعود للشحن. وفي المحاكاة نخفّض تحمّل البطارية فوق 40 °م (افتراض موسوم). ولمستشعراتنا حدود حرارة أيضًا بحسب صحائفها: MQ-7 حتى 50 °م، وPMS5003 حتى 60 °م، وMLX90640 حتى 85 °م؛ فصندوق مغلق في الشمس يتجاوزها. فتحتاج الأغلفة إلى ظل أو تبريد في صيف قطر، والبطاريات الشائعة مقنَّنة حتى نحو 40 °م. وعند رياح شديدة أو غبار أو حرارة قصوى تبقى المسيّرة في قاعدتها ويستمر المبنى في التنبيه بدونها.',
            en: 'The drone does not patrol: fixed sensors watch 24/7, and the drone launches from a dock only when a danger is confirmed, then returns to charge. In the simulation battery endurance is derated above 40 °C (a labelled assumption). Our sensors have temperature limits too, per their datasheets: MQ-7 up to 50 °C, PMS5003 up to 60 °C, MLX90640 up to 85 °C; a closed box in the sun exceeds them. So enclosures need shade or cooling in a Qatari summer, and common batteries are rated to about 40 °C. In high wind, dust or extreme heat the drone stays docked, and the building keeps alerting without it.' } },
     /* ---------------- people ---------------- */
-    { id: 'H1', g: 'people', slide: 8, src: [],
+    { id: 'R4', g: 'drone', weak: true, slide: 5, src: ['S34'],
+      q: { ar: 'ماذا تشترط قواعد الطيران والتصاريح؟ هل تحتاج المسيّرة تصريحًا من هيئة الطيران المدني القطرية؟ وماذا عن GCAA؟', en: 'What do the aviation rules and permits require? Does the drone need a permit from the Qatar Civil Aviation Authority? And the GCAA?' },
+      first: { ar: 'لم نقرأ شروط التصاريح بالتفصيل: أي تصريح ينطبق يجب تأكيده مع الجهة.', en: 'We have not read the permit conditions in detail: which permit applies must be confirmed with the authority.' },
+      a: { ar: 'بحسب القانون رقم 10 لسنة 2026 (المصدر: ذا بينينسولا ومرحبا) تنظّم هيئة الطيران المدني القطرية الطائرات دون طيار، ويجب تسجيل كل طائرة، ويحتاج الأفراد والشركات والجهات الحكومية إلى تراخيص أو تصاريح. كانت اللوائح التنفيذية لا تزال مقبلة عندما قرأنا الخبر، ولم نقرأ فئات التصاريح ولا حدود الارتفاع ولا مناطق المنع، فلا نذكرها: أي تصريح ينطبق **يجب تأكيده مع الجهة**. أما GCAA فهي الهيئة العامة للطيران المدني في الإمارات، ومشروعنا عن قطر فلا نقول شيئًا عن قواعد الإمارات. جوابنا العملي: المسيّرة مفهوم لجهة مرخَّصة مثل الدفاع المدني، ولا نُطير شيئًا، ولا شيفرة في حقيبتنا تقود مسيّرة.',
+           en: 'Under Law No. 10 of 2026 (source: The Peninsula, Marhaba) the Qatar Civil Aviation Authority regulates unmanned aircraft, every drone must be registered, and individuals, companies and government entities need licences or permits. The executive regulations were still to come when we read the news, and we have not read the permit categories, height limits or no-fly zones, so we do not state them: which permit applies **must be confirmed with the authority**. The GCAA is the UAE\'s General Civil Aviation Authority; our project is about Qatar, so we say nothing about UAE rules. Our practical answer: the drone is a concept for a licensed agency such as Civil Defence, we fly nothing, and no code in our kit flies a drone.' } },
+    { id: 'R5', g: 'drone', slide: 5, src: ['S39'],
+      q: { ar: 'كاميرا مسيّرة فوق البيوت: ماذا عن الخصوصية؟', en: 'A drone camera over homes: what about privacy?' },
+      a: { ar: 'في عرضنا لا يُصوَّر أحد: تغذية المسيّرة مشهد جوي **مولَّد بالحاسوب** وموسوم SIM تحلّله شيفرة الكاشف نفسها. أما في نشر حقيقي فقواعد التصوير والتخزين والوجوه تعود إلى الجهة المشغّلة وقوانين حماية البيانات النافذة، ولم نُجرِ مراجعة قانونية. تصميمنا يحدّ من الضرر: لا تُقلع المسيّرة إلا لإنذار أو لمسار دورية مكلَّفة، وتبدأ بالمنظر الحراري، ولا نملك التعرّف على الوجوه، ولا يُحفظ تسجيل إلا بضغطة المشغّل، ومدة الحفظ قرار الجهة لا قرارنا.',
+           en: 'In our demo nobody is filmed: the drone feed is an aerial scene **generated by the computer**, labelled SIM, and analysed by the same detector code. In a real deployment the rules for filming, storing and faces belong to the operating agency and the data-protection law in force, and we have done no legal review. The design limits harm: a drone launches only for an alert or an assigned patrol route, starts with the thermal view, we have no face recognition, a recording is kept only when the operator presses record, and how long it is kept is the agency\'s decision, not ours.' } },
+    { id: 'R6', g: 'drone', weak: true, slide: 5, src: [],
+      q: { ar: 'المسيّرة قد «تصرخ ذئب»: كم إنذارًا كاذبًا ستسبّب؟', en: 'A drone can cry wolf: how many false alarms will it cause?' },
+      first: { ar: 'في محاكاتنا أُرسلت وحدات خطأً في 8 من 233 إنذارًا كاذبًا: قرار الإنسان قد يخطئ.', en: 'In our simulation units were still sent in error for 8 of 233 false alerts: a human decision can be wrong.' },
+      a: { ar: 'لا نعرف المعدل الحقيقي، فلم نُطِر شيئًا. في يوم محاكى رفعنا فيه افتراض الإنذار الكاذب إلى 3 كل ساعة (افتراض لا قياس) صدر 233 إنذارًا كاذبًا من دوريات المسيّرات، أسقط المشغّل 96.6% منها بالدليل (لا مفتاحين، جسم ساخن، دليل غائب)، وأُرسلت وحدات خطأً في 8، فوجدت الموقع خاليًا وسُجّلت «إنذار كاذب في الموقع»: ثمن الخطأ ظاهر. وهذا فحص لآلية الفرز وليس نسبة حقيقية. ولا يصل الناس أي إنذار عام قبل مفتاحين و«اعتماد» إنسان.',
+           en: 'We do not know the real rate: we flew nothing. In a simulated day where we raised the false-alert assumption to 3 per hour (an assumption, not a measurement) the patrols raised 233 false alerts, the operator dismissed 96.6% of them on evidence (no two keys, a hot object, no evidence), and units were sent in error for 8, found nothing, and were logged as "false alarm on scene": the cost of an error is visible. That tests the triage mechanism; it is not a real rate. And no public alert reaches people before two keys and a human Approve.' } },
+    { id: 'R7', g: 'drone', weak: true, slide: 5, src: [],
+      q: { ar: 'ما مدى المسيّرة وبطاريتها؟ وماذا عن الحوادث التي لا تصلها؟', en: 'What is the drone\'s range and battery, and what about incidents it cannot reach?' },
+      first: { ar: 'نحو 33% من الحوادث في محاكاتنا خارج مدى كل المسيّرات، فلا مسيّرة لها.', en: 'About 33% of incidents in our simulation are out of range of every drone, so they get none.' },
+      a: { ar: 'كلها افتراضات قابلة للتعديل وليست قياسات: بمدى البطارية الافتراضي تصل المسيّرة نحو 13 كم في يناير 03:00 و11 كم في يوليو 14:00 و8.3 كم في موجة حر، والمهمة النموذجية تصل خلال 235–268 ثانية وتستهلك 35–52% من البطارية. وتنطلق المسيّرات من مواقع المحطات والمستشفيات في بيانات OpenStreetMap، فتبقى نحو 33% من الحوادث (بذرة 7، 150 حادثًا) خارج المدى، ولهذه تعمل الوحدات الأرضية والحارس والهواتف دون مسيّرة. لذلك لا نقول «تغطية كل قطر»: الأرقام تُظهر الفجوة.',
+           en: 'All of these are adjustable assumptions, not measurements: with the default battery the drone reaches about 13 km in January at 03:00, 11 km in July at 14:00 and 8.3 km in a heat wave, and a typical sortie arrives in 235–268 s using 35–52% of the battery. Drones launch from the station and hospital positions in the OpenStreetMap data, so about 33% of incidents (seed 7, 150 incidents) are out of range, and for those the ground units, the sentinel and the phones work without a drone. So we do not say "coverage of all Qatar": the numbers show the gap.' } },
+    { id: 'R8', g: 'drone', weak: true, slide: 5, src: [],
+      q: { ar: 'هل تستطيع المسيّرات الطيران في غبار قطر ورياحها وحرّها؟', en: 'Can drones fly in Qatar\'s dust, wind and heat?' },
+      first: { ar: 'لم نقس أي حدّ طيران حقيقي: نقول ما نموذجه فقط وما نجهله.', en: 'We measured no real flight limit: we say only what our model does and what we do not know.' },
+      a: { ar: 'مسيّرة حقيقية لها حدود للرياح والرؤية والحرارة، ولم نقس أيًّا منها. ما نموذجه: تخفيض السرعة والمدى بالحرارة (بطاريات مصنَّفة حتى نحو 40°م بحسب المواصفة التي اعتمدناها)، وقيمة رياح في كل إنذار، وانخفاض مفتاح الحرارة لشخص مستلقٍ على أرض حارّة (2% عند 13:00 في يوليو مقابل 70% عند 02:00). أما في عاصفة غبارية أو رياح شديدة فنتوقع أن تُحدّ المسيّرة أو تُوقف، ولهذا لا تعتمد منارة على المسيّرة: الإنذار المحلي والحارس والهواتف والوحدات الأرضية تعمل دونها.',
+           en: 'A real drone has limits for wind, visibility and heat, and we measured none of them. What our model does: it derates speed and range with heat (batteries rated to about 40 °C in the spec we adopted), carries a wind value in each alert, and lowers the thermal key for a person lying on hot ground (2% at 13:00 in July against 70% at 02:00). In a dust storm or strong wind we expect the drone to be limited or grounded, which is why MANARA never depends on it: the local alarm, the sentinel, the phones and the ground units work without it.' } },
+    { id: 'R9', g: 'drone', weak: true, slide: 12, src: [],
+      q: { ar: 'مَن المسؤول قانونيًا إذا أخطأت المسيّرة أو الروبوت؟', en: 'Who is liable if the drone or the robot makes a mistake?' },
+      first: { ar: 'لم نُجرِ مراجعة قانونية، ولا نطلب من أحد الاعتماد على منارة.', en: 'We have done no legal review, and we are not asking anyone to rely on MANARA.' },
+      a: { ar: 'نحن طلاب ومنارة مفهوم ونموذج محاكى غير معتمد، ولا نطلب من أحد الاعتماد عليها. التصميم يُبقي الإنسان في الحلقة: لا شيء عام يُرسل دون «اعتماد» مشغّل، ولا ينزل الروبوت إلا بموافقة قائد الحادث، ورجال الإطفاء هم من يقرّر، و999 يبقى المرسِل. فتبقى المسؤولية على الجهة المرخَّصة المشغّلة وفق لوائحها. أما مَن يتحمل المسؤولية القانونية في نشر حقيقي فسؤال للمحامين وللجهة المختصة، ولا ندّعي مراجعة له.',
+           en: 'We are students and MANARA is a concept and a simulated prototype that is not certified; we are not asking anyone to rely on it. The design keeps a human in the loop: nothing public is sent without an operator\'s Approve, the robot deploys only with the incident commander\'s approval, firefighters decide, and 999 stays the dispatcher. So responsibility stays with the licensed operating agency under its own rules. Who is legally liable in a real deployment is a question for lawyers and the competent authority, and we claim no review of it.' } },
+    { id: 'R10', g: 'drone', slide: 5, src: ['S15'],
+      q: { ar: 'لماذا لا نكتفي بكاميرات المراقبة (CCTV)؟', en: 'Why not just use CCTV cameras?' },
+      a: { ar: 'كاميرات المراقبة ثابتة وتغطي أماكنها فقط، وتحتاج مَن يشاهدها، وكثير منها لا يصل إلى مخارج الحي. المسيّرة تأتي بمنظور من الخارج ومن الأعلى، وبصورة حرارية، إلى حيث لا كاميرا؛ وفي محاكاتنا تصل قبل أول وحدة أرضية في 90% من الحوادث التي تصلها (الوسيط 244 ث مقابل 440.5 ث). ونحن لا نستبدل الكاميرات: أي تغذية كاميرا (كاميرا حاسوب أو ملف فيديو أو صورة) يمكن أن تكون مصدرًا في غرفة التحكم، وتمرّ بالمفاتيح نفسها. وللمسيّرة حدودها: المدى وحرارة الأرض وتصريح الطيران.',
+           en: 'CCTV is fixed, sees only where it is installed, needs someone watching, and much of it does not cover the way out of a neighbourhood. A drone brings a view from outside and above, with a thermal image, to where there is no camera; in our simulation it is on station before the first ground unit in 90% of the incidents it can reach (median 244 s against 440.5 s). We do not replace cameras: any camera feed (a laptop camera, a video file or a photo) can be a source in the control room and goes through the same keys. And a drone has its limits: range, ground heat and flight permission.' } },
+    { id: 'R11', g: 'drone', weak: true, slide: 12, src: [],
+      q: { ar: 'بماذا يختلف روبوت الإنقاذ عن مكنسة روبوتية؟', en: 'How is your rescue robot different from a robot vacuum?' },
+      first: { ar: 'لا يوجد روبوت إنقاذ: عندنا روبوت محاكى وعربة تجريبية تحاكي منطقه فقط.', en: 'There is no rescue robot: we have a simulated robot and a bench rover that models only its logic.' },
+      a: { ar: 'المكنسة تغطي أرضًا نظيفة في غرفة هادئة وترسم خريطتها بنفسها، وغايتها الراحة. روبوتنا مفهوم لمبنى مليء بالدخان: لا يتحرك قبل موافقة قائد الحادث (مفتاح الإنسان)، ويفتّش الغرف بالأولوية من خريطة المبنى (مَن لم يُحصَ ومن يحتاج مساعدة)، ويجد الأشخاص بالحرارة والصوت بقواعد بسيطة، ويرشدهم ويبلغ غرفة التحكم والفرق، ويُبلغ عن الأبواب المقفلة ولا يكسرها، ويساعد ورجال الإطفاء هم من يقرّر. ويتشاركان في أن العجلات لا تتسلق الدرج. والعربة التي بنيناها تحاكي المنطق فقط: تنتظر الموافقة وتتوقف عند العائق والحرارة وتصدر نغمات.',
+           en: 'A vacuum covers a clean floor in a calm room and maps it itself; its purpose is convenience. Our robot is a concept for a smoke-filled building: it does not move before the incident commander approves (the human key), it searches rooms in priority order from the building plan (unaccounted and needs-help first), finds people with thermal and audio by simple rules, guides them, reports to the control room and the crews, reports locked doors without breaking them, and assists while firefighters decide. They share one limit: wheels cannot climb stairs. And the rover we built models the logic only: it waits for approval, stops at obstacles and heat, and makes tones.' } },
+    { id: 'R12', g: 'drone', weak: true, slide: 12, src: [],
+      q: { ar: 'هل ينقذ الروبوت أحدًا فعلًا؟ ماذا تُظهر مقارنتكم؟', en: 'Does the robot actually save anyone? What does your A/B show?' },
+      first: { ar: 'غالبًا لا يتغير الزمن الإجمالي للعثور على السكان، وهذه محاكاة لا إثبات.', en: 'Mostly the overall time to locate residents does not change, and this is a simulation, not proof.' },
+      a: { ar: 'لا نقول «ينقذ». على بذور 1–8 في المحاكاة (SIM، نفس العالم مع الروبوت وبدونه): الزمن الإجمالي للعثور على السكان يكاد لا يتغير (متوسط الوسيط 346 ث بلا الروبوت و344 ث معه) لأن منارة تحصي معظم الناس أصلًا عبر هواتفهم. لكن الروبوت وجد المستخدم على المقعد المتحرك أولًا في 5 بذور من 8، وسبقته الفرق في 3. وهي تعتمد على افتراضات ظاهرة: العجلات لا تتسلق إلى الطابق الثالث، وفي غرفة 34°م لا تجد الكاميرا الحرارية تباينًا، والكشف احتمال بذرة. افتح «مختبر الروبوت» وشغّل القياس بنفسك.',
+           en: 'We do not say "saves". Over seeds 1–8 in the simulation (SIM, the same world with and without the robot) the overall time to locate residents barely changes (mean of the medians 346 s without the robot, 344 s with it) because MANARA already counts most people through their phones. But the robot found the wheelchair user first in 5 of 8 seeds, and the crews were first in 3. It depends on visible assumptions: wheels cannot reach the third floor, in a 34 °C room the thermal camera finds no contrast, and detection is a seeded probability. Open the Robot Lab and run the measurement yourself.' } },
+    { id: 'R13', g: 'drone', slide: 14, src: ['S39'],
+      q: { ar: 'كم تكلّف المسيّرة والروبوت؟', en: 'How much do the drone and the robot cost?' },
+      a: { ar: 'لا نعرف تكلفة مسيّرة مشغَّلة حقيقية ولا روبوت إنقاذ حقيقيًّا: لم نسعّر أيًّا منهما ولا نخترع مجموعًا. ما سعّرناه قطع طالب في صفحة البناء، كلها نطاقات تقريبية تحتاج تحقّقًا من الموردين: المرحلة 4 (عربة تجريبية وحمولة على الطاولة) نحو US$ 79–204، فيصير إجمالي المراحل الأربع نحو US$ 174–474 (تقدير). والمسيّرة تشغّلها جهة لديها مسيّرات أصلًا (الدفاع المدني عرض مسيّرتي إطفاء في ميليبول 2024). أي نشر حقيقي يحتاج عروض أسعار.',
+           en: 'We do not know the cost of a real operated drone or a real rescue robot: we have priced neither and we invent no total. What we priced are student parts on the Build page, all approximate ranges that need checking with suppliers: Tier 4 (a bench rover and a bench payload) is about US$ 79–204, so all four tiers come to about US$ 174–474 (an estimate). The drone is operated by an agency that already has drones (Civil Defence showed two firefighting drones at Milipol 2024). Any real deployment needs quotes.' } },
+    { id: 'R14', g: 'drone', weak: true, slide: 5, src: [],
+      q: { ar: 'هل يتّسع هذا ليشمل قطر كلها: مسيّرات وروبوتات؟', en: 'Does this scale to all of Qatar: drones and robots?' },
+      first: { ar: 'لم نعالج بعدُ تنسيق المجال الجوي ولا تصاريح عدة مسيّرات، وكل شيء هنا محاكاة.', en: 'We have not yet addressed airspace coordination or permits for several drones, and everything here is simulation.' },
+      a: { ar: 'الخريطة والمنشآت والطرق بيانات حقيقية من OpenStreetMap لكل قطر، والمسيّرات تنطلق من مواقع المحطات والمستشفيات فيها، وعدد المسيّرات والمدى افتراضات قابلة للتعديل في غرفة التحكم: زيادة المحطات أو المدى تُنقص الـ 33% خارج المدى. لكن قيودًا حقيقية لم نعالجها: تنسيق المجال الجوي وتصاريح عدة مسيّرات في الوقت نفسه والاتصال والصيانة. وللروبوت شرط أساس: خريطة لكل مبنى، وعندنا نموذج واحد لمبنى سكني (53 عقدة) لا مبنى حقيقي. فنقول إنه مصمَّم ليتّسع، ولم نختبر ذلك.',
+           en: 'The map, facilities and roads are real OpenStreetMap data for all of Qatar, drones launch from the station and hospital positions in it, and the number of drones and their range are assumptions you can change in the control room: more docks or more range reduce the 33% out of range. But real constraints are unaddressed: airspace coordination, permits for several drones at once, links and maintenance. The robot has a basic prerequisite: a plan of each building, and we have one model of a residential building (53 nodes), not a real building. So we say it is designed to scale, and we have not tested that.' } },
+    { id: 'H1', g: 'people', slide: 9, src: [],
       q: { ar: 'الخصوصية والكاميرات: هل تصوّرون الناس؟', en: 'Privacy and cameras: are you filming people?' },
       a: { ar: 'حسّاس الحرارة 32×24 بكسل: يُظهر جسمًا دافئًا لكنه لا يستطيع التعرّف على وجه. والكاميرا العادية اختيارية، وفي العرض هي كاميرا حاسوب موجَّهة إلى شاشة. النموذج الأولي بلا خادم ولا يرسل شيئًا إلى الإنترنت؛ ولقطات الكشف تبقى في المتصفح على الجهاز نفسه. وتسجيل الحضور يرسل رقم الغرفة والحالة (آمن/أحتاج مساعدة) دون أسماء. وكل السكان في العرض افتراضيون. وفي مبنى حقيقي تحتاج أي كاميرا إلى موافقة المالك ولافتات ومراجعة قانونية.',
            en: 'The thermal sensor is 32×24 pixels: it shows a warm body but cannot identify a face. A normal camera is optional, and in the demo it is a laptop webcam pointed at a screen. The prototype has no server and sends nothing to the internet; detection snapshots stay in the browser on the same device. Check-in sends a room number and a status (safe / I need help), no names. Every resident in the demo is fictional. In a real building any camera needs the owner\'s consent, signage and a legal review.' } },
-    { id: 'H2', g: 'people', weak: true, slide: 8, src: [],
+    { id: 'H2', g: 'people', weak: true, slide: 9, src: [],
       first: { ar: 'لم نجرِ مراجعة قانونية لحماية البيانات.', en: 'We have not done a legal review of data protection.' },
       q: { ar: 'حماية البيانات: مَن يملك سجلّ الاحتياجات (من يحتاج مساعدة)؟', en: 'Data protection: who holds the needs register (who needs help)?' },
       a: { ar: 'السجلّ بالموافقة الطوعية، ويبقى على بوابة المبنى، ويُرسَل إلى الجهة المختصة فقط أثناء حادث موثَّق ضمن بطاقة التسليم. والحد الأدنى من البيانات: الغرفة واللغة والاحتياجات؛ والأسماء غير لازمة. ولا نحفظ مواقع الهاتف ولا نرسلها إلى أي مكان. وفي نشر حقيقي يلزم تدقيق قانوني وفق قواعد قطر لحماية البيانات واتفاقات مع مشغّل المبنى والجهة؛ ولم نُجرِ ذلك بعد.',
            en: 'The register is opt-in and stays on the building gateway; it goes to the authority only during a verified incident, inside the hand-off card. The minimum data is room, language and needs; names are not required. We do not store phone locations or send them anywhere. A real deployment needs a legal review under Qatar\'s data-protection rules and agreements with the building operator and the authority; we have not done that yet.' } },
-    { id: 'H3', g: 'people', weak: true, slide: 11, src: [], fill: true,
+    { id: 'H3', g: 'people', weak: true, slide: 13, src: [], fill: true,
       first: { ar: 'لم نُجرِ أي اختبار على أشخاص بعد.', en: 'We have not run any test with people yet.' },
       q: { ar: 'أخلاقيات التجارب على البشر: هل اختبرتم الرسائل على أشخاص؟', en: 'Ethics of human-subject tests: have you tested the messages on real people?' },
       a: { ar: 'لم نُجرِ أي اختبار على أشخاص بعد. خطتنا: اختبار فهم مع بالغين أولًا، بموافقة مستنيرة ودون بيانات شخصية، وبعد نيل موافقة أخلاقيات المدرسة، ونعلن النتائج حتى لو لم تساعد البطاقات المصورة. وإلى ذلك الحين الأشخاص في العرض شخصيات افتراضية. (عدّل هذا الجواب بحسب حالة موافقة مدرستك الفعلية.)',
            en: 'We have not run any test with people yet. Our plan: a comprehension test with adults first, with informed consent and no personal data, after school ethics approval, and we will report the results even if the picture cards do not help. Until then the people in the demo are fictional personas. (Edit this answer to match the real status of your school\'s approval.)' } },
-    { id: 'H4', g: 'people', slide: 8, src: [],
+    { id: 'H4', g: 'people', slide: 9, src: [],
       q: { ar: 'وماذا عن الناس الذين لا يملكون هاتفًا؟', en: 'What about people with no phone?' },
       a: { ar: 'عدة طبقات لا تحتاج هاتفًا: صفّارة المبنى وأسهم المخارج الذكية، والحارس (سلّم الإيقاظ يرسل له قائمة أولويات بعد 60 ثانية ويطرق الأبواب)، وجهاز المعلمة للتلاميذ، ونقطة تسجيل الحضور دون إنترنت «MANARA-SAFE». لم نقِس نسبة من تصلهم كل طبقة؛ وفي المحاكاة نسبة من لديهم صفحة الهاتف شريط افتراض (85% افتراضيًا) يمكن تغييره، وهو افتراض لا قياس.',
            en: 'Several layers need no phone: the building siren and smart exit arrows, the guard (the wake-up ladder sends the guard a priority list at 60 seconds and the guard knocks on doors), the teacher\'s tablet for pupils, and the offline check-in point "MANARA-SAFE". We have not measured what share of people each layer reaches; in the simulation the share who have the phone page is an adjustable assumption (85% by default), not a measurement.' } },
-    { id: 'H5', g: 'people', weak: true, slide: 8, src: ['S23'],
+    { id: 'H5', g: 'people', weak: true, slide: 9, src: ['S23'],
       first: { ar: 'اللغات الست مسودات تنتظر مراجعة متحدث أصلي.', en: 'The six community languages are drafts awaiting native-speaker review.' },
       q: { ar: 'هل ترجماتكم موثوقة؟ ولماذا هذه اللغات؟', en: 'Are your translations reliable? Why these languages?' },
       a: { ar: 'العربية والإنجليزية كاملتان. اللغات الست (المالايالامية، النيبالية، البنغالية، الأردية، التاغالوغية، الهندية) مسودات مكتوب عليها «تحتاج مراجعة متحدث أصلي» حتى يوقّع عليها مراجع، ونسجّل ذلك في التقرير. اخترناها لأن أكبر الجاليات بحسب تقديرات السفارات 2015–2017 من الهند ونيبال وبنغلاديش والفلبين وباكستان؛ وجالية سريلانكا (سنهالية وتاميلية) خارج المجموعة حاليًا ونذكر ذلك. البطاقات المصورة تحمل الرسالة الأساسية للجميع، ولا نستخدم ترجمة آلية حيّة أبدًا.',
            en: 'Arabic and English are complete. The six community languages (Malayalam, Nepali, Bengali, Urdu, Tagalog, Hindi) are drafts marked "needs native-speaker review" until a reviewer signs off, and the report logs this. We chose them because the largest communities in the 2015–2017 embassy estimates (not official figures) come from India, Nepal, Bangladesh, the Philippines and Pakistan; the Sri Lankan community (Sinhala, Tamil) is not yet covered and we say so. Picture cards carry the core message for everyone, and we never use live machine translation.' } },
-    { id: 'H6', g: 'people', slide: 8, src: ['S57', 'S37'],
+    { id: 'H6', g: 'people', slide: 9, src: ['S57', 'S37'],
       q: { ar: 'ماذا عن الصمّ والمكفوفين؟ والوميض قد يسبب نوبات.', en: 'What about Deaf and blind residents? Flashing light can trigger seizures.' },
       a: { ar: 'يحصل الصمّ على اهتزاز قوي ونص ورموز، ووميض اختياري؛ والوميض مغلق افتراضيًا مع تحذير من الحساسية الضوئية، ولا يتجاوز 3 وميضات في الثانية (معيار WCAG 2.3.1). ويحصل المكفوفون على رسالة صوتية. ولا ندّعي ترجمة لغة الإشارة (لدى فريق قطري مشروع ذكاء اصطناعي لذلك). وللصمّ قناة إلى غرفة العمليات عبر الرقم 992 (وزارة الداخلية)، لكنها لا توقظ نائمًا ولا تدلّه على المخرج. وخطتنا مراجعة بطاقات الشخصيات مع صمّ ومكفوفين (مثلًا عبر مدى) — مخطَّطة لم تتم.',
            en: 'Deaf residents get strong vibration, text and pictograms, with an optional strobe; the strobe is off by default with a photosensitivity warning and is limited to three flashes per second (WCAG 2.3.1). Blind residents get a voice message. We claim no sign-language translation (a Qatari team has an AI project for that). Deaf residents have a channel to the control room through 992 (Ministry of Interior), but it does not wake a sleeper or show the exit. We plan to review the persona cards with Deaf and blind users (for example through Mada) — planned, not done.' } },
-    { id: 'H7', g: 'people', slide: 8, src: [],
+    { id: 'H7', g: 'people', slide: 9, src: [],
       q: { ar: 'والأطفال في المدرسة؟', en: 'And children at school?' },
       a: { ar: 'لا نعتمد على هاتف الطفل: يُحصى التلاميذ على جهاز المعلمة، وتخبرهم بطاقة مصورة بأن يتبعوا معلمهم، وتصل رسالة إلى هاتف الأم. وأي تجربة مع تلاميذ حقيقيين تحتاج شراكة مع المدرسة وموافقة أولياء الأمور وموافقة الأخلاقيات؛ وكل ما في العرض افتراضي.',
            en: 'We do not rely on the child\'s phone: pupils are counted on the teacher\'s tablet, a picture card tells them to follow their teacher, and a message goes to the mother\'s phone. Any trial with real pupils needs a school partnership, parental consent and ethics approval; everything in the demo is fictional.' } },
     /* ---------------- build ---------------- */
-    { id: 'B1', g: 'build', slide: 12, src: [], fill: true,
+    { id: 'B1', g: 'build', slide: 14, src: [], fill: true,
       q: { ar: 'ماذا بنيتَ بنفسك، وماذا اشتريت، ومَن ساعدك؟', en: 'What did YOU build, what did you buy, and who helped?' },
       a: { ar: 'اشتريت اللوحات والمستشعرات (ESP32 وMLX90640 وMQ-2 وSHT31…) والمكتبات. وبنيتُ [اذكر ما بنيته أنت: محاكاة، كاشف الصور، الصفحات، توصيل اللوحة]. وساعدني [اسم المرشد] في [المهمة]، واستعنت بأدوات ذكاء اصطناعي في بعض الشيفرة والصياغة مذكورة في جدول الملكية بالتقرير. أستطيع شرح كل معادلة وتغيير أي عتبة أمامكم. (املأ الأقواس بالحقيقة قبل أن تقول هذا.)',
            en: 'I bought the boards and sensors (ESP32, MLX90640, MQ-2, SHT31…) and the libraries. I built [say what you built: the simulation, the image detector, the pages, the board wiring]. [Mentor\'s name] helped me with [task], and I used AI tools for parts of the code and wording, listed in the report\'s ownership table. I can explain every formula and change any threshold in front of you. (Fill the brackets with the truth before you say this.)' } },
-    { id: 'B2', g: 'build', slide: 12, src: [], fill: true,
+    { id: 'B2', g: 'build', slide: 14, src: [], fill: true,
       q: { ar: 'هل استخدمتم أدوات ذكاء اصطناعي في المشروع؟', en: 'Did you use AI tools on this project?' },
       a: { ar: 'نعم، ونذكر ذلك صراحةً. ساعدتنا أدوات ذكاء اصطناعي في صياغة أجزاء من الشيفرة والنصوص ومسودات الترجمة؛ أما القرارات، والاختبارات، والتحقق من كل رقم ومصدره، ومراجعة اللغتين العربية والإنجليزية، فعملنا [اذكر مَن راجع]. وكل ذلك مدرج في جدول «بنيت / اشتريت / ساعدني» بالتقرير، واللغات الست مسودات. أستطيع فتح أي ملف وشرحه. (املأ الأقواس بالحقيقة.)',
            en: 'Yes, and we say so openly. AI tools helped draft parts of the code, the text and the draft translations; the decisions, the testing, checking every number against its source, and reviewing the Arabic and English were our work [say who reviewed]. All of it is listed in the report\'s "built / bought / helped by" table, and the six community languages are drafts. I can open any file and explain it. (Fill the brackets with the truth.)' } },
-    { id: 'B3', g: 'build', slide: 12, src: ['S68'],
+    { id: 'B3', g: 'build', slide: 14, src: ['S68'],
       q: { ar: 'كم التكلفة؟ ومَن يدفع؟', en: 'How much does it cost, and who pays?' },
       a: { ar: 'قائمة القطع في صفحة البناء بتقديرات بالدولار؛ أغلى قطعة الكاميرا الحرارية بـ 74.95 دولارًا (Adafruit، أكتوبر 2026) ومعظم الباقي بضعة دولارات، والشحن والجمارك إلى قطر غير مشمولين. هذه تكلفة نموذج أولي. أما منتج معتمد ومركَّب ومُصان فتكلفته أعلى (اعتماد وتركيب ومراقبة) ولم نسعّره، فلن نذكر رقمًا. ومَن يدفع: مشغّل المبنى أو صاحب العمل (سكن العمال ملزَم أصلًا بإنذارات بالقانون)، وربما عبر خدمة مراقبة إنذارات.',
            en: 'The parts list on the Build page gives US-dollar estimates; the biggest single part is the thermal camera at US$ 74.95 (Adafruit, October 2026), most of the rest are a few dollars, and shipping and customs to Qatar are not included. That is a prototype\'s cost. A certified, installed and maintained product costs more (certification, installation, monitoring); we have not priced it, so we will not quote a number. Who pays: the building operator or employer (workers\' accommodation must already have alarms by law), possibly through an alarm-monitoring service.' } },
-    { id: 'B4', g: 'build', weak: true, slide: 12, src: [],
+    { id: 'B4', g: 'build', weak: true, slide: 14, src: [],
       first: { ar: 'لم نختبر التوسّع إلى مدينة.', en: 'We have not tested scaling to a city.' },
       q: { ar: 'هل يتوسّع إلى مدينة كاملة؟', en: 'Does it scale to a whole city?' },
       a: { ar: 'اليوم مبنى واحد؛ والمسار نفسه لكل منطقة. في المحاكاة نشغّل كتلة حيّ واحدة (96×64 خلية) فيها نحو 120 مقيمًا ومدرسة وموقع عمل. والتوسع إلى مدينة يحتاج اختبارات حمل، وتصميم بوابة لكل مبنى، وتكاملًا مع أنظمة الجهة؛ ولم نفعل ذلك. البنية: حسّاسات ← بوابة المبنى ← لوحة المشغّل ← حزمة للجهة.',
            en: 'Today one building; the pipeline is the same per zone. In the simulation we run one district block (96×64 cells) with about 120 residents, a school and a worksite. Scaling to a city needs load tests, a gateway design per building and integration with the authority\'s systems; we have not done that. The architecture: sentinels → building gateway → operator console → package to the authority.' } },
-    { id: 'B5', g: 'build', weak: true, slide: 12, src: ['S60'],
+    { id: 'B5', g: 'build', weak: true, slide: 14, src: ['S60'],
       first: { ar: 'لم نجرِ اختبار صيانة طويل الأمد.', en: 'We have not run a long-term maintenance test.' },
       q: { ar: 'مَن يصيّن الحسّاسات؟ وماذا لو تعطّل أحدها؟', en: 'Who maintains the sensors? What if one fails?' },
       a: { ar: 'تُرسل الحسّاسات نبضًا دوريًا ونفحص «الحسّاس العالق» (في غرفة العمليات اختبار حسّاس معطَّل). لكن الصيانة الحقيقية عمل حقيقي: حسّاسات الغاز تنجرف وتحتاج معايرة واستبدالًا، والبطاريات تشيخ أسرع في الحرارة، والبرمجيات تحتاج تحديثًا. لم نُجرِ اختبارًا طويل الأمد؛ وستنتج التجربة الميدانية خطة صيانة.',
            en: 'Sentinels report a heartbeat and we check for a stuck sensor (Mission Control has a "faulty sentinel" test). But real maintenance is real work: gas sensors drift and need calibration and replacement, batteries age faster in heat, and firmware needs updates. We have not run a long-term test; a field pilot would produce a maintenance plan.' } },
-    { id: 'B6', g: 'build', slide: 12, src: [],
+    { id: 'B6', g: 'build', slide: 14, src: [],
       q: { ar: 'وماذا لو انقطعت الشبكة؟', en: 'What if the network is down?' },
       a: { ar: 'إنذار الحسّاس وأسهم المخارج يعملان على اللوحة نفسها دون شبكة. وتسجيل الحضور يعمل عبر نقطة وايفاي دون إنترنت «MANARA-SAFE». وتُحفظ حزمة التسليم في الانتظار حتى تعود الشبكة. وعرضنا كله يعمل من ملفات دون إنترنت. ما يتعطل دون شبكة: تنبيهات الهواتف خارج الوايفاي المحلي، والربط بالجهة.',
            en: 'The sentinel\'s alarm and exit arrows run on the board itself, no network needed. Check-in works through an offline Wi-Fi access point, "MANARA-SAFE". The hand-off package waits in a queue until a link returns. Our whole demo runs from files with no internet. What fails without a network: phone alerts beyond the local Wi-Fi, and the link to the authority.' } },
-    { id: 'B7', g: 'build', weak: true, slide: 12, src: [],
+    { id: 'B7', g: 'build', weak: true, slide: 14, src: [],
       first: { ar: 'لم نختبر سلوك اللوحة عند انقطاع الكهرباء.', en: 'We have not tested the board\'s behaviour in a power cut.' },
       q: { ar: 'وماذا لو انقطعت الكهرباء؟', en: 'What if the power fails?' },
       a: { ar: 'الحارس الحقيقي يحتاج بطارية احتياطية وإنذارًا عند فقد التيار. لوحة العرض تعمل من USB ولم نختبر سلوكها عند الانقطاع. نضعها ضمن حدودنا، وستحتاج إلى بطارية وتصميم خاص بالحرارة في أي نشر.',
            en: 'A real sentinel needs a battery backup and a power-loss alert. The booth board runs from USB power and we have not tested its behaviour in an outage. We list it among our limits; any deployment needs a battery and a heat-aware design.' } },
-    { id: 'B8', g: 'build', weak: true, slide: 12, src: [],
+    { id: 'B8', g: 'build', weak: true, slide: 14, src: [],
       first: { ar: 'ليس لدينا توقيع تشفيري للرسائل بعد.', en: 'We do not have cryptographic message signing yet.' },
       q: { ar: 'وماذا لو اختُرق حسّاس أو أُرسل تنبيه مزوَّر؟', en: 'What if a sensor is hacked or a fake alert is sent?' },
       a: { ar: 'خطر حقيقي. في النموذج الأولي يحدّ من الضرر وجود مفتاحين مستقلين وموافقة إنسان، لكن لا يوجد بعد توقيع تشفيري للرسائل ولا ضبط وصول، وسيكون لازمًا قبل أي نشر حقيقي. ندرجه ضمن حدودنا.',
            en: 'A real risk. In the prototype, two independent keys and a human approval limit the damage, but there is no cryptographic message signing or access control yet, and both would be required before any real deployment. We list it among our limitations.' } },
-    { id: 'B9', g: 'build', weak: true, slide: 11, src: [],
+    { id: 'B9', g: 'build', weak: true, slide: 13, src: [],
       first: { ar: 'سأبدأ بحدودنا قبل أن تسألوا.', en: 'I will start with our limits before you ask.' },
       q: { ar: 'ما أكبر حدود مشروعكم؟', en: 'What are the biggest limitations of your project?' },
       a: { ar: 'عيّنات الاختبار صغيرة، وكاشف الصور يصيب 66.7% فقط؛ والحسّاسات رخيصة وقراءاتها استرشادية؛ والمرور والسكان والمحطات في المحاكاة افتراضية؛ والمسيّرة مفهوم؛ واللغات الست مسودات؛ ولم نجرّب على حرائق حقيقية ولا على أشخاص؛ والمشروع غير معتمد ولا يحلّ محل أي جهاز أو جهة. ونحبّ أن نسمع أين ترون نقاط ضعف أخرى.',
            en: 'The test samples are small and the image detector is right only 66.7%; the sensors are cheap and their readings indicative; traffic, residents and stations in the simulation are fictional; the drone is a concept; the six community languages are drafts; we have not tested on real fires or on people; and the project is not certified and replaces no device or body. We would like to hear where you see other weak spots.' } },
-    { id: 'B10', g: 'build', slide: 13, src: [],
+    { id: 'B10', g: 'build', slide: 15, src: [],
       q: { ar: 'ما خطوتكم التالية؟ وماذا تحتاجون منا؟', en: 'What is your next step, and what do you need from us?' },
       a: { ar: 'أولًا مراجعة اللغات من متحدثين أصليين؛ ثانيًا معايرة الحسّاسات وجدول لزمن الاستجابة؛ ثالثًا اختبار الفهم بموافقة أخلاقية؛ رابعًا تمرين في مبنى واحد مع حارسه ومراجعة الدفاع المدني. ونطلب منكم: توجيهًا وتصريحًا لتمرين آمن، ومراجعين للغات ومن الصمّ والمكفوفين، وإرشادًا لنيل موافقة الأخلاقيات.',
            en: 'First native-speaker review of the languages; second sensor calibration and a latency table; third the comprehension test with ethics approval; fourth a drill in one building with its guard and a Civil Defence review. We ask you for guidance and permission for a safe drill, reviewers for the languages and Deaf and blind reviewers, and advice on getting ethics approval.' } }
@@ -943,7 +1022,109 @@
     }
   }
 
-  /* ---- 12. roadmap + ask ---- */
+
+  /* ---- 5. the control room: a miniature of the alert queue, the feed wall and the proof strip (SIM) ---- */
+  var CR_ROWS = [
+    { ic: 'drone', st: 'suspect', t: { ar: 'دخان — الحيّ الشمالي', en: 'Smoke — north block' }, via: { ar: 'مسيّرة', en: 'Drone' }, age: '00:42' },
+    { ic: 'sensor', st: 'confirmed', t: { ar: 'حرارة — موقع عمل', en: 'Heat — worksite' }, via: { ar: 'حارس', en: 'Sentinel' }, age: '01:15' },
+    { ic: 'heart', st: 'approved', t: { ar: 'شخص يحتاج مساعدة', en: 'Someone needs help' }, via: { ar: 'مواطن', en: 'Citizen' }, age: '02:30' }
+  ];
+  var CR_ST = { suspect: { ar: 'اشتباه', en: 'SUSPECT' }, confirmed: { ar: 'مؤكَّد', en: 'CONFIRMED' }, approved: { ar: 'معتمَد', en: 'APPROVED' } };
+  function crTile(kind) {   // a procedurally drawn aerial scene: 2:1, no photograph, labelled SIM
+    var svg = sv('svg', { viewBox: '0 0 200 110', class: 'cr-svg', role: 'img', 'aria-label': L({ ar: kind === 'rgb' ? 'مشهد جوي عادي مولَّد بالحاسوب مع مربع كشف حول عمود دخان' : 'مشهد جوي حراري مولَّد بالحاسوب مع نقطة ساخنة', en: kind === 'rgb' ? 'A computer-generated aerial camera view with a detection box around a smoke plume' : 'A computer-generated aerial thermal view with a hot spot' }) });
+    if (kind === 'rgb') {
+      svg.appendChild(sv('rect', { class: 'cr-ground', x: 0, y: 0, width: 200, height: 110 }));
+      svg.appendChild(sv('path', { class: 'cr-road', d: 'M-5 78 L205 66 M62 -5 L84 115' }));
+      [[14, 14, 26, 20], [48, 22, 22, 16], [128, 12, 30, 22], [150, 52, 26, 18], [18, 82, 28, 18], [112, 84, 24, 16]].forEach(function (b) { svg.appendChild(sv('rect', { class: 'cr-bld', x: b[0], y: b[1], width: b[2], height: b[3], rx: 2 })); });
+      svg.appendChild(sv('ellipse', { class: 'cr-smoke s1', cx: 104, cy: 44, rx: 15, ry: 9 }));
+      svg.appendChild(sv('ellipse', { class: 'cr-smoke s2', cx: 114, cy: 32, rx: 12, ry: 7 }));
+      svg.appendChild(sv('rect', { class: 'cr-box', x: 86, y: 22, width: 46, height: 36, rx: 3 }));
+      svg.appendChild(sv('text', { class: 'cr-tag', x: 88, y: 19 }, 'SMOKE?'));
+    } else {
+      svg.appendChild(sv('rect', { class: 'cr-cold', x: 0, y: 0, width: 200, height: 110 }));
+      svg.appendChild(sv('ellipse', { class: 'cr-warm', cx: 104, cy: 48, rx: 30, ry: 20 }));
+      svg.appendChild(sv('ellipse', { class: 'cr-hot', cx: 104, cy: 48, rx: 14, ry: 9 }));
+      svg.appendChild(sv('path', { class: 'cr-cross', d: 'M104 30V66M86 48H122' }));
+      svg.appendChild(sv('text', { class: 'cr-tag th', x: 140, y: 40 }, '61 °C'));
+    }
+    svg.appendChild(sv('circle', { class: 'cr-ping', cx: 104, cy: kind === 'rgb' ? 44 : 48, r: 9 }));
+    return svg;
+  }
+  function buildControl() {
+    var host = $('#cr-mini'); if (!host) return;
+    host.replaceChildren();
+    var q = h('ol', { class: 'cr-queue', 'data-i18n-attr': 'aria-label:pt.crq' });
+    CR_ROWS.forEach(function (r, k) {
+      q.appendChild(h('li', { class: 'cr-row', 'data-st': r.st, style: '--bi:' + k }, h('span', { class: 'cr-src' }, iconNode(r.ic)),
+        h('span', { class: 'cr-t' }, h('b', null, bio(r.t)), h('small', null, bio(r.via), ' · ', h('span', { class: 'num', dir: 'ltr' }, r.age))),
+        h('span', { class: 'cr-chip' }, bio(CR_ST[r.st]))));
+    });
+    var feeds = h('div', { class: 'cr-feeds' });
+    [['rgb', { ar: 'كاميرا · ARR-1', en: 'Camera · UAV-1' }], ['thermal', { ar: 'حرارية', en: 'Thermal' }]].forEach(function (f) {
+      feeds.appendChild(h('figure', { class: 'cr-tile ' + f[0] }, crTile(f[0]), h('figcaption', null, bio(f[1]), h('span', { class: 'num', dir: 'ltr' }, ' ALT 60 m · SIM'))));
+    });
+    var proof = h('ol', { class: 'cr-proof' },
+      h('li', { 'data-k': '1' }, iconNode('thermo'), h('span', null, bi('مفتاح 1: بقعة حرارية', 'Key 1: a hot spot'))),
+      h('li', { 'data-k': '2' }, iconNode('camera'), h('span', null, bi('مفتاح 2: رؤية بقواعد', 'Key 2: rule-based vision'))),
+      h('li', { 'data-k': '3' }, iconNode('users'), h('span', null, bi('«اعتماد» إنسان', 'Human Approve'))),
+      h('li', { 'data-k': '4' }, iconNode('bell'), h('span', null, bi('إنذار عام', 'Public alert'))));
+    host.appendChild(h('div', { class: 'cr-top' }, q, feeds)); host.appendChild(proof);
+  }
+
+  /* ---- 12. the rescue robot: a simulated floor plan, the search path drawn and walked, and the four honest steps ---- */
+  var RB_ARIA = { ar: 'مخطط مبنى محاكى: ممر وست غرف ودرج. مسار الروبوت من المدخل يفتّش غرفتين ثم يجد شخصًا على مقعد متحرك في الغرفة الأخيرة؛ باب غرفة مقفل، والدرج لا تتسلقه العجلات.', en: 'A simulated building plan: a corridor, six rooms and a stair. The robot\'s path runs from the entrance, searches two rooms, then finds a wheelchair user in the last room; one room door is locked and wheels cannot climb the stair.' };
+  var RB = { pts: null, path: null, dot: null, len: 0, t: 0, raf: 0, last: 0, phase: 0, steps: [], hold: 0 };
+  var RB_STEPS = [
+    { ar: 'موافقة قائد الحادث', en: 'Commander approves' }, { ar: 'يفتّش الغرف بالأولوية', en: 'Searches by priority' },
+    { ar: 'يجد شكلًا دافئًا + صوتًا', en: 'Finds a warm shape + a voice' }, { ar: 'يرشد ويُبلغ الفرق', en: 'Guides and reports to the crews' }
+  ];
+  function buildRobot() {
+    var host = $('#rb-plan'); if (!host) return;
+    host.replaceChildren();
+    var svg = sv('svg', { viewBox: '0 0 480 250', class: 'rb-svg', role: 'img', 'aria-label': L(RB_ARIA) });
+    svg.appendChild(sv('rect', { class: 'rb-wall', x: 14, y: 12, width: 452, height: 226, rx: 6 }));
+    svg.appendChild(sv('rect', { class: 'rb-corr', x: 14, y: 100, width: 452, height: 40 }));
+    [[14, 12], [166, 12], [318, 12], [14, 140], [166, 140], [318, 140]].forEach(function (r, k) {
+      svg.appendChild(sv('rect', { class: 'rb-room' + (k === 5 ? ' target' : ''), x: r[0], y: r[1], width: 148, height: k < 3 ? 88 : 98, rx: 3 }));
+    });
+    svg.appendChild(sv('ellipse', { class: 'rb-smoke', cx: 90, cy: 60, rx: 52, ry: 30 }));
+    svg.appendChild(sv('ellipse', { class: 'rb-smoke', cx: 246, cy: 120, rx: 70, ry: 14 }));
+    svg.appendChild(sv('rect', { class: 'rb-stair', x: 440, y: 100, width: 26, height: 40 }));
+    svg.appendChild(svBi('درج', 'Stairs', { class: 'rb-lab', x: 453, y: 94, 'text-anchor': 'middle' }));
+    svg.appendChild(sv('path', { class: 'rb-lock', d: 'M240 138v-8M236 130h8' }));
+    svg.appendChild(sv('circle', { class: 'rb-safe', cx: 60, cy: 190, r: 6 }));
+    svg.appendChild(sv('circle', { class: 'rb-safe', cx: 392, cy: 58, r: 6 }));
+    svg.appendChild(svBi('مدخل', 'Entrance', { class: 'rb-lab', x: 22, y: 135, 'text-anchor': 'start' }));
+    svg.appendChild(svBi('مقفل', 'Locked', { class: 'rb-lab', x: 240, y: 156, 'text-anchor': 'middle' }));
+    var tgt = sv('g', { class: 'rb-target', transform: 'translate(392 196)' }, sv('circle', { class: 'rb-ripple', r: 8 }), sv('circle', { class: 'rb-person', r: 7 }));
+    svg.appendChild(tgt);
+    svg.appendChild(svBi('شخص على مقعد متحرك', 'Wheelchair user', { class: 'rb-lab strong', x: 392, y: 232, 'text-anchor': 'middle' }));
+    var d = 'M24 120 L108 120 L108 66 L140 66 L108 66 L108 120 L270 120 L270 196 L376 196';
+    var path = sv('path', { class: 'rb-route', d: d, pathLength: 1 });
+    svg.appendChild(sv('path', { class: 'rb-route-bg', d: d }));
+    svg.appendChild(path);
+    var dot = sv('g', { class: 'rb-bot' }, sv('circle', { class: 'rb-cone', r: 20 }), sv('circle', { class: 'rb-body', r: 7 }));
+    svg.appendChild(dot);
+    host.appendChild(svg);
+    RB.path = path; RB.dot = dot; RB.len = path.getTotalLength ? path.getTotalLength() : 1;
+    var ol = $('#rb-steps'); ol.replaceChildren(); RB.steps = [];
+    RB_STEPS.forEach(function (s, k) { var li = h('li', { 'data-k': String(k) }, h('span', { class: 'num' }, String(k + 1)), h('span', null, bio(s))); ol.appendChild(li); RB.steps.push(li); });
+    robotFrame(1, true);
+  }
+  // progress 0..1 along the path; the robot dot follows the drawn part; the four steps light up as it goes
+  function robotFrame(t, final) {
+    if (!RB.path) return;
+    t = clamp(t, 0, 1);
+    RB.path.style.strokeDashoffset = String(1 - t);
+    var pt = RB.path.getPointAtLength ? RB.path.getPointAtLength(t * RB.len) : { x: 0, y: 0 };
+    RB.dot.setAttribute('transform', 'translate(' + pt.x.toFixed(1) + ' ' + pt.y.toFixed(1) + ')');
+    var phase = t < 0.04 ? 0 : t < 0.8 ? 1 : t < 0.97 ? 2 : 3;
+    if (final) phase = 3;
+    RB.steps.forEach(function (li, k) { li.setAttribute('data-on', k <= phase ? '1' : '0'); li.setAttribute('aria-current', k === phase ? 'step' : 'false'); });
+    var host = $('#rb-plan'); if (host) host.setAttribute('data-found', t >= 0.97 ? '1' : '0');
+  }
+
+  /* ---- 15. roadmap + ask ---- */
   function buildClose() {
     var r = $('#road'); if (r) {
       r.replaceChildren();
@@ -1594,7 +1775,7 @@
     BAR.next = barBtn('db-btn', 'next', 'pt.next', function () { step(1); }); BAR.next.firstChild.classList.add('flip');
     BAR.count = h('span', { class: 'db-count num', dir: 'ltr', 'aria-hidden': 'true' });
     BAR.title = h('span', { class: 'db-title' });
-    BAR.timer = h('button', { type: 'button', class: 'db-timer', 'data-i18n-attr': 'aria-label:pt.timer;title:pt.timer' }, parseSvgIcon('clock'), h('span', { class: 'tmv num', dir: 'ltr' }, '00:00 / 03:00'));
+    BAR.timer = h('button', { type: 'button', class: 'db-timer', 'data-i18n-attr': 'aria-label:pt.timer;title:pt.timer' }, sv('svg', { class: 'db-ring', viewBox: '0 0 24 24', 'aria-hidden': 'true', focusable: 'false' }, sv('circle', { class: 'rt', cx: 12, cy: 12, r: 10 }), sv('circle', { class: 'rp', cx: 12, cy: 12, r: 10 })), h('span', { class: 'tmv num', dir: 'ltr' }, '00:00 / 03:00'));
     BAR.timer.addEventListener('click', function () { TM.running ? tmPause() : tmStart(); });
     BAR.p3 = h('button', { type: 'button', 'aria-pressed': 'true', 'data-i18n-attr': 'title:pt.path3;aria-label:pt.path3' }, '3′'); BAR.p3.addEventListener('click', function () { setPath('3'); });
     BAR.p7 = h('button', { type: 'button', 'aria-pressed': 'false', 'data-i18n-attr': 'title:pt.path7;aria-label:pt.path7' }, '7′'); BAR.p7.addEventListener('click', function () { setPath('7'); });
@@ -1645,12 +1826,17 @@
     var prev = ST.i;
     if (i === prev && !o.force) return;
     ST.i = i; ST.seen[i] = 1;
+    // direction of travel: the new slide enters from the side the reading direction moves towards (RTL mirrors LTR)
+    var fwd = i > prev, rtl = html.getAttribute('dir') === 'rtl';
+    stage.style.setProperty('--enter-x', ((fwd !== rtl) ? 5 : -5) + '%');
     slides.forEach(function (s, k) {
       var on = k === i;
       s.classList.toggle('is-active', on); s.setAttribute('aria-hidden', on ? 'false' : 'true');
       if (on) s.classList.remove('is-leaving');
       else if (k === prev && !reduce && !o.force) { s.classList.add('is-leaving'); setTimeout(function () { s.classList.remove('is-leaving'); }, 380); }
     });
+    if (prev !== i && SL[prev]) motionLeave(SL[prev].id);
+    motionEnter(slides[i], SL[i].id);
     if (SL[i].id === 'proof') { PF.k1 = PF.k2 = PF.k3 = false; pfRender(); }
     if (SL[i].id === 'live') { BL.locked = BL.safe = false; bldRender(); }
     updateBar(); renderNotes(); timerOnSlide(prev, i);
@@ -1665,6 +1851,71 @@
     updateBar(); renderNotes(); updateTimerUI(); renderScript();
     announce(T(ST.path === '3' ? 'مسار الثلاث دقائق الصارم' : 'مسار السبع دقائق الممتد', ST.path === '3' ? 'Strict 3-minute path' : 'Extended 7-minute path'));
   }
+
+
+  /* ==========================================================================
+     MOTION — count-up numbers, bullet build-in, the robot's walk, slide travel direction, the timer ring.
+     CSS keyframes (transform / opacity) do the entrances; this layer only drives what CSS cannot: numbers and the walk.
+     Reduced motion = the final frame at once, no loops. Nothing runs while the tab is hidden, the slide is not on screen or the page is printing.
+     ========================================================================== */
+  var MO = { raf: 0, jobs: [], rbOn: false, lastTs: 0 };
+  function moOK() { return !reduce && !doc.hidden && !MO.printing; }
+  function countFinal(el) {    // the number exactly as the HTML states it (the fallback and the final frame)
+    var f = el.getAttribute('data-final'); if (f == null) { f = el.textContent; el.setAttribute('data-final', f); } return f;
+  }
+  function countStart(slide) {
+    var els = $$('[data-count]', slide);
+    MO.jobs = MO.jobs.filter(function (jb) { return !slide.contains(jb.el); });
+    els.forEach(function (el) {
+      var fin = countFinal(el);
+      if (!moOK()) { el.textContent = fin; return; }
+      var to = parseFloat(el.getAttribute('data-count')), dec = (String(el.getAttribute('data-count')).split('.')[1] || '').length, suf = el.getAttribute('data-suffix') || '';
+      el.textContent = (dec ? (0).toFixed(dec) : '0') + suf;
+      MO.jobs.push({ el: el, to: to, dec: dec, suf: suf, t0: 0, dur: 1100, fin: fin });
+    });
+    moKick();
+  }
+  function moKick() { if (!MO.raf && (MO.jobs.length || MO.rbOn)) MO.raf = requestAnimationFrame(moTick); }
+  function moTick(ts) {
+    MO.raf = 0;
+    if (!moOK()) { moSettle(); return; }
+    MO.jobs = MO.jobs.filter(function (jb) {
+      if (!jb.t0) jb.t0 = ts;
+      var k = clamp((ts - jb.t0) / jb.dur, 0, 1), e = 1 - Math.pow(1 - k, 3);
+      jb.el.textContent = k >= 1 ? jb.fin : (jb.dec ? (jb.to * e).toFixed(jb.dec) : String(Math.round(jb.to * e))) + (k >= 1 ? '' : jb.suf);
+      return k < 1;
+    });
+    if (MO.rbOn) {
+      var dt = MO.lastTs ? Math.min(60, ts - MO.lastTs) : 16; MO.lastTs = ts;
+      if (RB.hold > 0) { RB.hold -= dt; if (RB.hold <= 0) { RB.t = 0; } }
+      else { RB.t += dt / 9000; if (RB.t >= 1) { RB.t = 1; RB.hold = 3000; } }
+      robotFrame(RB.t, false);
+    }
+    moKick();
+  }
+  function moSettle() {       // jump every running animation to its final frame (hidden tab, reduced motion, printing)
+    MO.jobs.forEach(function (jb) { jb.el.textContent = jb.fin; }); MO.jobs = [];
+    if (MO.rbOn) { MO.rbOn = false; } robotFrame(1, true);
+  }
+  function stagger(slide) {   // bullet build-in: every list item gets its index; CSS staggers the entrance
+    $$('.gp-list, .gp-unknown, .viz-notes, .ev-list, .rb-lims, .cr-queue, .cr-proof, .rb-steps, .ask ul, .road ul', slide).forEach(function (ul) {
+      Array.prototype.forEach.call(ul.children, function (li, k) { li.style.setProperty('--bi', String(k)); });
+    });
+  }
+  function motionEnter(slide, id) {
+    stagger(slide); countStart(slide);
+    if (id === 'robot') {
+      RB.t = 0; RB.hold = 0; MO.lastTs = 0;
+      if (moOK()) { MO.rbOn = true; robotFrame(0, false); moKick(); } else { MO.rbOn = false; robotFrame(1, true); }
+    }
+  }
+  function motionLeave(id) {
+    if (id === 'robot') { MO.rbOn = false; robotFrame(1, true); }
+  }
+  doc.addEventListener('visibilitychange', function () { if (doc.hidden) moSettle(); else { var a = $('.slide.is-active'); if (a && ST) motionEnter(a, SL[ST.i] && SL[ST.i].id); } });
+  window.addEventListener('beforeprint', function () { MO.printing = true; moSettle(); });
+  window.addEventListener('afterprint', function () { MO.printing = false; });
+  function motionRefresh() { var a = $('.slide.is-active'); if (a) motionEnter(a, SL[ST.i] && SL[ST.i].id); }
 
   /* ---- modes: stage (16:9, scaled) or reader (narrow screens) ---- */
   function applyMode() {
@@ -1722,6 +1973,9 @@
     c.classList.remove('is-active', 'is-leaving');
     $$('[id]', c).forEach(function (e) { e.removeAttribute('id'); });
     $$('[for],[aria-labelledby],[aria-describedby]', c).forEach(function (e) { e.removeAttribute('for'); e.removeAttribute('aria-labelledby'); e.removeAttribute('aria-describedby'); });
+    $$('[data-count]', c).forEach(function (e) { var f = e.getAttribute('data-final'); if (f != null) e.textContent = f; });     // a thumbnail never shows a half-counted number
+    $$('.rb-route', c).forEach(function (e) { e.style.strokeDashoffset = '0'; });
+    $$('.rb-plan', c).forEach(function (e) { e.setAttribute('data-found', '1'); });
     return c;
   }
   function openOverview() {
@@ -1861,6 +2115,7 @@
     var worst = !started ? '' : (f.tst === 'over' || f.st === 'over') ? 'over' : (f.tst === 'soon' || f.st === 'soon') ? 'soon' : 'ok';
     if (BAR.timer) {
       BAR.timer.setAttribute('data-st', worst); BAR.timer.querySelector('.tmv').textContent = mmss(f.e) + ' / ' + mmss(f.total);
+      var rp = BAR.timer.querySelector('.rp'); if (rp) rp.style.strokeDashoffset = String((62.83 * (1 - clamp(f.total ? f.e / f.total : 0, 0, 1))).toFixed(2));   // the ring fills as the talk uses its time
     }
     if (NT.clock) {
       NT.clock.textContent = mmss(f.e); NT.total.textContent = '/ ' + mmss(f.total);
@@ -1943,7 +2198,7 @@
   /* ==========================================================================
      SCRIPT TAB
      ========================================================================== */
-  var ACC = { title: '--brand', problem: '--danger', gap: '--warn', solution: '--brand', proof: '--accent', hazards: '--brand', live: '--danger', people: '--safe', dispatch: '--info', national: '--accent', evidence: '--warn', build: '--accent', close: '--brand' };
+  var ACC = { title: '--brand', problem: '--danger', gap: '--warn', solution: '--brand', control: '--info', proof: '--accent', hazards: '--brand', live: '--danger', people: '--safe', dispatch: '--info', national: '--accent', robot: '--danger', evidence: '--warn', build: '--accent', close: '--brand' };
   function wc(s) { return s ? String(s).trim().split(/\s+/).filter(function (w) { return /[\p{L}\p{N}]/u.test(w); }).length : 0; }
   function sayOf(m, p) {
     if (p === '3') return m.say3;
@@ -2255,6 +2510,8 @@
   }
   function beforePrint(kind, withNotes) {
     if (printing) return;
+    MO.printing = true; moSettle();                    // motion never reaches the paper: every counter and the robot's walk are at their final frame
+    
     printing = kind; html.classList.add('print-' + kind);
     if (kind === 'slides') buildPrintRoot(withNotes);
     else if (kind === 'script') { if (!$('#p-script').firstChild) renderScript(); }
@@ -2262,6 +2519,7 @@
     else if (kind === 'booth') { if (!$('#p-booth').firstChild) renderBooth(); $$('#p-booth details').forEach(function (d) { d.setAttribute('data-was', d.open ? '1' : '0'); d.open = true; }); }
   }
   function afterPrint() {
+    MO.printing = false;
     if (!printing) return;
     html.classList.remove('print-slides', 'print-script', 'print-qa', 'print-booth');
     $('#print-root').replaceChildren();
@@ -2310,7 +2568,7 @@
   }
   function boot() {
     if (SL.length !== N) console.error('pitch: slide data (' + SL.length + ') and slides (' + N + ') differ');
-    buildBeacon(); buildGap(); buildPipe(); buildHazards(); buildLiveSteps(); buildPeople(); buildBuild(); buildClose(); buildDpHow();
+    buildBeacon(); buildGap(); buildPipe(); buildControl(); buildRobot(); buildHazards(); buildLiveSteps(); buildPeople(); buildBuild(); buildClose(); buildDpHow();
     slides.forEach(function (s) { $$('.sl-in', s).forEach(function (e, k) { e.style.setProperty('--d', Math.min(k, 9)); }); });
     initProof(); initBuilding(); dpInit(); initEvidence(); naInit(); renderMine();
     buildBar();
@@ -2341,7 +2599,7 @@
     if (PV) { var last = M.link.last('pitch-slide'); if (last && typeof last.i === 'number') goTo(last.i, { noHash: true, fromSync: true, noScroll: true }); }
     window.addEventListener('hashchange', function () { if (!PV) applyHash(false); });
     window.addEventListener('langchange', function () {
-      updateBar(); renderNotes(); dpFillSegNames(); evRefreshNames(); naRender();
+      updateBar(); renderNotes(); dpFillSegNames(); evRefreshNames(); naRender(); buildControl(); M.applyI18n($('#cr-mini')); var rbs = $('.rb-svg'); if (rbs) rbs.setAttribute('aria-label', L(RB_ARIA)); stagger(slides[ST.i]);
       if (!overview.hidden) { closeOverlays(); }
       if (rendered.booth) rhRender();
       M.applyI18n(bar); $('#pt-tabs').setAttribute('aria-label', T('أقسام العرض', 'Pitch sections'));
@@ -2350,7 +2608,7 @@
     // the language sets <dir>, which flips the chevrons; make sure the mode is right after fonts load
     if (doc.fonts && doc.fonts.ready) doc.fonts.ready.then(applyMode);
     window.__pitchReady = true;
-    window.ManaraPitch = { goTo: goTo, step: step, setPresent: setPresent, setPath: setPath, showTab: showTab, openQA: openQA, state: ST, slides: SL, qa: QA, live: LIVE, timer: TM, DP: DP, NA: NA, NA_BASE: NA_BASE, EV_BASE: EV_BASE, evSummarise: evSummarise, beforePrint: beforePrint, afterPrint: afterPrint, fb: FB, risks: RISKS, ck: CK, nums: NUMS, opening: OPENING, hz: HZ };
+    window.ManaraPitch = { motion: { refresh: motionRefresh, settle: moSettle, jobs: function () { return MO.jobs.length; }, running: function () { return !!MO.raf; }, rbOn: function () { return MO.rbOn; }, robot: RB, ok: moOK }, goTo: goTo, step: step, setPresent: setPresent, setPath: setPath, showTab: showTab, openQA: openQA, state: ST, slides: SL, qa: QA, live: LIVE, timer: TM, DP: DP, NA: NA, NA_BASE: NA_BASE, EV_BASE: EV_BASE, evSummarise: evSummarise, beforePrint: beforePrint, afterPrint: afterPrint, fb: FB, risks: RISKS, ck: CK, nums: NUMS, opening: OPENING, hz: HZ };
   }
   if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', boot); else boot();
 })();
