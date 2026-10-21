@@ -926,7 +926,7 @@
   function btn(cls, iconName, ar, en, onclick, extra) {
     var b = h('button', { type: 'button', class: cls, onclick: onclick });
     if (iconName) b.appendChild(icon(iconName));
-    if (ar) b.appendChild(bi(ar, en));
+    if (ar) { b.appendChild(bi(ar, en)); lab(b, 'aria-label', ar, en); }
     if (extra) for (var k in extra) b.setAttribute(k, extra[k]);
     return b;
   }
