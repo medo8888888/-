@@ -23,7 +23,7 @@
 .rp-meta>div:last-child{border-bottom:0}
 .rp-meta dt{color:var(--muted);font-size:.84rem;font-weight:600}
 .rp-meta dd{color:var(--head);font-weight:500;overflow-wrap:anywhere}
-.rp-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:clamp(18px,3vw,28px);list-style:none}
+.rp-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:14px;margin-top:clamp(18px,3vw,28px);list-style:none}
 .rp-kpis .kpi{padding:14px 16px;height:100%}
 .rp-kpis .kpi b{font-size:clamp(1.55rem,3vw,2.1rem)}
 .rp-kpis .kpi span{font-size:.88rem;color:var(--ink-2)}
@@ -413,7 +413,7 @@ html[data-lang=en]{--rp-run:"Scientific report and engineering logbook"}
   .rp-hero h1{font-size:25pt;margin-top:6pt}
   .rp-purpose{font-size:12pt;max-width:none}
   .rp-meta{margin-top:20pt;box-shadow:none;font-size:10pt}
-  .rp-kpis{margin-top:18pt;grid-template-columns:repeat(4,1fr);gap:8pt}
+  .rp-kpis{margin-top:18pt;grid-template-columns:repeat(5,1fr);gap:8pt}
   .rp-kpis .kpi{box-shadow:none;padding:8pt 9pt}
   .rp-kpis .kpi b{font-size:17pt}
   .rp-kpis .kpi span{font-size:8pt}

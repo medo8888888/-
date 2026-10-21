@@ -15,20 +15,27 @@
 
 | Page · الصفحة | What · ما هي |
 |---|---|
-| `index.html` | landing page · الصفحة الرئيسية |
+| `index.html` | landing page: the story, drone → control room → fastest unit → robot → everyone counted · الصفحة الرئيسية: القصة كاملة |
+| `control.html` | **Control Room**: alert queue, feed wall (camera + thermal), fleet, dispatch, robot, comms log, shift handover; two keys + a human Approve · غرفة التحكم |
 | `mission.html` | Mission Control: map of Qatar, zoom to the last 100 m · غرفة العمليات: خريطة قطر والتكبير إلى «آخر مئة متر» |
-| `detect.html` · `alert.html` · `build.html` | Evidence Lab · resident phones · build guide · مختبر الأدلة · هواتف السكان · دليل البناء |
+| `detect.html` · `alert.html` | Evidence Lab · resident phones · مختبر الأدلة · هواتف السكان |
 | `robot.html` | Robot Rescue Lab (simulated) · مختبر الروبوت (محاكى) |
-| `pitch.html` · `report.html` · `poster.html` | pitch deck · scientific report · display board · العرض · التقرير العلمي · لوحة العرض |
+| `build.html` | build guide, **four tiers**: laptop only, sentinel board, full booth, and Tier 4 (drone payload + ESP32 bench rover) · دليل البناء بأربعة مستويات |
+| `pitch.html` | pitch deck (15 slides, strict 3:00 path with one live moment, animated), spoken script, judge Q&A (67 questions), booth sheet · العرض |
+| `report.html` | scientific report + engineering logbook (printable A4) · التقرير العلمي |
+| `poster.html` | display board: tri-fold 90 × 60 cm or A0, screen motion, print-safe · لوحة العرض |
+| `guide.html` · `plan.html` | safety guide · rollout plan · دليل الأمان · خطة التطبيق |
 | `preview/` | generated single-file copies of landing / mission / robot · نسخ مفردة الملف مولَّدة |
+
+The top bar keeps six working pages; **More** holds `build`, `pitch`, `report`, `guide` and `plan`, so ten pages never clip. · شريط التنقل يُبقي ست صفحات عاملة، والباقي تحت «المزيد».
 
 ## 2. The one-folder layout · بنية المجلد
 
 ```
 manara/
-  index.html mission.html detect.html alert.html build.html
-  robot.html pitch.html report.html poster.html 404.html      the pages · الصفحات
-  css/  js/  data/  assets/  kit/  preview/                    styles, code, Qatar data, images, hardware kit, bundles
+  index.html control.html mission.html detect.html alert.html robot.html
+  build.html pitch.html report.html poster.html guide.html plan.html 404.html   the pages · الصفحات
+  css/  js/  data/  assets/  kit/  preview/                    styles, code, Qatar data + generated test counts, images, hardware kit (firmware: sentinel, safepoint, rover), bundles
   docs/     MANARA.md  MANARA-SPEC.md  MANARA-SOURCES.md  MANARA-QATAR.md  MANARA-HAZARDS.md  MANARA-DATA.md
   tools/    run-all.sh  test-*.mjs  test_kit.py  lib.mjs  shot.mjs  bundle-*.mjs  build-qatar-data.py  samples.py  sync-site.mjs  photos/
   README.md this file · هذا الملف
@@ -44,8 +51,10 @@ npm run test:manara                          # = bash manara/tools/run-all.sh : 
 bash manara/tools/run-all.sh --fast          # skip the slowest browser suites
 bash manara/tools/run-all.sh --only fire,sim # just these  (-j 3 runs three at once, -v prints failing lines)
 node manara/tools/test-fire.mjs              # one suite: also test-sim, test-msg, test-national, test-qatar-data, test-drone-scene,
-                                             #   test-detect, test-mission, test-alert, test-robot-page, test-home, test-pitch, test-poster, test-ui
-python3 manara/tools/test_kit.py             # the hardware kit's logic, on a PC
+                                             #   test-detect, test-mission, test-control-room (+ -feeds, -panels, -ai), test-alert, test-robot-page, test-home,
+                                             #   test-pitch, test-poster, test-report (report.html + build.html), test-guide, test-plan, test-ui
+python3 manara/tools/test_kit.py             # the hardware kit's logic, on a PC: Python detector, three sketches (sentinel, safepoint, rover), the Build page
+node manara/tools/update-counts.mjs --only kit   # refresh data/test-counts.js (the pitch, report and poster READ their "N checks" from it; run-all.sh does it at the end)
 node manara/tools/shot.mjs mission.html --w 390,1440 --theme dark,light --lang ar,en   # screenshots + console/overflow check
 ```
 
@@ -81,10 +90,15 @@ node manara/tools/bundle-page.mjs mission.html                                  
 2. **Simulation.** Unit positions and availability, traffic, hazards, the drones and the rescue robot are simulated (labelled **SIM**); the drones and the robot are a **concept with a simulated prototype**, never flown or used in a real fire. The A/B numbers check a mechanism; they do not prove real-world impact. · كل رقم تشغيلي محاكى وموسوم SIM.
 3. **Not an official service.** 999 stays the dispatcher; MANARA does not call or replace it. A route here is a simulation input, not a navigation instruction. · 999 يبقى هو المرسِل.
 4. **Map data is a snapshot, and incomplete.** OpenStreetMap coverage of Qatar has gaps (for example only 3 ambulance points, some facilities without names, major roads only, no elevation model, no turn restrictions or live traffic). Details: `docs/MANARA-DATA.md`. · لقطة لا بثّ مباشر، وفيها فجوات.
-5. **Hardware is untested.** The ESP32 firmware follows the documented library APIs and its logic is tested on a PC (`test_kit.py`), but it has **not been run on real hardware**; the gas sensors are cheap, uncalibrated and cross-sensitive (values are millivolts, not ppm). It never replaces a certified fire alarm or gas detector. · العتاد لم يُجرَّب على أجهزة حقيقية.
+5. **Hardware is untested.** The ESP32 firmware (sentinel, safepoint and the Tier 4 bench rover) follows the documented library APIs and its logic is tested on a PC (`test_kit.py`), but it has **not been run on real hardware**; the rover models only the robot's logic, never drives at the booth and is not a rescue robot; the gas sensors are cheap, uncalibrated and cross-sensitive (values are millivolts, not ppm). It never replaces a certified fire alarm or gas detector. · العتاد لم يُجرَّب على أجهزة حقيقية.
 6. **Mostly offline.** Everything runs from `file://`; only the optional Google Fonts and the opt-in "nearby facilities" lookup on the phone page (`alert.html`) use the network.
 7. **Tests check our own code** under our own assumptions, in Chromium with a fake camera: no real footage, no human-subject tests, no field trial. · الاختبارات تفحص شيفرتنا وفق افتراضاتنا.
 
 ## 8. Docs · الوثائق
 
 [`docs/MANARA-SPEC.md`](docs/MANARA-SPEC.md) what the project is (read first) · [`docs/MANARA.md`](docs/MANARA.md) architecture, laws, engine contracts · [`docs/MANARA-SOURCES.md`](docs/MANARA-SOURCES.md) the only real-world numbers we may show, with sources · [`docs/MANARA-HAZARDS.md`](docs/MANARA-HAZARDS.md) hazard playbooks and thresholds · [`docs/MANARA-QATAR.md`](docs/MANARA-QATAR.md) Qatar context and judge answers · [`docs/MANARA-DATA.md`](docs/MANARA-DATA.md) the bundled Qatar dataset, its quality and gaps.
+
+## 9. Motion, print and the numbers on the documentation pages · الحركة والطباعة والأرقام
+
+- **EN** — `pitch.html` and `poster.html` animate on screen only: the control-room numbers count up, the robot walks its route, markers pulse (transform / opacity / stroke only, every loop slower than 1 Hz). With *reduced motion* every page shows its **final frame** (numbers already at their values, the robot beside the person); a hidden tab pauses; printing settles everything and the print CSS never animates. · الحركة على الشاشة فقط؛ مع «تقليل الحركة» تظهر اللقطة النهائية.
+- **EN** — Test counts are **never typed** on these pages: `tools/update-counts.mjs` writes `data/test-counts.js`; `pitch.html`, `report.html` and `poster.html` read it (a static fallback equal to the last generated value is kept for pages opened without it). The `ui-lint` suite fails if a typed count disagrees. · أعداد الفحوص لا تُكتب باليد بل تُقرأ من ملف مولَّد.

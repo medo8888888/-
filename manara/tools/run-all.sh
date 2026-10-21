@@ -10,7 +10,7 @@
 #
 # Suites (name : command):
 #   fire msg sim qatar-data kit national drone-scene   engines and data (Node / Python, no browser)
-#   detect mission control alert robot home pitch poster report   one Playwright suite per page (control = test-control-room.mjs, robot = test-robot-page.mjs;
+#   detect mission control alert robot home pitch poster guide plan report   one Playwright suite per page (control = test-control-room.mjs, robot = test-robot-page.mjs;
 #                                                      a suite whose file does not exist yet is listed as MISSING and counts as a failure: it is never silently skipped)
 #   ui-lint ui-honesty ui-pages ui-flow             the cross-page QA gate: manara/tools/test-ui.mjs --suite lint|honesty|pages|flow
 # Any other manara/tools/test-*.mjs / test_*.py that is not listed is picked up automatically, so a new suite can never be forgotten.
@@ -54,11 +54,14 @@ SUITES=(
   "control|node $T/test-control-room.mjs|browser"
   "control-feeds|node $T/test-control-feeds.mjs|browser"
   "control-panels|node $T/test-control-panels.mjs|browser"
+  "control-ai|node $T/test-control-ai.mjs|browser"
   "alert|node $T/test-alert.mjs|browser"
   "robot|node $T/test-robot-page.mjs|browser"
   "home|node $T/test-home.mjs|browser"
   "pitch|node $T/test-pitch.mjs|browser"
   "poster|node $T/test-poster.mjs|browser"
+  "guide|node $T/test-guide.mjs|browser"
+  "plan|node $T/test-plan.mjs|browser"
   "ui-honesty|node $T/test-ui.mjs --suite honesty|browser"
   "ui-pages|node $T/test-ui.mjs --suite pages|browser"
   "ui-flow|node $T/test-ui.mjs --suite flow|browser"

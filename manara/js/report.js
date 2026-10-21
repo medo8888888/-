@@ -433,7 +433,55 @@
     legend(host, [{ color: C.brand, text: L(T('الأسرع بحسب الازدحام', 'fastest given traffic')) }, { color: C.muted, text: L(T('الأقرب بخط مستقيم', 'nearest in a straight line')) }, { color: 'var(--danger)', text: L(T('إطفاء', 'fire')) }, { color: 'var(--info)', text: L(T('شرطة', 'police')) }, { color: 'var(--accent)', text: L(T('مستشفى', 'hospital')) }, { color: 'var(--warn)', text: L(T('إسعاف', 'ambulance')) }]);
   }
 
-  var FIGS = { nat: figNat, arch: figArch, proof: figProof, eta: figEta, pw: figPw, wbgt: figWbgt, abl: figAbl, ab: figAb, sweep: figSweep, cov: figCov };
+  /* ================================================================== figure: the story in seven steps (drone → control room → human → fastest unit → guide → robot → count) */
+  function storySteps() {
+    return [
+      { n: '1', c: C.accent, dash: true, title: L(T('المسيّرة ترى', 'The drone sees')), sub: L(T('إطار كاميرا وإطار حراري وتخمين الخطر والموقع (مفهوم)', 'a camera and a thermal frame, a hazard guess, a position (concept)')) },
+      { n: '2', c: C.warn, title: L(T('غرفة التحكم تتحقق', 'The control room proves')), sub: L(T('طابور الإنذارات ومفتاحان مستقلان', 'the alert queue and two independent keys')) },
+      { n: '3', c: C.danger, title: L(T('إنسان يعتمد', 'A human approves')), sub: L(T('لا تنبيه عام قبل «اعتماد»؛ والصفّارة المحلية لا تنتظر', 'no public alert before Approve; the local siren never waits')) },
+      { n: '4', c: C.info, title: L(T('أسرع وحدة', 'The fastest unit')), sub: L(T('بحسب المرور في أنحاء قطر؛ و999 يبقى المرسِل', 'by traffic across Qatar; 999 stays the dispatcher')) },
+      { n: '5', c: C.brand, dash: true, title: L(T('المسيّرة ترشد', 'The drone guides')), sub: L(T('الناس إلى الخارج: آخر مئة متر (مفهوم)', 'people out: the last 100 metres (concept)')) },
+      { n: '6', c: C.safe, dash: true, title: L(T('الروبوت يبحث', 'The robot searches')), sub: L(T('داخل المبنى بعد موافقة قائد الحادث؛ يُساعد ولا يقرّر (مفهوم)', 'inside, after the incident commander approves; it assists, firefighters decide (concept)')) },
+      { n: '7', c: C.safe, title: L(T('الجميع معدودون', 'Everyone is counted')), sub: L(T('«أنا بأمان» أو «أحتاج مساعدة» مقابل السجل', '“I’m safe” or “I need help” against the register')) }
+    ];
+  }
+  function figStory(host, W) {
+    var rtl = M.lang() === 'ar', label = L(T('مسار القصة: من السماء إلى آخر مئة متر', 'The story pipeline: from the sky to the last 100 metres'));
+    var st = storySteps(), pad = 6, gap = 14, n = st.length;
+    if (W >= 640) {
+      var per = 4, w = (W - 2 * pad - gap * (per - 1)) / per, hbox = 0;
+      st.forEach(function (b) { hbox = Math.max(hbox, boxH(w, b)); });
+      hbox = Math.max(hbox, 96);
+      var rowGap = 44, H = 2 * hbox + rowGap + 74, svg = svgRoot(host, W, H, label), a = arrowDef(svg), ac = arrowDef(svg, C.danger);
+      var pos = function (i) { var row = i < per ? 0 : 1, col = i < per ? i : i - per, vi = rtl ? per - 1 - col : col; return { x: pad + vi * (w + gap), y: 4 + row * (hbox + rowGap), row: row }; };
+      st.forEach(function (b, i) {
+        var p = pos(i); box(svg, p.x, p.y, w, hbox, { c: b.c, n: b.n, dash: b.dash, title: b.title, sub: b.sub, cw: 6.1 });
+        if (i < n - 1 && i !== per - 1) {
+          var q = pos(i + 1), y = p.y + hbox / 2, x0 = rtl ? p.x - 1 : p.x + w + 1, x1 = rtl ? q.x + w + 1 : q.x - 1;
+          path(svg, 'M' + x0 + ' ' + y + 'L' + x1 + ' ' + y, { marker: a });
+        }
+      });
+      // wrap-around: from the end of row 1 down and back to the start of row 2
+      var e = pos(per - 1), s2 = pos(per), ym = e.y + hbox + rowGap / 2;
+      path(svg, 'M' + (e.x + w / 2) + ' ' + (e.y + hbox + 1) + 'V' + ym + 'H' + (s2.x + w / 2) + 'V' + (s2.y - 1), { marker: a });
+      // the local alarm lane
+      var ly = 4 + 2 * hbox + rowGap + 34, bx = rtl ? W - pad : pad;
+      path(svg, 'M' + pad + ' ' + ly + 'H' + (W - pad), { c: C.danger, dash: true });
+      txt(svg, W / 2, ly + 20, L(T('الصفّارة المحلية لا تنتظر شبكةً ولا مسيّرةً ولا إنسانًا: تعمل بقاعدتها وحدها', 'The local siren waits for no network, no drone and no person: it runs on its own rule')), 'sv-m', 'c');
+    } else {
+      var w2 = W - 2 * pad, y = 6, hs = st.map(function (b) { return boxH(w2, b); });
+      var total = 6 + hs.reduce(function (x, v) { return x + v; }, 0) + (n - 1) * 20 + 44;
+      var svg2 = svgRoot(host, W, total, label), a2 = arrowDef(svg2);
+      st.forEach(function (b, i) {
+        box(svg2, pad, y, w2, hs[i], { c: b.c, n: b.n, dash: b.dash, title: b.title, sub: b.sub });
+        y += hs[i];
+        if (i < n - 1) { path(svg2, 'M' + (W / 2) + ' ' + (y + 1) + 'V' + (y + 16), { marker: a2 }); y += 20; }
+      });
+      tlines(svg2, W / 2, y + 22, L(T('الصفّارة المحلية لا تنتظر أحدًا', 'The local siren waits for no one')), 40, 'sv-m', 'c', 14);
+    }
+  }
+
+  var FIGS = { nat: figNat, story: figStory, arch: figArch, proof: figProof, eta: figEta, pw: figPw, wbgt: figWbgt, abl: figAbl, ab: figAb, sweep: figSweep, cov: figCov };
   function renderFigures() {
     $$('.fig-body[data-fig]').forEach(function (host) {
       var fn = FIGS[host.getAttribute('data-fig')]; if (!fn) return;

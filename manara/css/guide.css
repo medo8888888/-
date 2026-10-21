@@ -1,6 +1,6 @@
 /* ==========================================================================
    MANARA — Safety guide (guide.html). Page styles only; tokens come from base.css.
-   Logical properties only. No letter-spacing. Print: only the family plan (one A4 page).
+   Logical properties only. Print: only the family plan (one A4 page).
    ========================================================================== */
 .gd-hero{background:var(--grad-soft);border-bottom:1px solid var(--line)}
 .gd-hero .btns{margin-top:18px}

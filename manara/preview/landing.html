@@ -1764,6 +1764,8 @@ section[data-live="0"] *,section[data-live="0"] *::before,section[data-live="0"]
     'nav.pitch': { ar: 'العرض التقديمي', en: 'Pitch' },
     'nav.report': { ar: 'التقرير العلمي', en: 'Report' },
     'nav.poster': { ar: 'لوحة العرض', en: 'Display Board' },
+    'nav.guide': { ar: 'دليل الأمان', en: 'Safety Guide' },
+    'nav.plan': { ar: 'خطة التطبيق', en: 'Rollout Plan' },
     'nav.more': { ar: 'المزيد', en: 'More' },
     'ui.menu': { ar: 'القائمة', en: 'Menu' },
     'ui.close': { ar: 'إغلاق', en: 'Close' },
@@ -1851,7 +1853,9 @@ section[data-live="0"] *,section[data-live="0"] *::before,section[data-live="0"]
     ['robot.html', 'nav.robot', 'robot'],
     ['build.html', 'nav.build', 'wrench'],
     ['pitch.html', 'nav.pitch', 'slides'],
-    ['report.html', 'nav.report', 'chart']
+    ['report.html', 'nav.report', 'chart'],
+    ['guide.html', 'nav.guide', 'shield'],
+    ['plan.html', 'nav.plan', 'route']
   ];
   var EXTRA = [['poster.html', 'nav.poster', 'layers']];
   function current() { return (document.body && document.body.getAttribute('data-page')) || 'index.html'; }
@@ -1859,7 +1863,7 @@ section[data-live="0"] *,section[data-live="0"] *::before,section[data-live="0"]
     return '<a href="' + p[0] + '"' + (p[0] === current() ? ' aria-current="page"' : '') + (cls ? ' class="' + cls + '"' : '') + '>' + icon(p[2]) + '<span>' + s(p[1]) + '</span></a>';
   }
   function links(cls) { return PAGES.map(function (p) { return linkOf(p, cls); }).join(''); }
-  var MORE = ['build.html', 'pitch.html', 'report.html'];             // the top bar keeps the six working pages; the rest sit under "More" so ten pages never clip (the phone menu lists them all)
+  var MORE = ['build.html', 'pitch.html', 'report.html', 'guide.html', 'plan.html'];             // the top bar keeps the six working pages; the rest sit under "More" so ten pages never clip (the phone menu lists them all)
   function barLinks() {
     var rest = PAGES.filter(function (p) { return MORE.indexOf(p[0]) < 0; }), more = PAGES.filter(function (p) { return MORE.indexOf(p[0]) >= 0; });
     var inMore = more.some(function (p) { return p[0] === current(); });

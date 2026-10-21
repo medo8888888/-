@@ -27,7 +27,7 @@ const argOf = (n, d) => { const i = argv.findIndex(a => a === '--' + n || a.star
 const SUITE = argOf('suite', 'all');
 const want = s => SUITE === 'all' || SUITE === s;
 // Every page of the site. control.html (the Control Room) and robot.html (the Robot Rescue Lab) are first-class pages: they go through every matrix below.
-const ALL_PAGES = ['index', 'mission', 'control', 'detect', 'alert', 'robot', 'build', 'pitch', 'report', 'poster', '404'];
+const ALL_PAGES = ['index', 'mission', 'control', 'detect', 'alert', 'robot', 'build', 'pitch', 'report', 'poster', 'guide', 'plan', '404'];
 const PAGES = (argOf('pages', '') ? argOf('pages', '').split(',') : ALL_PAGES);
 // The pages in the nav bar (and the mobile menu) are READ from core.js (PAGES = [...] before EXTRA), so adding a page to the nav never needs an edit here.
 const NAV_PAGES = (() => { const t = fs.readFileSync(path.join(SITE, 'js/core.js'), 'utf8'); const m = /var PAGES = \[([\s\S]*?)\];/.exec(t); return m ? [...m[1].matchAll(/\['([a-z0-9]+\.html)',\s*'nav\./g)].map(x => x[1].replace('.html', '')) : []; })();
@@ -119,6 +119,8 @@ if (want('lint')) {
       'js/pitch.js': ['ICON', 'name', 'svgIcon', 'cls'],
       'js/build.js': ['ic'],
       'js/report.js': [],
+      'js/guide.js': ['h.icon'],   // guide.html: insertAdjacentHTML(Manara.icon(h.icon)) where h.icon is a key of the authored HZ table
+      'js/plan.js': [],
       'js/national.js': [], 'js/alert.js': [], 'js/poster.js': [], 'js/sim.js': [], 'js/fire.js': [], 'js/messages.js': [], 'js/drone-scene.js': [],
     };
     const stmtEnd = (t, i) => { let q = null, d = 0; for (let j = i; j < t.length; j++) { const c = t[j]; if (q) { if (c === '\\') j++; else if (c === q) q = null; continue; } if (c === '"' || c === "'" || c === '`') { q = c; continue; } if ('([{'.includes(c)) d++; else if (')]}'.includes(c)) { d--; if (d < 0) return j; } else if (c === ';' && d === 0) return j; } return t.length; };
@@ -310,7 +312,7 @@ if (want('lint')) {
     for (const f of JS.filter(x => !/samples-data\.js$/.test(x))) {
       const t = read(f);
       for (const m of t.matchAll(/['"`]((?:assets|data|kit|css|js)\/[\w./-]+\.(?:png|jpe?g|svg|js|css|json|webp|gif|mp4|webm|txt|md|ino|py|html))['"`]/g)) if (!exists(path.join(SITE, 'x.html'), m[1])) miss.push(`${rel(f)}:${lineOf(t, m.index)} ${m[1]}`);
-      for (const m of t.matchAll(/['"`]((?:index|mission|control|detect|alert|robot|build|pitch|report|poster|404)\.html)(?:[#?][^'"`]*)?['"`]/g)) if (!fs.existsSync(path.join(SITE, m[1]))) miss.push(`${rel(f)}:${lineOf(t, m.index)} ${m[1]}`);
+      for (const m of t.matchAll(/['"`]((?:index|mission|control|detect|alert|robot|build|pitch|report|poster|guide|plan|404)\.html)(?:[#?][^'"`]*)?['"`]/g)) if (!fs.existsSync(path.join(SITE, m[1]))) miss.push(`${rel(f)}:${lineOf(t, m.index)} ${m[1]}`);
     }
     check(`every src/href/poster/srcset/url()/asset string in ${HTML.length} html + ${CSS.length} css + ${JS.length} js files resolves to an existing file`, miss.length === 0, first(miss, 6));
     // core.js nav + footer targets

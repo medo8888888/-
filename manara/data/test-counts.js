@@ -2,13 +2,13 @@
  * Pass counts of MANARA's own automated test suites at the time each was last run: our own tests, not a statistic about the world.
  * pitch.html, report.html and poster.html print these numbers (with a static fallback if this file is missing). Classic script, no libraries. */
 window.MANARA_TEST_COUNTS = {
- "generated": "2026-10-15",
- "total": 1348,
+ "generated": "2026-10-21",
+ "total": 1463,
  "failed": 0,
  "suites": {
   "drone-scene": {"passed":75,"failed":0,"date":"2026-10-15"},
   "fire": {"passed":43,"failed":0,"date":"2026-10-15"},
-  "kit": {"passed":159,"failed":0,"date":"2026-10-15"},
+  "kit": {"passed":274,"failed":0,"date":"2026-10-21"},
   "msg": {"passed":281,"failed":0,"date":"2026-10-15"},
   "national": {"passed":291,"failed":0,"date":"2026-10-15"},
   "qatar-data": {"passed":91,"failed":0,"date":"2026-10-15"},

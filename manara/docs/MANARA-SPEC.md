@@ -231,6 +231,12 @@ demo is a simulation (SIM); any hardware claim must match manara/docs/MANARA-HAZ
 build guide; no claim that real drones/robots were flown, tested in fire, or approved by
 any authority; QCAA/Civil Defence approvals are required for real operation.
 
+**5. The documentation pages carry the same story.** `pitch.html` (15 slides: title, problem, gap, solution, control room, proof, hazards, live demo, people, dispatch, national, robot,
+evidence, build, close; a strict 3-minute path with ONE live moment of 55 s; Q&A with the drone, privacy, false-alarm, battery, weather, liability, CCTV, vacuum-robot, cost and scale questions),
+`report.html` (control room 6.9, drone + alert pipeline 6.10, robot 6.11, results 9.11–9.12), `poster.html` (control-room miniature, robot panel, drone and robot numbers, four hardware tiers) and
+`build.html` (Tier 4: a drone payload and an ESP32 **bench rover** that models only the robot's logic). Every number on them is either read from a generated file (`data/test-counts.js`) or equal to a
+fresh simulation run (checked by the page's test); every price is an **approximate range, check suppliers**; aviation rules are never invented (they "must be confirmed with the authority").
+
 ## Depth vs breadth (what to build for real)
 
 - **Deep (real sensors + live booth demo):** fire & smoke (hot mug on the twin board +

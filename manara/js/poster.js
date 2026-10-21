@@ -298,7 +298,7 @@
     });
     // ---- the two generated aerial views (right column)
     var tw = 148, th = 100, tx = [X(300, tw), X(452, tw)];
-    [['rgb', { ar: 'كاميرا · UAV-1', en: 'Camera · UAV-1' }], ['thermal', { ar: 'حرارية', en: 'Thermal' }]].forEach(function (f, i) {
+    [['rgb', { ar: 'كاميرا', en: 'Camera' }], ['thermal', { ar: 'حرارية', en: 'Thermal' }]].forEach(function (f, i) {
       var g = mk('g', { 'class': 'tile ' + f[0] }, svg), x0 = tx[i];
       mk('rect', { x: x0, y: 0, width: tw, height: th, rx: 8, 'class': f[0] === 'rgb' ? 'aer-ground' : 'aer-cold' }, g);
       if (f[0] === 'rgb') {
@@ -314,7 +314,7 @@
       }
       mk('circle', { cx: x0 + (f[0] === 'rgb' ? 82 : 74), cy: f[0] === 'rgb' ? 36 : 46, r: 8, 'class': 'aer-ping' }, g);
       mk('rect', { x: x0, y: th - 18, width: tw, height: 18, rx: 0, 'class': 'aer-bar' }, g);
-      T(svg, f[1][c.l] + '  ·  SIM', c.l, x0 + tw / 2, th - 5.5, { size: 10.5, cls: 'aer-cap', w: tw - 8, min: 10 });
+      T(svg, f[1][c.l] + ' · SIM', c.l, x0 + tw / 2, th - 5.5, { size: 10.5, cls: 'aer-cap', w: tw - 8, min: 10 });
     });
     LB(svg, { ar: 'إنذار المسيّرة: صورة عادية + حرارية', en: 'A drone alert: a camera + a thermal frame' }, X(300, 300) + 150, 129, { size: 11.5, ssize: 10, w: 300, cls: 't-h', step: 11.5, min: 10 });
     LB(svg, { ar: 'مشهدان مولَّدان بالحاسوب (SIM): لم تطر مسيّرة', en: 'Computer-generated (SIM): no drone has flown' }, X(300, 300) + 150, 162, { size: 11, ssize: 10, w: 300, cls: 't-m', scls: 't-m', step: 11.5, min: 10 });
@@ -627,8 +627,9 @@
   function kpiLi(host, sc, value, label, countAttrs) {
     var li = el('li', null, null, host); li.style.setProperty('--sc', 'var(' + sc + ')');
     var b = el('b', 'num', null, li); b.setAttribute('dir', 'ltr');
-    (countAttrs || [[value]]).forEach(function (p, i) {
-      if (i) b.appendChild(document.createTextNode(p[2] || ' '));
+    countAttrs = countAttrs || [[value]];
+    countAttrs.forEach(function (p, i) {
+      if (i) b.appendChild(document.createTextNode(countAttrs[i - 1][2] || ' '));
       var s = el('span', null, p[0], b); if (p[1] != null) { s.setAttribute('data-count', String(p[1])); s.setAttribute('data-suffix', p[3] || ''); }
     });
     li.appendChild(blNode('span', label, 'kl'));
@@ -1026,7 +1027,7 @@
   function refit() {
     autoFit();
     if (S.layout === 'a0' && a0) { var before = splitAt; balanceA0(); if (splitAt !== before) autoFit(); }
-    updateStatus(); scalePreview();
+    updateStatus(); scalePreview(); moRefresh();
   }
   function render(opts) {
     opts = opts || {};
@@ -1088,10 +1089,66 @@
       window.print();
     });
     window.addEventListener('langchange', function () { drawAll(); fillQR(); updateUI(); applyFields(); refit(); });
-    window.addEventListener('beforeprint', function () { applyGeometry(); });
+    window.addEventListener('beforeprint', function () { applyGeometry(); MO.printing = true; moRefresh(); });
+    window.addEventListener('afterprint', function () { MO.printing = false; moRefresh(); });
+    document.addEventListener('visibilitychange', function () { moRefresh(); });
+    if (mqReduce && mqReduce.addEventListener) mqReduce.addEventListener('change', function () { moRefresh(); });
     var rz = 0;
     window.addEventListener('resize', function () { cancelAnimationFrame(rz); rz = requestAnimationFrame(scalePreview); });
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { drawAll(); refit(); });
+  }
+
+
+  /* ======================================================================= screen-only motion
+     data-motion on #board:  on = loops + count-up + the robot's walk · paused = the tab is hidden · off = reduced motion or printing (static final frames).
+     Only transform / opacity / stroke are animated, every loop is slower than 1 Hz (WCAG: never more than 3 flashes a second), and nothing here reaches the paper:
+     the CSS lives in an @media screen + no-preference block, and before printing everything is settled to its final frame. */
+  var MO = { st: 'off', raf: 0, t0: 0, counted: false, countT0: 0, printing: false, revealed: false, route: null, body: null, len: 0, counts: [], tmr: 0 };
+  var mqReduce = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+  function moWanted() { return !(mqReduce && mqReduce.matches) && !MO.printing; }
+  function moState(s) { MO.st = s; if (board) board.setAttribute('data-motion', s); }
+  function ease(p) { return p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2; }
+  function moRobotSet(p) {                                   // p = 0 … 1 along the search route (1 = the finished search)
+    if (!MO.route || !MO.body || !MO.len) return;
+    MO.route.style.strokeDashoffset = p >= 1 ? '' : String((1 - p).toFixed(4));
+    var pt = MO.route.getPointAtLength(MO.len * p);
+    MO.body.setAttribute('cx', pt.x.toFixed(1)); MO.body.setAttribute('cy', pt.y.toFixed(1));
+  }
+  function moCountFinal() { MO.counts.forEach(function (n) { n.textContent = n.getAttribute('data-count') + (n.getAttribute('data-suffix') || ''); }); }
+  function moSettle() {                                      // every counter at its number, the robot at the person, no frame loop
+    if (MO.raf) { cancelAnimationFrame(MO.raf); MO.raf = 0; }
+    clearTimeout(MO.tmr); if (board) board.removeAttribute('data-reveal');
+    moRobotSet(1); moCountFinal(); MO.counted = true;
+  }
+  function moTick(now) {
+    MO.raf = 0; if (MO.st !== 'on') return;
+    var u = ((now - MO.t0) / 1000) % 8;                      // 8 s loop: a short hold at the entrance, the walk, then a hold beside the person
+    moRobotSet(ease(u < 0.9 ? 0 : u < 6.4 ? (u - 0.9) / 5.5 : 1));
+    if (!MO.counted) {
+      var c = Math.min(1, (now - MO.countT0) / 1400), e = 1 - Math.pow(1 - c, 3);
+      MO.counts.forEach(function (n) { n.textContent = Math.round(+n.getAttribute('data-count') * e) + (n.getAttribute('data-suffix') || ''); });
+      if (c >= 1) { moCountFinal(); MO.counted = true; }
+    }
+    MO.raf = requestAnimationFrame(moTick);
+  }
+  function moRefresh() {                                     // after every (re)draw, when the language, layout, size, visibility, print state or the user's motion setting changes
+    if (!board) return;
+    MO.route = $('.rb-route', board); MO.body = $('.rb-body', board); MO.len = 0;
+    if (MO.route) { try { MO.len = MO.route.getTotalLength(); } catch (e) { MO.len = 0; } }
+    $$('.n-fast', board).forEach(function (p) { p.setAttribute('pathLength', '1'); });
+    MO.counts = $$('[data-count]', board);
+    if (!moWanted()) { moState('off'); moSettle(); return; }
+    if (document.visibilityState === 'hidden') { moState('paused'); if (MO.raf) { cancelAnimationFrame(MO.raf); MO.raf = 0; } return; }
+    var first = MO.st !== 'on';
+    moState('on');
+    if (!MO.t0) { MO.t0 = performance.now(); MO.countT0 = MO.t0; }
+    if (!MO.revealed) {
+      MO.revealed = true; board.setAttribute('data-reveal', '1');
+      $$('.mod', board).forEach(function (m, i) { m.style.setProperty('--i', String(i)); });
+      MO.tmr = setTimeout(function () { board.removeAttribute('data-reveal'); }, 2600);
+    }
+    if (!MO.counted) MO.counts.forEach(function (n) { n.textContent = '0' + (n.getAttribute('data-suffix') || ''); });
+    if (first || !MO.raf) { if (!MO.raf) MO.raf = requestAnimationFrame(moTick); }
   }
 
   /* ======================================================================= checks used by the tests */
@@ -1120,7 +1177,8 @@
       setLayout: setLayout, setSize: setSize, setBoth: setBoth, setZoom: setZoom, focusPanel: focusPanel,
       setCustom: function (w, h) { S.size = 'custom'; S.cw = clamp(w, LIM.w[0], LIM.w[1]); S.ch = clamp(h, LIM.h[0], LIM.h[1]); save(); render(); },
       setOpt: function (k, v) { S[k] = !!v; save(); render(); },
-      setUrl: function (u) { S.url = cleanText(u, 400); save(); updateUI(); fillQR(); }
+      setUrl: function (u) { S.url = cleanText(u, 400); save(); updateUI(); fillQR(); },
+      motion: { get state() { return MO.st; }, get running() { return !!MO.raf; }, get counted() { return MO.counted; }, refresh: moRefresh, settle: moSettle, restartCount: function () { MO.counted = false; MO.countT0 = performance.now(); moRefresh(); }, robot: function () { return { off: MO.route ? MO.route.style.strokeDashoffset : null, cx: MO.body ? +MO.body.getAttribute('cx') : null, cy: MO.body ? +MO.body.getAttribute('cy') : null, len: MO.len }; } }
     };
     window.__posterReady = true;
   }

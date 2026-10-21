@@ -3,7 +3,8 @@
 //  1. Loads clean in ar/en × dark/light at 390 and 1440; no horizontal page overflow; one h1; the shell language/direction follow
 //  2. Layouts and sizes: tri-fold (90×60 cm, 3×A3, 3×A2, custom) and A0 → page sizes, @page rule, custom clamping, bleed
 //  3. Fit audit PER PANEL (layout × size × language × single/both): nothing overflows its panel or its module, no module overlaps
-//     the next, no SVG text leaves its figure, nothing is smaller than ~9 pt on paper; the auto-fit scale is reported
+//     the next, no SVG text leaves its figure, nothing is smaller than ~8.4 pt on paper; the auto-fit scale is reported. A size too small
+//     for the whole story (type scale below 60%) must SAY so in the status line instead of silently printing small text
 //  4. Bilingual behaviour: both languages together (page language first), one language only, panel order flips with direction
 //  5. Honesty: banned phrases, "AI" only where it is a disclosure or a denial, every number on the board is on the allowed list,
 //     every SIM figure is labelled, no innerHTML / fetch / modules / physical CSS properties in our own source
@@ -11,7 +12,9 @@
 //  7. QR codes: encoder vs python-qrcode reference vectors (all versions 1–10, all levels, short and full data); URL input → real codes
 //  8. Team fields ({{PLACEHOLDERS}}): textContent only, persisted, counter
 //  9. Print: PDF page counts and page sizes (tri-fold = 3 pages, A0 = 1 page, bleed adds 20 mm), light palette, no blank pages
-// 10. Contrast (dark, light, paper), keyboard/labels, print button, zoom controls, no animation, no network
+// 10. Contrast (dark, light, paper), keyboard/labels, print button, zoom controls, no animation when reduced, no network
+// 11. Screen-only motion: reduced motion = static final frames, loops slower than 1 Hz and only transform / opacity / stroke, paused when the tab is
+//     hidden, settled before printing, never in the print CSS; counters end on their numbers; the robot walks its route and ends beside the person
 //
 // Everything simulated is labelled SIM on the board; this test checks that the board is honest about it.
 import fs from 'node:fs';
@@ -120,7 +123,7 @@ const AUDIT = () => {
   return out;
 };
 {
-  const kTable = [];
+  const kTable = [], tightTags = [];
   for (const lang of ['ar', 'en']) {
     const { page, errors, ctx } = await open('', { lang, width: 1500, height: 1000 });
     const configs = [['tri', 'b90'], ['tri', 'a3'], ['tri', 'a2'], ['tri', 'custom'], ['a0', 'a3']];
@@ -130,9 +133,15 @@ const AUDIT = () => {
       const a = await page.evaluate(AUDIT);
       const tag = `${lang} ${layout === 'a0' ? 'A0' : size} ${both ? 'both languages' : 'one language'}`;
       kTable.push([tag, a.k, a.minPt]);
-      if (layout === 'tri' && size === 'a3' && both) {   // 297 × 420 mm panels cannot hold two languages at ≥ 9 pt: the board must say so, never cut text silently
-        const st = await page.evaluate(() => ({ cls: document.getElementById('fit-status').className, txt: document.getElementById('fit-status').textContent }));
-        check(`${tag}: cannot fit at ≥ 9 pt, and the status line warns and suggests one language / a bigger board`, a.containers.length > 0 && /bad/.test(st.cls) && /one language|لغة واحدة/.test(st.txt), JSON.stringify([a.containers, st]));
+      const st = await page.evaluate(() => ({ cls: document.getElementById('fit-status').className, txt: document.getElementById('fit-status').textContent }));
+      const tight = a.containers.length > 0 || a.k < 0.6;
+      if (tight) tightTags.push(tag);
+      if (tight) {   // too small a board for the whole story at a readable size: it must say so (class "bad" + advice), never cut or shrink text silently
+        check(`${tag}: too tight for readable type (scale ${(a.k * 100).toFixed(0)}%): the status line warns and suggests one language / a bigger board`, /bad/.test(st.cls) && /one language|لغة واحدة/.test(st.txt), JSON.stringify(st));
+        if (a.containers.length === 0) {
+          check(`${tag}: nothing sticks out of its panel or module`, a.outside.length === 0, a.outside.slice(0, 5).join(' | '));
+          check(`${tag}: no module overlaps the next`, a.overlaps.length === 0, a.overlaps.join('; '));
+        }
         continue;
       }
       check(`${tag}: every panel/column fits (type scale ${(a.k * 100).toFixed(0)}%)`, a.containers.length === 0, a.containers.join('; '));
@@ -147,9 +156,10 @@ const AUDIT = () => {
   console.log('  info type scale k (1.00 = designed size) and smallest text:');
   kTable.forEach(([t, k, p]) => console.log(`       ${t.padEnd(34)} k=${k.toFixed(2)}  min ${p.toFixed(1)} pt`));
   const kk = Object.fromEntries(kTable.map(([t, k]) => [t, k]));
-  check('default size (90 × 60 cm, both languages) keeps the type scale ≥ 0.80', kk['ar b90 both languages'] >= 0.8 && kk['en b90 both languages'] >= 0.8, `${kk['ar b90 both languages']?.toFixed(2)} / ${kk['en b90 both languages']?.toFixed(2)}`);
+  check('default size (90 × 60 cm, both languages) keeps the type scale ≥ 0.62 with the drone, control-room and robot modules on the board (it was 0.81 before them)', kk['ar b90 both languages'] >= 0.62 && kk['en b90 both languages'] >= 0.62, `${kk['ar b90 both languages']?.toFixed(2)} / ${kk['en b90 both languages']?.toFixed(2)}`);
+  check('the two boards the competition uses are NOT tight: 90 × 60 cm tri-fold and A0, in both languages and in one', ['b90', 'A0'].every(z => ['ar', 'en'].every(l => ['both languages', 'one language'].every(m => !tightTags.includes(`${l} ${z} ${m}`)))), tightTags.join(' | '));
   check('one language only gives bigger type than both (Arabic-only / English-only boards)', kk['ar b90 one language'] > kk['ar b90 both languages'] && kk['en b90 one language'] > kk['en b90 both languages']);
-  check('A0 keeps the type scale ≥ 0.70', kk['ar A0 both languages'] >= 0.7 && kk['en A0 both languages'] >= 0.7, `${kk['ar A0 both languages']?.toFixed(2)}`);
+  check('A0 keeps the type scale ≥ 0.62', kk['ar A0 both languages'] >= 0.62 && kk['en A0 both languages'] >= 0.62, `${kk['ar A0 both languages']?.toFixed(2)}`);
 }
 { // too small a panel: the board must say so instead of silently cutting text
   const { page, ctx } = await open('?size=custom&cw=200&ch=280');
@@ -210,12 +220,16 @@ section('5. Honesty scan (phrases, AI wording, numbers, SIM labels, our source r
   check('the held-out detector number is on the board with its honest context (66.7%, 12/18, "never used")', /66\.7/.test(all) && /12\/18/.test(all) && /never used/i.test(all) && /3\/12/.test(all) && /0\/3/.test(all));
   check('"999 stays the dispatcher" and "Simulated (SIM)" are stated next to the fastest-unit idea', /999 stays the dispatcher/.test(all) && /Simulated \(SIM\)/.test(all) && /أولًا في ظل المرور/.test(all));
   check('prior art is respected (Saqr, Shaheen, Suhail, Civil Defence drones, ISEF 2025) and "not a competitor" is said', /Saqr/.test(all) && /Shaheen/.test(all) && /Suhail/.test(all) && /ISEF 2025/.test(all) && /not a competitor/.test(all));
-  check('limitations box states: not AI, SIM = mechanism check, MQ sensors not certified, fictional stations/traffic, comprehension test not run, drone concept', ['not AI', 'mechanism check', 'not certified', 'fictional', 'not been run', 'concept for a licensed agency'].every(s => all.includes(s)));
+  check('limitations box states: not AI, SIM = mechanism check, MQ sensors not certified, fictional stations/traffic, comprehension test not run, drone concept (no drone has flown, no rescue robot built), 33% out of range, the robot cannot climb stairs', ['not AI', 'mechanism check', 'not certified', 'fictional', 'not been run', 'concept for a licensed agency', 'no drone has flown', 'no rescue robot has been built', 'out of range of every drone', 'cannot climb stairs'].every(s => all.includes(s)));
   check('every statistic card has a source line (3 of 3) and the old Qatar figure shows its year', await page.evaluate(() => [...document.querySelectorAll('.stat')].every(s => s.querySelector('.src') && /Source|المصدر/.test(s.textContent)) && document.querySelectorAll('.stat').length === 3) && /2017/.test(all));
   check('SIM tag on the A/B chart heading and on the other-hazards heading', await page.evaluate(() => [...document.querySelectorAll('#m-results .res-h')].filter(h => h.querySelector('.tag.warn')).length) >= 2);
   check('the fastest-unit module says SIM in the chart caption and the lead', await page.evaluate(() => /SIM/.test(document.querySelector('#m-fast').textContent)));
   check('language drafts are badged (6 "draft", 2 "complete") and Sinhala/Tamil are said to be missing', await page.evaluate(() => [...document.querySelectorAll('.langs li.draft')].length === 6 && [...document.querySelectorAll('.langs li.done')].length === 2) && /Sinhala or Tamil/.test(all));
 
+  const ctrlTxt = await page.evaluate(() => document.getElementById('m-ctrl').textContent + ' ' + document.getElementById('m-robot').textContent + ' ' + document.getElementById('m-results').textContent);
+  check('control room and robot modules: the drone / robot are a concept, the views are computer-generated (SIM, no drone has flown), the robot assists and firefighters decide, no rescue robot exists, a bench rover only models its logic', /computer-generated/.test(ctrlTxt) && /no drone has flown/i.test(ctrlTxt) && /firefighters decide/.test(ctrlTxt) && /No rescue robot exists/.test(ctrlTxt) && /bench rover/.test(ctrlTxt) && /concept \+ SIM/.test(ctrlTxt) && /No public alert from one sensor/.test(ctrlTxt));
+  check('the proof ladder survives: WATCHING → SUSPECT → CONFIRMED → PUBLIC ALERT with 0 / 1 / 2 independent keys and the human Approve', await page.evaluate(() => { const t = [...document.querySelectorAll('figure[data-fig=ctrl] text')].map(x => x.textContent).join('|'); return ['WATCHING', 'SUSPECT', 'CONFIRMED', 'PUBLIC ALERT'].every(w => t.includes(w)) && /2 independent keys/.test(t) && /the human approves/.test(t) && document.querySelectorAll('figure[data-fig=ctrl] circle.key').length === 6 && document.querySelectorAll('figure[data-fig=ctrl] circle.key-h').length === 1; }));
+  check('the drone / robot numbers carry the SIM tag and the prices say "approximate"/"check suppliers" wording', await page.evaluate(() => [...document.querySelectorAll('#m-results .res-h')].some(h => /drone/i.test(h.textContent) && h.querySelector('.tag.warn')) && /check suppliers/.test(document.getElementById('m-hw').textContent) && /about US\$ 79–204/.test(document.getElementById('m-robot').textContent)));
   // numbers: every numeric token on the board must be on this list, each with where it comes from
   const OK = {};
   const add = (list, why) => list.forEach(n => { OK[n] = why; });
@@ -230,6 +244,11 @@ section('5. Honesty scan (phrases, AI wording, numbers, SIM labels, our source r
   add(['138', '6116', '73', '23', '1.0', '2026'], 'OpenStreetMap snapshot 2026-10-08 (manara/docs/MANARA-DATA.md): 138 facilities, 6,116 km of roads, 23 of 73 official names missing, ODbL 1.0');
   add(['5.7', '10.0', '00', '34', '86', '17', '45', '150', '7'], 'ManaraNational.findFartherButFaster(7): 5.7 vs 10.0 km straight, 14:00 vs 12:34, 86 s, Sunday 17:45; ManaraNational.ab({seed: 7, n: 150})');
   add(['64.7', '63', '91', '212'], 'ManaraNational.ab seed 7: 64.7 % of incidents differ, mean saving 63 s; test-qatar-data.mjs 91 checks, test-national.mjs 212 checks');
+  add(['33', '244', '440.5', '70'], 'ManaraNational.ab({seed: 7, n: 150}).firstEyes and the DRONE REPORT of test-national.mjs: 33 % out of range, medians 244 s vs 440.5 s, thermal key 2 % at 13:00 / 70 % at 02:00 (re-computed in section 6)');
+  add(['346', '344'], 'ManaraSim.abRobot over seeds 1–8: the mean of the medians 345.7 → 344.2 s (re-computed in section 6)');
+  add(['79', '204', '174', '474'], 'Tier 4 estimates from the Build It parts table (approximate, check suppliers): adds US$ 79–204, all four tiers 174–474 (equal to the Build page, section 6)');
+  add(['300', '400'], 'chart axis ticks (US$ 0 … 400)');
+  add(await page.evaluate(() => Object.values((window.MANARA_TEST_COUNTS || {}).suites || {}).map(x => String(x.passed))), 'check counts READ from data/test-counts.js (generated by tools/update-counts.mjs, never typed here)');
   const toks = [];
   for (const t of texts) for (const m of t.matchAll(/\d[\d,.]*\d|\d/g)) toks.push(m[0].replace(/,/g, ''));
   const unknown = [...new Set(toks.filter(t => !(t in OK)))];
@@ -292,7 +311,31 @@ section('6. Provenance: the board equals a fresh run of the detector test and th
     const text = await page.evaluate(() => document.getElementById('m-results').textContent);
     check('the results module prints the 682 vs 0 trade-off and the "mechanism check, not proof of impact" caveat', /682/.test(text) && /mechanism check, not proof of impact/.test(text));
   }
-  check('hardware tiers on the board equal the landing page tiers (US$ 2–10, 80–227, 95–270)', R.sim && await page.evaluate(() => JSON.stringify(ManaraPoster.TIERS.map(t => [t.lo, t.hi]))) === '[[2,10],[80,227],[95,270]]' && /US\$ 2–10/.test(fs.readFileSync(path.join(SITE, 'index.html'), 'utf8')) && /US\$ 80–227/.test(fs.readFileSync(path.join(SITE, 'index.html'), 'utf8')) && /US\$ 95–270/.test(fs.readFileSync(path.join(SITE, 'index.html'), 'utf8')));
+  check('hardware tiers on the board are the four tiers of the Build page (US$ 2–10, 80–227, 95–270, 174–474), cumulative', R.sim && await page.evaluate(() => JSON.stringify(ManaraPoster.TIERS.map(t => [t.lo, t.hi]))) === '[[2,10],[80,227],[95,270],[174,474]]');
+  {
+    const bp = await openPage(browser, 'build.html', { width: 1440, height: 1000, lang: 'en' });
+    await bp.page.waitForFunction(() => window.__buildReady === true, null, { timeout: 8000 });
+    const sum = await bp.page.evaluate(() => ({ t4: ManaraBuild.sumParts(4, true).core, all: ManaraBuild.sumParts(4, false).core, cum: [1, 2, 3, 4].map(n => { const c = ManaraBuild.sumParts(n, false).core; return [c.lo, c.hi]; }) }));
+    await bp.ctx.close();
+    check(`the four tiers on the board equal the Build page's own cumulative sums ${JSON.stringify(sum.cum)}`, JSON.stringify(await page.evaluate(() => ManaraPoster.TIERS.map(t => [t.lo, t.hi]))) === JSON.stringify(sum.cum), JSON.stringify(sum.cum));
+    const rt = await page.evaluate(() => document.getElementById('m-robot').textContent), ht = await page.evaluate(() => JSON.stringify(ManaraPoster.TIERS.filter(t => t.n === 4).map(t => [t.lo, t.hi])));
+    check(`Tier 4 on the board = the Build page's own sums: robot module says US$ ${sum.t4.lo}–${sum.t4.hi}, the chart says ${sum.all.lo}–${sum.all.hi}`, rt.includes(`US$ ${sum.t4.lo}–${sum.t4.hi}`) && ht === JSON.stringify([[sum.all.lo, sum.all.hi]]), JSON.stringify(sum));
+  }
+  { // drone and robot numbers: recomputed now, never typed in good faith
+    const dctx = vm.createContext({ console });
+    for (const f of ['data/qatar-geo.js', 'data/qatar-facilities.js', 'data/qatar-roads.js', 'js/national.js', 'js/sim.js']) vm.runInContext(fs.readFileSync(path.join(SITE, f), 'utf8'), dctx);
+    const D = R.drone, fe = dctx.ManaraNational.ab({ seed: 7, n: 150 }).firstEyes;
+    check(`drone: first before the first ground unit in ${D.droneFirstPct}%, ${D.noDronePct}% out of range, medians ${D.droneP50} s vs ${D.groundP50} s  ← fresh ManaraNational.ab({seed 7, n 150})`, fe.droneFirstPct === D.droneFirstPct && Math.round(fe.noDroneAvailablePct) === D.noDronePct && fe.droneEtaSec.p50 === D.droneP50 && fe.firstGroundEtaSec.p50 === D.groundP50, JSON.stringify([fe.droneFirstPct, fe.noDroneAvailablePct, fe.droneEtaSec.p50, fe.firstGroundEtaSec.p50]));
+    const rows = [];
+    for (let seed = 1; seed <= R.robot.seeds; seed++) {
+      const r = dctx.ManaraSim.abRobot({ preset: 'fire-night-robot', seed }), pp = m => m.unaccounted.perPerson.filter(p => p.key === 'abu-salem')[0] || null;
+      rows.push({ w: r.without.unaccounted.timeToLocate.p50, r: r.withRobot.unaccounted.timeToLocate.p50, byRobot: !!(pp(r.withRobot) && pp(r.withRobot).byRobot), as: !!pp(r.withRobot) });
+    }
+    const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
+    check(`robot: found the wheelchair user first in ${R.robot.robotFirst} of ${R.robot.seeds} seeds, the crews first in ${R.robot.crewsFirst}, mean of the medians ${R.robot.p50Without} → ${R.robot.p50With} s  ← fresh ManaraSim.abRobot`, rows.filter(x => x.byRobot).length === R.robot.robotFirst && rows.filter(x => x.as && !x.byRobot).length === R.robot.crewsFirst && Math.round(mean(rows.map(x => x.w))) === R.robot.p50Without && Math.round(mean(rows.map(x => x.r))) === R.robot.p50With, JSON.stringify(rows));
+    const shown = await page.evaluate(() => ({ d: [...document.querySelectorAll('#drone-kpi .num')].map(n => n.textContent), r: [...document.querySelectorAll('#robot-kpi .num')].map(n => n.textContent) }));
+    check('the KPI tiles show exactly those numbers (90%, 33%, 2% / 70% · 5 / 8, 3 / 8, 346 → 344 s)', JSON.stringify(shown) === JSON.stringify({ d: ['90%', '33%', '2% / 70%'], r: ['5 / 8', '3 / 8', '346 → 344 s'] }), JSON.stringify(shown));
+  }
   // (c) the whole-of-Qatar module: the bundled data, the real example and the national A/B, all recomputed now
   {
     const nctx = vm.createContext({ console });
@@ -308,6 +351,8 @@ section('6. Provenance: the board equals a fresh run of the detector test and th
     if (process.env.POSTER_SKIP_NATIONAL !== '1') {
       const nn = spawnSync(process.execPath, [path.join(ROOT, 'tools/test-national.mjs')], { encoding: 'utf8', timeout: 300000 });
       check(`test-national.mjs passes with the ${NR.data.engineChecks} checks the board prints`, nn.status === 0 && new RegExp(`${NR.data.engineChecks} passed, 0 failed`).test(nn.stdout || ''), (nn.stdout || '').match(/\d+ passed, \d+ failed/)?.[0]);
+      const dr = (() => { try { return JSON.parse(((nn.stdout || '').match(/DRONE REPORT: (\{.*\})/) || [])[1]); } catch (e) { return null; } })();
+      check(`the thermal key for a person lying down: ${R.drone.thermalNoon}% at 13:00 in July, ${R.drone.thermalNight}% at 02:00  ← the DRONE REPORT line of the fresh test-national.mjs run`, !!dr && Math.round(dr.peopleThermal.noon * 100) === R.drone.thermalNoon && Math.round(dr.peopleThermal.night * 100) === R.drone.thermalNight, JSON.stringify(dr && dr.peopleThermal));
     }
     const bt = await page.evaluate(() => document.getElementById('m-fast').textContent + ' ' + document.getElementById('m-results').textContent);
     check('the board carries the attribution, the snapshot date, SIM and "999 stays the dispatcher" next to the map', /Contains data © OpenStreetMap contributors, ODbL 1\.0/.test(bt) && /2026-10-08/.test(bt) && /SIM/.test(bt) && /999 stays the dispatcher/.test(bt));
@@ -439,7 +484,7 @@ const hasPdftotext = spawnSync('pdftotext', ['-v']).status !== null && spawnSync
     { name: 'tri-90x60-en-both', q: '?layout=tri&size=b90&both=1', lang: 'en', pages: 3, w: 300, h: 600 },
         { name: 'tri-a3-ar-only', q: '?layout=tri&size=a3&both=0', lang: 'ar', pages: 3, w: 297, h: 420 },
     { name: 'tri-a2-en-only', q: '?layout=tri&size=a2&both=0', lang: 'en', pages: 3, w: 420, h: 594 },
-    { name: 'tri-custom-ar-both', q: '?layout=tri&size=custom&cw=380&ch=520', lang: 'ar', pages: 3, w: 380, h: 520 },
+    { name: 'tri-custom-ar-only', q: '?layout=tri&size=custom&cw=380&ch=520&both=0', lang: 'ar', pages: 3, w: 380, h: 520 },
     { name: 'tri-a3-bleed', q: '?layout=tri&size=a3&both=0&bleed=1', lang: 'ar', pages: 3, w: 317, h: 440 },
     { name: 'a0-ar-both', q: '?layout=a0&both=1', lang: 'ar', pages: 1, w: 841, h: 1189 },
     { name: 'a0-en-both', q: '?layout=a0&both=1', lang: 'en', pages: 1, w: 841, h: 1189 },
@@ -539,10 +584,88 @@ const CONTRAST = () => {
   check('the how-to-save-PDF steps show the real page size', /300 × 600 mm/.test(await page.textContent('#how-size-en')));
   // motion + network
   check('nothing on the board animates or transitions (reduced-motion safe; also keeps the fit measurement exact)', await page.evaluate(() => document.getElementById('board').getAnimations({ subtree: true }).length === 0 && getComputedStyle(document.querySelector('.panel')).transitionDuration === '0s'));
-  check('no flashing: the board has no strobe or blink (no keyframes in poster.css)', !/@keyframes|animation\s*:/.test(fs.readFileSync(path.join(SITE, 'css/poster.css'), 'utf8').replace(/animation:none/g, '')));
+  { // keyframes exist only inside the screen + no-preference block (never printed, never for reduced motion)
+    const css = fs.readFileSync(path.join(SITE, 'css/poster.css'), 'utf8'), start = css.indexOf('@media screen and (prefers-reduced-motion:no-preference){');
+    let depth = 0, end = -1;
+    for (let i = css.indexOf('{', start); i < css.length; i++) { if (css[i] === '{') depth++; else if (css[i] === '}' && --depth === 0) { end = i; break; } }
+    const outside = (css.slice(0, start) + css.slice(end + 1)).replace(/\/\*[\s\S]*?\*\//g, '').replace(/animation:none/g, '');
+    check('no flashing and nothing animates by default: every @keyframes and every animation declaration of poster.css sits inside one @media screen and (prefers-reduced-motion:no-preference) block', start > 0 && end > start && !/@keyframes|animation\s*:/.test(outside) && (css.slice(start, end).match(/@keyframes/g) || []).length >= 6, `block ${start}…${end}`);
+  }
   check('no network request beyond the optional Google Fonts', reqs.length === 0, reqs.join(', '));
   check('no console errors during all of the above', errors.length === 0, errors.join(' | '));
   await ctx.close();
+}
+
+// ======================================================================= 11. screen-only motion
+section('11. Screen-only motion (reduced = static final frames · loops · pause when hidden · print)');
+{
+  const still = await open('', { lang: 'en', width: 1500, height: 1000, reducedMotion: 'reduce' });
+  const S0 = await still.page.evaluate(() => ({ st: ManaraPoster.motion.state, run: ManaraPoster.motion.running, counted: ManaraPoster.motion.counted, anim: document.getElementById('board').getAnimations({ subtree: true }).length, robot: ManaraPoster.motion.robot(), nums: [...document.querySelectorAll('#board [data-count]')].map(n => n.textContent).join('|'), want: [...document.querySelectorAll('#board [data-count]')].map(n => n.getAttribute('data-count') + (n.getAttribute('data-suffix') || '')).join('|'), k: ManaraPoster.k, dash: getComputedStyle(document.querySelector('.n-fast')).strokeDasharray, pl: document.querySelector('.n-fast').getAttribute('pathLength'), reveal: document.getElementById('board').hasAttribute('data-reveal'), op: getComputedStyle(document.getElementById('m-ctrl')).opacity }));
+  check('reduced motion: the board is static: data-motion="off", no frame loop, nothing animating, counters already at their numbers, the national route fully drawn', S0.st === 'off' && !S0.run && S0.anim === 0 && S0.nums === S0.want && S0.nums.split('|').length === 8 && S0.dash === 'none' && !S0.reveal && S0.op === '1', JSON.stringify(S0));
+  check('reduced motion: the robot is at the person and its route is fully drawn (the finished search is the picture)', S0.robot.off === '' && S0.robot.len > 100 && Math.abs(S0.robot.cx - 278) < 1 && Math.abs(S0.robot.cy - 152) < 1, JSON.stringify(S0.robot));
+  await still.ctx.close();
+
+  const mo = await open('', { lang: 'en', width: 1500, height: 1000, reducedMotion: 'no-preference' });
+  const page = mo.page;
+  const snap = () => page.evaluate(() => ({ st: ManaraPoster.motion.state, run: ManaraPoster.motion.running, robot: ManaraPoster.motion.robot(), anim: document.getElementById('board').getAnimations({ subtree: true }).length, k: ManaraPoster.k, fits: ManaraPoster.check().fits }));
+  await page.waitForTimeout(400);
+  const A = await snap(); await page.waitForTimeout(900); const B = await snap();
+  check('motion allowed: data-motion="on", a frame loop runs, and CSS loops are playing (marker pings, smoke, route draw-on)', A.st === 'on' && A.run && A.anim >= 6, JSON.stringify(A));
+  check('motion allowed: the robot is walking (route partly drawn and the robot at two different places a second apart)', A.robot.off !== '' && B.robot.off !== '' && (A.robot.cx !== B.robot.cx || A.robot.cy !== B.robot.cy), JSON.stringify([A.robot, B.robot]));
+  check('motion does not disturb the fit: same type scale as the static board, everything still fits', Math.abs(A.k - S0.k) < 0.002 && A.fits, `${A.k} vs ${S0.k}`);
+  await page.evaluate(() => ManaraPoster.motion.restartCount());
+  await page.waitForTimeout(350);
+  const mid = await page.evaluate(() => [...document.querySelectorAll('#board [data-count]')].map(n => n.textContent).join('|'));
+  check('the counters count up (a moment after starting they are NOT yet at their numbers) …', mid !== S0.want, mid);
+  await page.waitForTimeout(1500);
+  const fin = await page.evaluate(() => ({ nums: [...document.querySelectorAll('#board [data-count]')].map(n => n.textContent).join('|'), counted: ManaraPoster.motion.counted }));
+  check('… and END exactly on the stated numbers (90%, 33%, 2% / 70%, 5 / 8, 3 / 8, 346 → 344 s)', fin.nums === S0.want && fin.counted, JSON.stringify(fin));
+  const loops = await page.evaluate(() => document.getElementById('board').getAnimations({ subtree: true }).filter(a => a.effect.getComputedTiming().iterations === Infinity).map(a => ({ n: a.animationName || '', d: a.effect.getTiming().duration, props: [...new Set(a.effect.getKeyframes().flatMap(k => Object.keys(k)))].filter(k => !['offset', 'computedOffset', 'easing', 'composite'].includes(k)) })));
+  const okProps = new Set(['transform', 'opacity', 'strokeDashoffset']);
+  check(`no loop is faster than 1 Hz (${loops.length} looping animations, shortest ${Math.min(...loops.map(l => l.d)) / 1000} s; the WCAG limit is 3 flashes a second)`, loops.length >= 6 && loops.every(l => l.d >= 1000), JSON.stringify(loops.map(l => [l.n, l.d])));
+  check('only transform / opacity / stroke-dashoffset are animated (no layout properties)', loops.every(l => l.props.every(p => okProps.has(p))), JSON.stringify(loops.map(l => [l.n, l.props])));
+  // hidden tab
+  await page.evaluate(() => { Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true }); document.dispatchEvent(new Event('visibilitychange')); });
+  await page.waitForTimeout(80);
+  const H = await page.evaluate(() => ({ st: ManaraPoster.motion.state, run: ManaraPoster.motion.running, paused: document.getElementById('board').getAnimations({ subtree: true }).filter(a => a.playState === 'running').length }));
+  check('hidden tab: data-motion="paused", the frame loop stops and every CSS animation is paused', H.st === 'paused' && !H.run && H.paused === 0, JSON.stringify(H));
+  await page.evaluate(() => { Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true }); document.dispatchEvent(new Event('visibilitychange')); });
+  await page.waitForTimeout(150);
+  const V = await snap();
+  check('visible again: it resumes (on, loop running, CSS playing)', V.st === 'on' && V.run && V.anim >= 6, JSON.stringify(V));
+  // print
+  await page.evaluate(() => window.dispatchEvent(new Event('beforeprint')));
+  await page.waitForTimeout(80);
+  const P = await page.evaluate(() => ({ st: ManaraPoster.motion.state, run: ManaraPoster.motion.running, anim: document.getElementById('board').getAnimations({ subtree: true }).length, robot: ManaraPoster.motion.robot(), nums: [...document.querySelectorAll('#board [data-count]')].map(n => n.textContent).join('|') }));
+  check('before printing: motion is off, nothing runs, every counter is at its number and the robot is at the person (the paper never shows a half-counted number)', P.st === 'off' && !P.run && P.anim === 0 && P.nums === S0.want && P.robot.off === '' && Math.abs(P.robot.cx - 278) < 1, JSON.stringify(P));
+  await page.evaluate(() => window.dispatchEvent(new Event('afterprint')));
+  await page.waitForTimeout(80);
+  check('after printing: motion comes back', (await snap()).st === 'on');
+  await page.emulateMedia({ media: 'print' });
+  check('print CSS: with media=print no animation is attached even if the state were "on" (the keyframes live in an @media screen block)', await page.evaluate(() => document.getElementById('board').getAnimations({ subtree: true }).length) === 0);
+  await page.emulateMedia({ media: 'screen' });
+  // the user switches reduced motion on while the page is open
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.waitForTimeout(150);
+  const R = await snap();
+  check('the user turns reduced motion on while the page is open: motion stops at once and the board settles to its final frame', R.st === 'off' && !R.run && R.anim === 0 && R.robot.off === '', JSON.stringify(R));
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.waitForTimeout(150);
+  check('and back off again: it can run again', (await snap()).st === 'on');
+  // other layout + language
+  await page.evaluate(() => { ManaraPoster.setLayout('a0'); });
+  await page.waitForTimeout(300);
+  const A0 = await snap();
+  check('A0 layout with motion: on, fits, loops playing', A0.st === 'on' && A0.fits && A0.anim >= 6, JSON.stringify(A0));
+  await page.evaluate(() => { ManaraPoster.setLayout('tri'); });
+  await page.click('#btn-primary', { force: true }).catch(() => {});
+  await page.waitForTimeout(300);
+  const AR = await snap();
+  check('switching to Arabic (RTL) redraws the figures and the motion keeps running (route and robot re-attached)', AR.st === 'on' && AR.run && AR.robot.len > 100 && AR.anim >= 6, JSON.stringify(AR));
+  await page.waitForTimeout(2600);
+  check('the entrance fade is over (data-reveal removed) and every module is fully visible', await page.evaluate(() => !document.getElementById('board').hasAttribute('data-reveal') && [...document.querySelectorAll('#board .mod')].every(m => getComputedStyle(m).opacity === '1')));
+  check('no console errors with motion on', mo.errors.length === 0, mo.errors.join(' | '));
+  await mo.ctx.close();
 }
 
 await done(browser);

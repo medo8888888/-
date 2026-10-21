@@ -477,3 +477,29 @@ html[data-lang=ar] .board[data-layout=a0].bi .hero-title .bl>[data-l=en],html[da
 .board[data-layout=a0] .kpi3,.board[data-layout=a0] .kpi4{grid-template-columns:1fr}
 .board[data-layout=a0] .kpi3 li,.board[data-layout=a0] .kpi4 li{flex-direction:row;align-items:center;gap:calc(var(--u)*1.4);border-block-start-width:calc(var(--u)*.14);border-inline-start:calc(var(--u)*.7) solid var(--sc,var(--info))}
 .board[data-layout=a0] .kpi3 .num,.board[data-layout=a0] .kpi4 .num{flex:none;min-width:calc(var(--u)*16)}
+
+/* ======================================================= screen-only motion (the board's data-motion is "on" or "paused"; JS sets it "off" for reduced motion and for printing)
+   Everything here is inside a media query that excludes print and reduced motion, animates only transform / opacity / stroke, and loops slower than 1 Hz.
+   (The rule near the top of this file switches animation off for the whole viewer while the type scale is measured; these selectors are more specific on purpose.) */
+@media screen and (prefers-reduced-motion:no-preference){
+  .viewer .board:is([data-motion=on],[data-motion=paused]):not(.fitting) :is(.aer-ping,.rb-ripple,.n-inc,.aer-smoke,.aer-hot,.aer-warm,.aer-box,.n-fast){transform-box:fill-box;transform-origin:center}
+  .viewer .board:is([data-motion=on],[data-motion=paused]):not(.fitting) .aer-ping{animation:moPing 1.8s ease-out infinite!important}
+  .viewer .board:is([data-motion=on],[data-motion=paused]):not(.fitting) .rb-ripple{animation:moPing 1.6s ease-out infinite!important}
+  .viewer .board:is([data-motion=on],[data-motion=paused]):not(.fitting) .n-inc{animation:moBeat 1.8s ease-in-out infinite!important}
+  .viewer .board:is([data-motion=on],[data-motion=paused]):not(.fitting) .aer-smoke{animation:moSmoke 3s ease-in-out infinite alternate!important}
+  .viewer .board:is([data-motion=on],[data-motion=paused]):not(.fitting) .aer-smoke.sm2{animation-delay:-1.5s!important}
+  .viewer .board:is([data-motion=on],[data-motion=paused]):not(.fitting) .aer-hot{animation:moHot 1.3s ease-in-out infinite alternate!important}
+  .viewer .board:is([data-motion=on],[data-motion=paused]):not(.fitting) .aer-warm{animation:moWarm 2.4s ease-in-out infinite alternate!important}
+  .viewer .board:is([data-motion=on],[data-motion=paused]):not(.fitting) .aer-box{animation:moMarch 1.6s linear infinite!important}
+  .viewer .board:is([data-motion=on],[data-motion=paused]):not(.fitting) .n-fast{stroke-dasharray:1 1;animation:moDraw 7s ease-in-out infinite!important}
+  .viewer .board[data-motion=on][data-reveal]:not(.fitting) .mod{animation:moIn .8s ease-out both!important;animation-delay:calc(var(--i,0) * 90ms)!important}
+  .viewer .board[data-motion=paused][data-motion=paused][data-motion=paused]:not(.fitting) *{animation-play-state:paused!important}
+  @keyframes moPing{0%{transform:scale(.55);opacity:.95}100%{transform:scale(1.8);opacity:0}}
+  @keyframes moBeat{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.55);opacity:.6}}
+  @keyframes moSmoke{0%{transform:translateY(0);opacity:.45}100%{transform:translateY(-4px);opacity:.85}}
+  @keyframes moHot{0%{opacity:.72}100%{opacity:1}}
+  @keyframes moWarm{0%{opacity:.4}100%{opacity:.7}}
+  @keyframes moMarch{0%{stroke-dashoffset:0}100%{stroke-dashoffset:-16}}
+  @keyframes moDraw{0%,8%{stroke-dashoffset:1}60%,100%{stroke-dashoffset:0}}
+  @keyframes moIn{from{opacity:0}to{opacity:1}}
+}

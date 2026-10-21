@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title data-en="MANARA — Control Room">منارة — غرفة التحكم</title>
-<meta name="description" content="غرفة التحكم في منارة: طابور إنذارات مرتّب بالأولوية، وجدار بثّ المسيّرات (عادي وحراري ودمج) مع كشف بقواعد الرؤية الحاسوبية، وخريطة قطر الحقيقية، وأسطول المسيّرات، والإرسال الأسرع بحسب الازدحام، وروبوت الإنقاذ، وسجل الاتصالات وملخص التسليم. المسيّرات والروبوت مفهوم بنموذج أولي محاكى، والرقم 999 يبقى هو المُرسِل.">
+<meta name="description" content="غرفة التحكم في منارة: طابور إنذارات مرتّب بالأولوية، وجدار بثّ المسيّرات (عادي وحراري ودمج) مع كشف بقواعد الرؤية الحاسوبية، وخريطة قطر الحقيقية، وأسطول المسيّرات، والإرسال الأسرع بحسب الازدحام، وروبوت الإنقاذ، وسجل الاتصالات وملخص التسليم، ومساعد قائد بقواعد صريحة (دعم قرار وليس نموذج لغة). المسيّرات والروبوت مفهوم بنموذج أولي محاكى، والرقم 999 يبقى هو المُرسِل.">
 <meta property="og:title" content="منارة · غرفة التحكم · MANARA Control Room">
-<meta property="og:description" content="A simulated national control room: drone alerts, a live feed wall, the fastest-unit dispatch and a rescue robot. Concept with a simulated prototype; 999 stays the dispatcher.">
+<meta property="og:description" content="A simulated national control room: drone alerts, a live feed wall, the fastest-unit dispatch, a rescue robot and a rule-based commander assistant (decision support, not a language model). Concept with a simulated prototype; 999 stays the dispatcher.">
 <meta property="og:type" content="website">
 <meta name="theme-color" content="#0a0e15">
 <meta name="color-scheme" content="light dark">
@@ -20,6 +20,7 @@
 <link rel="stylesheet" href="css/control-feeds.css">
 <link rel="stylesheet" href="css/control-robot.css">
 <link rel="stylesheet" href="css/control-panels.css">
+<link rel="stylesheet" href="css/control-ai.css">
 <script src="js/core.js" defer></script>
 <script src="js/fire.js" defer></script>
 <script src="js/drone-scene.js" defer onerror="(window.__crMissing=window.__crMissing||[]).push('drone-scene.js')"></script>
@@ -35,6 +36,7 @@
 <script src="js/control-feeds.js" defer></script>
 <script src="js/control-robot.js" defer></script>
 <script src="js/control-panels.js" defer></script>
+<script src="js/control-ai.js" defer></script>
 <script src="js/control-demo.js" defer></script>
 </head>
 <body data-page="control.html" class="control">
@@ -63,7 +65,7 @@
       </div>
       <div class="cr-demo" id="cr-demo" hidden></div>
     </section>
-    <aside class="cr-right" id="cr-right" aria-label="Feeds, fleet, dispatch, robot, comms and handover"></aside>
+    <aside class="cr-right" id="cr-right" aria-label="Feeds, fleet, dispatch, robot, comms, handover and commander assistant"></aside>
   </div>
   <nav class="cr-timeline" id="cr-timeline" aria-label="Timeline of the day"></nav>
   <div class="cr-foot" id="cr-foot"></div>
