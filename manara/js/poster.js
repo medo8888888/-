@@ -89,6 +89,7 @@
     ['BUILT_BY_STUDENT', 'بنيتُه بنفسي', 'I built'], ['BOUGHT_OR_REUSED', 'اشتريتُه أو أعدتُ استعماله', 'Bought or reused'], ['HELPED_BY', 'ساعدني فيه', 'Helped by'],
     ['AI_TOOLS_USED', 'أدوات الذكاء الاصطناعي وفيمَ استُعملت', 'AI tools used, and what for']
   ];
+  var LOWK = 0.6;                                                  // below this type scale the status line warns: some text would print smaller than 8 pt
   var S = DEF, K = 1, curScale = 1;
   var board, viewer, stagebox, pageRule, pins = [], HOME = {}, a0 = null;
   var ORDER = ['m-problem', 'm-gap', 'm-inclusive', 'm-plug', 'm-limits', 'm-arch', 'm-ctrl', 'm-fast', 'm-robot', 'm-try', 'm-results', 'm-hw'];
@@ -182,8 +183,8 @@
     var c = ctx(), size = o.size || 16, ss = o.ssize || size * 0.8, step = o.step || (size + ss) * 0.6;
     var p = spec[c.l], s = spec[c.o], two = c.both && s;
     var y1 = (two ? cy - step / 2 : cy) + size * 0.33;
-    T(g, p, c.l, x, y1, { size: size, anchor: o.anchor, w: o.w, cls: o.cls, min: o.min });
-    if (two) T(g, s, c.o, x, y1 + step, { size: ss, anchor: o.anchor, w: o.w, cls: o.scls || 't-m', min: o.smin });
+    T(g, p, c.l, x, y1, { size: size, anchor: o.anchor, w: o.w, cls: o.cls, min: o.min || Math.min(size, 10) });
+    if (two) T(g, s, c.o, x, y1 + step, { size: ss, anchor: o.anchor, w: o.w, cls: o.scls || 't-m', min: o.smin || Math.min(ss, 10) });
   }
   // One line carrying both languages ("primary  ·  secondary"), for tight spots.
   function L1(g, spec, x, y, o) {
@@ -221,7 +222,7 @@
       { ic: 'sos', t: { ar: 'استغاثة السكان', en: 'Resident SOS' } }
     ];
     var outputs = [
-      { ic: 'radar', t: { ar: 'غرفة التحكم: مفتاحان + اعتماد', en: 'Control room: 2 keys + Approve' } },
+      { ic: 'radar', t: { ar: 'غرفة التحكم: مفتاحان', en: 'Control room: 2 keys' } },
       { ic: 'phone', t: { ar: 'هواتف السكان بلغتهم', en: 'Phones, own language' } },
       { ic: 'route', t: { ar: 'أسرع وحدة ← تسليم 999', en: 'Fastest unit → 999 hand-off' } },
       { ic: 'robot', t: { ar: 'روبوت يبحث (SIM)', en: 'Robot searches (SIM)' } }
@@ -238,7 +239,7 @@
       var ix = c.rtl ? x0 + col.w - pad - isz : x0 + pad;
       icon(svg, item.ic, ix, y + (bh - isz) / 2, isz, cls === 'bx-in' ? 'c-acc' : 'c-safe');
       var tx0 = c.rtl ? x0 + 6 : x0 + pad + isz + 6, tx1 = c.rtl ? x0 + col.w - pad - isz - 6 : x0 + col.w - 6;
-      LB(svg, item.t, (tx0 + tx1) / 2, y + bh / 2, { size: 14.5, ssize: 11.5, w: tx1 - tx0, cls: 't-h', min: 9.5 });
+      LB(svg, item.t, (tx0 + tx1) / 2, y + bh / 2, { size: 14.5, ssize: 11.5, w: tx1 - tx0, cls: 't-h', min: 10 });
     };
     // arrows (drawn before boxes so the boxes sit on top)
     var aIn1 = c.rtl ? X(cols.i.x, cols.i.w) - 1 : cols.i.x + cols.i.w + 1, aIn2 = c.rtl ? X(cols.c.x, cols.c.w) + cols.c.w + 1 : cols.c.x - 1;
@@ -290,15 +291,14 @@
       icon(svg, r.ic, ix, y + 5, isz, 'c-acc');
       var tx0 = c.rtl ? x0 + 96 : x0 + pad + isz + 8, tx1 = c.rtl ? x0 + 282 - pad - isz - 8 : x0 + 282 - 96;
       LB(svg, { ar: r.t.ar, en: r.t.en }, (tx0 + tx1) / 2, y + 23, { size: 13.5, ssize: 10.5, w: tx1 - tx0, cls: 't-h', min: 9, step: 12.5 });
-      T(svg, r.who[c.l], c.l, ix + isz / 2, y + 41, { size: 9, cls: 't-m', w: 46, min: 8.5 });
-      var cx = c.rtl ? x0 + 8 : x0 + 282 - 8 - 82;
-      mk('rect', { x: cx, y: y + 10, width: 82, height: 26, rx: 13, 'class': 'cr-chip ' + r.st }, svg);
-      LB(svg, { ar: r.s.ar, en: r.s.en }, cx + 41, y + 23, { size: 11.5, ssize: 9, w: 74, cls: 't-h', min: 8.5, step: 10 });
+      T(svg, r.who[c.l], c.l, ix + isz / 2, y + 42, { size: 10.5, cls: 't-m', w: 52, min: 10 });
+      var cx = c.rtl ? x0 + 8 : x0 + 282 - 8 - 90;
+      mk('rect', { x: cx, y: y + 8, width: 90, height: 30, rx: 15, 'class': 'cr-chip ' + r.st }, svg);
+      LB(svg, { ar: r.s.ar, en: r.s.en }, cx + 45, y + 23, { size: 11.5, ssize: 10, w: 82, cls: 't-h', min: 10, step: 11.5 });
     });
-    L1(svg, { ar: 'إنذار المسيّرة: صورة عادية + حرارية', en: 'DRONE ALERT: a camera frame + a thermal frame' }, c.rtl ? 282 : 0, 168, { size: 11.5, anchor: c.rtl ? 'r' : 'l', cls: 't-m t-b', w: 282 });
     // ---- the two generated aerial views (right column)
     var tw = 148, th = 100, tx = [X(300, tw), X(452, tw)];
-    [['rgb', { ar: 'كاميرا · ARR-1', en: 'Camera · UAV-1' }], ['thermal', { ar: 'حرارية', en: 'Thermal' }]].forEach(function (f, i) {
+    [['rgb', { ar: 'كاميرا · UAV-1', en: 'Camera · UAV-1' }], ['thermal', { ar: 'حرارية', en: 'Thermal' }]].forEach(function (f, i) {
       var g = mk('g', { 'class': 'tile ' + f[0] }, svg), x0 = tx[i];
       mk('rect', { x: x0, y: 0, width: tw, height: th, rx: 8, 'class': f[0] === 'rgb' ? 'aer-ground' : 'aer-cold' }, g);
       if (f[0] === 'rgb') {
@@ -313,10 +313,11 @@
         mk('path', { d: 'M' + (x0 + 74) + ' 28V64M' + (x0 + 56) + ' 46H' + (x0 + 92), 'class': 'aer-cross' }, g);
       }
       mk('circle', { cx: x0 + (f[0] === 'rgb' ? 82 : 74), cy: f[0] === 'rgb' ? 36 : 46, r: 8, 'class': 'aer-ping' }, g);
-      mk('rect', { x: x0, y: th - 16, width: tw, height: 16, rx: 0, 'class': 'aer-bar' }, g);
-      T(svg, f[1][c.l] + '  ·  SIM', c.l, x0 + tw / 2, th - 5, { size: 9.5, cls: 'aer-cap', w: tw - 8, min: 7.5 });
+      mk('rect', { x: x0, y: th - 18, width: tw, height: 18, rx: 0, 'class': 'aer-bar' }, g);
+      T(svg, f[1][c.l] + '  ·  SIM', c.l, x0 + tw / 2, th - 5.5, { size: 10.5, cls: 'aer-cap', w: tw - 8, min: 10 });
     });
-    L1(svg, { ar: 'مشهدان مولَّدان بالحاسوب (SIM): لم تطر مسيّرة', en: 'Two computer-generated views (SIM): no drone has flown' }, c.rtl ? 600 : 300, 118, { size: 11, anchor: c.rtl ? 'r' : 'l', cls: 't-m', w: 300, min: 8.5 });
+    LB(svg, { ar: 'إنذار المسيّرة: صورة عادية + حرارية', en: 'A drone alert: a camera + a thermal frame' }, X(300, 300) + 150, 129, { size: 11.5, ssize: 10, w: 300, cls: 't-h', step: 11.5, min: 10 });
+    LB(svg, { ar: 'مشهدان مولَّدان بالحاسوب (SIM): لم تطر مسيّرة', en: 'Computer-generated (SIM): no drone has flown' }, X(300, 300) + 150, 162, { size: 11, ssize: 10, w: 300, cls: 't-m', scls: 't-m', step: 11.5, min: 10 });
     // ---- the proof ladder (bottom)
     var y0 = 188, segW = 138, gap = 16, y = y0 + 38, h2 = 40;
     var segs = [
@@ -355,9 +356,9 @@
     mk('ellipse', { cx: px(58), cy: 40, rx: 40, ry: 24, 'class': 'rb-smoke' }, svg);
     mk('ellipse', { cx: px(190), cy: 93, rx: 54, ry: 11, 'class': 'rb-smoke' }, svg);
     mk('rect', { x: X(338, 22), y: 76, width: 22, height: 34, 'class': 'rb-stair' }, svg);
-    T(svg, c.l === 'ar' ? 'درج' : 'Stairs', c.l, px(349), 72, { size: 9.5, cls: 'rb-lab', w: 24, min: 7.5 });
+    T(svg, c.l === 'ar' ? 'درج' : 'Stairs', c.l, px(349), 72, { size: 10.5, cls: 'rb-lab', w: 30, min: 10 });
     mk('path', { d: 'M' + px(180) + ' 112v-9M' + (c.rtl ? px(180) + 4 : px(180) - 4) + ' 103h8', 'class': 'rb-lock' }, svg);
-    T(svg, c.l === 'ar' ? 'مقفل' : 'Locked', c.l, px(180), 124, { size: 9.5, cls: 'rb-lab', w: 40, min: 7.5 });
+    T(svg, c.l === 'ar' ? 'مقفل' : 'Locked', c.l, px(180), 124, { size: 10.5, cls: 'rb-lab', w: 44, min: 10 });
     mk('circle', { cx: px(46), cy: 152, r: 5, 'class': 'rb-safe' }, svg);
     mk('circle', { cx: px(300), cy: 40, r: 5, 'class': 'rb-safe' }, svg);
     var d = 'M' + px(8) + ' 93L' + px(80) + ' 93L' + px(80) + ' 52L' + px(106) + ' 52L' + px(80) + ' 52L' + px(80) + ' 93L' + px(200) + ' 93L' + px(200) + ' 152L' + px(278) + ' 152';
@@ -366,8 +367,8 @@
     mk('circle', { cx: px(292), cy: 152, r: 14, 'class': 'rb-ripple' }, svg);
     mk('circle', { cx: px(292), cy: 152, r: 7, 'class': 'rb-person' }, svg);
     mk('circle', { cx: px(278), cy: 152, r: 6, 'class': 'rb-body' }, svg);
-    T(svg, c.l === 'ar' ? 'شخص على مقعد متحرك' : 'Wheelchair user', c.l, px(292), 178, { size: 10.5, cls: 'rb-lab t-b', w: 100, min: 8 });
-    T(svg, c.l === 'ar' ? 'مدخل' : 'Entrance', c.l, px(26), 106, { size: 9.5, cls: 'rb-lab', w: 44, min: 7.5 });
+    T(svg, c.l === 'ar' ? 'شخص على مقعد متحرك' : 'Wheelchair user', c.l, px(292), 178, { size: 11, cls: 'rb-lab t-b', w: 104, min: 10 });
+    T(svg, c.l === 'ar' ? 'مدخل' : 'Entrance', c.l, px(26), 106, { size: 10.5, cls: 'rb-lab', w: 52, min: 10 });
     // the four steps (right of the plan)
     var steps = [
       { ar: 'موافقة قائد الحادث', en: 'Commander approves' }, { ar: 'يفتّش الغرف بالأولوية', en: 'Searches by priority' },
@@ -381,7 +382,7 @@
       mk('circle', { cx: ccx, cy: y + 21, r: 11, 'class': 'badge' }, svg);
       T(svg, String(i + 1), 'en', ccx, y + 25.5, { size: 13, cls: 't-w t-b' });
       var t0 = c.rtl ? sx0 + 8 : sx0 + 38, t1 = c.rtl ? sx0 + sw - 38 : sx0 + sw - 8;
-      LB(svg, s, (t0 + t1) / 2, y + 21, { size: 12, ssize: 9.5, w: t1 - t0, cls: 't-h', min: 8.5, step: 12 });
+      LB(svg, s, (t0 + t1) / 2, y + 21, { size: 12, ssize: 10, w: t1 - t0, cls: 't-h', min: 10, step: 12.5 });
     });
   }
 
@@ -996,12 +997,15 @@
       st.classList.add('bad');
       var names = bad.map(function (e, i) { var p = e.closest('.panel'); return S.layout === 'tri' ? (p ? p.dataset.panel : i + 1) : ''; }).filter(Boolean).join(', ');
       st.textContent = L({ ar: 'تنبيه: محتوى ' + (names ? 'اللوحة ' + names : 'اللوحة') + ' أكبر من مساحته. اعرض لغة واحدة أو اختر لوحة أكبر أو اختصر النص.', en: 'Warning: ' + (names ? 'panel ' + names + ' has' : 'the board has') + ' more content than space. Show one language, pick a bigger board, or shorten the text.' });
+    } else if (K < LOWK) {
+      st.classList.add('bad');
+      st.textContent = L({ ar: 'تنبيه: يتسع المحتوى لكن مقياس الخط ' + k + '% فقط، فبعض النصوص أصغر من 8 نقاط على الورق. اعرض لغة واحدة أو اختر لوحة أكبر أو الملصق A0.', en: 'Warning: the content fits, but the type scale is only ' + k + '%, so some text is smaller than 8 pt on paper. Show one language, pick a bigger board, or use the A0 poster.' });
     } else {
       st.classList.add('ok');
       st.textContent = L({ ar: 'كل المحتوى يتسع في موضعه (مقياس الخط ' + k + '%، ' + (S.layout === 'tri' ? '3 لوحات' : 'ملصق واحد') + ').', en: 'Everything fits (type scale ' + k + '%, ' + (S.layout === 'tri' ? '3 panels' : 'one poster') + ').' });
       if (K < 0.7) st.textContent += ' ' + L({ ar: 'الخط صغير على هذا المقاس: اختر لوحة أكبر أو اعرض لغة واحدة.', en: 'Type is small at this size: pick a bigger board or show one language.' });
     }
-    return !bad.length;
+    return !bad.length && K >= LOWK;
   }
 
   var scaleBusy = false;
@@ -1078,7 +1082,7 @@
     $$('#zpanels .chip').forEach(function (b) { b.addEventListener('click', function () { focusPanel(+b.dataset.panel); }); });
     $('#btn-print').addEventListener('click', function () {
       refit();
-      if (!updateStatus()) M.toast({ ar: 'تنبيه: بعض اللوحات محتواها أكبر من مساحتها.', en: 'Warning: some panels have more content than space.' }, 'warn');
+      if (!updateStatus()) M.toast({ ar: 'تنبيه: اللوحة ممتلئة أو الخط صغير؛ اقرأ سطر الحالة قبل الطباعة.', en: 'Warning: the board is over-full or its type is small; read the status line before printing.' }, 'warn');
       var left = applyFields();
       if (left) M.toast({ ar: 'لا تزال ' + left + ' حقول فارغة وستُطبع بين أقواس مزدوجة.', en: left + ' team field(s) are still empty and will print in double braces.' }, 'warn');
       window.print();
@@ -1097,6 +1101,7 @@
       out.containers.push({ id: e.id || e.className, h: e.clientHeight, sh: e.scrollHeight, w: e.clientWidth, sw: e.scrollWidth, over: e.scrollHeight > e.clientHeight + 1 || e.scrollWidth > e.clientWidth + 1 });
     });
     out.fits = out.containers.every(function (c) { return !c.over; });
+    out.lowType = K < LOWK;
     return out;
   }
 

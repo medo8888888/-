@@ -232,7 +232,7 @@ html[data-lang=ar] .board.bi .bl.il>[data-l=ar]::after,html[data-lang=en] .board
 .av{flex:none;display:grid;place-items:center;width:calc(var(--u)*4);height:calc(var(--u)*4);border-radius:50%;background:var(--grad-cool);color:#fff;font:700 calc(var(--u)*1.9)/1 var(--font-h)}
 .langs{display:flex;flex-wrap:wrap;gap:calc(var(--u)*.7)}
 .langs li{display:inline-flex;align-items:baseline;gap:calc(var(--u)*.7);padding:calc(var(--u)*.35) calc(var(--u)*1.1);border-radius:999px;border:calc(var(--u)*.14) solid var(--line-2);background:var(--surface);line-height:1.35}
-.langs b{font-size:calc(var(--u)*1.8);font-weight:600;font-family:var(--font-h)}
+.langs b{font-size:max(calc(var(--u)*1.8),var(--fmin));font-weight:600;font-family:var(--font-h)}
 .langs small{font-size:max(calc(var(--u)*1.2),var(--fmin));font-weight:700;display:inline-block}
 .langs .done{border-color:var(--safe)}
 .langs .done small{color:var(--safe-t)}
