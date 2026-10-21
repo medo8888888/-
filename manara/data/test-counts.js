@@ -3,15 +3,34 @@
  * pitch.html, report.html and poster.html print these numbers (with a static fallback if this file is missing). Classic script, no libraries. */
 window.MANARA_TEST_COUNTS = {
  "generated": "2026-10-21",
- "total": 1463,
- "failed": 0,
+ "total": 4159,
+ "failed": 10,
  "suites": {
-  "drone-scene": {"passed":75,"failed":0,"date":"2026-10-15"},
-  "fire": {"passed":43,"failed":0,"date":"2026-10-15"},
+  "alert": {"passed":280,"failed":1,"date":"2026-10-21"},
+  "chatbot": {"passed":83,"failed":0,"date":"2026-10-21"},
+  "control": {"passed":251,"failed":1,"date":"2026-10-21"},
+  "control-ai": {"passed":119,"failed":0,"date":"2026-10-21"},
+  "control-feeds": {"passed":211,"failed":1,"date":"2026-10-21"},
+  "control-panels": {"passed":211,"failed":0,"date":"2026-10-21"},
+  "detect": {"passed":187,"failed":0,"date":"2026-10-21"},
+  "drone-scene": {"passed":75,"failed":0,"date":"2026-10-21"},
+  "fire": {"passed":43,"failed":0,"date":"2026-10-21"},
+  "guide": {"passed":89,"failed":0,"date":"2026-10-21"},
+  "home": {"passed":133,"failed":1,"date":"2026-10-21"},
   "kit": {"passed":274,"failed":0,"date":"2026-10-21"},
-  "msg": {"passed":281,"failed":0,"date":"2026-10-15"},
-  "national": {"passed":291,"failed":0,"date":"2026-10-15"},
-  "qatar-data": {"passed":91,"failed":0,"date":"2026-10-15"},
-  "sim": {"passed":408,"failed":0,"date":"2026-10-15"}
+  "msg": {"passed":281,"failed":0,"date":"2026-10-21"},
+  "national": {"passed":291,"failed":0,"date":"2026-10-21"},
+  "pitch": {"passed":228,"failed":1,"date":"2026-10-21"},
+  "plan": {"passed":84,"failed":0,"date":"2026-10-21"},
+  "poster": {"passed":278,"failed":0,"date":"2026-10-21"},
+  "qatar-data": {"passed":91,"failed":0,"date":"2026-10-21"},
+  "report": {"passed":105,"failed":0,"date":"2026-10-21"},
+  "robot": {"passed":174,"failed":3,"date":"2026-10-21"},
+  "robot-page": {"passed":177,"failed":0,"date":"2026-10-21"},
+  "sim": {"passed":408,"failed":0,"date":"2026-10-21"},
+  "ui-flow": {"passed":28,"failed":0,"date":"2026-10-21"},
+  "ui-honesty": {"passed":8,"failed":1,"date":"2026-10-21"},
+  "ui-lint": {"passed":32,"failed":0,"date":"2026-10-21"},
+  "ui-pages": {"passed":18,"failed":1,"date":"2026-10-21"}
  }
 };
