@@ -2,6 +2,8 @@
 //
 //   node manara/tools/update-counts.mjs                    run the quick engine suites (fire, msg, qatar-data, kit, national, drone-scene) and write the counts
 //   node manara/tools/update-counts.mjs --all-engine       also run the slow engine suite (sim, about 2.5 minutes)
+//   node manara/tools/update-counts.mjs --browser           also run the browser suites (detect, mission, control, control-feeds, control-panels, alert, robot, home, pitch, poster, report, ui-*; many minutes)
+//   node manara/tools/update-counts.mjs --all               everything above
 //   node manara/tools/update-counts.mjs --from <logdir>    do not run anything: read <logdir>/<suite>.log (bash manara/tools/run-all.sh calls this at the end)
 //   node manara/tools/update-counts.mjs --only fire,msg    run just these suites
 //   node manara/tools/update-counts.mjs --check            exit 1 if manara/data/test-counts.js is missing, malformed or lacks a suite the pages quote
@@ -28,6 +30,23 @@ export const SUITES = {
   national: ['node', [T('test-national.mjs')], 'quick'],
   'drone-scene': ['node', [T('test-drone-scene.mjs')], 'quick'],
   sim: ['node', [T('test-sim.mjs')], 'slow'],
+  // the Playwright (browser) suites and the cross-page gate: slow, so they run only with --browser / --all (or --only name, or from run-all.sh logs).
+  // The names are the ones run-all.sh prints, so `--from <logdir>` and a direct run write the same keys.
+  detect: ['node', [T('test-detect.mjs')], 'browser'],
+  mission: ['node', [T('test-mission.mjs')], 'browser'],
+  control: ['node', [T('test-control-room.mjs')], 'browser'],
+  'control-feeds': ['node', [T('test-control-feeds.mjs')], 'browser'],
+  'control-panels': ['node', [T('test-control-panels.mjs')], 'browser'],
+  alert: ['node', [T('test-alert.mjs')], 'browser'],
+  robot: ['node', [T('test-robot-page.mjs')], 'browser'],
+  home: ['node', [T('test-home.mjs')], 'browser'],
+  pitch: ['node', [T('test-pitch.mjs')], 'browser'],
+  poster: ['node', [T('test-poster.mjs')], 'browser'],
+  report: ['node', [T('test-report.mjs')], 'browser'],
+  'ui-lint': ['node', [T('test-ui.mjs'), '--suite', 'lint'], 'browser'],
+  'ui-honesty': ['node', [T('test-ui.mjs'), '--suite', 'honesty'], 'browser'],
+  'ui-pages': ['node', [T('test-ui.mjs'), '--suite', 'pages'], 'browser'],
+  'ui-flow': ['node', [T('test-ui.mjs'), '--suite', 'flow'], 'browser'],
 };
 // the suites the pages quote (--check demands them)
 export const QUOTED = ['fire', 'msg', 'qatar-data', 'kit', 'national', 'drone-scene', 'sim'];
@@ -88,7 +107,7 @@ function main() {
       if (c) { suites[n] = { ...c, date: today() }; got.push(n); }
     }
   } else {
-    const only = arg('only') ? arg('only').split(',') : Object.keys(SUITES).filter(n => SUITES[n][2] === 'quick' || flag('all-engine') || flag('all'));
+    const only = arg('only') ? arg('only').split(',') : Object.keys(SUITES).filter(n => SUITES[n][2] === 'quick' || (SUITES[n][2] === 'slow' && (flag('all-engine') || flag('all'))) || (SUITES[n][2] === 'browser' && (flag('browser') || flag('all'))));
     for (const n of only) {
       const s = SUITES[n]; if (!s) { console.error('unknown suite ' + n); process.exit(2); }
       process.stdout.write(`  running ${n} ... `);

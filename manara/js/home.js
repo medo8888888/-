@@ -44,7 +44,7 @@
     TOKS.mono = cs.getPropertyValue('--font-m').trim() || 'monospace';
     TOKS.font = cs.getPropertyValue('--font-h').trim() || 'sans-serif';
   }
-  function tk(n) { return TOKS[n] || '#888'; }
+  function tk(n) { return TOKS[n] || 'currentcolor'; }
 
   /* ======================================================================= a small player: play / pause / off-screen / hidden tab / reduced motion */
   // opts: node (watched by IntersectionObserver), dur (s), hold (s: how long the last frame stays), onTick(t, dt), onEnd(), loop (bool|function)

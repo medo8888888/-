@@ -7,6 +7,7 @@ kit/
   README.md                                   this file · هذا الملف
   firmware/manara_sentinel/manara_sentinel.ino   the sentinel / twin board (+ optional pan-tilt head) · لوحة الحارس
   firmware/manara_safepoint/manara_safepoint.ino the offline check-in point «MANARA-SAFE» · نقطة تسجيل «آمن»
+  firmware/manara_rover/manara_rover.ino         the bench rover, Tier 4 (a model of the rescue robot) · العربة التجريبية (المستوى 4)
   python/manara_webcam.py                        colour + flicker detector for a laptop webcam / video · كاشف الكاميرا
 manara/tools/test_kit.py (in the repo)      tests (run on a PC, no hardware) · اختبارات تعمل على الحاسوب
 ```
@@ -19,6 +20,7 @@ manara/tools/test_kit.py (in the repo)      tests (run on a PC, no hardware) · 
 
 - كُتبت البرمجيات الثابتة (firmware) وفق **واجهات المكتبات الموثّقة** (راجعنا الأمثلة الرسمية لكل مكتبة)، **لكن لم تُجرَّب على لوحة حقيقية**. اعتبرها غير مختبرة إلى أن تنفّذ **قائمة الفحص** أدناه وتُحمِّلها بنفسك.
 - الذي **اختُبر فعلًا** على الحاسوب: المعادلات (الرطوبة والحرارة وWBGT وفهرس الحرارة)، واختبار البقعة الساخنة، ومنطق السقوط، وكاتب JSON، ومحلّل أمر `signs`، ومنطق نقطة التسجيل، وكاشف بايثون. الأمر: `python3 manara/tools/test_kit.py`.
+- **العربة التجريبية (المستوى 4)** نموذج مختبر لمنطق الروبوت المحاكى، وليست روبوت إنقاذ: لا تتسلق الدرج ولا تفتح الأبواب ولا تعرف أين هي، والكاميرا الحرارية ترى **شكلًا دافئًا لا شخصًا**. اختُبر على الحاسوب منطقها فقط (بوابة الموافقة، مفتاح الإنسان المتكرر، الإيقاف عند العائق والحرارة، قاعدة الشكل الدافئ، المحلّل والكاتب)؛ أما المحرّكات والتوصيل وسلوكها على أرض حقيقية فلم يُجرَّب.
 - الحسّاسات رخيصة وغير معايَرة: قراءات الغاز هنا **ملّيفولت وليست ppm**. المشروع نموذج طلابي ولا يُغني أبدًا عن إنذار حريق أو كاشف غاز معتمد.
 
 ### الأدوات المطلوبة
@@ -32,6 +34,7 @@ manara/tools/test_kit.py (in the repo)      tests (run on a PC, no hardware) · 
 | Adafruit NeoPixel | 1.15.5 | شاشة الخروج والحلقة (WS2812) |
 | ESP32Servo | 3.2.1 | الرأس المتحرك فقط (`HAS_HEAD 1`) |
 | Adafruit MPU6050 | 2.2.9 | حسّاس السقوط فقط (`HAS_MPU6050 1`)، ويحتاج Adafruit Unified Sensor |
+| Adafruit AMG88xx Library | أحدث إصدار متاح (لم نتحقق من رقمه) | العربة التجريبية فقط، وفقط إن اخترت كاميرا AMG8833 بدل MLX90640 (`HAS_AMG8833 1`) |
 | نقطة التسجيل | لا شيء | WiFi وDNSServer وWebServer ضمن حزمة اللوحة |
 | بايثون | Python 3.8+ وnumpy | OpenCV اختياري (للكاميرا وملفات الفيديو) |
 
@@ -43,6 +46,7 @@ manara/tools/test_kit.py (in the repo)      tests (run on a PC, no hardware) · 
 2. **نقطة التسجيل:** افتح `manara_safepoint.ino` وارفعه إلى لوحة ESP32 ثانية. ستظهر شبكة `MANARA-SAFE`؛ انضم إليها من هاتفك.
 3. **كاشف الكاميرا:** `pip install numpy` ثم `python3 manara_webcam.py --selftest`. للكاميرا: `pip install opencv-python` ثم `--camera 0`.
 4. افتح صفحة «بناء النموذج» في المتصفح (Chrome أو Edge) واضغط «وصل اللوحة»، أو شغّل «محاكاة اللوحة» بلا عتاد.
+5. **العربة التجريبية (المستوى 4):** افتح `manara_rover.ino`؛ في أعلى الملف `CONFIG` فيه `HAS_…` وخريطة الأطراف `PIN_…` (قارنها بجدول توصيل المستوى 4 في صفحة «بناء النموذج»). **أول اختبار والعجلات مرفوعة عن الأرض** (العربة فوق صندوق) والمحرّكات على بطاريتها المنفصلة مع أرضي مشترك. ارفعها وافتح الشاشة التسلسلية على **115200**؛ ستبقى «stowed» ولن تتحرك حتى يصلها `{"v":1,"type":"rover","cmd":"approve"}` مرة كل ثانية تقريبًا.
 
 ### بروتوكول التسلسلي v1 (باختصار)
 
@@ -69,6 +73,19 @@ manara/tools/test_kit.py (in the repo)      tests (run on a PC, no hardware) · 
 11. الرأس المتحرك: يمسح (PATROL)، ثم يلاحق الكوب (TRACK)، ثم يثبت (HOLD)، ثم يعود للمسح بعد إبعاد الكوب.
 12. نقطة التسجيل: هاتف ينضم إلى `MANARA-SAFE`، يضغط «أنا بأمان»، فيظهر سطر `checkin` وينمو العدّاد.
 
+### قائمة فحص العربة بعد الرفع (المستوى 4، اشطب بنفسك)
+
+1. الشاشة التسلسلية تُظهر `# MANARA rover firmware…` وقائمة I2C فيها `0x33` (أو `0x69` للكاميرا AMG8833). **العجلات مرفوعة عن الأرض.**
+2. تصل أسطر `rover` بمعدل نحو مرتين في الثانية بحالة `stowed` و`approved:false`، ولا تدور أي عجلة.
+3. اضغط زر الإيقاف الطارئ ثم أرسل `approve`: لا تتحرك ما دام الزر مضغوطًا (`why:"estop"`).
+4. أرسل `approve` مرة واحدة فقط: تبدأ البحث ثم تعود إلى `stowed` بعد 3 ثوانٍ (`why:"link"`). أرسله كل ثانية: تستمر.
+5. قرّب كفّك من مستشعر المسافة: تُبطئ عند نحو 45 سم وتدور مبتعدة عند نحو 20 سم، ولا تسير إلى الأمام أبدًا في حالة `stop`.
+6. أبعد الحسّاس عن أي جسم (لا صدى): تبقى بطيئة ولا تُعدّ الطريق «خاليًا».
+7. كوب ساخن (نحو 65°م) أمام الكاميرا الحرارية: لا تتقدم نحوه (`why:"heat"`).
+8. شكل دافئ بحجم شخص (كفّ مفتوحة أو دفّاية يد بعيدة نحو 30 سم) أمام الكاميرا في غرفة باردة: بعد نحو ثانية ونصف تنتقل إلى `holding` وتتوقف وتصدر 3 نغمات وتومض. **في غرفة حرارتها 34°م أو أكثر يختفي المفتاح (`nocontrast:true`): هذا حدّها الصادق.**
+9. أرسل `search` فتستأنف، و`recall` فتعود إلى `stowed` وتحتاج `approve` جديدًا. افصل كبل البيانات: تتوقف خلال 3 ثوانٍ.
+10. بطارية منخفضة (قيس الجهد بمقياس): دون 6.6 فولت تتوقف عن البحث، ودون 6.2 فولت `fault` وتُطفأ المحرّكات.
+
 ### حدود معروفة
 
 حسّاسات MQ تحتاج حرقًا أوليًّا مدته 48 ساعة (كما تقول أوراق بياناتها)، وتتأثر بالرطوبة والحرارة، وتستجيب لأكثر من غاز. والصفّارة النشطة الرخيصة لا تُصدر نغمة 520 هرتز التي وجدت إحدى الدراسات أنها الأنسب لإيقاظ النائمين. الكاميرا الحرارية لا ترى عبر الزجاج. وقيمة WBGT هنا تقدير وليست قياسًا. شبكة MANARA-SAFE مفتوحة عمدًا، فاستعمل عدّادها مؤشرًا للمشرفين لا دليلًا. ولا نقلّد النغمة الوطنية للإنذار ولا نشغّلها أبدًا.
@@ -81,6 +98,7 @@ manara/tools/test_kit.py (in the repo)      tests (run on a PC, no hardware) · 
 
 - The firmware was written to the **documented library APIs** (checked against each library's official examples) but has **not been run on real hardware**. Treat it as untested until you have flashed it and ticked the checklist below.
 - What **is** tested, on a PC: the maths (wet bulb, WBGT, heat index), the hot-spot test, the fall logic, the JSON writer, the `signs` command parser, the check-in logic, and the Python detector. Run `python3 manara/tools/test_kit.py`.
+- The **bench rover (Tier 4)** is a bench model of the *logic* of the simulated robot, not a rescue robot: it cannot climb stairs, open doors or know where it is, and a thermal camera sees a **warm shape, not a person**. Only its logic is tested on a PC (the approval gate, the repeated human key, stopping at obstacles and heat, the warm-shape rule, the parser and the JSON writer); the motors, the wiring and what it does on a real floor are **not** tested.
 - The sensors are cheap and uncalibrated: gas values here are **millivolts, not ppm**. This is a student prototype and never replaces a certified fire alarm or gas detector.
 
 ### Tools and versions
@@ -94,6 +112,7 @@ manara/tools/test_kit.py (in the repo)      tests (run on a PC, no hardware) · 
 | Adafruit NeoPixel | 1.15.5 | exit signs and the ring (WS2812) |
 | ESP32Servo | 3.2.1 | pan-tilt head only (`HAS_HEAD 1`) |
 | Adafruit MPU6050 | 2.2.9 | fall sensor only (`HAS_MPU6050 1`); needs Adafruit Unified Sensor |
+| Adafruit AMG88xx Library | latest available (we did not check its number) | rover only, and only if you pick the AMG8833 camera instead of the MLX90640 (`HAS_AMG8833 1`) |
 | Check-in point | nothing | WiFi, DNSServer and WebServer ship with the board package |
 | Python | 3.8+ and numpy | OpenCV optional (webcam and video files) |
 
@@ -105,6 +124,7 @@ Version numbers were read from each library's official `library.properties` on G
 2. **Check-in point:** open `manara_safepoint.ino` and upload it to a second ESP32. A Wi-Fi network called `MANARA-SAFE` appears; join it with your phone.
 3. **Camera detector:** `pip install numpy`, then `python3 manara_webcam.py --selftest`. For a webcam: `pip install opencv-python`, then `--camera 0`. Without OpenCV, pipe frames from ffmpeg with `--raw 320x240`.
 4. Open the Build page in Chrome or Edge and press "Connect board", or switch on "Simulate board" to try the page with no hardware.
+5. **Bench rover (Tier 4):** open `manara_rover.ino`; at the top is a `CONFIG` block with the `HAS_…` switches and the `PIN_…` map (check it against the Tier 4 wiring table on the Build page). **First test with the wheels OFF THE GROUND** (rover on a box), the motors on their own battery pack with a common ground. Upload, open the Serial Monitor at **115200**: it stays `stowed` and will not move until `{"v":1,"type":"rover","cmd":"approve"}` arrives about once a second.
 
 ### Serial protocol v1 (short)
 
@@ -130,6 +150,19 @@ One JSON object per line, 115200 baud. Full text in `manara/docs/MANARA-SPEC.md`
 10. Unplug the data cable and keep only power: the local alarm still works (it never waits for the browser).
 11. Pan-tilt head: it patrols (PATROL), follows the mug (TRACK), settles (HOLD), and goes back to patrol when the mug is removed.
 12. Check-in point: a phone joins `MANARA-SAFE`, taps "I'm safe", a `checkin` line appears and the counter grows.
+
+### Rover test checklist after flashing (Tier 4, tick it yourself)
+
+1. The Serial Monitor shows `# MANARA rover firmware…` and an I2C list with `0x33` (or `0x69` for the AMG8833). **Wheels OFF THE GROUND.**
+2. `rover` lines arrive about twice a second with `state:"stowed"` and `approved:false`, and no wheel turns.
+3. Press the E-stop and send `approve`: nothing moves while the button is held (`why:"estop"`).
+4. Send `approve` once only: it starts searching, then returns to `stowed` after 3 s (`why:"link"`). Send it every second: it keeps going.
+5. Bring your hand to the distance sensor: it slows at about 45 cm and turns away at about 20 cm, and never drives forward while the state is `stop`.
+6. Point the sensor at nothing (no echo): it stays slow and never treats the way as "clear".
+7. A hot mug (about 65 °C) in front of the thermal camera: it does not drive at it (`why:"heat"`).
+8. A person-sized warm shape (an open palm or a hand warmer, about 30 cm away) in front of the camera in a cool room: after about 1.5 s it switches to `holding`, stops, beeps three times and blinks. **In a room at 34 °C or hotter the key switches itself off (`nocontrast:true`): that is its honest limit.**
+9. Send `search` and it resumes; send `recall` and it returns to `stowed` and needs a new `approve`. Unplug the data cable: it stops within 3 s.
+10. Low battery (measure the voltage with a meter): below 6.6 V it stops searching; below 6.2 V it is `fault` with the motors off.
 
 ### Known limits
 

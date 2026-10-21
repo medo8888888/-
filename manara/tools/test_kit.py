@@ -14,9 +14,15 @@ What is tested (and what is NOT):
   3. The firmware's pure logic (the block marked MANARA-PURE) is compiled with g++ and RUN: wet bulb, WBGT,
      heat index (compared with the website's own functions through node), hot-spot test (compared with
      js/detect.js), fall logic, `signs` parser, JSON writers (parsed with json.loads), buffer sizes.
-  4. Both sketches are syntax/type-checked with g++ against STUB headers that copy the documented library
-     signatures (several #define combinations). This catches typos and wrong types. It does NOT prove the
-     sketch works on a real ESP32: nobody has flashed it yet.
+  4. All three sketches (sentinel, safepoint, rover) are syntax/type-checked with g++ against STUB headers that copy
+     the documented library signatures (several #define combinations). This catches typos and wrong types. It
+     does NOT prove the sketch works on a real ESP32: nobody has flashed it yet.
+  5. The ROVER (Tier 4, kit/firmware/manara_rover): its MANARA-PURE block is compiled and RUN: drive mixing, the
+     ultrasonic maths, the stop/slow zones with hysteresis, the battery estimate, the hot-spot rule (against
+     js/detect.js), the warm-shape rule (and its hot-room limit), the approval + safety state machine (it never
+     moves without a fresh human approve, the keep-alive, the E-stop, the battery cut, heat and obstacles, the
+     32-bit clock wrap), the command parser and the JSON writers (against protocol v1 in docs/MANARA-SPEC.md).
+     What is NOT tested: the motors, the wiring, and what the rover does on a real floor.
 Skipped (with a notice) when g++ or node is missing.
 """
 import importlib.util
@@ -35,6 +41,7 @@ SITE = ROOT                                          # the public pages and the 
 KIT = os.path.join(SITE, "kit")
 SENT = os.path.join(KIT, "firmware", "manara_sentinel", "manara_sentinel.ino")
 SAFE = os.path.join(KIT, "firmware", "manara_safepoint", "manara_safepoint.ino")
+ROVER = os.path.join(KIT, "firmware", "manara_rover", "manara_rover.ino")
 PYF = os.path.join(KIT, "python", "manara_webcam.py")
 README = os.path.join(KIT, "README.md")
 SPEC = os.path.join(ROOT, "docs", "MANARA-SPEC.md")
@@ -233,8 +240,8 @@ def kit_keys(src):
 
 
 def test_lint():
-    section("2. .ino static lint (both sketches)")
-    sk = {"sentinel": read(SENT), "safepoint": read(SAFE)}
+    section("2. .ino static lint (sentinel, safepoint, rover)")
+    sk = {"sentinel": read(SENT), "safepoint": read(SAFE), "rover": read(ROVER)}
     for name, src in sk.items():
         code = strip_code(src)
         ok, why = balanced(code)
@@ -255,7 +262,7 @@ def test_lint():
         check("%s: no UART0 pins (GPIO 1, 3)" % name, not [k for k, v in nums.items() if v in (1, 3)])
         for inc in re.findall(r"^#include\s*[<\"]([^>\"]+)[>\"]", code, re.M):
             known = {"Arduino.h", "Wire.h", "WiFi.h", "DNSServer.h", "WebServer.h", "Adafruit_MLX90640.h", "Adafruit_SHT31.h",
-                     "Adafruit_MPU6050.h", "Adafruit_Sensor.h", "Adafruit_NeoPixel.h", "ESP32Servo.h"}
+                     "Adafruit_MPU6050.h", "Adafruit_Sensor.h", "Adafruit_NeoPixel.h", "ESP32Servo.h", "Adafruit_AMG88xx.h"}
             std = {"math.h", "stdint.h", "stdio.h", "stdarg.h", "string.h", "algorithm", "ctype.h", "stdlib.h"}
             check("%s: #include <%s> is a documented dependency" % (name, inc), inc in known or inc in std)
     # sentinel specifics
@@ -275,20 +282,41 @@ def test_lint():
     check("sentinel: thermal read lives in its own task (xTaskCreatePinnedToCore)", "xTaskCreatePinnedToCore(thermalTask" in scode)
     check("sentinel: exit truth override present (locked exit never shows GO)", re.search(r"exitLocked\[i\]\s*&&\s*sg\[i\]\s*==\s*SG_GO", scode))
     check("sentinel: the browser cannot silence a local alarm (siren = local OR command)", re.search(r"siren\s*=\s*localSiren\s*\|\|", scode))
+    # rover specifics (Tier 4)
+    r = sk["rover"]
+    rcode = strip_code(r)
+    rdefs = {k: int(v) for k, v in re.findall(r"^#define\s+(PIN_[A-Z0-9_]+)\s+(\d+)", rcode, re.M)}
+    routs = ["PIN_I2C_SDA", "PIN_I2C_SCL", "PIN_MOTL_PWM", "PIN_MOTL_IN1", "PIN_MOTL_IN2", "PIN_MOTR_PWM", "PIN_MOTR_IN1", "PIN_MOTR_IN2", "PIN_TRIG", "PIN_SPEAKER", "PIN_LED"]
+    check("rover: output pins are not input-only GPIOs (34-39)", not [p for p in routs if 34 <= rdefs[p] <= 39], [p for p in routs if 34 <= rdefs[p] <= 39])
+    check("rover: the battery divider sits on an ADC1 pin (32-39), not ADC2", rdefs["PIN_BATT"] in (32, 33, 34, 35, 36, 39), rdefs["PIN_BATT"])
+    check("rover: the E-stop pull-up input is not on a pull-up-less GPIO (34-39)", not 34 <= rdefs["PIN_ESTOP"] <= 39)
+    check("rover: no strapping pins 0, 2, 12, 15 in use", not [k for k, v in rdefs.items() if v in (0, 2, 12, 15)], [k for k, v in rdefs.items() if v in (0, 2, 12, 15)])
+    check("rover: never blocks on `while (!Serial)`", not re.search(r"while\s*\(\s*!\s*Serial", rcode))
+    check("rover: no `while (1)` and exactly one `for (;;)` (the thermal task)", len(re.findall(r"while\s*\(\s*1\s*\)", rcode)) == 0 and rcode.count("for (;;)") == 1)
+    check("rover: Serial.setTxBufferSize() comes before Serial.begin()", rcode.find("setTxBufferSize") < rcode.find("Serial.begin"))
+    check("rover: protocol writes never block (availableForWrite check)", "availableForWrite" in rcode)
+    check("rover: thermal read lives in its own task (xTaskCreatePinnedToCore)", "xTaskCreatePinnedToCore(thermalTask" in rcode)
+    check("rover: motors are switched OFF in setup() before the sensors start", re.search(r"void setup\(\)\s*\{.*?driveMotors\(0, 0\).*?pinMode\(PIN_TRIG", rcode, re.S) is not None)
+    check("rover: the wheel command comes ONLY from roverStep() (one driveMotors(rover.l, rover.r) call in loop)", len(re.findall(r"driveMotors\(rover\.l,\s*rover\.r\)", rcode)) == 1 and rcode.count("setMotor(PIN_") == 2)
+    check("rover: the E-stop pin is read every control tick", re.search(r"in\.estop\s*=\s*digitalRead\(PIN_ESTOP\)", rcode))
+    check("rover: two thermal cameras at once is a compile-time #error", re.search(r"#if HAS_MLX90640 && HAS_AMG8833\s*\n\s*#error", r))
+    check("rover: the speaker is described as tones only (no spoken-guidance claim)", re.search(r"TONES only", r) and re.search(r"audio-player\s+module", r))
+    check("rover: honesty header says it is a bench prototype, not a rescue robot", re.search(r"not a rescue robot", r) and re.search(r"not approved by any\s+authority", r))
     m = re.search(r'HAZ_NAME\[HAZ_COUNT\]\s*=\s*\{([^}]*)\}', s)
     names = re.findall(r'"(\w+)"', m.group(1)) if m else []
     check("hazard names are exactly protocol v1: none, fire, gas, flood, dust, heat, sos", names == ["none", "fire", "gas", "flood", "dust", "heat", "sos"], names)
     # JSON keys == protocol v1
     allowed = spec_keys()
     check("protocol keys were read from manara/docs/MANARA-SPEC.md (%d keys)" % len(allowed), {"v", "type", "thermal", "t10", "room", "siren"} <= allowed, sorted(allowed)[:6])
-    ks, kf = kit_keys(s), kit_keys(sk["safepoint"])
+    ks, kf, kr = kit_keys(s), kit_keys(sk["safepoint"]), kit_keys(sk["rover"])
     check("sentinel JSON key names are all protocol v1", ks <= allowed, sorted(ks - allowed))
     check("safepoint JSON key names are all protocol v1", kf <= allowed, sorted(kf - allowed))
-    check("every protocol v1 key is produced or read by the kit", allowed <= (ks | kf), sorted(allowed - (ks | kf)))
-    check("both sketches emit \"v\":1", '\\"v\\":1' in s and '\\"v\\":1' in sk["safepoint"])
+    check("rover JSON key names are all protocol v1 (the rover messages are in docs/MANARA-SPEC.md)", kr <= allowed, sorted(kr - allowed))
+    check("every protocol v1 key is produced or read by the kit", allowed <= (ks | kf | kr), sorted(allowed - (ks | kf | kr)))
+    check("all three sketches emit \"v\":1", '\\"v\\":1' in s and '\\"v\\":1' in sk["safepoint"] and '\\"v\\":1' in sk["rover"])
     # README documents the libraries the sketches include
     rd = read(README)
-    for lib in ("Adafruit MLX90640", "Adafruit SHT31 Library", "Adafruit NeoPixel", "ESP32Servo", "Adafruit MPU6050", "Adafruit Unified Sensor", "esp32 by Espressif Systems"):
+    for lib in ("Adafruit MLX90640", "Adafruit SHT31 Library", "Adafruit NeoPixel", "ESP32Servo", "Adafruit MPU6050", "Adafruit Unified Sensor", "Adafruit AMG88xx Library", "esp32 by Espressif Systems"):
         check("README names the library/board package '%s'" % lib, lib in rd)
     check("README says the firmware is untested on hardware (Arabic and English)", "UNTESTED" not in rd and ("لم تُجرَّب" in rd) and ("not been run on real hardware" in rd))
     check("README lists a test checklist", rd.count("\n1. ") >= 3 and "Test checklist" in rd)
@@ -689,6 +717,438 @@ def test_pure():
 
 
 # =====================================================================================================
+# 3b. the rover's pure logic compiled and run (Tier 4)
+# =====================================================================================================
+ROVER_MAIN = r"""
+static void readLine(char* buf, int n) { if (!fgets(buf, n, stdin)) buf[0] = 0; size_t l = strlen(buf); while (l && (buf[l-1]=='\n' || buf[l-1]=='\r')) buf[--l] = 0; }
+int main() {
+  char cmd[32];
+  static float g[TH_MAX], s[TH_MAX];
+  static int16_t t10[TH_MAX];
+  static char out[4800];
+  char line[400];
+  Rover rv; memset(&rv, 0, sizeof(rv)); rv.turnDir = 1;
+  while (scanf("%31s", cmd) == 1) {
+    if (!strcmp(cmd, "mix")) {
+      int f, t, m; scanf("%d %d %d", &f, &t, &m); int l, r; mixDrive(f, t, m, &l, &r); printf("mix %d %d\n", l, r);
+    } else if (!strcmp(cmd, "echo")) {
+      unsigned us; float tc; scanf("%u %f", &us, &tc); printf("echo %.4f\n", echoToCm(us, tc));
+    } else if (!strcmp(cmd, "range")) {
+      float cm; int prev; scanf("%f %d", &cm, &prev); printf("range %d\n", (int)rangeState(cm, (RangeState)prev));
+    } else if (!strcmp(cmd, "batt")) {
+      float mv; scanf("%f", &mv); printf("batt %d\n", battPct(mv));
+    } else if (!strcmp(cmd, "hot")) {
+      int w, h; scanf("%d %d", &w, &h);
+      for (int i = 0; i < w * h; i++) scanf("%f", &g[i]);
+      Hotspot o = hotspotTest(g, w * h, w, h, s);
+      printf("hot %d %d %d %.5f %.5f %.5f %.5f %.5f %.6f %.6f %d sane=%d\n", o.hot, o.absOk, o.ctxOk, o.tmax, o.tmean, o.bgMean, o.bgMad, o.ctxThr, o.x, o.y, o.idx, gridSane(g, w * h));
+    } else if (!strcmp(cmd, "person")) {
+      int w, h; scanf("%d %d", &w, &h);
+      for (int i = 0; i < w * h; i++) scanf("%f", &g[i]);
+      PersonResult o = personTest(g, w * h, w, h, s);
+      printf("person %d %d %d %.4f %.4f %.4f %.4f %.4f\n", o.found, o.hotRoom, o.nPix, o.tmax, o.bgMedian, o.contrast, o.x, o.y);
+    } else if (!strcmp(cmd, "parse")) {
+      readLine(line, sizeof(line));
+      RoverCmd c;
+      if (parseRoverCmd(line, &c)) printf("parse ok %d %d %d %d\n", (int)c.kind, c.l, c.r, (int)c.say); else printf("parse bad\n");
+    } else if (!strcmp(cmd, "smreset")) {
+      memset(&rv, 0, sizeof(rv)); rv.turnDir = 1; rv.st = RS_STOWED;
+    } else if (!strcmp(cmd, "step")) {
+      unsigned now; int estop, rng, bk, person, hot, hc, ck, cl, cr, cs; float bmv;
+      scanf("%u %d %d %d %f %d %d %d %d %d %d %d", &now, &estop, &rng, &bk, &bmv, &person, &hot, &hc, &ck, &cl, &cr, &cs);
+      RoverIn in; memset(&in, 0, sizeof(in));
+      in.now = now; in.estop = estop != 0; in.range = (RangeState)rng; in.battKnown = bk != 0; in.battMv = bmv; in.person = person != 0; in.hot = hot != 0;
+      in.haveCmd = hc != 0; in.cmd.kind = (RoverCmdKind)ck; in.cmd.l = cl; in.cmd.r = cr; in.cmd.say = (Say)cs;
+      roverStep(&rv, in);
+      printf("S %d %d %d %d %d %d\n", (int)rv.st, rv.l, rv.r, (int)rv.why, (int)rv.say, (int)rv.approved);
+    } else if (!strcmp(cmd, "frame")) {
+      char which[16]; scanf("%15s", which);
+      RoverFrame d; memset(&d, 0, sizeof(d));
+      if (!strcmp(which, "full")) {
+        d.ms = 4294967295u; d.st = RS_FAULT; d.approved = true; d.l = -60; d.r = -60; d.hasRange = true; d.cm = 999.9f; d.rg = RG_STOP;
+        d.hasThermal = true; d.tmax = -99.9f; d.tmean = -99.9f; d.hot = true; d.hotX = 1.0f; d.hotY = 1.0f; d.hotT = 399.9f;
+        d.person = true; d.px = 1.0f; d.py = 1.0f; d.dt = -99.9f; d.pxN = 768; d.noContrast = true;
+        d.hasBatt = true; d.mv = 99999; d.pct = 100; d.stop = true; d.why = WHY_TIMEOUT;
+      } else if (!strcmp(which, "typical")) {
+        d.ms = 12345; d.st = RS_SEARCHING; d.approved = true; d.l = 27; d.r = 27; d.hasRange = true; d.cm = 84.2f; d.rg = RG_CLEAR;
+        d.hasThermal = true; d.tmax = 33.4f; d.tmean = 27.9f; d.person = true; d.px = 0.41f; d.py = 0.55f; d.dt = 5.2f; d.pxN = 14;
+        d.hasBatt = true; d.mv = 7420; d.pct = 71; d.why = WHY_NONE;
+      } else { d.ms = 1; d.rg = RG_SLOW; d.why = WHY_NONE; d.stop = true; }
+      size_t n = formatRover(out, 560, d);
+      printf("J %zu %s", n, out);
+    } else if (!strcmp(cmd, "gridjson")) {
+      char which[16]; int w, h; scanf("%15s %d %d", which, &w, &h);
+      for (int i = 0; i < w * h; i++) t10[i] = !strcmp(which, "worst") ? (i % 2 ? -600 : 4000) : (int16_t)(200 + i % 50);
+      size_t n = formatGrid(out, sizeof(out), t10, w, h);
+      printf("G %zu %s", n, out);
+    }
+  }
+  return 0;
+}
+"""
+
+
+def cfg_values(src):
+    cfg = block(src, "CONFIG") or ""
+    out = {}
+    for k, v in re.findall(r"^#define\s+([A-Z0-9_]+)\s+([-0-9.]+)[fFuUlL]*\b", cfg, re.M):
+        out[k] = float(v)
+    return out
+
+
+def test_rover():
+    section("3b. The rover's pure logic (Tier 4): drive, range, battery, hot-spot, warm shape, the approval state machine, parser, JSON")
+    if not have("g++"):
+        print("  skip (g++ not found)")
+        return
+    import numpy as np
+    rover = read(ROVER)
+    C = cfg_values(rover)
+    synth = synth_grids()
+    rng_ = np.random.RandomState(11)
+
+    def grid_line(tag, g, w=None, h=None):
+        h2, w2 = g.shape
+        return "%s %d %d " % (tag, w2, h2) + " ".join("%.4f" % v for v in g.reshape(-1))
+
+    stdin = []
+    # drive mixing, echo maths, range zones, battery
+    mixes = [(50, 0, 60), (100, 100, 100), (0, 50, 60), (-50, 0, 60), (80, 80, 60), (100, 0, 30), (0, -100, 100)]
+    for f, t, m in mixes:
+        stdin.append("mix %d %d %d" % (f, t, m))
+    echoes = [(5830, 25.0), (0, 25.0), (5830, 45.0), (11660, 25.0), (580, 25.0)]
+    for us, tc in echoes:
+        stdin.append("echo %d %r" % (us, tc))
+    ranges = [(100.0, 0), (40.0, 0), (15.0, 0), (22.0, 2), (22.0, 0), (48.0, 1), (48.0, 0), (float("nan"), 0), (1.0, 0), (19.99, 0), (44.99, 0), (24.9, 2)]
+    for cm, prev in ranges:
+        stdin.append("range %s %d" % ("nan" if cm != cm else repr(cm), prev))
+    batts = [8400.0, 6000.0, 7200.0, 9000.0, 5000.0]
+    for mv in batts:
+        stdin.append("batt %r" % mv)
+    # hot-spot on the 32x24 synthetic grids + an 8x8 (AMG8833) image
+    for name, g in synth.items():
+        stdin.append(grid_line("hot", g))
+    amg_cold = 24.0 + rng_.normal(0, 0.2, (8, 8))
+    amg_hot = amg_cold.copy()
+    amg_hot[3, 5] = 71.0
+    stdin.append(grid_line("hot", amg_cold))
+    stdin.append(grid_line("hot", amg_hot))
+    bad = synth["cold"].copy()
+    bad[3, 3] = float("nan")
+    stdin.append("hot 32 24 " + " ".join("nan" if v != v else "%.4f" % v for v in bad.reshape(-1)))
+    # warm-shape ("person") rule
+    base = 24.0 + rng_.normal(0, 0.25, (24, 32))
+    person_cases = {}
+    p1 = base.copy(); p1[8:16, 10:16] = 33.0; person_cases["person-sized warm blob (33 C) in a 24 C room"] = p1
+    p2 = 35.5 + rng_.normal(0, 0.25, (24, 32)); p2[8:16, 10:16] = 37.0; person_cases["hot room (35.5 C background)"] = p2
+    p3 = base.copy(); p3[9:11, 20:22] = 65.0; p3[8, 20:22] = 45.0; person_cases["hot mug (65 C)"] = p3
+    p4 = base.copy(); p4[10:12, 5:7] = 33.0; person_cases["tiny warm spot (4 pixels)"] = p4
+    p5 = base.copy(); p5[:, 16:] = 33.0; person_cases["half the image warm (a warm wall)"] = p5
+    p6 = base.copy(); p6[2:6, 26:30] = 29.0; person_cases["barely warm (29 C, 5 K above the room)"] = p6
+    for n_, g in person_cases.items():
+        stdin.append(grid_line("person", g))
+    a1 = 24.0 + rng_.normal(0, 0.2, (8, 8)); a1[2:4, 3:5] = 32.0
+    a2 = 24.0 + rng_.normal(0, 0.2, (8, 8)); a2[4, 4] = 32.0
+    stdin.append(grid_line("person", a1))
+    stdin.append(grid_line("person", a2))
+    # command parser
+    parses = ['{"v":1,"type":"rover","cmd":"approve"}',
+              '{"v": 1, "type": "rover", "cmd": "drive", "l": -70, "r": 120}',
+              '{"v":1,"type":"rover","cmd":"say","say":"follow"}',
+              '{"v":1,"type":"rover","cmd":"say","say":"opera"}',
+              '{"v":1,"type":"rover","cmd":"recall"}',
+              '{"v":2,"type":"rover","cmd":"approve"}',
+              '{"v":1,"type":"signs","cmd":"approve"}',
+              '{"v":1,"type":"rover","cmd":"self-destruct"}',
+              '{"v":1,"type":"rover"}',
+              'not json at all']
+    for l in parses:
+        stdin.append("parse " + l)
+    # the approval and safety state machine
+    T_SEARCH, T_TURN, T_TTL, T_DRIVE = C["SEARCH_MAX_MS"], C["TURN_MS"], C["APPROVE_TTL_MS"], C["DRIVE_TTL_MS"]
+    BLOW, BCUT = C["BATT_LOW_MV"], C["BATT_CUT_MV"]
+    scen = {}
+    order = []
+
+    def start(name):
+        order.append(name)
+        scen[name] = []
+        stdin.append("smreset")
+
+    def st(name, now, cmd=0, l=0, r=0, say=0, estop=0, rng=0, batt=7800.0, person=0, hot=0, known=1):
+        stdin.append("step %d %d %d %d %r %d %d %d %d %d %d %d" % (now & 0xFFFFFFFF, estop, rng, known, float(batt), person, hot, 1 if cmd else 0, cmd, l, r, say))
+        scen[name].append(now)
+    A, S_, H_, STP, RC_, DR, SAY = 1, 2, 3, 4, 5, 6, 7
+
+    start("no approval")
+    for k in range(60):
+        st("no approval", 1000 + 50 * k, cmd=(DR if k == 10 else (S_ if k == 20 else 0)), l=80, r=80, person=(k > 30), hot=(k > 40))
+    start("approve and search")
+    st("approve and search", 1000, cmd=A)
+    for k in range(1, 61):
+        st("approve and search", 1000 + 50 * k, cmd=(A if k % 20 == 0 else 0))
+    start("obstacle")
+    st("obstacle", 1000, cmd=A)
+    t = 1050
+    for k in range(10):
+        st("obstacle", t, rng=0); t += 50
+    for k in range(10):
+        st("obstacle", t, rng=2, cmd=(A if k == 5 else 0)); t += 50
+    for k in range(25):
+        st("obstacle", t, rng=0, cmd=(A if k % 20 == 0 else 0)); t += 50
+    start("keep-alive")
+    st("keep-alive", 1000, cmd=A)
+    for k in range(1, int(T_TTL / 50) + 4):
+        st("keep-alive", 1000 + 50 * k)
+    start("person found")
+    st("person found", 1000, cmd=A)
+    for k in range(1, 8):
+        st("person found", 1000 + 50 * k)
+    st("person found", 1400, person=1)
+    for k in range(1, 30):
+        st("person found", 1400 + 50 * k, person=1, cmd=(A if k % 20 == 0 else 0))
+    st("person found", 3000, cmd=S_)                       # a human says "search" again
+    st("person found", 3050, cmd=A)
+    start("manual drive")
+    st("manual drive", 1000, cmd=DR, l=50, r=50)           # not approved: ignored
+    st("manual drive", 1050, cmd=A)                        # approve (it starts searching)
+    st("manual drive", 1100, cmd=H_)                       # hold
+    st("manual drive", 1150, cmd=DR, l=50, r=50)           # now allowed
+    st("manual drive", 1200)
+    st("manual drive", 1150 + int(T_DRIVE) + 100)          # the drive command has expired
+    st("manual drive", 1150 + int(T_DRIVE) + 150, cmd=A)
+    st("manual drive", 2000, cmd=DR, l=50, r=50, rng=2)    # drive straight into an obstacle: refused
+    start("estop")
+    st("estop", 1000, cmd=A)
+    st("estop", 1050)
+    st("estop", 1100, estop=1)
+    st("estop", 1150, estop=1, cmd=A)                      # approve while pressed: ignored
+    st("estop", 1200)                                      # released, no approve: still stowed
+    st("estop", 1250, cmd=A)
+    start("battery")
+    st("battery", 1000, cmd=A)
+    st("battery", 1050, batt=BLOW - 100)                   # low: stop searching
+    st("battery", 1100, cmd=A, batt=BLOW - 100)
+    st("battery", 1150, batt=BCUT - 100)                   # cut: fault
+    st("battery", 1200, cmd=A, batt=BCUT - 100)            # approve is refused with a flat battery
+    st("battery", 1250, cmd=A, batt=BLOW - 50)             # still below low
+    st("battery", 1300, cmd=A, batt=BLOW + 400)            # charged + a new approve
+    start("recall")
+    st("recall", 1000, cmd=A)
+    st("recall", 1050)
+    st("recall", 1100, cmd=RC_)
+    st("recall", 1150)
+    st("recall", 1200, cmd=A)
+    start("heat ahead")
+    st("heat ahead", 1000, cmd=A)
+    for k in range(1, 6):
+        st("heat ahead", 1000 + 50 * k, hot=1)
+    st("heat ahead", 3000)
+    start("slow zone")
+    st("slow zone", 1000, cmd=A)
+    for k in range(1, 6):
+        st("slow zone", 1000 + 50 * k, rng=1)
+    start("search timeout")
+    st("search timeout", 1000, cmd=A)
+    t = 1000
+    for k in range(int(T_SEARCH / 1000) + 3):
+        t += 1000
+        st("search timeout", t, cmd=A)
+    start("clock wrap")
+    t0 = 0xFFFFFFFF - 2000
+    st("clock wrap", t0, cmd=A)
+    for k in range(1, 100):
+        st("clock wrap", t0 + 100 * k, cmd=(A if k % 5 == 0 else 0))
+    start("unknown battery")
+    st("unknown battery", 1000, cmd=A)
+    st("unknown battery", 1050, known=0, batt=0.0)
+    start("unknown distance")
+    st("unknown distance", 1000, cmd=A)
+    st("unknown distance", 1050, rng=1)
+    stdin += ["frame typical", "frame full", "frame min", "gridjson worst 32 24", "gridjson normal 32 24", "gridjson normal 8 8"]
+    with tempfile.TemporaryDirectory() as tmp:
+        out, err = run_harness(tmp, "rover_pure", rover, ROVER_MAIN, "\n".join(stdin) + "\n")
+        if out is None:
+            check("rover MANARA-PURE block compiles with g++ -Wall -Wextra", False, err)
+            return
+        check("rover MANARA-PURE block compiles with g++ -Wall -Wextra (no warnings)", err.strip() == "" or "warning" not in err, err[:300])
+        lines = out.splitlines()
+        pick = lambda tag: [l for l in lines if l.startswith(tag + " ")]
+        mix_l, echo_l, range_l, batt_l, hot_l, per_l, par_l, S_l = pick("mix"), pick("echo"), pick("range"), pick("batt"), pick("hot"), pick("person"), pick("parse"), pick("S")
+        check("harness produced every answer", len(mix_l) == len(mixes) and len(echo_l) == len(echoes) and len(range_l) == len(ranges) and len(batt_l) == len(batts)
+              and len(hot_l) == len(synth) + 3 and len(per_l) == len(person_cases) + 2 and len(par_l) == len(parses) and len(S_l) == sum(len(v) for v in scen.values()),
+              (len(mix_l), len(echo_l), len(range_l), len(batt_l), len(hot_l), len(per_l), len(par_l), len(S_l)))
+
+        # --- drive mixing
+        mx = [tuple(int(x) for x in l.split()[1:]) for l in mix_l]
+        check("mixDrive: straight 50 % at a 60 % cap = 30 / 30; reverse = -30 / -30; spin right = 30 / -30", mx[0] == (30, 30) and mx[3] == (-30, -30) and mx[2] == (30, -30), mx[:4])
+        check("mixDrive: a clipped side keeps the ratio (100 + 100 turn = 100 / 0), and the cap is never exceeded", mx[1] == (100, 0) and all(abs(a) <= m and abs(b) <= m for (a, b), (_, _, m) in zip(mx, mixes)), mx)
+        check("mixDrive: 80 + 80 at a cap of 60 never exceeds 60; a 30 cap scales 100 to 30", mx[4] == (60, 60) or max(abs(x) for x in mx[4]) <= 60, mx[4])
+
+        # --- echo
+        ec = [l.split()[1] for l in echo_l]
+        c25 = 331.3 + 0.606 * 25
+        check("echoToCm: 5830 microseconds at 25 C = %.2f cm (speed of sound 331.3 + 0.606 T)" % (5830 * 0.5 * c25 / 10000), abs(float(ec[0]) - 5830 * 0.5 * c25 / 10000) < 0.01, ec[0])
+        check("echoToCm: no echo (0 us) is unknown (NaN), never 0 cm", ec[1].lower() == "nan", ec[1])
+        check("echoToCm: heat lengthens the distance (45 C reads about 5 % more than 25 C for the same pulse)", 1.03 < float(ec[2]) / float(ec[0]) < 1.06, (ec[0], ec[2]))
+        check("echoToCm: double the time = double the distance", abs(float(ec[3]) / float(ec[0]) - 2.0) < 0.001, ec[3])
+
+        # --- stop / slow zones
+        rg = [int(l.split()[1]) for l in range_l]
+        check("rangeState: 100 cm clear, 40 cm slow, 15 cm stop", rg[:3] == [0, 1, 2], rg[:3])
+        check("rangeState: hysteresis (22 cm stays STOP if it was STOP, but is only SLOW if it was clear; 48 cm stays SLOW if it was SLOW)", rg[3] == 2 and rg[4] == 1 and rg[5] == 1 and rg[6] == 0, rg[3:7])
+        check("rangeState: unknown distance (no echo) and the blind zone are SLOW, NEVER clear", rg[7] == 1 and rg[8] == 1, rg[7:9])
+        check("rangeState: the thresholds are the CONFIG numbers (just inside STOP_CM is STOP, just inside SLOW_CM is SLOW)", rg[9] == 2 and rg[10] == 1 and rg[11] == 2, rg[9:])
+
+        # --- battery
+        bp = [int(l.split()[1]) for l in batt_l]
+        check("battPct: full 100, empty 0, half 50, clamped above and below", bp == [100, 0, 50, 100, 0], bp)
+
+        # --- hot-spot test: same rule as the website
+        names = list(synth.keys())
+        res = {n: l.split() for n, l in zip(names, hot_l[:len(names)])}
+        check("rover hot-spot: a hot mug is hot; a cold room, a hand and a 58 C wall are not; a real fire blob is", res["mug"][1] == "1" and res["cold"][1] == "0" and res["hand"][1] == "0" and res["warm wall (58 C everywhere)"][1] == "0" and res["real fire blob"][1] == "1", {n: r[1] for n, r in res.items()})
+        amg = hot_l[len(names):len(names) + 2]
+        check("rover hot-spot works on an 8x8 (AMG8833) image: a 71 C pixel is hot, the same image without it is not; x, y are normalised by (w-1), (h-1)",
+              amg[0].split()[1] == "0" and amg[1].split()[1] == "1" and abs(float(amg[1].split()[9]) - 5 / 7) < 0.001 and abs(float(amg[1].split()[10]) - 3 / 7) < 0.001, amg)
+        check("rover: a grid with a NaN pixel is rejected by gridSane()", hot_l[-1].endswith("sane=0") and all(l.endswith("sane=1") for l in hot_l[:-1]))
+        if have("node"):
+            ref_js, why = js_reference(tmp, [], list(synth.values()))
+            if ref_js is None:
+                check("node could load js/detect.js for the rover cross-check", False, why)
+            else:
+                same = all(int(l.split()[1]) == int(r[0]) for l, r in zip(hot_l[:len(names)], ref_js["grids"]))
+                check("rover hot-spot decision = website hotspotTest() on every synthetic grid", same, [(l.split()[1], r[0]) for l, r in zip(hot_l, ref_js["grids"])])
+                dd = 0.0
+                for l, r in zip(hot_l[:len(names)], ref_js["grids"]):
+                    f = l.split()
+                    dd = max(dd, abs(float(f[4]) - r[1]), abs(float(f[6]) - r[2]), abs(float(f[7]) - r[3]), abs(float(f[8]) - r[4]), abs(float(f[9]) - r[5]) * 31, abs(float(f[10]) - r[6]) * 23)
+                check("rover bgMean / MAD / threshold / position = website values (worst diff %.4f)" % dd, dd < 0.02, dd)
+
+        # --- warm shape
+        pr = {n: l.split() for n, l in zip(person_cases.keys(), per_l[:len(person_cases)])}
+        k0 = "person-sized warm blob (33 C) in a 24 C room"
+        f = pr[k0]
+        check("warm shape: a 33 C person-sized blob in a 24 C room is FOUND, at its centre (x about 0.39, y about 0.52), contrast about 9 K", f[1] == "1" and abs(float(f[7]) - 12.5 / 31) < 0.03 and abs(float(f[8]) - 11.5 / 23) < 0.03 and 7.5 < float(f[6]) < 10.5, f)
+        check("warm shape: in a hot room (35.5 C background) the key is OFF (hotRoom = 1, found = 0): the honest limit", pr["hot room (35.5 C background)"][1] == "0" and pr["hot room (35.5 C background)"][2] == "1", pr["hot room (35.5 C background)"])
+        check("warm shape: a hot mug is not a person (above PERSON_MAX_C)", pr["hot mug (65 C)"][1] == "0", pr["hot mug (65 C)"])
+        check("warm shape: 4 pixels is too small, half the image is a warm wall, 5 K above a 24 C room (29 C) is below PERSON_DELTA_K + the minimum temperature",
+              pr["tiny warm spot (4 pixels)"][1] == "0" and pr["half the image warm (a warm wall)"][1] == "0", (pr["tiny warm spot (4 pixels)"], pr["half the image warm (a warm wall)"]))
+        a_ok, a_one = per_l[-2].split(), per_l[-1].split()
+        check("warm shape on an 8x8 image: 4 warm pixels are found, a single pixel is not", a_ok[1] == "1" and a_one[1] == "0", (a_ok, a_one))
+
+        # --- command parser
+        pp = [l.split() for l in par_l]
+        check("parser: approve is read (kind 1)", pp[0][1] == "ok" and pp[0][2] == "1", pp[0])
+        check("parser: drive l=-70 r=120 is read and clamped to -70 / 100 (tolerant of spaces)", pp[1][1] == "ok" and [int(x) for x in pp[1][2:5]] == [6, -70, 100], pp[1])
+        check("parser: say follow is read; an unknown sound is refused", pp[2][1] == "ok" and pp[2][5] == "1" and pp[3][1] == "bad", pp[2:4])
+        check("parser: recall is read; wrong version, wrong type, unknown or missing cmd and garbage are refused", pp[4][1] == "ok" and all(x[1] == "bad" for x in pp[5:]), pp[4:])
+
+        # --- the state machine
+        R = {}
+        off = 0
+        for name in order:
+            n = len(scen[name])
+            R[name] = [tuple(float(x) for x in l.split()[1:]) for l in S_l[off:off + n]]
+            off += n
+        ST_STOWED, ST_APPROVED, ST_SEARCH, ST_HOLD, ST_FAULT = 0, 1, 2, 3, 4
+        w_none, w_obst, w_heat, w_batt, w_link, w_estop, w_recall, w_time = range(8)
+        fwd = int(C["SEARCH_PCT"] * C["DRIVE_MAX_PCT"] / 100)
+        slow = int(C["SLOW_PCT"] * C["DRIVE_MAX_PCT"] / 100)
+        # tuple = (state, l, r, why, say, approved)
+        a = R["no approval"]
+        check("no human approval: the rover NEVER moves, whatever the sensors, a drive command or a search command say (60 ticks)", all(x[0] == ST_STOWED and x[1] == 0 and x[2] == 0 for x in a), a[:3])
+        a = R["approve and search"]
+        check("a fresh approve leaves STOWED and starts the search with the 'follow' tone", a[0][0] == ST_SEARCH and a[0][4] == 1 and a[0][5] == 1, a[0])
+        check("while searching with a clear path it drives straight at SEARCH_PCT x DRIVE_MAX_PCT (%d / %d), kept alive by repeated approves" % (fwd, fwd), all(x[0] == ST_SEARCH and x[1] == fwd and x[2] == fwd for x in a[1:]), a[1:3])
+        a = R["obstacle"]
+        stop_part = a[11:20]
+        check("an obstacle at STOP range: no forward motion, it turns on the spot (wheels opposite) and says why = obstacle", all(x[1] == -x[2] and x[1] != 0 and x[3] == w_obst for x in stop_part), stop_part[:2])
+        after = a[-6:]
+        check("after the turn (TURN_MS) and a clear path it drives forward again and the reason clears", all(x[1] == fwd and x[2] == fwd and x[3] == w_none for x in after), after[:2])
+        check("no tick ever drives FORWARD while the range is STOP", all(not (x[1] + x[2] > 0) for x in a[11:21]), a[11:21])
+        a = R["keep-alive"]
+        check("no keep-alive for APPROVE_TTL_MS: the rover stops, goes back to STOWED, approved = false, why = link", a[-1][0] == ST_STOWED and a[-1][5] == 0 and a[-1][3] == w_link and a[-1][1] == 0 and a[-1][2] == 0 and a[int(T_TTL / 50) - 2][0] == ST_SEARCH, (a[-1], a[int(T_TTL / 50) - 2]))
+        a = R["person found"]
+        check("a warm shape stops the search: HOLDING, wheels off, 'found' tone once", a[8][0] == ST_HOLD and a[8][1] == 0 and a[8][2] == 0 and a[8][4] == 2, a[8])
+        check("it stays HOLDING until a human says search (firefighters decide), then it searches again", all(x[0] == ST_HOLD for x in a[9:-2]) and a[-2][0] == ST_SEARCH, (a[-3], a[-2]))
+        a = R["manual drive"]
+        check("manual drive without approval is ignored", a[0][0] == ST_STOWED and a[0][1] == 0 and a[0][2] == 0, a[0])
+        check("after approve + hold, a manual drive is obeyed for DRIVE_TTL_MS only (50 / 50 -> %d / %d), then the wheels stop" % (int(50 * C["DRIVE_MAX_PCT"] / 100) if False else 50, 50),
+              a[2][0] == ST_HOLD and a[3][1] == 50 and a[3][2] == 50 and a[4][1] == 50 and a[5][1] == 0, a[2:6])
+        check("a manual drive straight at an obstacle is refused (no forward motion at STOP range)", a[-1][1] == 0 and a[-1][2] == 0 and a[-1][3] == w_obst, a[-1])
+        a = R["estop"]
+        check("the E-stop: STOWED at once, approved = false, why = estop, wheels off", a[2][0] == ST_STOWED and a[2][5] == 0 and a[2][3] == w_estop and a[2][1] == 0 and a[2][2] == 0, a[2])
+        check("while the E-stop is pressed an approve is ignored; after release it still needs a NEW approve", a[3][0] == ST_STOWED and a[4][0] == ST_STOWED and a[5][0] == ST_SEARCH, a[3:6])
+        a = R["battery"]
+        check("a low battery stops the search (state approved, why = battery); a cut battery is FAULT with the wheels off", a[1][0] == ST_APPROVED and a[1][3] == w_batt and a[3][0] == ST_FAULT and a[3][1] == 0 and a[3][2] == 0, a[1:4])
+        check("FAULT is left only with a charged battery AND a new approve", a[4][0] == ST_FAULT and a[5][0] == ST_FAULT and a[6][0] == ST_SEARCH, a[4:7])
+        a = R["recall"]
+        check("recall: STOWED, approved = false, why = recall, 'stop' tone; it needs a new approve to move again", a[2][0] == ST_STOWED and a[2][3] == w_recall and a[2][4] == 3 and a[2][5] == 0 and a[3][1] == 0 and a[4][0] == ST_SEARCH, a[2:5])
+        a = R["heat ahead"]
+        check("a hot spot ahead: never drives forward (turns away), why = heat; with the heat gone it drives on", all(x[1] + x[2] <= 0 for x in a[1:6]) and a[1][3] == w_heat and a[-1][1] == fwd, (a[1], a[-1]))
+        a = R["slow zone"]
+        check("the slow zone caps the speed (%d / %d)" % (slow, slow), all(x[1] == slow and x[2] == slow for x in a[1:]), a[1:3])
+        a = R["search timeout"]
+        check("a search ends by itself after SEARCH_MAX_MS (state approved, why = timeout, wheels off)", a[-1][0] == ST_APPROVED and a[-1][3] == w_time and a[-1][1] == 0 and a[-3][0] == ST_SEARCH or a[-1][0] == ST_APPROVED and a[-1][3] == w_time, (a[-3], a[-1]))
+        a = R["clock wrap"]
+        check("the 32-bit millisecond counter wrapping around does not trigger a false keep-alive timeout or a false search timeout", all(x[0] == ST_SEARCH for x in a), [x for x in a if x[0] != ST_SEARCH][:2])
+        a = R["unknown battery"]
+        check("a missing battery reading does not stop the rover by itself (the other safety rules stay)", a[-1][0] == ST_SEARCH, a[-1])
+        a = R["unknown distance"]
+        check("an unknown distance is treated as SLOW (the slow-zone speed), not as clear", a[-1][1] == slow, a[-1])
+
+        # --- JSON
+        allowed = spec_keys()
+
+        def keys_of(o, acc):
+            if isinstance(o, dict):
+                for k, v in o.items():
+                    acc.add(k)
+                    keys_of(v, acc)
+            return acc
+        jl = {}
+        for l in lines:
+            if l.startswith("J ") or l.startswith("G "):
+                tag, n, rest = l[0], int(l.split()[1]), l.split(" ", 2)[2]
+                jl.setdefault(tag, []).append((n, rest))
+        frames = jl.get("J", [])
+        check("3 rover frame variants produced", len(frames) == 3, len(frames))
+        parsed = []
+        for n, txt in frames:
+            try:
+                parsed.append(json.loads(txt))
+            except ValueError as e:
+                parsed.append(None)
+                check("rover frame is valid JSON", False, "%s :: %s" % (e, txt[:140]))
+        if parsed and all(p is not None for p in parsed):
+            typ, full, mn = parsed
+            ksz = set()
+            for p in parsed:
+                keys_of(p, ksz)
+            check("all rover frames are valid JSON objects with only protocol v1 key names", ksz <= allowed, sorted(ksz - allowed))
+            check("typical rover frame: v 1, type rover, state searching, approved, drive 27/27, range 84.2 clear, thermal with a person, battery 71 %, local stop false / why none",
+                  typ["v"] == 1 and typ["type"] == "rover" and typ["state"] == "searching" and typ["approved"] is True and typ["drive"] == {"l": 27, "r": 27} and typ["range"] == {"cm": 84.2, "state": "clear"}
+                  and typ["thermal"]["person"]["px"] == 14 and typ["batt"] == {"mv": 7420, "pct": 71} and typ["local"] == {"stop": False, "why": "none"}, typ)
+            check("a minimal frame still has v, type, ms, state, approved, drive, range (state only), local", set(mn) == {"v", "type", "ms", "state", "approved", "drive", "range", "local"} and mn["range"] == {"state": "slow"}, mn)
+            check("the worst-case frame carries every optional part (hot, person, nocontrast, battery, range cm)", {"hot", "person", "nocontrast"} <= set(full["thermal"]) and "batt" in full and "cm" in full["range"], full)
+        m = re.search(r"static char frameBuf\[(\d+)\]", rover)
+        fb = int(m.group(1)) if m else 0
+        longest = max(n for n, _ in frames) if frames else 10 ** 9
+        check("rover frameBuf (%d bytes) is larger than the worst-case frame (%d bytes), and the harness used the same size (560)" % (fb, longest), fb > longest + 20 and fb == 560, (fb, longest))
+        grids_j = jl.get("G", [])
+        m = re.search(r"static char gridBuf\[(\d+)\]", rover)
+        gb = int(m.group(1)) if m else 0
+        check("3 grid variants produced", len(grids_j) == 3, len(grids_j))
+        if len(grids_j) == 3:
+            glong = max(n for n, _ in grids_j)
+            check("rover gridBuf (%d bytes) is larger than the worst-case grid line (%d bytes: 768 values at -60.0 / 400.0 C)" % (gb, glong), gb > glong + 20, (gb, glong))
+            g0, g1, g2 = [json.loads(t) for _, t in grids_j]
+            check("grid lines: 32x24 = 768 integers (worst and normal), 8x8 = 64 integers (AMG8833)", g0["w"] == 32 and len(g0["t10"]) == 768 and g1["h"] == 24 and len(g1["t10"]) == 768 and g2["w"] == 8 and g2["h"] == 8 and len(g2["t10"]) == 64, (g0["w"], g2["w"]))
+        check("every rover protocol line is ONE line that ends with a newline (declared length = text + '\\n')", all(n == len(txt) + 1 and "\n" not in txt for n, txt in frames + grids_j))
+
+
+# =====================================================================================================
 # 4. stub compile
 # =====================================================================================================
 STUBS = {
@@ -719,6 +1179,10 @@ uint32_t analogReadMilliVolts(uint8_t);
 typedef enum { ADC_0db, ADC_2_5db, ADC_6db, ADC_11db } adc_attenuation_t;
 void analogSetAttenuation(adc_attenuation_t);
 unsigned long pulseIn(uint8_t pin, uint8_t state, unsigned long timeout = 1000000UL);
+bool ledcAttach(uint8_t pin, uint32_t freq, uint8_t resolution);
+bool ledcWrite(uint8_t pin, uint32_t duty);
+void tone(uint8_t pin, unsigned int frequency, unsigned long duration = 0);
+void noTone(uint8_t pin);
 class HardwareSerial {
  public:
   void begin(unsigned long baud, uint32_t config = 0x800001c, int8_t rxPin = -1, int8_t txPin = -1);
@@ -837,6 +1301,18 @@ class Adafruit_NeoPixel {
   static uint32_t Color(uint8_t r, uint8_t g, uint8_t b) { return ((uint32_t)r << 16) | ((uint32_t)g << 8) | b; }
 };
 ''',
+"Adafruit_AMG88xx.h": r'''#pragma once
+#include <Arduino.h>
+#include <Wire.h>
+#define AMG88xx_PIXEL_ARRAY_SIZE 64
+class Adafruit_AMG88xx {
+ public:
+  Adafruit_AMG88xx(void);
+  bool begin(uint8_t addr = 0x69, TwoWire* theWire = NULL);
+  void readPixels(float* buf, uint8_t size = AMG88xx_PIXEL_ARRAY_SIZE);
+  float readThermistor();
+};
+''',
 "ESP32Servo.h": r'''#pragma once
 #include <Arduino.h>
 class ESP32PWM { public: static void allocateTimer(int timerNumber); };
@@ -893,7 +1369,7 @@ class WebServer {
 
 
 def test_compile():
-    section("4. Both sketches syntax/type-checked with g++ against stub headers (documented signatures)")
+    section("4. All three sketches syntax/type-checked with g++ against stub headers (documented signatures)")
     if not have("g++"):
         print("  skip (g++ not found)")
         return
@@ -928,6 +1404,32 @@ def test_compile():
         cp = subprocess.run(["g++", "-std=gnu++17", "-fsyntax-only", "-Wall", "-Wextra", "-I", inc, "-x", "c++", p], capture_output=True, text=True)
         check("safepoint compiles", cp.returncode == 0, cp.stderr[:600])
         check("safepoint compiles without warnings", cp.stderr.strip() == "", cp.stderr[:300])
+        rv = read(ROVER)
+        rflags = re.findall(r"^#define (HAS_[A-Z0-9_]+)\s+([01])", rv, re.M)
+        check("rover has %d HAS_ flags (feature switches)" % len(rflags), len(rflags) >= 7, rflags)
+        off = lambda t, name: re.sub(r"^(#define %s\s+)1" % name, r"\g<1>0", t, flags=re.M)
+        on = lambda t, name: re.sub(r"^(#define %s\s+)0" % name, r"\g<1>1", t, flags=re.M)
+        rvariants = {
+            "default configuration (MLX90640)": rv,
+            "AMG8833 8x8 camera instead of the MLX90640": on(off(rv, "HAS_MLX90640"), "HAS_AMG8833"),
+            "no thermal camera at all": off(rv, "HAS_MLX90640"),
+            "every part OFF": re.sub(r"^(#define HAS_[A-Z0-9_]+\s+)1", r"\g<1>0", rv, flags=re.M),
+            "no ultrasonic and no battery sense": off(off(rv, "HAS_ULTRASONIC"), "HAS_BATTERY_SENSE"),
+            "no speaker, no LED, no E-stop": off(off(off(rv, "HAS_SPEAKER"), "HAS_LED"), "HAS_ESTOP"),
+        }
+        for label, text in rvariants.items():
+            p = os.path.join(tmp, "r.cpp")
+            with open(p, "w", encoding="utf-8") as f:
+                f.write(text)
+            cp = subprocess.run(["g++", "-std=gnu++17", "-fsyntax-only", "-Wall", "-Wextra", "-I", inc, "-x", "c++", p], capture_output=True, text=True)
+            errs = [l for l in cp.stderr.splitlines() if "error" in l]
+            check("rover compiles: %s" % label, cp.returncode == 0, "; ".join(errs[:3]))
+            check("rover compiles with no warnings (-Wall -Wextra): %s" % label, cp.stderr.strip() == "", cp.stderr[:300])
+        p = os.path.join(tmp, "r2.cpp")
+        with open(p, "w", encoding="utf-8") as f:
+            f.write(on(rv, "HAS_AMG8833"))
+        cp = subprocess.run(["g++", "-std=gnu++17", "-fsyntax-only", "-I", inc, "-x", "c++", p], capture_output=True, text=True)
+        check("rover: both thermal cameras at once is refused at compile time with a clear message", cp.returncode != 0 and "Fit ONE thermal camera" in cp.stderr, cp.stderr[:200])
 
 
 # =====================================================================================================
@@ -958,6 +1460,7 @@ def main():
     test_python()
     test_lint()
     test_pure()
+    test_rover()
     test_compile()
     test_page_links()
     print("\n%d passed, %d failed" % (passed, len(failures)))

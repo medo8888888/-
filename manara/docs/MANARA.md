@@ -154,6 +154,7 @@ each `type` is kept, so a page opened later can read it with `Manara.link.last(t
 Coordinates are simulation grid cells (`x` east, `y` south, the map is north-up, **1 cell = 5 m**,
 grid 96 × 64). Text is always `{ar, en}`. One alert schema serves all six hazards.
 `ManaraSim.busAlert(sim, personKey)` and `ManaraSim.busDispatch(sim)` build exactly these messages.
+The other types on the bus: `alert-update` / `alert-clear` (same shape, below), the national `dispatch`, `drone-alert`, `drone-status` and `drone-announce` (section "Drone fleet — Bus messages"), and the building robot's `robot` and `robot-find` (section "The rescue robot — Bus messages"). Every control-room message is `sim:true`.
 
 ```js
 // mission → phone: a new public alert (and every ~2 s an 'alert-update' with the same shape)
@@ -763,10 +764,10 @@ N.busDroneStatus(nat [, droneId]) → { type: 'drone-status', scope: 'national',
                                  drones: [{ id, callsign, name, state, stateText, lon, lat, altM, headingDeg, speedMps, batteryPct, etaSec, incident, alert, link,
                                             derate: {tempC, speedLostPct, enduranceLostPct}, fault }], counts, sim: true }
 // Control Room → other tabs (js/control-feeds.js, published once per voice announcement through a drone speaker; the phones ignore it; the comms tab logs it)
-{ type: 'drone-announce', scope: 'national', drone: 'D-…' /* drone id */, callsign: 'DR-…' /* the feed's callsign */, key: 'nat.drone.say.…' /* message key */, lang: 'ar'|'en',
-  text: {ar, en}, alert: 'DA-…'|null /* alert id the drone is on */, incident: 'I-…'|null, clock: 'hh:mm:ss' /* simulated clock */, sim: true, exercise: true }
+{ type: 'drone-announce', scope: 'national', drone: 'drone:<facility id>[#k]' /* the drone's id, as in snapshot().drones */, callsign /* the feed's callsign */, key /* the message key exactly as passed to announce: the short key or 'nat.drone.say.<key>' */,
+  lang: 'ar'|'en', text: {ar, en}, alert: 'AL-2'|null /* the alert the drone is on */, incident /* its incident id */ |null, clock /* simulated clock */, sim: true, exercise: true }
 ```
-`drone-announce` is sent by the operator action `ControlRoom` → `announceVia` (engine side: `ManaraNational.announce(nat, droneId, key, lang)`, which also writes a `drone-announce` comms entry and event); it is allowed only while the drone is on station or verifying, and a language other than `ar`/`en` falls back to English and says so in the comms log. Like every control-room bus message it carries `sim: true` and `exercise: true` (added by `busSend`), and `Manara.link.send()` adds `ts`, `from` and `_k`. The text is read-only data for the receiver: show it with `textContent`.
+`drone-announce` is published when an operator announces through a drone speaker (`ControlRoom.announceVia(droneId, key, lang)` → `ManaraNational.announce(nat, droneId, key, lang)`, which also writes a `drone-announce` comms entry and event). The operator role is required, the drone must be on station or verifying, and a language other than `ar`/`en` falls back to English and says so in the comms log. Like every control-room bus message it carries `sim: true` and `exercise: true` (added by `busSend` in `js/control.js`), and `Manara.link.send()` adds `ts`, `from` and `_k`. The text is data for the receiver: show it with `textContent`, never `innerHTML`.
 Events added to `snapshot().events`: `alert-raised · drone-launched · drone-on-station · drone-verified · alert-confirmed · alert-dismissed · alert-escalated · drone-patrol-detect · drone-returning · drone-relaunch · drone-fault ·
 drone-low-battery · drone-recalled · drone-announce · aed-drop · false-alarm-dispatch · false-alarm-on-scene` (each with an `{ar, en}` text).
 

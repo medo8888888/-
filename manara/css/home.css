@@ -28,6 +28,7 @@
 .plain-list li{position:relative;padding-inline-start:18px;color:var(--ink-2)}
 .plain-list li::before{content:"";position:absolute;inset-inline-start:0;inset-block-start:.72em;width:7px;height:7px;border-radius:50%;background:var(--sc,var(--brand))}
 .ns-note{margin-block:16px}
+.sr-story{white-space:normal}
 
 /* ======================================================================= HERO */
 .hero{position:relative;isolation:isolate;overflow:clip;padding-block:clamp(26px,4.5vw,58px) clamp(34px,5vw,70px)}
@@ -146,6 +147,7 @@ html[dir=rtl] .cam-clock{inset-inline-end:auto;inset-inline-start:16px}
 .gap-gap i{font-style:normal;font-size:.76rem;color:var(--muted);white-space:nowrap}
 .gap-axis{position:relative;height:18px}
 .gap-axis>span{position:absolute;inset-inline-start:calc(var(--p) / 12 * 100%);transform:translateX(-50%);font-size:.74rem;color:var(--muted);font-family:var(--font-m)}
+.gap-axis>span:first-child{transform:none}.gap-axis>span:last-child{transform:translateX(-100%)}
 .why-kpis .kpi{height:100%}
 .why-kpis .kpi b{font-size:1.7rem}
 .why-kpis .kpi span{font-size:.9rem;line-height:1.6}
@@ -388,7 +390,8 @@ html[data-lang=ar] .hz-res{font-family:var(--font)}
 .ph-status.done{border-color:var(--safe);color:var(--safe-t)}
 .team-dl{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.3fr);gap:8px 14px;align-items:baseline}
 .team-dl dt{color:var(--muted);font-size:.9rem}
-.team-dl dd{color:var(--head)}
+.team-dl dd{color:var(--head);min-width:0}
+.team-dl .ph{max-inline-size:100%;overflow-wrap:anywhere;word-break:break-all}
 .team-dl.own{margin-block:12px}
 .ph{display:inline-block;padding:1px 10px;border-radius:8px;font-family:var(--font-m);font-size:.86rem;direction:ltr;unicode-bidi:isolate;color:var(--warn-t);background:color-mix(in oklab,var(--warn) 14%,transparent);border:1px dashed var(--warn)}
 .ph.filled{color:var(--head);background:transparent;border-style:solid;border-color:var(--line-2)}
@@ -575,10 +578,12 @@ html[dir=rtl] .btn-primary:hover::after{transform:translateX(-420%) skewX(18deg)
   background:conic-gradient(from 0deg,transparent 0 292deg,color-mix(in oklab,var(--accent) 20%,transparent) 338deg,color-mix(in oklab,var(--accent) 46%,transparent) 360deg);animation:sweep 8s linear infinite}
 @keyframes sweep{to{transform:rotate(360deg)}}
 .con-map{isolation:isolate}
-.alert.enter{animation:slidein .6s var(--ease) both,flashonce .9s .1s ease-out 1}
+.alert{position:relative}
+.alert.enter{animation:slidein .6s var(--ease) both}
+.alert.enter::after{content:"";position:absolute;inset:-1px;border-radius:inherit;border:2px solid var(--st);pointer-events:none;animation:flashring .9s .1s ease-out both}
 @keyframes slidein{from{opacity:0;transform:translateX(calc(var(--dir,1) * -26px))}to{opacity:1;transform:none}}
 html[dir=rtl] .alert.enter{--dir:-1}
-@keyframes flashonce{0%{box-shadow:0 0 0 0 color-mix(in oklab,var(--st) 80%,transparent)}60%{box-shadow:0 0 0 10px color-mix(in oklab,var(--st) 0%,transparent)}100%{box-shadow:0 0 0 1px color-mix(in oklab,var(--st) 40%,transparent)}}
+@keyframes flashring{from{opacity:.95;transform:scale(1)}to{opacity:0;transform:scale(1.07,1.22)}}
 .alert.enter+.alert{animation:slidein .6s .12s var(--ease) both}
 .alert.enter+.alert+.alert{animation:slidein .6s .22s var(--ease) both}
 /* count-up numbers keep their width so nothing around them moves */

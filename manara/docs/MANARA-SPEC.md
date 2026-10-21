@@ -321,6 +321,14 @@ the core message for everyone.
   Safe/Help, no names). Booth tablet main, QR fallback.
 - **Drone:** concept + optional supervised clip; any educational drone on sale (Tello is
   discontinued). A Python script runs the vision detector on a laptop webcam.
+- **Tier 4 — drone payload and rescue rover (bench prototypes only):** a **bench rover**
+  (`kit/firmware/manara_rover`: ESP32 + 2 DC motors on an L298N/TB6612 driver + HC-SR04 +
+  MLX90640 or AMG8833 + speaker + friendly light + E-stop + battery sense) that does the
+  *logic* of the simulated robot: approval gate, search, stop at obstacles and heat, a
+  warm-shape key that switches itself off in a hot room, hold-and-report. It cannot climb stairs,
+  open doors or know where it is, and **nothing here flies**: the drone side is a bench payload
+  (thermal camera + ESP32, props removed or no drone at all) and any real flight is by a licensed
+  operator with written permission. Prices are approximate ranges in `build.html`.
 - Booth prep: MLX90640 warm-up ~4 min, MQ sensors ~3 min (longer burn-in first time).
 
 ## Interfaces
@@ -347,3 +355,17 @@ browser → board:
 {"v":1,"type":"signs","A":"go|stop|off","B":"go|stop|off","R":"go|stop|off","siren":"off|on","ring":"green|amber|red|off","hazard":"fire|gas|flood|dust|heat|sos|none"}
 ```
 `hot.x/y` are 0..1 across the twin board (x → east, y → south). Absent sensors are omitted.
+
+**Rover protocol v1 additions** (Tier 4 bench rover, `kit/firmware/manara_rover`, same one-JSON-line-per-message rules, 115200 baud; the rover also sends the same `grid` line, 32×24 for the MLX90640 or 8×8 for the AMG8833):
+
+```json
+rover → browser (≈2 Hz):
+{"v":1,"type":"rover","ms":12345,"state":"searching","approved":true,"drive":{"l":27,"r":27},
+ "range":{"cm":84.2,"state":"clear"},
+ "thermal":{"tmax":33.4,"tmean":27.9,"hot":{"x":0.62,"y":0.31,"t":61.0},"person":{"x":0.41,"y":0.55,"px":14,"dt":5.2},"nocontrast":true},
+ "batt":{"mv":7420,"pct":71},
+ "local":{"stop":false,"why":"none"}}
+browser → rover (the human key, repeated about once a second as a keep-alive):
+{"v":1,"type":"rover","cmd":"approve|search|hold|stop|recall|drive|say","l":-100,"r":100,"say":"follow|found|stop"}
+```
+`state` is `stowed | approved | searching | holding | fault`. `range.state` is `clear | slow | stop` (an unknown distance is `slow`, never `clear`). `thermal.hot` and `thermal.person` are present only when the rule fires; `person` is a **warm shape** (rule-based, never "AI") and `nocontrast:true` says the room is too hot for that key (the honest limit). `local.why` is `none | obstacle | heat | battery | link | estop | recall | timeout`. The rover **never moves until a fresh `approve`**; with no keep-alive for 3 s it stops and returns to `stowed`; the E-stop, a flat battery, an obstacle and heat ahead are local and cannot be overridden by the browser. The speaker makes tones (`say`), not words.
