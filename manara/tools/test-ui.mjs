@@ -468,7 +468,7 @@ if (want('honesty')) {
           const artEl = el.closest('article,section,.slide,.board-sec'); const art = artEl ? all(artEl).replace(/\s+/g, ' ').slice(0, 600) : '';
           const sib = [el.previousElementSibling, el.nextElementSibling, card && card.nextElementSibling, card && card.previousElementSibling].filter(Boolean).map(s => all(s)).join(' ').slice(0, 800);
           units.push({
-            flags: [el.closest('table') ? 'table' : '', el.closest('figure,svg,canvas') ? 'figure' : '', el.closest('pre,code,.eq,.formula') ? 'pre' : '', el.closest('#reflist,.reflist') ? 'refs' : '', el.closest('footer,[data-footer],nav,[data-nav],.subnav') ? 'chrome' : ''].filter(Boolean),
+            flags: [el.closest('table') ? 'table' : '', el.closest('figure,svg,canvas') ? 'figure' : '', el.closest('pre,code,.eq,.formula') ? 'pre' : '', el.closest('#reflist,.reflist') ? 'refs' : '', el.closest('footer,[data-footer],nav,[data-nav],.subnav,[data-live]') ? 'chrome' : ''].filter(Boolean),
             sec: (sec.id || sec.className || sec.tagName).toString().slice(0, 30), text: t, art, head: headOf(el).replace(/\s+/g, ' ').slice(0, 300), tab, card: card ? all(card).replace(/\s+/g, ' ').slice(0, 2500) : '', sib: sib.replace(/\s+/g, ' '), section: all(sec).replace(/\s+/g, ' ').slice(0, 7000),
           });
         }
