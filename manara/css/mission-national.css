@@ -451,6 +451,7 @@ body.nat-present .mc{--mc-h:100vh;min-height:100vh}
 .pn-fold[aria-expanded=false]::after{transform:translateY(2px) rotate(-135deg)}
 .pn-fold:hover{color:var(--brand);background:var(--surface-3)}
 .mc[data-layout=wide] .pn-fold{display:inline-block}
+.pn-fold .sr-only{inset:0;width:100%;height:100%;margin:0;white-space:normal}
 .mc[data-layout=wide] .pn.collapsed>.pn-b{display:none}
 .pn-cur{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.74rem;text-align:end}
 .mc[data-layout=narrow] .pn-cur{display:none}

@@ -360,7 +360,7 @@ for (const lang of ['ar', 'en']) for (const theme of ['dark', 'light']) for (con
 {
   const { page, ctx } = await open('chat.html', { lang: 'ar', width: 390, height: 844 });
   await page.fill('.mc-input', 'there is a fire'); await page.press('.mc-input', 'Enter'); await page.waitForTimeout(500);
-  const ar = await page.evaluate(() => { const w = document.createTreeWalker(document.querySelector('.mc'), NodeFilter.SHOW_TEXT); const bad = []; let n; while ((n = w.nextNode())) { if (!/[؀-ۿ]/.test(n.textContent)) continue; const ls = getComputedStyle(n.parentElement).letterSpacing; if (ls !== 'normal' && parseFloat(ls) !== 0) bad.push(ls); } return bad; });
+  const ar = await page.evaluate(() => { const w = document.createTreeWalker(document.querySelector('.mc-chat'), NodeFilter.SHOW_TEXT); const bad = []; let n; while ((n = w.nextNode())) { if (!/[؀-ۿ]/.test(n.textContent)) continue; const ls = getComputedStyle(n.parentElement).letterSpacing; if (ls !== 'normal' && parseFloat(ls) !== 0) bad.push(ls); } return bad; });
   check('no letter-spacing on Arabic text in the chat', ar.length === 0, ar.join());
   await ctx.close();
 }

@@ -22,8 +22,8 @@
 .mc-topics .mc-chip{white-space:normal;text-align:start;min-height:34px}
 
 /* ---------- the chat component ---------- */
-.mc{display:flex;flex-direction:column;width:100%;min-width:0;min-height:0;background:var(--surface)}
-.mc-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 12px;padding:10px 14px;border-block-end:1px solid var(--line)}
+.mc-chat{display:flex;flex-direction:column;width:100%;min-width:0;min-height:0;background:var(--surface)}
+.mc-chead{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 12px;padding:10px 14px;border-block-end:1px solid var(--line)}
 .mc-mode{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .mc-iam{font-weight:600;color:var(--head);font-size:.92rem}
 .mc-seg{min-height:38px;padding-inline:14px;cursor:pointer}
@@ -111,7 +111,7 @@ body:has(.toasts .toast){--mc-lift:76px}
 .mc-pclose{width:38px;height:38px;border-color:transparent;background:transparent}
 .mc-pbody{flex:1;min-height:0;display:flex}
 .mc-in-panel .mc-strip{font-size:.78rem;padding:6px 10px}
-.mc-in-panel .mc-head{padding:8px 12px}
+.mc-in-panel .mc-chead{padding:8px 12px}
 .mc-in-panel .mc-log{padding:12px}
 .mc-in-panel .mc-form{padding:8px 12px 10px}
 @media(max-width:520px){.mc-panel{inset-inline:8px;width:auto;height:min(78dvh,calc(100dvh - var(--nav-h) - 100px))}.mc-fab{inset-inline-end:12px}}

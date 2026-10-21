@@ -692,7 +692,7 @@
     } else if (!live) { setKey(k.r0, false, '…', 0); setKey(k.r1, false, '…', 0); setKey(k.r2, false, '…', 0); setT(k.verdict, ''); }
     paintEvidence(al);
     // actions
-    setT(k.recNote, recSupport() ? (F.rec ? B('يسجّل… ', 'Recording… ') + CR.mmss((now() - F.rec.t0) / 1000) + B(' (يتوقف عند ٣٠ ث)', ' (stops at 30 s)') : B('المقطع والصورة يُحفظان على جهازك فقط (PNG / WebM)، بلا رفع.', 'Snapshots and clips are saved on your device only (PNG / WebM), nothing is uploaded.')) : B('تسجيل المقاطع غير متاح في هذا المتصفح (لا MediaRecorder أو captureStream) — تبقى اللقطة PNG متاحة.', 'Clip recording is not available in this browser (no MediaRecorder or captureStream) — the PNG snapshot still works.'));
+    setT(k.recNote, recSupport() ? (F.rec ? B('يسجّل… ', 'Recording… ') + CR.mmss((now() - F.rec.t0) / 1000) + B(' (يتوقف عند ٣٠ ث)', ' (stops at 30 s)') : B('المقطع والصورة يُحفظان على جهازك فقط (PNG / WebM)، بلا رفع.', 'Snapshots and clips are saved on your device only (PNG / WebM), nothing is uploaded.')) : B('تسجيل المقاطع غير متاح في هذا المتصفح (لا MediaRecorder أو captureStream) — تبقى اللقطة PNG متاحة وتُحفظ على جهازك فقط.', 'Clip recording is not available in this browser (no MediaRecorder or captureStream) — the PNG snapshot still works and is saved on your device only.'));
     k.bRec.setAttribute('aria-disabled', recSupport() ? 'false' : 'true'); k.bRec.setAttribute('aria-describedby', 'crf-recnote'); setA(k.bRec, 'aria-pressed', F.rec ? 'true' : 'false');
     var rl = k.bRec.querySelector('.bi'); if (rl) { setT(rl.children[0], F.rec ? 'إيقاف وحفظ' : 'تسجيل مقطع'); setT(rl.children[1], F.rec ? 'Stop and save' : 'Record clip'); }
     k.bRecall.setAttribute('aria-disabled', drone && r && (r.state === 'returning') ? 'true' : 'false');

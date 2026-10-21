@@ -350,9 +350,9 @@
   /* ---------------- "Ask MANARA" launcher: a floating button on every page except the control room (own Commander), the board (print) and chat.html itself;
      css/chatbot.css loads at once, js/chatbot-kb.js + js/chatbot.js only on the first click ---------------- */
   function chatLauncher() {
-    if (['control.html', 'chat.html', 'poster.html'].indexOf(current()) >= 0 || $('.mc-fab')) return;
+    if (['control.html', 'chat.html', 'poster.html'].indexOf(current()) >= 0 || $('.mc-fab') || $('script[data-bundled]')) return;   // single-file previews (tools/bundle-*.mjs) are self-contained: no css/chatbot.css or js/chatbot*.js beside them
     var b = document.createElement('button'), busy = false, css = document.createElement('link');
-    b.type = 'button'; b.className = 'mc-fab'; b.hidden = true; b.setAttribute('aria-haspopup', 'dialog'); b.setAttribute('aria-expanded', 'false'); b.setAttribute('aria-controls', 'mc-panel');
+    b.type = 'button'; b.className = 'mc-fab'; b.hidden = true; b.setAttribute('aria-haspopup', 'dialog'); b.setAttribute('aria-expanded', 'false');
     var label = function () { var x = L({ ar: 'اسأل منارة', en: 'Ask MANARA' }); b.setAttribute('aria-label', x); b.title = x; };
     label(); window.addEventListener('langchange', label);
     b.insertAdjacentHTML('afterbegin', icon('chat'));

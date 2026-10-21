@@ -1412,7 +1412,7 @@
     U.sparks = clear(U.sparks);
     var defs = [['tmax', T2('أعلى حرارة °م', 'Hottest °C')], ['mq2', T2('MQ-2 مللي فولت', 'MQ-2 mV')], ['wbgt', T2('WBGT تقدير °م', 'WBGT est. °C')], ['water', T2('ماء سم', 'Water cm')]], sp = {};
     defs.forEach(function (d) {
-      var box = el('div', 'spark'), h = el('span'), t = el('span'); t.appendChild(bi(d[1])); var v = el('b', 'num', '–'); h.appendChild(t); h.appendChild(v); box.appendChild(h);
+      var box = el('div', 'spark'), h = el('span'), t = el('span'); t.appendChild(bi(d[1])); var v = el('b', 'num', '–'); h.appendChild(t); h.appendChild(v); box.appendChild(h); box.setAttribute('data-live', '');
       var cv = el('canvas'); cv.width = 240; cv.height = 44; cv.setAttribute('aria-hidden', 'true'); box.appendChild(cv); U.sparks.appendChild(box); sp[d[0]] = { cv: cv, val: v };
     });
     U.sparks = sp;

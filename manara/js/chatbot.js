@@ -445,12 +445,12 @@
 
   function createChat(container, opts) {
     opts = opts || {};
-    var id = ++uid, root = el('div', 'mc' + (opts.panel ? ' mc-in-panel' : ''));
+    var id = ++uid, root = el('div', 'mc-chat' + (opts.panel ? ' mc-in-panel' : ''));
     var mode = (M.store('manara-chat-mode') === 'jud') ? 'jud' : 'res';
     var history = [], fb = [], lastId = null, busy = null, typing = null, thinkTimer = 0, asked = [], askedAt = -1, started = false;
 
     /* header: mode switch + tools */
-    var head = el('div', 'mc-head');
+    var head = el('div', 'mc-chead');
     var modeBox = el('div', 'mc-mode'); modeBox.setAttribute('role', 'group'); modeBox.setAttribute('aria-labelledby', 'mc-iam-' + id);
     var iam = el('span', 'mc-iam'); iam.id = 'mc-iam-' + id; iam.setAttribute('data-lbl', 'iAm');
     var bRes = el('button', 'chip mc-seg'), bJud = el('button', 'chip mc-seg');
@@ -758,7 +758,7 @@
   }
   function openPanel(btn) {
     if (!panel) buildPanel();
-    opener = btn || opener; panel.hidden = false; if (opener) opener.setAttribute('aria-expanded', 'true'); doc.documentElement.setAttribute('data-chat-open', '1');
+    opener = btn || opener; panel.hidden = false; if (opener) { opener.setAttribute('aria-expanded', 'true'); opener.setAttribute('aria-controls', 'mc-panel'); } doc.documentElement.setAttribute('data-chat-open', '1');
     onKey = onKey || function (e) { if (e.key === 'Escape' && panel && !panel.hidden) { e.preventDefault(); closePanel(true); } };
     doc.addEventListener('keydown', onKey);
     setTimeout(function () { if (panelChat) panelChat.focus(); }, 30);

@@ -43,7 +43,7 @@ const fixer = `(function(){
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){fix(document)});else fix(document);
   window.addEventListener('load',function(){fix(document)});
 })();`;
-const wrap = f => '<script>\n' + noClose(read(f)) + '\n</script>\n';
+const wrap = f => '<script' + (f === 'js/core.js' ? ' data-bundled="js/core.js"' : '') + '>\n' + noClose(read(f)) + '\n</script>\n';
 const inline = wrap('js/core.js') + '<script>\n' + noClose(fixer) + '\n</script>\n' + SCRIPTS.slice(1).map(wrap).join('');
 must(/<\/body>/, '</body>');
 html = html.replace('</body>', () => inline + '</body>');

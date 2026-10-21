@@ -219,7 +219,17 @@ input[type=range]{width:100%;accent-color:var(--brand)}
 .brand img,.brand svg{width:38px;height:38px}
 .brand b{font-family:var(--font-h);font-size:1.3rem;font-weight:700;line-height:1}
 .brand small{display:block;font-size:.72rem;color:var(--muted);font-weight:500;line-height:1.2;margin-top:3px}
-.nav-links{display:flex;gap:2px;margin-inline-start:auto;overflow:hidden}
+.nav-links{display:flex;gap:2px;margin-inline-start:auto}
+.nav-more{position:relative}
+.nav-more-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border:0;border-radius:10px;background:none;color:var(--ink-2);font:inherit;font-size:.93rem;font-weight:500;white-space:nowrap;cursor:pointer;transition:color .2s,background-color .2s}
+.nav-more-btn .i{width:15px;height:15px;opacity:.8;transition:transform .2s}
+.nav-more-btn[aria-expanded=true] .i{transform:rotate(180deg)}
+.nav-more-btn:hover,.nav-more-btn[aria-expanded=true]{color:var(--brand);background:color-mix(in oklab,var(--brand) 8%,transparent)}
+.nav-more-btn[data-current]{color:var(--brand-t);background:color-mix(in oklab,var(--brand) 12%,transparent)}
+.nav-more-pop{position:absolute;inset-block-start:calc(100% + 8px);inset-inline-end:0;z-index:101;min-width:210px;display:grid;gap:2px;padding:6px;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-lg)}
+.nav-more-pop[hidden]{display:none}
+.nav-more-pop a{padding:10px 12px}
+@media(prefers-reduced-motion:reduce){.nav-more-btn .i{transition:none}}
 .nav-links a{display:inline-flex;align-items:center;gap:7px;padding:8px 12px;border-radius:10px;text-decoration:none;color:var(--ink-2);font-size:.93rem;font-weight:500;white-space:nowrap;transition:color .2s,background-color .2s}
 .nav-links a .i{width:17px;height:17px;opacity:.8}
 .nav-links a:hover{color:var(--brand);background:color-mix(in oklab,var(--brand) 8%,transparent)}
@@ -235,7 +245,7 @@ input[type=range]{width:100%;accent-color:var(--brand)}
 .menu a[aria-current=page]{color:var(--brand-t);background:color-mix(in oklab,var(--brand) 10%,transparent)}
 .menu a .i{color:var(--brand)}
 @media(max-width:1180px){.nav-links a .i{display:none}}
-@media(max-width:1020px){.nav-links{display:none}.menu-btn{display:inline-grid}.nav-tools{margin-inline-start:auto}}
+@media(max-width:1120px){.nav-links{display:none}.menu-btn{display:inline-grid}.nav-tools{margin-inline-start:auto}}
 @media(max-width:420px){.brand small{display:none}}
 
 /* ---------- footer (rendered by core.js into <footer class="foot" data-footer>) ---------- */
@@ -1406,6 +1416,7 @@ body.nat-present .mc{--mc-h:100vh;min-height:100vh}
 .pn-fold[aria-expanded=false]::after{transform:translateY(2px) rotate(-135deg)}
 .pn-fold:hover{color:var(--brand);background:var(--surface-3)}
 .mc[data-layout=wide] .pn-fold{display:inline-block}
+.pn-fold .sr-only{inset:0;width:100%;height:100%;margin:0;white-space:normal}
 .mc[data-layout=wide] .pn.collapsed>.pn-b{display:none}
 .pn-cur{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.74rem;text-align:end}
 .mc[data-layout=narrow] .pn-cur{display:none}
@@ -1484,13 +1495,16 @@ body.nat-present .mc{--mc-h:100vh;min-height:100vh}
     smoke: '<path d="M7 18a4 4 0 0 1-.6-8A6 6 0 0 1 18 9a4.5 4.5 0 0 1-.5 9z"/>',
     code: '<path d="M8 6l-6 6 6 6M16 6l6 6-6 6"/>',
     chart: '<path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/>',
+    chevron: '<path d="M6 9l6 6 6-6"/>',
     help: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7M12 17h.01"/>',
     star: '<path d="M12 3l2.8 5.8 6.2.9-4.5 4.4 1 6.2L12 17.4 6.5 20.3l1-6.2L3 9.7l6.2-.9z"/>',
     layers: '<path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/>',
     access: '<circle cx="12" cy="4" r="2"/><path d="M4 8l8 1 8-1M12 9v5l-3 7M12 14l3 7"/>',
     signal: '<path d="M5 12a7 7 0 0 1 14 0M8.5 12a3.5 3.5 0 0 1 7 0"/><circle cx="12" cy="12" r="1"/><path d="M12 13v8"/>',
     external: '<path d="M14 4h6v6M20 4l-9 9M18 14v6H4V6h6"/>',
-    full: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>'
+    full: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
+    robot: '<rect x="4" y="8" width="16" height="9" rx="2.5"/><path d="M12 8V4.5M9.5 4.5h5"/><circle cx="9" cy="12.5" r="1.4"/><circle cx="15" cy="12.5" r="1.4"/><path d="M3 20h18"/>',
+    chat: '<path d="M21 12a8 8 0 0 1-8 8H5l-2 2.5V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8z"/><path d="M8 11h8M8 14.5h5"/>'
   };
   function icon(name, cls) {
     return '<svg class="i' + (cls ? ' ' + cls : '') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
@@ -1514,13 +1528,19 @@ body.nat-present .mc{--mc-h:100vh;min-height:100vh}
   /* ---------------- strings (i18n) ---------------- */
   var STR = {
     'nav.home': { ar: 'الرئيسية', en: 'Home' },
+    'nav.control': { ar: 'غرفة التحكم', en: 'Control Room' },
     'nav.mission': { ar: 'غرفة العمليات', en: 'Mission Control' },
     'nav.detect': { ar: 'مختبر الأدلة', en: 'Evidence Lab' },
     'nav.alert': { ar: 'هواتف السكان', en: 'Resident Phones' },
+    'nav.robot': { ar: 'مختبر الروبوت', en: 'Robot Lab' },
     'nav.build': { ar: 'بناء النموذج', en: 'Build It' },
     'nav.pitch': { ar: 'العرض التقديمي', en: 'Pitch' },
     'nav.report': { ar: 'التقرير العلمي', en: 'Report' },
     'nav.poster': { ar: 'لوحة العرض', en: 'Display Board' },
+    'nav.guide': { ar: 'دليل الأمان', en: 'Safety Guide' },
+    'nav.plan': { ar: 'خطة التطبيق', en: 'Rollout Plan' },
+    'nav.chat': { ar: 'اسأل منارة', en: 'Ask MANARA' },
+    'nav.more': { ar: 'المزيد', en: 'More' },
     'ui.menu': { ar: 'القائمة', en: 'Menu' },
     'ui.close': { ar: 'إغلاق', en: 'Close' },
     'ui.theme': { ar: 'تبديل الوضع الليلي/النهاري', en: 'Toggle dark/light mode' },
@@ -1600,19 +1620,35 @@ body.nat-present .mc{--mc-h:100vh;min-height:100vh}
   /* ---------------- nav + footer ---------------- */
   var PAGES = [
     ['index.html', 'nav.home', 'home'],
+    ['control.html', 'nav.control', 'radar'],
     ['mission.html', 'nav.mission', 'radar'],
     ['detect.html', 'nav.detect', 'eye'],
     ['alert.html', 'nav.alert', 'phone'],
+    ['robot.html', 'nav.robot', 'robot'],
     ['build.html', 'nav.build', 'wrench'],
     ['pitch.html', 'nav.pitch', 'slides'],
-    ['report.html', 'nav.report', 'chart']
+    ['report.html', 'nav.report', 'chart'],
+    ['guide.html', 'nav.guide', 'shield'],
+    ['plan.html', 'nav.plan', 'route'],
+    ['chat.html', 'nav.chat', 'chat']
   ];
   var EXTRA = [['poster.html', 'nav.poster', 'layers']];
   function current() { return (document.body && document.body.getAttribute('data-page')) || 'index.html'; }
-  function links(cls) {
-    return PAGES.map(function (p) {
-      return '<a href="' + p[0] + '"' + (p[0] === current() ? ' aria-current="page"' : '') + (cls ? ' class="' + cls + '"' : '') + '>' + icon(p[2]) + '<span>' + s(p[1]) + '</span></a>';
-    }).join('');
+  function linkOf(p, cls) {
+    return '<a href="' + p[0] + '"' + (p[0] === current() ? ' aria-current="page"' : '') + (cls ? ' class="' + cls + '"' : '') + '>' + icon(p[2]) + '<span>' + s(p[1]) + '</span></a>';
+  }
+  function links(cls) { return PAGES.map(function (p) { return linkOf(p, cls); }).join(''); }
+  var MORE = ['build.html', 'pitch.html', 'report.html', 'guide.html', 'plan.html', 'chat.html'];             // the top bar keeps the six working pages; the rest sit under "More" so ten pages never clip (the phone menu lists them all)
+  function barLinks() {
+    var rest = PAGES.filter(function (p) { return MORE.indexOf(p[0]) < 0; }), more = PAGES.filter(function (p) { return MORE.indexOf(p[0]) >= 0; });
+    var inMore = more.some(function (p) { return p[0] === current(); });
+    return rest.map(function (p) { return linkOf(p); }).join('') +
+      '<div class="nav-more"><button class="nav-more-btn" type="button" aria-expanded="false" aria-haspopup="true" aria-controls="manara-more"' + (inMore ? ' data-current="true"' : '') + '><span>' + s('nav.more') + '</span>' + icon('chevron') + '</button>' +
+      '<div class="nav-more-pop" id="manara-more" hidden>' + more.map(function (p) { return linkOf(p); }).join('') + '</div></div>';
+  }
+  function footLinks(files) {                                         // footer columns are picked by file name, so adding a page never shifts them
+    var all = PAGES.concat(EXTRA);
+    return files.map(function (f) { var p = all.filter(function (q) { return q[0] === f; })[0]; return p ? '<a href="' + p[0] + '">' + s(p[1]) + '</a>' : ''; }).join('');
   }
   function brand() {
     return '<a class="brand" href="../index.html" aria-label="' + L(NAME) + ' — ' + s('nav.home') + '">' + logo(38) +
@@ -1624,7 +1660,7 @@ body.nat-present .mc{--mc-h:100vh;min-height:100vh}
       var wasOpen = !!$('.menu.open');
       nav.innerHTML =
         '<div class="nav-bar">' + brand() +
-        '<nav class="nav-links" aria-label="' + s('ui.menu') + '">' + links() + '</nav>' +
+        '<nav class="nav-links" aria-label="' + s('ui.menu') + '">' + barLinks() + '</nav>' +
         '<div class="nav-tools">' +
         '<button class="icon-btn lang-btn" type="button" data-lang-toggle aria-label="' + s('ui.lang') + '" title="' + s('ui.lang') + '">' + (lang() === 'ar' ? 'EN' : 'ع') + '</button>' +
         '<button class="icon-btn theme-toggle" type="button" aria-label="' + s('ui.theme') + '" title="' + s('ui.theme') + '"></button>' +
@@ -1640,6 +1676,17 @@ body.nat-present .mc{--mc-h:100vh;min-height:100vh}
       mb.addEventListener('click', function () { setMenu(!menu.classList.contains('open')); });
       $$('a', menu).forEach(function (a) { a.addEventListener('click', function () { setMenu(false); }); });
       if (wasOpen) setMenu(true);
+      var mo = $('.nav-more', nav), mob = $('.nav-more-btn', nav), mop = $('.nav-more-pop', nav);
+      if (mo) {                                                        // "More" disclosure: Esc / outside click / focus leaving close it
+        var setMore = function (open, back) {
+          mop.hidden = !open; mob.setAttribute('aria-expanded', open ? 'true' : 'false');
+          if (!open && back) mob.focus();
+        };
+        mob.addEventListener('click', function () { setMore(mop.hidden); });
+        mo.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !mop.hidden) { e.preventDefault(); setMore(false, true); } });
+        mo.addEventListener('focusout', function (e) { if (!mop.hidden && e.relatedTarget && !mo.contains(e.relatedTarget)) setMore(false); });
+        document.addEventListener('click', function (e) { if (!mop.hidden && !mo.contains(e.target)) setMore(false); });
+      }
       $('[data-lang-toggle]', nav).addEventListener('click', toggleLang);
       $('.theme-toggle', nav).addEventListener('click', toggleTheme);
     }
@@ -1648,8 +1695,8 @@ body.nat-present .mc{--mc-h:100vh;min-height:100vh}
       foot.innerHTML =
         '<div class="wrap"><div class="foot-grid">' +
         '<div>' + brand() + '<p>' + s('foot.about') + '</p></div>' +
-        '<div><h4>' + s('foot.demo') + '</h4>' + PAGES.slice(1, 4).map(function (p) { return '<a href="' + p[0] + '">' + s(p[1]) + '</a>'; }).join('') + '</div>' +
-        '<div><h4>' + s('foot.project') + '</h4>' + [PAGES[0], PAGES[4], PAGES[5], PAGES[6], EXTRA[0]].map(function (p) { return '<a href="' + p[0] + '">' + s(p[1]) + '</a>'; }).join('') + '</div>' +
+        '<div><h4>' + s('foot.demo') + '</h4>' + footLinks(['control.html', 'mission.html', 'detect.html', 'alert.html', 'robot.html']) + '</div>' +
+        '<div><h4>' + s('foot.project') + '</h4>' + footLinks(['index.html', 'build.html', 'pitch.html', 'report.html', 'poster.html']) + '</div>' +
         '</div><div class="foot-bottom"><span>' + s('foot.made') + ' — ' + L(NAME) + '</span><span>' + s('foot.offline') + '</span></div></div>';
     }
     var skip = $('.skip');
@@ -1734,6 +1781,25 @@ body.nat-present .mc{--mc-h:100vh;min-height:100vh}
     reveal: reveal, toast: toast, link: link, page: current
   };
 
+  /* ---------------- "Ask MANARA" launcher: a floating button on every page except the control room (own Commander), the board (print) and chat.html itself;
+     css/chatbot.css loads at once, js/chatbot-kb.js + js/chatbot.js only on the first click ---------------- */
+  function chatLauncher() {
+    if (['control.html', 'chat.html', 'poster.html'].indexOf(current()) >= 0 || $('.mc-fab') || $('script[data-bundled]')) return;   // single-file previews (tools/bundle-*.mjs) are self-contained: no css/chatbot.css or js/chatbot*.js beside them
+    var b = document.createElement('button'), busy = false, css = document.createElement('link');
+    b.type = 'button'; b.className = 'mc-fab'; b.hidden = true; b.setAttribute('aria-haspopup', 'dialog'); b.setAttribute('aria-expanded', 'false');
+    var label = function () { var x = L({ ar: 'اسأل منارة', en: 'Ask MANARA' }); b.setAttribute('aria-label', x); b.title = x; };
+    label(); window.addEventListener('langchange', label);
+    b.insertAdjacentHTML('afterbegin', icon('chat'));
+    css.rel = 'stylesheet'; css.href = 'css/chatbot.css'; css.onload = function () { b.hidden = false; }; css.onerror = function () { b.remove(); };
+    document.head.appendChild(css); document.body.appendChild(b);
+    function load(src, next) { var s = document.createElement('script'); s.src = src; s.onload = next; s.onerror = function () { busy = false; b.removeAttribute('aria-busy'); }; document.head.appendChild(s); }
+    b.addEventListener('click', function () {
+      if (window.Manara.chat) return window.Manara.chat.toggle(b);
+      if (busy) return; busy = true; b.setAttribute('aria-busy', 'true');
+      load('js/chatbot-kb.js', function () { load('js/chatbot.js', function () { busy = false; b.removeAttribute('aria-busy'); window.Manara.chat.toggle(b); }); });
+    });
+  }
+
   function boot() {
     if (!d.dataset.theme) d.dataset.theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     if (!d.dataset.lang) { d.dataset.lang = 'ar'; d.dir = 'rtl'; d.lang = 'ar'; }
@@ -1743,6 +1809,7 @@ body.nat-present .mc{--mc-h:100vh;min-height:100vh}
     $$('[data-icon]').forEach(function (el) { el.insertAdjacentHTML('afterbegin', icon(el.getAttribute('data-icon'))); el.removeAttribute('data-icon'); });
     d.setAttribute('data-booted', '1');                                 // lifts the pre-boot veil in base.css (no layout shift: the shell and every data-i18n string exist before first reveal)
     window.__manaraReady = true;
+    chatLauncher();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
@@ -20393,7 +20460,7 @@ P7G1CJ0T7LgThNqCU0U_ExCf3SyFrV8I5TsMGsDmCmBiDb1lBgrB9V8UhFmK-C8C7EhB7DwB0kBrfkgB
 <script>
 (function(){
   // the bundle sits in manara/preview/, the other pages one folder up
-  var re=/^(?:404|alert|build|detect|index|mission|pitch|poster|report|robot)\.html(?:[?#].*)?$/;
+  var re=/^(?:404|alert|build|chat|control|detect|guide|index|mission|pitch|plan|poster|report|robot)\.html(?:[?#].*)?$/;
   function fix(root){(root.querySelectorAll?root:document).querySelectorAll('a[href]').forEach(function(a){var h=a.getAttribute('href');if(re.test(h))a.setAttribute('href','../'+h)})}
   function watch(sel){var n=document.querySelector(sel);if(n)new MutationObserver(function(){fix(n)}).observe(n,{childList:true,subtree:true})}
   function go(){fix(document);watch('[data-nav]');watch('[data-footer]')}
