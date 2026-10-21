@@ -70,7 +70,7 @@ window.MANARA_CHAT_KB = {
     ar: ['صرف', 'ذهب', 'القمر', 'فرنسي', 'إسباني', 'ألماني', 'صيني', 'روسي', 'دبي', 'أبوظبي', 'الشارقة', 'السعودية', 'الرياض', 'الكويت', 'البحرين', 'مصر', 'لندن', 'باريس', 'أمريكا', 'فرنسا', 'ألمانيا', 'الصين', 'اليابان', 'الطقس', 'كرة القدم', 'وصفة', 'بيتكوين', 'أسهم', 'فيلم', 'نكتة', 'قصيدة', 'أغنية', 'عاصمة', 'رئيس', 'انتخابات', 'سعر']
   },
 
-  /* synonyms: each group maps every variant to its first word (the question keeps both forms, so a keyword may use either) */
+  /* synonyms: each group maps every variant to the head word of its group (the question keeps both forms, so a keyword may use either) */
   syn: {
     en: [['fire', 'blaze', 'inferno', 'flames', 'ablaze', 'wildfire'], ['flood', 'inundation', 'deluge', 'floodwater', 'waterlogging'], ['help', 'assist', 'assistance', 'aid', 'rescue'],
          ['hurt', 'injured', 'wounded', 'injury'], ['phone', 'mobile', 'smartphone', 'cellphone', 'iphone', 'android'], ['cost', 'price', 'pricing', 'expensive', 'budget'],
@@ -694,10 +694,10 @@ This is why its vision alone never triggers a public alert: we need a second ind
       src: ['detect.html', 'report.html'], doc: 'pitch Q&A P2; docs/MANARA-HAZARDS.md §4', f: ['jud-not-ai', 'jud-prove', 'jud-real-fires'] },
 
     { id: 'jud-not-ai', aud: 'jud',
-      q: { ar: 'هل كاشف الحريق «ذكاء اصطناعي»؟', en: 'Is the fire detector "AI"?' },
+      q: { ar: 'هل كاشف الحريق «ذكاءً اصطناعيًا»؟', en: 'Is the fire detector "AI"?' },
       s: { ar: ['هل تستخدمون التعلم العميق', 'كيف يكتشف الحريق', 'رؤية حاسوبية بقواعد'], en: ['do you use deep learning', 'how does it detect fire', 'rule-based computer vision', 'machine learning'] },
-      k: { ar: 'الكاشف ذكاء^5, ذكاء^2, اصطناعي^2, الكاشف^2, تعلم عميق^3, تعلم الي^2, بقواعد^3, رؤيه حاسوبيه^3, كيف يكتشف^2, كيف يكتشف الحريق^3, الوان^2, وميض^2',
-           en: 'detector ai^5, ai^2, detector^2, artificial intelligence^2, deep learning^3, machine learning^3, rule-based^3, rule based^3, computer vision^3, how does it detect^3, colour models^2, flicker^2, neural^2, model^2' },
+      k: { ar: 'الكاشف ذكاء^5, ذكاء^2, اصطناعي^2, الكاشف^2, تعلُّم عميق^3, تعلم الي^2, بقواعد^3, رؤيه حاسوبيه^3, كيف يكتشف^2, كيف يكتشف الحريق^3, الوان^2, وميض^2',
+           en: 'detector ai^5, ai^2, detector^2, artificial^2, intelligence^2, learning^3, deep^1, machine learning^3, rule-based^3, rule based^3, computer vision^3, how does it detect^3, colour models^2, flicker^2, neural^2, model^2' },
       a: { ar: `لا. هو **رؤية حاسوبية بقواعد**: نماذج لون وحركة وتذبذب وطبقات تحقق (شكل، استمرار، فيتو حراري). دقته على صور اختبار لم يرها أثناء الضبط 66.7% فقط ونقول ذلك، ويرفض كاشف الفيديو الأجسام الحمراء الثابتة.
 
 وهو لا يقرر وحده: لا بد من مفتاحين مستقلين ثم موافقة بشرية قبل أي تنبيه عام. وقد نجرّب نموذجًا متعلمًا لاحقًا ونقيسه في «مختبر الخدع» بالشروط نفسها.
@@ -1044,11 +1044,11 @@ What was built and what was bought: built by the student {{BUILT_BY_STUDENT}}; b
       src: ['poster.html', 'report.html'], doc: 'poster.html (team fields); report.html (ownership table)', f: ['jud-ai-use', 'jud-tests', 'jud-what'] },
 
     { id: 'jud-ai-use', aud: 'jud',
-      q: { ar: 'هل استخدمتم أدوات ذكاء اصطناعي في المشروع؟', en: 'Did you use AI tools on this project?' },
+      q: { ar: 'هل استخدمتم أدوات ذكاءً اصطناعيًا في المشروع؟', en: 'Did you use AI tools on this project?' },
       s: { ar: ['هل كتب الذكاء الاصطناعي الشيفرة', 'الإفصاح عن الأدوات'], en: ['did ai write the code', 'tool disclosure', 'chatgpt used'] },
       k: { ar: 'كتب الذكاء الاصطناعي الشيفره^5, استخدمتم ذكاء^3, ادوات ذكاء^3, افصاح^3, كتب الشيفره^2, ادوات^2, مساعده^2',
            en: 'chatgpt used^4, did you use chatgpt^5, did you use ai^3, ai tools^3, disclosure^3, wrote the code^3, tools used^3, ai help^3, chatgpt^3, copilot^2, claude^2, assistance^2' },
-      a: { ar: `نعم، ونذكر ذلك صراحةً. ساعدتنا أدوات ذكاء اصطناعي في صياغة أجزاء من الشيفرة والنصوص ومسودات الترجمة؛ أما القرارات، والاختبارات، والتحقق من كل رقم ومصدره، ومراجعة اللغتين العربية والإنجليزية، فعمل الفريق (من راجع: {{HELPED_BY}}). الأدوات المستخدمة: {{AI_TOOLS_USED}}. وكل ذلك مدرج في جدول «بنيت / اشتريت / ساعدني» بالتقرير، واللغات الست مسودات.
+      a: { ar: `نعم، ونذكر ذلك صراحةً. ساعدتنا أدوات ذكاءً اصطناعيًا في صياغة أجزاء من الشيفرة والنصوص ومسودات الترجمة؛ أما القرارات، والاختبارات، والتحقق من كل رقم ومصدره، ومراجعة اللغتين العربية والإنجليزية، فعمل الفريق (من راجع: {{HELPED_BY}}). الأدوات المستخدمة: {{AI_TOOLS_USED}}. وكل ذلك مدرج في جدول «بنيت / اشتريت / ساعدني» بالتقرير، واللغات الست مسودات.
 
 وهذه المحادثة نفسها ليست نموذجًا لغويًا: هي بحث في إجابات كتبناها وفق مصادر المشروع.`,
            en: `Yes, and we say so openly. AI tools helped draft parts of the code, the text and the draft translations; the decisions, the testing, checking every number against its source, and reviewing the Arabic and English were the team's work (reviewed by: {{HELPED_BY}}). Tools used: {{AI_TOOLS_USED}}. All of it is listed in the report's "built / bought / helped by" table, and the six community languages are drafts.
@@ -1085,8 +1085,8 @@ This chat itself is not a language model: it searches answers we wrote from the 
 
     { id: 'about-bot', aud: 'both',
       q: { ar: 'من أنت؟ وكيف تجيب؟', en: 'Who are you, and how do you answer?' },
-      s: { ar: ['هل أنت ذكاء اصطناعي', 'هل أنت إنسان', 'كيف تعمل المحادثة', 'ماذا تستطيع أن تفعل', 'ساعدني'], en: ['are you an ai', 'are you a human', 'how does this chat work', 'what can you do', 'are you chatgpt', 'how to use'] },
-      k: { ar: 'ذكاء اصطناعي^3, من انت^3, انت^2, بوت^3, روبوت محادثه^3, محادثه^3, شات^3, هل انت ذكاء^3, كيف تجيب^3, ماذا تستطيع^3, كيف استخدم^3, اسال منارة^3, مساعد',
+      s: { ar: ['هل أنت ذكاءً اصطناعيًا', 'هل أنت إنسان', 'كيف تعمل المحادثة', 'ماذا تستطيع أن تفعل', 'ساعدني'], en: ['are you an ai', 'are you a human', 'how does this chat work', 'what can you do', 'are you chatgpt', 'how to use'] },
+      k: { ar: 'ذكاءً اصطناعيًا^3, من انت^3, انت^2, بوت^3, روبوت محادثه^3, محادثه^3, شات^3, هل انت ذكاء^3, كيف تجيب^3, ماذا تستطيع^3, كيف استخدم^3, اسال منارة^3, مساعد',
            en: 'how does this chat work^5, this chat^4, are you an ai^4, who are you^3, you^1, bot^3, chatbot^3, chat^2, are you an ai^3, are you chatgpt^3, language model^3, how do you answer^3, what can you do^3, how to use^3, ask manara^3, assistant^2' },
       a: { ar: `أنا «اسأل منارة»: **لست ذكاءً اصطناعيًا ولا نموذجًا لغويًا**. أنا بحث بقواعد في قاعدة معرفة كتبها فريق منارة من وثائق المشروع وصفحاته. أطبّع سؤالك (أحذف التشكيل والتطويل وأوحّد أشكال الألف والياء والتاء المربوطة، وأبسّط الكلمات الإنجليزية)، وأطابق كلماته وعباراته ومرادفاتها مع الإجابات المكتوبة وأتحمّل بعض الأخطاء الإملائية، ثم أعرض أقرب إجابة مع مصدرها وسبب اختيارها.
 

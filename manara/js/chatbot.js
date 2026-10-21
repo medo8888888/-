@@ -30,7 +30,7 @@
       .replace(/[٠-٩]/g, function (c) { return String(c.charCodeAt(0) - 0x0660); })
       .replace(/[۰-۹]/g, function (c) { return String(c.charCodeAt(0) - 0x06F0); })
       .replace(/['’`´]/g, '');                                                 // don't → dont
-    return s.replace(/(.)\1{2,}/g, function (m, c) { return /[a-z]/.test(c) ? c + c : c; });   // stretched letters: حريييق → حريق, fiiire → fiire
+    return s.replace(/([^\d\s])\1{2,}/g, function (m, c) { return /[a-z]/.test(c) ? c + c : c; });   // stretched letters: حريييق → حريق, fiiire → fiire
   }
   function tokenize(norm) { return (norm.match(/[\p{L}\p{N}]+/gu) || []); }
   function isAr(t) { return /[؀-ۿ]/.test(t); }
@@ -63,7 +63,7 @@
   }
   function stem(t) { return isAr(t) ? stemAr(t) : (/^[a-z]+$/.test(t) ? stemEn(t) : t); }
 
-  /* synonyms: every variant → the canonical word (the first of its group); the question keeps both forms */
+  /* synonyms: every variant → the canonical word (the head word of its group); the question keeps both forms */
   var SYN = {};
   (KB.syn ? [].concat((KB.syn.en || []), (KB.syn.ar || [])) : []).forEach(function (g) {
     var canon = normalize(g[0]);

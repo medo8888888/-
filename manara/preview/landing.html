@@ -1731,7 +1731,8 @@ section[data-live="0"] *,section[data-live="0"] *::before,section[data-live="0"]
     signal: '<path d="M5 12a7 7 0 0 1 14 0M8.5 12a3.5 3.5 0 0 1 7 0"/><circle cx="12" cy="12" r="1"/><path d="M12 13v8"/>',
     external: '<path d="M14 4h6v6M20 4l-9 9M18 14v6H4V6h6"/>',
     full: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
-    robot: '<rect x="4" y="8" width="16" height="9" rx="2.5"/><path d="M12 8V4.5M9.5 4.5h5"/><circle cx="9" cy="12.5" r="1.4"/><circle cx="15" cy="12.5" r="1.4"/><path d="M3 20h18"/>'
+    robot: '<rect x="4" y="8" width="16" height="9" rx="2.5"/><path d="M12 8V4.5M9.5 4.5h5"/><circle cx="9" cy="12.5" r="1.4"/><circle cx="15" cy="12.5" r="1.4"/><path d="M3 20h18"/>',
+    chat: '<path d="M21 12a8 8 0 0 1-8 8H5l-2 2.5V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8z"/><path d="M8 11h8M8 14.5h5"/>'
   };
   function icon(name, cls) {
     return '<svg class="i' + (cls ? ' ' + cls : '') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
@@ -1766,6 +1767,7 @@ section[data-live="0"] *,section[data-live="0"] *::before,section[data-live="0"]
     'nav.poster': { ar: 'لوحة العرض', en: 'Display Board' },
     'nav.guide': { ar: 'دليل الأمان', en: 'Safety Guide' },
     'nav.plan': { ar: 'خطة التطبيق', en: 'Rollout Plan' },
+    'nav.chat': { ar: 'اسأل منارة', en: 'Ask MANARA' },
     'nav.more': { ar: 'المزيد', en: 'More' },
     'ui.menu': { ar: 'القائمة', en: 'Menu' },
     'ui.close': { ar: 'إغلاق', en: 'Close' },
@@ -1855,7 +1857,8 @@ section[data-live="0"] *,section[data-live="0"] *::before,section[data-live="0"]
     ['pitch.html', 'nav.pitch', 'slides'],
     ['report.html', 'nav.report', 'chart'],
     ['guide.html', 'nav.guide', 'shield'],
-    ['plan.html', 'nav.plan', 'route']
+    ['plan.html', 'nav.plan', 'route'],
+    ['chat.html', 'nav.chat', 'chat']
   ];
   var EXTRA = [['poster.html', 'nav.poster', 'layers']];
   function current() { return (document.body && document.body.getAttribute('data-page')) || 'index.html'; }
@@ -1863,7 +1866,7 @@ section[data-live="0"] *,section[data-live="0"] *::before,section[data-live="0"]
     return '<a href="' + p[0] + '"' + (p[0] === current() ? ' aria-current="page"' : '') + (cls ? ' class="' + cls + '"' : '') + '>' + icon(p[2]) + '<span>' + s(p[1]) + '</span></a>';
   }
   function links(cls) { return PAGES.map(function (p) { return linkOf(p, cls); }).join(''); }
-  var MORE = ['build.html', 'pitch.html', 'report.html', 'guide.html', 'plan.html'];             // the top bar keeps the six working pages; the rest sit under "More" so ten pages never clip (the phone menu lists them all)
+  var MORE = ['build.html', 'pitch.html', 'report.html', 'guide.html', 'plan.html', 'chat.html'];             // the top bar keeps the six working pages; the rest sit under "More" so ten pages never clip (the phone menu lists them all)
   function barLinks() {
     var rest = PAGES.filter(function (p) { return MORE.indexOf(p[0]) < 0; }), more = PAGES.filter(function (p) { return MORE.indexOf(p[0]) >= 0; });
     var inMore = more.some(function (p) { return p[0] === current(); });
@@ -2006,6 +2009,25 @@ section[data-live="0"] *,section[data-live="0"] *::before,section[data-live="0"]
     reveal: reveal, toast: toast, link: link, page: current
   };
 
+  /* ---------------- "Ask MANARA" launcher: a floating button on every page except the control room (own Commander), the board (print) and chat.html itself;
+     css/chatbot.css loads at once, js/chatbot-kb.js + js/chatbot.js only on the first click ---------------- */
+  function chatLauncher() {
+    if (['control.html', 'chat.html', 'poster.html'].indexOf(current()) >= 0 || $('.mc-fab')) return;
+    var b = document.createElement('button'), busy = false, css = document.createElement('link');
+    b.type = 'button'; b.className = 'mc-fab'; b.hidden = true; b.setAttribute('aria-haspopup', 'dialog'); b.setAttribute('aria-expanded', 'false'); b.setAttribute('aria-controls', 'mc-panel');
+    var label = function () { var x = L({ ar: 'اسأل منارة', en: 'Ask MANARA' }); b.setAttribute('aria-label', x); b.title = x; };
+    label(); window.addEventListener('langchange', label);
+    b.insertAdjacentHTML('afterbegin', icon('chat'));
+    css.rel = 'stylesheet'; css.href = 'css/chatbot.css'; css.onload = function () { b.hidden = false; }; css.onerror = function () { b.remove(); };
+    document.head.appendChild(css); document.body.appendChild(b);
+    function load(src, next) { var s = document.createElement('script'); s.src = src; s.onload = next; s.onerror = function () { busy = false; b.removeAttribute('aria-busy'); }; document.head.appendChild(s); }
+    b.addEventListener('click', function () {
+      if (window.Manara.chat) return window.Manara.chat.toggle(b);
+      if (busy) return; busy = true; b.setAttribute('aria-busy', 'true');
+      load('js/chatbot-kb.js', function () { load('js/chatbot.js', function () { busy = false; b.removeAttribute('aria-busy'); window.Manara.chat.toggle(b); }); });
+    });
+  }
+
   function boot() {
     if (!d.dataset.theme) d.dataset.theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     if (!d.dataset.lang) { d.dataset.lang = 'ar'; d.dir = 'rtl'; d.lang = 'ar'; }
@@ -2015,6 +2037,7 @@ section[data-live="0"] *,section[data-live="0"] *::before,section[data-live="0"]
     $$('[data-icon]').forEach(function (el) { el.insertAdjacentHTML('afterbegin', icon(el.getAttribute('data-icon'))); el.removeAttribute('data-icon'); });
     d.setAttribute('data-booted', '1');                                 // lifts the pre-boot veil in base.css (no layout shift: the shell and every data-i18n string exist before first reveal)
     window.__manaraReady = true;
+    chatLauncher();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
@@ -2036,13 +2059,13 @@ section[data-live="0"] *,section[data-live="0"] *::before,section[data-live="0"]
  * Pass counts of MANARA's own automated test suites at the time each was last run: our own tests, not a statistic about the world.
  * pitch.html, report.html and poster.html print these numbers (with a static fallback if this file is missing). Classic script, no libraries. */
 window.MANARA_TEST_COUNTS = {
- "generated": "2026-10-15",
- "total": 1348,
+ "generated": "2026-10-21",
+ "total": 1463,
  "failed": 0,
  "suites": {
   "drone-scene": {"passed":75,"failed":0,"date":"2026-10-15"},
   "fire": {"passed":43,"failed":0,"date":"2026-10-15"},
-  "kit": {"passed":159,"failed":0,"date":"2026-10-15"},
+  "kit": {"passed":274,"failed":0,"date":"2026-10-21"},
   "msg": {"passed":281,"failed":0,"date":"2026-10-15"},
   "national": {"passed":291,"failed":0,"date":"2026-10-15"},
   "qatar-data": {"passed":91,"failed":0,"date":"2026-10-15"},
