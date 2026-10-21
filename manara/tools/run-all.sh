@@ -60,6 +60,7 @@ SUITES=(
   "home|node $T/test-home.mjs|browser"
   "pitch|node $T/test-pitch.mjs|browser"
   "poster|node $T/test-poster.mjs|browser"
+  "chatbot|node $T/test-chatbot.mjs|browser"
   "guide|node $T/test-guide.mjs|browser"
   "plan|node $T/test-plan.mjs|browser"
   "ui-honesty|node $T/test-ui.mjs --suite honesty|browser"

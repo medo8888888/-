@@ -263,7 +263,10 @@
     if (strong) return { is: true, why: 'strong' };
     var hazard = EM.hazard.some(function (it) { return stemHit(an, it); });
     var short = an.content.length <= 2;
-    var solo = short && EM.solo.some(function (it) { return it.raw.length === 1 && an.raw.indexOf(it.raw[0]) >= 0; });   // a lone danger word: "fire", "حريق", "help" (not "helped")
+    var solo = short && EM.solo.some(function (it) {                                                  // a lone danger word: "fire", "fier", "حريق", "الحريق", "help" (not "helped")
+      if (it.raw.length !== 1) return false; var w = it.raw[0];
+      return an.content.some(function (tok) { return tok.t === w || (isAr(w) ? tok.s === stem(w) : (/^[a-z]{4,}$/.test(tok.t) && tok.t.charAt(0) === w.charAt(0) && (tok.t.length === 4 ? tok.t.split('').sort().join('') === w.split('').sort().join('') : osa(tok.t, w, 1) <= 1))); });
+    });
     if (!hazard && !solo) return { is: false };
     if (EM.urgent.some(function (it) { return hasSeq(an.raw, it.raw); })) return { is: true, why: 'urgent' };
     if (EM.system.some(function (it) { return stemHit(an, it); })) return { is: false };          // a question about the project's own parts ("fire detector")
