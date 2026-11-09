@@ -68,6 +68,7 @@ def plan():
 
 
 def axes():
+    import feat_judge_sheet  # ورقة التحكيم وتقييم المشروع, after the rubric
     n, s = C['c-axes'], C['c-score']
     hd, rows = n.table[0], n.table[1:]
     cards = ''
@@ -82,7 +83,8 @@ def axes():
     rub = s['c-rubric']
     inner = (head(n) + f'<ul class="axes" data-stagger>{cards}</ul><div class="tbl-print">{blocks_html(n)}</div>'
              + f'<div class="dp-sub score" id="c-score">{head(s, level=3)}<p class="dp-p rv">{t(para)}</p>{bar}'
-             + f'<div class="dp-sub" id="c-rubric">{head(rub, level=3)}{blocks_html(rub)}</div></div>')
+             + f'<div class="dp-sub" id="c-rubric">{head(rub, level=3)}{blocks_html(rub)}</div>'
+             + feat_judge_sheet.html() + '</div>')
     return sec('c-axes', inner, 'alt')
 
 
@@ -133,7 +135,12 @@ def league():
 
 
 def partner():
-    return sec('c-partner', node_html(C['c-partner']))
+    import feat_partner_kit  # ملف الجهة الشريكة وتقرير الأسبوعين: carries c-p-partner, c-p-yanabee and c-p-by verbatim
+    n = C['c-partner']
+    return sec('c-partner', head(n)
+               + f'<div class="dp-sub" id="c-p-goal">{head(n["c-p-goal"], level=3)}{blocks_html(n["c-p-goal"])}</div>'
+               + feat_partner_kit.html()
+               + f'<div class="dp-sub" id="c-p-after">{head(n["c-p-after"], level=3)}{blocks_html(n["c-p-after"])}</div>')
 
 
 def ad():
@@ -155,6 +162,7 @@ def ad():
 
 
 def guide():
+    import feat_activity_card  # «املأ بطاقة نشاط», after the folds
     ids = ['c-ops', 'c-decisions', 'c-follow', 'c-q1', 'c-card']
     folds = ''.join(fold(C[i], num=str(k + 1)) for k, i in enumerate(ids))
     inner = ('<header class="sec-head rv"><div><span class="kicker">' + ic('network') + 'للإدارة والمشرفين</span>'
@@ -162,7 +170,7 @@ def guide():
              'وبطاقة إعداد كل نشاط وتقييمه.</p></div></header>'
              + '<div class="fold-tools rv"><button type="button" class="btn btn-ghost btn-sm" data-fold-all>'
              + f'{ic("layers")}<span>افتح الكل</span></button></div>'
-             + f'<div class="folds">{folds}</div>')
+             + f'<div class="folds">{folds}</div>' + feat_activity_card.html())
     return sec('guide', inner, 'alt')
 
 
