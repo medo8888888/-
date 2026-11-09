@@ -35,14 +35,18 @@
   function forget() { try { window.localStorage.removeItem(KEY); } catch (e) { /* blocked */ } }
 
   function kind() { var r = radios.filter(function (x) { return x.checked; })[0]; return r ? r.value : ''; }
-  function cleanWa(v) { // Arabic-Indic digits -> 0-9, then only digits, spaces, + - ( )
+  function cleanWa(v) { // any space (NBSP, tab…) -> ' ', Arabic-Indic digits -> 0-9, then only digits, spaces, + - ( )
     return String(v || '')
+      .replace(/\s/g, ' ')
       .replace(/[٠-٩]/g, function (c) { return String(c.charCodeAt(0) - 0x660); })
       .replace(/[۰-۹]/g, function (c) { return String(c.charCodeAt(0) - 0x6F0); })
       .replace(/[^0-9+()\- ]/g, '').slice(0, 20);
   }
   function orgVal() { return inOrg.value.replace(/\s+/g, ' ').trim(); }
-  function waVal() { return cleanWa(inWa.value).replace(/\s+/g, ' ').trim(); }
+  function waVal() { // a number needs at least one digit; '+' or '()' alone leaves the blank as it is
+    var w = cleanWa(inWa.value).replace(/\s+/g, ' ').trim();
+    return /[0-9]/.test(w) ? w : '';
+  }
 
   function apply() {
     var k = kind();
@@ -138,8 +142,15 @@
   // ---------- input ----------
   inOrg.addEventListener('input', function () { apply(); save(); });
   inWa.addEventListener('input', function () {
-    var c = cleanWa(inWa.value);
-    if (c !== inWa.value) inWa.value = c;
+    var v = inWa.value, c = cleanWa(v);
+    if (c !== v) { // keep the caret where the visitor is typing
+      var pos = inWa.selectionStart;
+      inWa.value = c;
+      if (typeof pos === 'number') {
+        var at = Math.max(0, Math.min(c.length, pos - (v.length - c.length)));
+        try { inWa.setSelectionRange(at, at); } catch (e) { /* not supported */ }
+      }
+    }
     apply(); save();
   });
   radios.forEach(function (r) { r.addEventListener('change', function () { apply(); save(); }); });

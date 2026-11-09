@@ -112,7 +112,7 @@
     if (w) {
       var f = firstWeekday(Number(wdSel.value));
       var name = DAYS[f.getUTCDay()];
-      $('[data-ics-wkday]').textContent = 'كل ' + name;
+      $('[data-ics-wkday]').textContent = 'كل يوم ' + name;
       wkHint.textContent = 'أول لقاء في الملف: ' + name + ' ' + f.getUTCDate() + ' ' + (D.months[String(f.getUTCMonth() + 1)] || '') + ' '
         + f.getUTCFullYear() + '، ثم كل أسبوع حتى ' + D.weekly.untilText + '.';
     }

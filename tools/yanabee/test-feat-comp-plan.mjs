@@ -176,7 +176,7 @@ console.log('calendar-ics: list and defaults (visitor date 20 Nov 2026)');
   await p.selectOption('[data-ics-wd]', '6');
   w = vevents((await download(p)).raw).find(e => e.RRULE);
   check('Saturday -> 21 Nov 2026', w && w['DTSTART;VALUE=DATE'] === '20261121');
-  check('weekday tag on the row', (await text(p, '[data-ics-wkday]')) === 'كل السبت');
+  check('weekday tag on the row', (await text(p, '[data-ics-wkday]')) === 'كل يوم السبت');
 
   console.log('calendar-ics: selection and storage');
   await p.click('[data-ics-none]');
@@ -332,6 +332,53 @@ console.log('ad-maker: live filling');
   check('no console errors', errs.length === 0, errs.join(' | '));
   check('no network requests', net.length === 0, net.join(' '));
   await ctx.close();
+}
+
+console.log('review: number edge cases');
+{
+  const { ctx, p, errs } = await open();
+  await p.evaluate(() => { Object.defineProperty(navigator, 'clipboard', { value: { writeText: t => { window.__clip = t; return Promise.resolve(); } }, configurable: true }); });
+  await p.fill('#adm-org', 'النور');
+  await p.fill('#adm-wa', '+961 3\t123 456');
+  check('pasted NBSP / tab / thin space kept as spaces (digit groups not merged)', (await text(p, '[data-ad-wa]')) === '+961 3 123 456', await text(p, '[data-ad-wa]'));
+  await p.fill('#adm-wa', '+');
+  check('«+» alone is not a number: blank kept, no dir', (await text(p, '[data-ad-wa]')) === '[رقم الواتساب]' && (await p.getAttribute('[data-ad-wa]', 'dir')) === null);
+  await p.fill('#adm-wa', '( ) -');
+  await p.click('[data-ad-copy]'); await p.waitForTimeout(100);
+  check('symbols only: copy keeps the blank and warns', (await p.evaluate(() => window.__clip)).includes('• للتسجيل والاستفسار: [رقم الواتساب]')
+    && (await text(p, '[data-ad-status]')).includes('تنبيه: ما زال في النص فراغ لم يُملأ.'));
+  await p.fill('#adm-wa', '0555 22');
+  await p.focus('#adm-wa');
+  await p.evaluate(() => { const i = document.querySelector('#adm-wa'); i.setSelectionRange(2, 2); });
+  await p.keyboard.type('٧');
+  const caret = await p.evaluate(() => { const i = document.querySelector('#adm-wa'); return [i.value, i.selectionStart]; });
+  check('Arabic digit typed mid-number: converted, caret stays after it', caret[0] === '05755 22' && caret[1] === 3, JSON.stringify(caret));
+  check('no console errors', errs.length === 0, errs.join(' | '));
+  await ctx.close();
+}
+
+console.log('review: corrupted storage');
+{
+  const c3 = await browser.newContext({ reducedMotion: 'reduce' });
+  const q = await c3.newPage();
+  const errs = [];
+  q.on('pageerror', e => errs.push(e.message));
+  await q.route('**/fonts.g*/**', r => r.abort());
+  await q.clock.setFixedTime(new Date('2026-11-20T10:00:00'));
+  await q.addInitScript(() => {
+    try { sessionStorage.setItem('yb-intro', '1'); } catch (e) { /* ignore */ }
+    localStorage.setItem('yanabee-calendar-ics-v1', '{"unchecked":"x","keep":7,"weekday":"3"}');
+    localStorage.setItem('yanabee-ad-maker-v1', '{"kind":"<b>","org":12,"wa":"abc٥"}');
+  });
+  await q.goto(url('competition.html')); await q.waitForTimeout(300);
+  check('calendar: bad stored values fall back to defaults', JSON.stringify(await checked(q)) === JSON.stringify([false, false, true, true, true, true, true, true, true]) && (await q.inputValue('[data-ics-wd]')) === '');
+  check('ad-maker: bad stored values ignored / cleaned', await q.isChecked('input[name=adm-kind][value=""]') && (await q.inputValue('#adm-org')) === '' && (await q.inputValue('#adm-wa')) === '5'
+    && (await text(q, '[data-ad-kind]')) === 'جمعية / مدرسة');
+  await q.evaluate(() => localStorage.setItem('yanabee-calendar-ics-v1', 'not json'));
+  await q.reload(); await q.waitForTimeout(300);
+  check('calendar: unreadable storage -> defaults', (await text(q, '[data-ics-status]')) === 'سيضم الملف 7 مواعيد.');
+  check('no page errors with corrupted storage', errs.length === 0, errs.join(' | '));
+  await c3.close();
 }
 
 console.log('storage blocked');
