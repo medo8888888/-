@@ -117,14 +117,18 @@ def band():
 
 
 def league():
+    import feat_league_table, feat_match_day, feat_rule_finder  # features in this section (tools/yanabee/feat_*.py)
     n, r = C['c-league'], C['c-rules']
     folds = ''.join(fold(s, open_=(i == 0), num=str(i + 1)) for i, s in enumerate(n.subs))
     inner = (head(n) + blocks_html(n)
+             + feat_rule_finder.html()
              + '<div class="fold-tools rv"><button type="button" class="btn btn-ghost btn-sm" data-fold-all>'
              + f'{ic("layers")}<span>افتح كل الفصول</span></button><button type="button" class="btn btn-ghost btn-sm" data-print>'
              + f'{ic("printer")}<span>اطبع اللائحة</span></button></div>'
              + f'<div class="folds">{folds}</div>'
-             + f'<div class="dp-sub rules" id="c-rules">{head(r, level=3)}{blocks_html(r)}</div>')
+             + feat_league_table.html()
+             + f'<div class="dp-sub rules" id="c-rules">{head(r, level=3)}{blocks_html(r)}</div>'
+             + feat_match_day.html())
     return sec('c-league', inner, 'alt')
 
 
