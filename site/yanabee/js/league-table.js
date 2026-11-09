@@ -1,7 +1,7 @@
 // league-table: «احسب ترتيب الدوري» on competition.html (#league-table). Rules come from #lt-data (built from
 // content/yanabee/competition.txt by tools/yanabee/feat_league_table.py): lg6 points and tie-break order, the lg2/lg4
 // results by regulation, the lg2 exclusion row. Head-to-head is decided only when it is unambiguous; every other
-// case is flagged for the committee. Data stays in this browser (localStorage 'yanabee-league-v1'); nothing is sent.
+// case is flagged for the committee. Data stays in this browser (localStorage 'yanabee-league-table-v1'); nothing is sent.
 // Classic script (IIFE), no modules, works from file://.
 (() => {
   const box = document.getElementById('league-table');
@@ -10,7 +10,7 @@
   try { D = JSON.parse(document.getElementById('lt-data').textContent); } catch (e) { return; }
   box.hidden = false;
 
-  const KEY = 'yanabee-league-v1';
+  const KEY = 'yanabee-league-table-v1';
   const $ = s => box.querySelector(s);
   const el = (tag, cls, text) => {
     const n = document.createElement(tag);
@@ -19,7 +19,9 @@
     return n;
   };
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-  const isInt = v => /^\d+$/.test(String(v).trim());
+  // Arabic-Indic (٠-٩) and Eastern Arabic-Indic (۰-۹) digits -> 0-9 (Arabic phone keyboards type them)
+  const digits = s => String(s).replace(/[٠-٩]/g, c => c.charCodeAt(0) - 0x660).replace(/[۰-۹]/g, c => c.charCodeAt(0) - 0x6F0);
+  const isInt = v => /^[0-9]{1,3}$/.test(String(v).trim());
   const STEP = D.steps; // ['فارق الأهداف','الأهداف المسجلة','المواجهات المباشرة','الأقل بطاقات حمراء فصفراء','قرعة علنية']
 
   /* ---------------- state + storage ---------------- */
@@ -53,11 +55,13 @@
     return true;
   }
   function norm(d) {
+    const seen = new Set();
+    const rid = id => { const v = typeof id === 'string' && id && !seen.has(id) ? id : uid(); seen.add(v); return v; }; // ids are unique (edit/delete by id)
     return {
       v: 1,
       teams: d.teams.map(t => ({ id: t.id, name: t.name.trim().slice(0, 60), group: (t.group || '').trim().slice(0, 30) })),
       results: d.results.map(r => ({
-        id: typeof r.id === 'string' ? r.id : uid(), kind: r.kind, a: r.a, b: r.b, ga: r.ga, gb: r.gb, ra: r.ra, ya: r.ya, rb: r.rb, yb: r.yb,
+        id: rid(r.id), kind: r.kind, a: r.a, b: r.b, ga: r.ga, gb: r.gb, ra: r.ra, ya: r.ya, rb: r.rb, yb: r.yb,
         date: r.date || '', off: r.kind === 'reg' ? r.off : null, reason: r.kind === 'reg' ? r.reason : null, keep: !!r.keep,
         cur: Array.isArray(r.cur) && r.cur.length === 2 && r.cur.every(n => Number.isInteger(n) && n >= 0) ? r.cur.slice() : null,
       })),
@@ -179,6 +183,7 @@
   function renderStandings() {
     const host = $('#lt-standings');
     host.textContent = '';
+    box.classList.toggle('lt-none', !S.teams.length); // nothing to print with the regulation yet
     if (!S.teams.length) { host.appendChild(el('p', 'lt-empty', 'أضف الفرق ثم النتائج ليظهر الترتيب.')); return; }
     const cols = ['الفريق', 'لعب', 'فوز', 'تعادل', 'خسارة', 'له', 'عليه', 'الفارق', 'النقاط'];
     groups().forEach((g, gi) => {
@@ -355,6 +360,7 @@
     sel.appendChild(o0);
     ids.forEach(id => {
       const t = team(id);
+      if (!t) return;
       const o = el('option', '', t.name + (t.group ? ' (' + t.group + ')' : ''));
       o.value = id;
       sel.appendChild(o);
@@ -370,7 +376,7 @@
   /* ---------------- result form ---------------- */
   let editing = null; // result id
   const rf = $('.lt-result');
-  const num = id => $(id).value.trim();
+  const num = id => digits($(id).value.trim());
   rf.addEventListener('submit', e => {
     e.preventDefault();
     const a = $('#lt-ra').value, b = $('#lt-rb').value;
@@ -401,7 +407,7 @@
   function syncForfeit() {
     const a = $('#lt-fa').value, b = $('#lt-fb').value;
     const off = $('#lt-foff');
-    const ids = [a, b].filter(Boolean).filter((x, i, arr) => arr.indexOf(x) === i);
+    const ids = [a, b].filter(x => x && team(x)).filter((x, i, arr) => arr.indexOf(x) === i); // a select can still hold a team that was just cleared
     fillSelect(off, ids);
     const ri = +$('#lt-freason').value;
     const R = D.reasons[ri];
@@ -568,6 +574,7 @@
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
   };
   const q = v => '"' + String(v).replace(/"/g, '""') + '"';
+  const qt = v => q(/^[=+\-@\t\r]/.test(String(v)) ? "'" + v : v); // typed text: never read as a spreadsheet formula
   $('#lt-csv').addEventListener('click', () => {
     if (!S.teams.length) { msg('#lt-tools-msg', 'لا توجد فرق بعد.', true); return; }
     const lines = [['المجموعة', 'الترتيب', 'الفريق', 'لعب', 'فوز', 'تعادل', 'خسارة', 'له', 'عليه', 'الفارق', 'النقاط', 'ملاحظة'].map(q).join(',')];
@@ -575,7 +582,7 @@
       rankGroup(S.teams.filter(t => t.group === g).map(t => t.id)).forEach(r => {
         const s = r.s;
         const note = r.flag === 'committee' ? 'تحتاج قرار اللجنة' : r.flag === 'draw' ? STEP[4] : '';
-        lines.push([g, r.rank, tname(s.id), s.p, s.w, s.d, s.l, s.gf, s.ga, s.gd, s.pts, note].map(q).join(','));
+        lines.push([qt(g), q(r.rank), qt(tname(s.id))].concat([s.p, s.w, s.d, s.l, s.gf, s.ga, s.gd, s.pts, note].map(q)).join(','));
       });
     });
     download('league-table.csv', '﻿' + lines.join('\r\n') + '\r\n', 'text/csv;charset=utf-8');

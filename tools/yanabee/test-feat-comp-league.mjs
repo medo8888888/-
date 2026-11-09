@@ -328,7 +328,7 @@ const LT = {
 
   // persistence
   await p.reload(); await p.waitForTimeout(400);
-  check('data survives a reload (localStorage yanabee-league-v1)', (await p.evaluate(() => window.YanabeeLeague.state().results.length)) === n0 - 1 && (await p.evaluate(() => !!localStorage.getItem('yanabee-league-v1'))));
+  check('data survives a reload (localStorage yanabee-league-table-v1)', (await p.evaluate(() => window.YanabeeLeague.state().results.length)) === n0 - 1 && (await p.evaluate(() => !!localStorage.getItem('yanabee-league-table-v1'))));
 
   // CSV
   const [dl] = await Promise.all([p.waitForEvent('download'), p.click('#lt-csv')]);
@@ -606,9 +606,9 @@ const MD = {
   // save result
   await MD.tab(p, 'cards');
   await p.click('#md-save-res');
-  const saved = await p.evaluate(() => JSON.parse(localStorage.getItem('yanabee-league-results-v1')));
+  const saved = await p.evaluate(() => JSON.parse(localStorage.getItem('yanabee-match-day-results-v1')));
   const r0 = saved && saved[0];
-  check('result saved to yanabee-league-results-v1', r0 && r0.a === 'النور' && r0.ga === 2 && r0.gb === 1 && r0.ya === 2 && r0.ra === 0 && r0.rb === 0 && r0.format === 'خروج المغلوب', JSON.stringify(r0));
+  check('result saved to yanabee-match-day-results-v1', r0 && r0.a === 'النور' && r0.ga === 2 && r0.gb === 1 && r0.ya === 2 && r0.ra === 0 && r0.rb === 0 && r0.format === 'خروج المغلوب', JSON.stringify(r0));
   check('saved result keeps the shootout winner', r0 && r0.pens && r0.pens.winner === 'النور' && r0.pens.a === 4 && r0.pens.b === 3, JSON.stringify(r0 && r0.pens));
   check('saved results listed', (await p.$$eval('#md-saved .md-sv', l => l.length)) === 1);
 
@@ -654,7 +654,7 @@ const MD = {
   // delete saved result, clear match
   await MD.tab(p, 'cards');
   await p.click('#md-saved .md-pl-x');
-  check('saved result deleted', (await p.evaluate(() => JSON.parse(localStorage.getItem('yanabee-league-results-v1')).length)) === 0);
+  check('saved result deleted', (await p.evaluate(() => JSON.parse(localStorage.getItem('yanabee-match-day-results-v1')).length)) === 0);
   await p.click('#md-clear');
   const s2 = await MD.state(p);
   check('«امسح بيانات هذه المباراة» resets everything', s2.log.length === 0 && s2.teams[0].players.length === 0 && s2.clock.phase === null && s2.chips.length === 0 && s2.kick === '');
@@ -691,6 +691,117 @@ for (const theme of ['light', 'dark']) {
   }
   check(`match-day 390px ${theme}: chip controls ≥ 44px`, (await smallTargets(p, '#md-chips')).length === 0);
   check(`match-day 390px ${theme}: no errors`, errs.length === 0, errs.join(' | '));
+  await ctx.close();
+}
+
+/* ======================================================================= review: edge cases */
+console.log('review: Arabic-Indic digits, dark-theme print, damaged storage, midnight, CSV formulas, storage keys');
+const lum = c => { const m = /rgba?\((\d+), (\d+), (\d+)/.exec(c); return m ? (0.2126 * m[1] + 0.7152 * m[2] + 0.0722 * m[3]) / 255 : 1; };
+{
+  const { ctx, p, errs } = await open({ colorScheme: 'dark' });
+  check('dark theme active', (await p.evaluate(() => document.documentElement.dataset.theme)) === 'dark');
+  // Arabic-Indic digits are accepted (a number input would drop them)
+  await LT.team(p, 'س1'); await LT.team(p, 'س2'); await LT.team(p, '=1+1');
+  await LT.result(p, 'س1', 'س2', '٣', '۰', { ya: '١' });
+  const r0 = await p.evaluate(() => window.YanabeeLeague.state().results[0]);
+  check('league-table: Arabic-Indic goals/cards read as 3, 0, 1', r0 && r0.ga === 3 && r0.gb === 0 && r0.ya === 1, JSON.stringify(r0));
+  await LT.result(p, 'س1', 'س2', '١٢٣٤', 0);
+  check('league-table: more than 3 digits refused', (await txt(p, '#lt-res-msg')) === 'اكتب أعدادًا صحيحة من 0 فأكثر.');
+  await LT.forfeit(p, 'س1', 'س2', 'س1', 'انسحاب الفريق أثناء المباراة');
+  await LT.set(p, '#lt-fcoff', '٠'); await LT.set(p, '#lt-fcopp', '٢');
+  check('league-table: withdrawal choice offered for Arabic-Indic current score 0 / 2', await visible(p, '#lt-fchoice'));
+  await p.check('input[name=keep][value="1"]'); await p.click('#lt-fadd');
+  const r1 = await p.evaluate(() => window.YanabeeLeague.state().results[1]);
+  check('league-table: kept current score stored as 0 / 2', r1 && r1.keep && r1.ga === 0 && r1.gb === 2, JSON.stringify(r1));
+  // CSV: typed text is never a spreadsheet formula
+  const [dl] = await Promise.all([p.waitForEvent('download'), p.click('#lt-csv')]);
+  const csv = fs.readFileSync(await dl.path(), 'utf8');
+  check('CSV: team name starting with = is escaped', csv.includes(`"'=1+1"`) && !csv.includes('"=1+1"'), csv.split('\n').find(l => l.includes('1+1')));
+  // storage key follows yanabee-<id>-v1
+  check('league-table stores under yanabee-league-table-v1', await p.evaluate(() => !!localStorage.getItem('yanabee-league-table-v1')));
+
+  // match-day: shirt numbers typed with Arabic-Indic digits; 07 and 7 are the same shirt
+  await p.click('#md-tab-cards');
+  await p.fill('[data-k="num0"]', '١٠'); await p.click('[data-k="add0"]');
+  await p.fill('[data-k="num0"]', '07'); await p.click('[data-k="add0"]');
+  await p.fill('[data-k="num0"]', '7'); await p.click('[data-k="add0"]');
+  const nums = await p.evaluate(() => window.YanabeeMatch.state().teams[0].players.map(x => x.num));
+  check('match-day: shirt ١٠ stored as 10, 07 as 7, second 7 refused', JSON.stringify(nums) === '["10","7"]', JSON.stringify(nums));
+  check('match-day: duplicate shirt message', (await p.textContent('#md-p-cards .md-t0 .md-status')).includes('هذا الرقم مسجل في الفريق.'));
+  await p.click('[data-k^="pl"]');
+  await p.check('#md-player input[name=md-card][value=r]'); await p.click('#md-player button[type=submit]');
+  await p.click('#md-player .md-small:not(.md-offer)');
+  const red = await p.getAttribute('#md-teams .md-pl-b.is-red', 'aria-label');
+  check('match-day: a red card marks the player with the lg4 cell verbatim', !!red && red.includes('بطاقة حمراء مباشرة — طرد وإيقاف المباراة التالية على الأقل، مع مراجعة الواقعة'), red);
+  check('match-day stores under yanabee-match-day-v1', await p.evaluate(() => !!localStorage.getItem('yanabee-match-day-v1')));
+
+  // printing in the dark theme: paper gets dark text
+  await p.click('#md-tab-sheet');
+  await p.emulateMedia({ media: 'print' });
+  await p.evaluate(() => document.body.classList.add('print-match-day'));
+  const mdc = await p.evaluate(() => [...document.querySelectorAll('#md-doc h4, #md-doc dt, #md-doc dd, #md-doc th, #md-doc .md-q, #md-doc .md-doc-line')].map(e => getComputedStyle(e).color));
+  check('print (dark theme): every match-sheet text is dark', mdc.length > 10 && mdc.every(c => lum(c) < 0.45), mdc.filter(c => lum(c) >= 0.45).slice(0, 3).join(' '));
+  await p.evaluate(() => { document.body.classList.remove('print-match-day'); document.body.classList.add('print-league-table'); });
+  const ltc = await p.evaluate(() => [...document.querySelectorAll('#league-table .lt-table th, #league-table .lt-table td, #league-table .lt-print-h, #league-table .lt-note td')].map(e => getComputedStyle(e).color));
+  check('print (dark theme): every standings text is dark', ltc.length > 10 && ltc.every(c => lum(c) < 0.45), ltc.filter(c => lum(c) >= 0.45).slice(0, 3).join(' '));
+  await p.evaluate(() => document.body.classList.remove('print-league-table'));
+  // an empty league table is left out of «اطبع اللائحة»
+  await p.emulateMedia({ media: 'screen' });
+  // clearing while the «نتيجة بقرار اللائحة» form still has teams selected (used to throw before saving)
+  check('clear with teams selected in the forfeit form: precondition', (await p.$eval('#lt-fa', e => e.value)) !== '');
+  await p.click('#lt-clear');
+  check('clear with teams selected: tool and storage emptied', (await p.evaluate(() => window.YanabeeLeague.state().teams.length)) === 0 && (await p.evaluate(() => JSON.parse(localStorage.getItem('yanabee-league-table-v1')).teams.length)) === 0);
+  await p.emulateMedia({ media: 'print' });
+  check('print: empty league table not printed with the regulation', await p.$eval('#league-table', e => getComputedStyle(e).display === 'none'));
+  await p.evaluate(() => document.body.classList.add('print-league-table'));
+  check('print-league-table still shows the (empty) table block', await p.$eval('#league-table', e => getComputedStyle(e).display !== 'none'));
+  check('review page (dark): no errors', errs.length === 0, errs.join(' | '));
+  await ctx.close();
+}
+{
+  // damaged storage: the kit still works, junk saved results are skipped
+  const init = () => {
+    localStorage.setItem('yanabee-match-day-v1', JSON.stringify({ v: 1, clock: { phase: 'h9', mode: 'x' }, teams: [{ goals: 'x', players: [{ id: 'p', num: '5' }, null] }, 7], log: [null, { team: 0, a: 'x' }], chips: [{}], pens: { k: 'bad' }, sheet: null }));
+    localStorage.setItem('yanabee-match-day-results-v1', JSON.stringify([null, 3, { a: 'أ', b: 'ب', ga: 1, gb: 0 }]));
+    localStorage.setItem('yanabee-league-table-v1', '{not json');
+  };
+  const { ctx, p, errs } = await open({ init });
+  check('damaged storage: no page errors', errs.length === 0, errs.join(' | '));
+  const st = await p.evaluate(() => window.YanabeeMatch && window.YanabeeMatch.state());
+  check('damaged storage: match state repaired (names, goals, one player, one log line)', st && st.teams[0].name === 'الفريق أ' && st.teams[1].name === 'الفريق ب' && JSON.stringify(st.teams[0].goals) === '[0,0]' && st.teams[0].players.length === 1 && st.log.length === 1 && st.clock.phase === null && st.chips.length === 0, JSON.stringify(st && st.teams));
+  await p.click('#md-tab-cards');
+  check('damaged storage: one saved result listed', (await p.$$eval('#md-saved .md-sv', l => l.length)) === 1);
+  check('damaged storage: league table works', await visible(p, '#league-table') && (await p.evaluate(() => window.YanabeeLeague.state().teams.length)) === 0);
+  await ctx.close();
+}
+{
+  // kickoff 23:55, play starts at 00:03: 8 minutes late (lg2 row 'تأخر الفريق حتى 10 دقائق'), not 24 hours early
+  const { ctx, p, errs } = await open({ clock: new Date(2026, 10, 21, 0, 3, 0) });
+  await LT.set(p, '#md-kick', '23:55');
+  await p.click('#md-start');
+  const c = await p.evaluate(() => window.YanabeeMatch.state());
+  check('midnight: delay 8, late mode, fixed end 00:30', c.clock.delay === 8 && c.clock.mode === 'late' && new Date(c.clock.endAt).getHours() === 0 && new Date(c.clock.endAt).getMinutes() === 30, JSON.stringify(c.clock));
+  check('midnight: the lg2 «حتى 10 دقائق» row is shown', (await p.textContent('#md-late')).includes('مهلة انتظار، ولا يتغير موعد انتهاء المباراة'));
+  check('midnight: sheet date is the kickoff day', c.sheet.date === '2026-11-20', c.sheet.date);
+  await p.clock.runFor(60000);
+  await p.click('#md-next'); await p.click('#md-next'); await p.click('#md-next');
+  const dl = await txt(p, '#md-deadline');
+  check('midnight: appeal deadline 24 h after an end at 00:04 is 22 November', /22/.test(dl) && dl.includes('00:04'), dl);
+  check('midnight: no errors', errs.length === 0, errs.join(' | '));
+  await ctx.close();
+}
+{
+  // a duplicate result id in an opened file is made unique (delete removes one row, not two)
+  const { ctx, p } = await open();
+  const f = path.join(path.dirname(fileURLToPath(import.meta.url)), '.tmp-dup-league.json');
+  fs.writeFileSync(f, JSON.stringify({ teams: [{ id: 'a', name: 'أ', group: '' }, { id: 'b', name: 'ب', group: '' }],
+    results: [{ id: 'r', kind: 'play', a: 'a', b: 'b', ga: 1, gb: 0, ra: 0, ya: 0, rb: 0, yb: 0 }, { id: 'r', kind: 'play', a: 'b', b: 'a', ga: 2, gb: 0, ra: 0, ya: 0, rb: 0, yb: 0 }] }));
+  await p.setInputFiles('#lt-open', f); await p.waitForTimeout(200);
+  fs.unlinkSync(f);
+  const ids = await p.evaluate(() => window.YanabeeLeague.state().results.map(r => r.id));
+  check('opened file: duplicate result ids made unique', ids.length === 2 && ids[0] !== ids[1], JSON.stringify(ids));
+  await p.click('#lt-results .lt-r .lt-danger');
+  check('opened file: deleting one result leaves the other', (await p.evaluate(() => window.YanabeeLeague.state().results.length)) === 1);
   await ctx.close();
 }
 

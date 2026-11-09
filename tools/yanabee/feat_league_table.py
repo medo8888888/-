@@ -108,15 +108,15 @@ def html():
       <form class="lt-form lt-result" novalidate>
         <fieldset class="lt-side"><legend>الفريق الأول</legend>
           <label class="lt-f"><span>الفريق</span><select id="lt-ra" name="a"></select></label>
-          <label class="lt-f lt-n"><span>الأهداف</span><input id="lt-rga" name="ga" type="number" inputmode="numeric" min="0" step="1" value="0"></label>
-          <label class="lt-f lt-n"><span>بطاقات حمراء</span><input id="lt-rra" name="ra" type="number" inputmode="numeric" min="0" step="1" value="0"></label>
-          <label class="lt-f lt-n"><span>بطاقات صفراء</span><input id="lt-rya" name="ya" type="number" inputmode="numeric" min="0" step="1" value="0"></label>
+          <label class="lt-f lt-n"><span>الأهداف</span><input id="lt-rga" name="ga" type="text" inputmode="numeric" autocomplete="off" maxlength="3" class="lt-num" value="0"></label>
+          <label class="lt-f lt-n"><span>بطاقات حمراء</span><input id="lt-rra" name="ra" type="text" inputmode="numeric" autocomplete="off" maxlength="3" class="lt-num" value="0"></label>
+          <label class="lt-f lt-n"><span>بطاقات صفراء</span><input id="lt-rya" name="ya" type="text" inputmode="numeric" autocomplete="off" maxlength="3" class="lt-num" value="0"></label>
         </fieldset>
         <fieldset class="lt-side"><legend>الفريق الثاني</legend>
           <label class="lt-f"><span>الفريق</span><select id="lt-rb" name="b"></select></label>
-          <label class="lt-f lt-n"><span>الأهداف</span><input id="lt-rgb" name="gb" type="number" inputmode="numeric" min="0" step="1" value="0"></label>
-          <label class="lt-f lt-n"><span>بطاقات حمراء</span><input id="lt-rrb" name="rb" type="number" inputmode="numeric" min="0" step="1" value="0"></label>
-          <label class="lt-f lt-n"><span>بطاقات صفراء</span><input id="lt-ryb" name="yb" type="number" inputmode="numeric" min="0" step="1" value="0"></label>
+          <label class="lt-f lt-n"><span>الأهداف</span><input id="lt-rgb" name="gb" type="text" inputmode="numeric" autocomplete="off" maxlength="3" class="lt-num" value="0"></label>
+          <label class="lt-f lt-n"><span>بطاقات حمراء</span><input id="lt-rrb" name="rb" type="text" inputmode="numeric" autocomplete="off" maxlength="3" class="lt-num" value="0"></label>
+          <label class="lt-f lt-n"><span>بطاقات صفراء</span><input id="lt-ryb" name="yb" type="text" inputmode="numeric" autocomplete="off" maxlength="3" class="lt-num" value="0"></label>
         </fieldset>
         <label class="lt-f lt-f-s"><span>التاريخ (اختياري)</span><input id="lt-rdate" name="date" type="date"></label>
         <div class="lt-acts"><button type="submit" class="btn btn-primary lt-btn" id="lt-radd">{ic('check')}<span>أضف النتيجة</span></button>
@@ -134,8 +134,8 @@ def html():
         <label class="lt-f"><span>السبب</span><select id="lt-freason" name="reason">{reasons}</select></label>
         <p class="lt-dec" id="lt-fdec" aria-live="polite"></p>
         <fieldset class="lt-cur" id="lt-fcur" hidden><legend>النتيجة القائمة (اختياري)</legend>
-          <label class="lt-f lt-n"><span id="lt-fcur-off-l">أهداف الفريق المنسحب</span><input id="lt-fcoff" type="number" inputmode="numeric" min="0" step="1"></label>
-          <label class="lt-f lt-n"><span id="lt-fcur-opp-l">أهداف الفريق المنافس</span><input id="lt-fcopp" type="number" inputmode="numeric" min="0" step="1"></label>
+          <label class="lt-f lt-n"><span id="lt-fcur-off-l">أهداف الفريق المنسحب</span><input id="lt-fcoff" type="text" inputmode="numeric" autocomplete="off" maxlength="3" class="lt-num"></label>
+          <label class="lt-f lt-n"><span id="lt-fcur-opp-l">أهداف الفريق المنافس</span><input id="lt-fcopp" type="text" inputmode="numeric" autocomplete="off" maxlength="3" class="lt-num"></label>
           <div class="lt-choice" id="lt-fchoice" hidden role="radiogroup" aria-labelledby="lt-fchoice-h">
             <p id="lt-fchoice-h" class="lt-choice-h">اختر ما تقرره اللجنة:</p>
             <label class="lt-radio"><input type="radio" name="keep" value="0"><span>خسارة 0 – 3</span></label>

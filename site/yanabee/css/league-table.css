@@ -26,7 +26,7 @@
 .lt-f{display:grid;gap:4px;min-width:0}
 .lt-f>span{font-size:.85rem;font-weight:600;color:var(--muted);font-family:var(--font-h)}
 .lt input[type=text],.lt input[type=number],.lt input[type=date],.lt select{width:100%;min-width:0;min-height:44px;padding:8px 12px;border-radius:12px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink);font:inherit;font-size:1rem}
-.lt input[type=number]{font-variant-numeric:tabular-nums}
+.lt input[inputmode=numeric]{font-variant-numeric:tabular-nums}
 .lt input:focus-visible,.lt select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .lt-addteam{grid-template-columns:1fr minmax(0,150px)}
 .lt-addteam .lt-btn{grid-column:1/-1;justify-self:start}
@@ -120,6 +120,9 @@
 
 /* print: under 'اطبع الجدول' only the standings, the tie-break line and the flags; in every other print the inputs go */
 @media print{
+  /* paper is white in both themes: the dark tokens (light text) must not reach the printed table */
+  .lt{--bg:#fff;--surface:#fff;--surface-2:#f2f2f2;--surface-3:#e6e6e6;--ink:#000;--ink-2:#111;--head:#000;--muted:#333;--line:#bbb;--line-2:#777;--brand:#0a7680;--on-brand:#fff;--sun:#d9762a;--t3:#cf4330;--leaf:#2f9157;color:#000}
+  .lt.lt-none{display:none!important}
   .lt-in,.lt-tools,.lt-privacy,.lt-msg,.lt-why,.lt-src,.lt-hint{display:none!important}
   .lt{box-shadow:none;border:0;padding:0}
   .lt tr.lt-note,.lt tr.lt-note[hidden]{display:table-row!important}

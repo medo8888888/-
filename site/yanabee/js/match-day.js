@@ -2,7 +2,7 @@
 // timers, knockout shootout, printable match sheet. Rules and numbers come from #md-data (built from
 // content/yanabee/competition.txt by tools/yanabee/feat_match_day.py). The tool never turns an «إنذار» or a «طرد»
 // into a card, never changes a score by itself and never decides for the referee or the committee.
-// Data stays in this browser: localStorage 'yanabee-match-v1' (this match) and 'yanabee-league-results-v1'
+// Data stays in this browser: localStorage 'yanabee-match-day-v1' (this match) and 'yanabee-match-day-results-v1'
 // (saved results). Timers use wall-clock timestamps (Date.now()). Classic script (IIFE), works from file://.
 (() => {
   const box = document.getElementById('match-day');
@@ -12,7 +12,7 @@
   box.hidden = false;
 
   const N = D.n, L = D.line, MIN = 60000;
-  const KEY = 'yanabee-match-v1', RES = 'yanabee-league-results-v1';
+  const KEY = 'yanabee-match-day-v1', RES = 'yanabee-match-day-results-v1';
   const $ = s => box.querySelector(s);
   const el = (tag, cls, text) => {
     const n = document.createElement(tag);
@@ -28,6 +28,8 @@
   };
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   const pad = n => String(n).padStart(2, '0');
+  // Arabic-Indic (٠-٩) and Eastern Arabic-Indic (۰-۹) digits -> 0-9
+  const digits = s => String(s).replace(/[٠-٩]/g, c => c.charCodeAt(0) - 0x660).replace(/[۰-۹]/g, c => c.charCodeAt(0) - 0x6F0);
   const hhmm = ms => { const d = new Date(ms); return pad(d.getHours()) + ':' + pad(d.getMinutes()); };
   const mmss = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return pad(Math.floor(s / 60)) + ':' + pad(s % 60); };
   const todayAt = (hm, base) => {
@@ -51,17 +53,58 @@
     pens: { k: [[0, 0, 0], [0, 0, 0]], sd: [] },
     sheet: { date: '', ref: '', safe: '', end: '', checks: [false, false, false, false], ticks: {} },
   });
+  // a stored match, field by field: anything malformed falls back to the blank value (a bad entry must never stop the kit)
+  const obj = x => (x && typeof x === 'object' && !Array.isArray(x) ? x : {});
+  const str = (x, d) => (typeof x === 'string' ? x : d);
+  const nat = x => (Number.isInteger(x) && x >= 0 ? x : 0);
+  const finite = (x, d) => (typeof x === 'number' && isFinite(x) ? x : d);
+  function sane(d) {
+    const B = blank();
+    if (!d || d.v !== 1 || !Array.isArray(d.teams) || d.teams.length !== 2) return B;
+    const c = obj(d.clock), BC = B.clock;
+    Object.keys(BC).forEach(k => {
+      if (k === 'mode') BC.mode = c.mode === 'late' || c.mode === 'ontime' ? c.mode : null;
+      else if (k === 'phase') BC.phase = ['h1', 'brk', 'h2', 'p1', 'p2', 'end'].includes(c.phase) ? c.phase : null;
+      else if (k === 'paused') BC.paused = finite(c.paused, null) || null;
+      else if (k === 'warn') BC.warn = c.warn === true;
+      else BC[k] = finite(c[k], 0);
+    });
+    if (BC.phase && !BC.mode) BC.phase = null;
+    BC.beeped = str(c.beeped, '');
+    B.kick = /^\d{2}:\d{2}$/.test(d.kick) ? d.kick : '';
+    B.format = d.format === 'ko' ? 'ko' : 'groups';
+    B.tone = d.tone === true;
+    B.teams = d.teams.map((t, i) => {
+      t = obj(t);
+      const g = Array.isArray(t.goals) ? t.goals : [];
+      return {
+        name: str(t.name, '').trim().slice(0, 40) || B.teams[i].name,
+        players: (Array.isArray(t.players) ? t.players : []).map(obj).filter(p => typeof p.id === 'string' && /^[0-9]{1,3}$/.test(p.num))
+          .slice(0, N.max).map(p => ({ id: p.id, num: p.num, name: str(p.name, '').slice(0, 40) })),
+        goals: [nat(g[0]), nat(g[1])],
+      };
+    });
+    B.log = (Array.isArray(d.log) ? d.log : []).map(obj).filter(e => (e.team === 0 || e.team === 1) && typeof e.a === 'string')
+      .map(e => Object.assign({}, e, { at: finite(e.at, 0), b: str(e.b, ''), clk: str(e.clk, ''), h: Array.isArray(e.h) ? e.h : null, choice: str(e.choice, '') }));
+    B.chips = (Array.isArray(d.chips) ? d.chips : []).map(obj).filter(ch => typeof ch.id === 'string' && (ch.team === 0 || ch.team === 1) && finite(ch.dur, 0) > 0 && finite(ch.start, 0) > 0)
+      .map(ch => ({ id: ch.id, label: str(ch.label, ''), dur: ch.dur, start: ch.start, acc: finite(ch.acc, 0), paused: finite(ch.paused, null) || null, team: ch.team, pid: str(ch.pid, null), done: ch.done === true }));
+    const P = obj(d.pens), kick = v => (v === 1 || v === 2 ? v : 0);
+    if (Array.isArray(P.k) && P.k.length === 2) B.pens.k = [0, 1].map(i => [0, 1, 2].map(j => kick(Array.isArray(P.k[i]) ? P.k[i][j] : 0)));
+    if (Array.isArray(P.sd)) B.pens.sd = P.sd.filter(Array.isArray).map(r => [kick(r[0]), kick(r[1])]);
+    const sh = obj(d.sheet);
+    ['date', 'ref', 'safe', 'end'].forEach(k => { B.sheet[k] = str(sh[k], '').slice(0, 60); });
+    if (Array.isArray(sh.checks)) B.sheet.checks = [0, 1, 2, 3].map(k => sh.checks[k] === true);
+    Object.keys(obj(sh.ticks)).forEach(k => { if (/^[01]-\d{1,2}-[abc]$/.test(k)) B.sheet.ticks[k] = sh.ticks[k] === true; });
+    return B;
+  }
   let S = blank();
   let canStore = true;
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (raw) {
-      const d = JSON.parse(raw);
-      if (d && d.v === 1 && d.clock && Array.isArray(d.teams) && d.teams.length === 2 && Array.isArray(d.log)) S = Object.assign(blank(), d);
-    }
-  } catch (e) { canStore = false; }
+  let raw = null;
+  try { raw = localStorage.getItem(KEY); } catch (e) { canStore = false; }
+  if (raw) { try { S = sane(JSON.parse(raw)); } catch (e) { S = blank(); } }
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { canStore = false; } };
-  const readResults = () => { try { const a = JSON.parse(localStorage.getItem(RES) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
+  const okRes = r => r && typeof r === 'object' && typeof r.a === 'string' && typeof r.b === 'string';
+  const readResults = () => { try { const a = JSON.parse(localStorage.getItem(RES) || '[]'); return Array.isArray(a) ? a.filter(okRes) : []; } catch (e) { return []; } };
   const writeResults = a => { try { localStorage.setItem(RES, JSON.stringify(a)); return true; } catch (e) { return false; } };
   const ask = q => { try { return window.confirm(q); } catch (e) { return true; } };
 
@@ -140,11 +183,14 @@
     const t = now(), c = C();
     if (!S.kick) { S.kick = hhmm(t); $('#md-kick').value = S.kick; }
     c.started = t;
-    const k = todayAt(S.kick, t);
+    let k = todayAt(S.kick, t);
+    // the kickoff nearest to now: 23:55 seen at 00:03 is 8 minutes ago, not 24 hours ahead
+    if (t - k > 12 * 60 * MIN) k = todayAt(S.kick, t + 24 * 60 * MIN);
+    else if (k - t > 12 * 60 * MIN) k = todayAt(S.kick, t - 24 * 60 * MIN);
     const delay = Math.floor((t - k) / MIN);
     c.delay = delay;
     c.warn = false;
-    if (!S.sheet.date) S.sheet.date = isoDay(t);
+    if (!S.sheet.date) S.sheet.date = isoDay(k);
     if (delay > N.grace && !force) { c.warn = true; save(); renderClock(); return; }
     if (delay > 0 && delay <= N.grace) {
       c.mode = 'late';
@@ -355,7 +401,8 @@
       const l1 = el('label', 'md-f md-f-n');
       l1.appendChild(el('span', '', 'رقم القميص'));
       const num = el('input');
-      num.type = 'number'; num.inputMode = 'numeric'; num.min = '0'; num.max = '999'; num.dataset.k = 'num' + i;
+      // text + numeric keypad: a number input drops Arabic-Indic digits (value ''), so they are converted here
+      num.type = 'text'; num.inputMode = 'numeric'; num.maxLength = 3; num.autocomplete = 'off'; num.dataset.k = 'num' + i;
       l1.appendChild(num);
       const l2 = el('label', 'md-f');
       l2.appendChild(el('span', '', 'الاسم (اختياري)'));
@@ -369,8 +416,9 @@
       f.append(l1, l2, ab);
       f.addEventListener('submit', e => {
         e.preventDefault();
-        const v = num.value.trim();
-        if (!/^\d{1,3}$/.test(v)) { m.textContent = 'اكتب رقم القميص.'; num.focus(); return; }
+        let v = digits(num.value.trim());
+        if (!/^[0-9]{1,3}$/.test(v)) { m.textContent = 'اكتب رقم القميص.'; num.focus(); return; }
+        v = String(parseInt(v, 10)); // '07' and '7' are the same shirt
         if (T.players.some(p => p.num === v)) { m.textContent = 'هذا الرقم مسجل في الفريق.'; num.focus(); return; }
         if (T.players.length >= N.max) { m.textContent = D.terms[1][0] + ': ' + D.terms[1][1]; return; }
         T.players.push({ id: uid(), num: v, name: nm.value.trim().slice(0, 40) });
@@ -391,8 +439,8 @@
         pb.appendChild(el('b', 'md-pl-n', p.num));
         if (p.name) pb.appendChild(el('span', 'md-pl-name', p.name));
         if (y) pb.appendChild(el('span', 'md-badge md-badge-y', y === 1 ? 'صفراء' : y + ' صفراء'));
-        if (r) pb.appendChild(el('span', 'md-badge md-badge-r', 'حمراء'));
-        pb.setAttribute('aria-label', `اللاعب رقم ${p.num}${p.name ? ' ' + p.name : ''}${y ? '، بطاقات صفراء ' + y : ''}${r ? '، بطاقة حمراء' : ''} — افتح المخالفة والبطاقة`);
+        if (r) { const rb = el('span', 'md-badge md-badge-r', 'حمراء'); rb.title = D.red[0] + ': ' + D.red[1]; pb.appendChild(rb); }
+        pb.setAttribute('aria-label', `اللاعب رقم ${p.num}${p.name ? ' ' + p.name : ''}${y ? '، بطاقات صفراء ' + y : ''}${r ? '، ' + D.red[0] + ' — ' + D.red[1] : ''} — افتح المخالفة والبطاقة`);
         pb.addEventListener('click', () => openPlayer(i, p.id));
         const del = btn('md-pl-x', '×', `أزل اللاعب رقم ${p.num}`);
         del.dataset.k = 'px' + p.id;
@@ -889,7 +937,9 @@
     let dl = '';
     if (!B && endHm) {
       const base = S.sheet.date ? new Date(S.sheet.date + 'T12:00:00').getTime() : now();
-      const e = todayAt(endHm, base);
+      let e = todayAt(endHm, base);
+      // the date is the kickoff's day: an end time earlier than the kickoff is after midnight, on the next day
+      if (e && S.kick && endHm < S.kick) e = todayAt(endHm, base + 24 * 3600000);
       if (e) { const t = e + N.appeal * 3600000; dl = dayLabel(t) + '، الساعة ' + hhmm(t); }
     }
     const dlp = el('p', 'md-doc-line', 'آخر موعد للتظلم: ' + dl);
@@ -953,7 +1003,7 @@
     if ($('#md-player').open) closePlayer();
     ensureTick();
   }
-  renderAll();
+  try { renderAll(); } catch (e) { S = blank(); renderAll(); } // a stored match the kit cannot draw is dropped, not fatal
   wake();
   if (!canStore) $('#md-save-msg').textContent = 'لا يمكن الحفظ في هذا المتصفح الآن؛ تعمل الأدوات، لكن البيانات تضيع عند إغلاق الصفحة.';
 

@@ -6,7 +6,7 @@
   const box = document.getElementById('rule-finder');
   const S = window.YanabeeSearch;
   const engine = S && S.engine;
-  if (!box || !engine || !engine.prepare || !engine.scoreText || !engine.marks) return; // stays hidden
+  if (!box || !engine || !engine.prepare || !engine.norm || !engine.scoreText || !engine.marks) return; // stays hidden
   let E;
   try { E = JSON.parse(document.getElementById('rf-data').textContent); } catch (e) { return; }
   if (!Array.isArray(E) || !E.length) return;
