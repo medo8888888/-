@@ -1,0 +1,128 @@
+/* register.html · «قبل التسجيل: كوّن فرقك ووزّع الأدوار» (feature team-builder).
+   Markup: tools/yanabee/feat_team_builder.py; cards built by js/team-builder.js. Phone first (one column). */
+.tb [hidden]{display:none!important}
+.tb-nojs{max-width:760px;margin:0 0 8px;padding:12px 16px;border-radius:14px;background:var(--surface);border:1px dashed var(--line-2);color:var(--ink-2);line-height:1.8}
+.js .tb-nojs{display:none}
+
+/* ---------- registration window ---------- */
+.tb-when{display:grid;gap:8px;max-width:820px;margin:0 0 18px}
+.tb-chip{display:inline-flex;align-items:center;gap:8px;justify-self:start;margin:0;padding:8px 16px;min-height:44px;border-radius:999px;
+  background:color-mix(in oklab,var(--brand) 12%,var(--surface));border:1px solid color-mix(in oklab,var(--brand) 35%,var(--line));
+  color:var(--head);font:700 1rem/1.5 var(--font-h)}
+.tb-chip .i{flex:none;width:20px;height:20px;color:var(--brand)}
+.tb-chip[data-phase=last]{background:color-mix(in oklab,var(--sun) 18%,var(--surface));border-color:color-mix(in oklab,var(--sun) 50%,var(--line))}
+.tb-chip[data-phase=after]{background:var(--surface-2);border-color:var(--line-2);color:var(--ink-2)}
+.tb-src{display:flex;gap:8px;align-items:flex-start;margin:0;color:var(--ink-2);line-height:1.8;font-size:.95rem}
+.tb-src .i{flex:none;width:18px;height:18px;margin-top:4px;color:var(--muted)}
+
+/* ---------- names ---------- */
+.tb-tool{display:grid;gap:14px;max-width:920px}
+.tb-tool .privacy{margin:0}
+.tb-input{display:grid;gap:8px;padding:16px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow-sm);min-width:0}
+.tb-lab{font:700 1rem/1.5 var(--font-h);color:var(--head)}
+.tb-input textarea{width:100%;min-height:180px;padding:12px;border-radius:12px;border:1.5px solid var(--line-2);background:var(--surface-2);color:var(--ink);font:inherit;line-height:1.9;resize:vertical}
+.tb-input textarea:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 4px color-mix(in oklab,var(--brand) 18%,transparent)}
+.tb-input textarea[aria-invalid=true]{border-color:var(--t3)}
+.tb-info{margin:0;color:var(--ink-2);font-weight:600;font-size:.92rem;line-height:1.7}
+.tb-info:empty{display:none}
+.tb-dups{margin:0;padding:10px 14px;padding-inline-start:30px;border-radius:12px;background:color-mix(in oklab,var(--t3) 9%,var(--surface));border:1px solid color-mix(in oklab,var(--t3) 35%,var(--line));color:var(--ink);line-height:1.9;font-size:.93rem}
+.tb-acts{display:flex;flex-wrap:wrap;gap:8px}
+.tb .btn-sm{min-height:44px}
+.tb-note{padding:12px 16px;border-radius:14px;background:var(--surface);border:1px solid var(--line);color:var(--ink-2);line-height:1.8}
+.tb-note p{margin:0}
+.tb-note[data-kind=fail],.tb-note[data-kind=dups],.tb-note[data-kind=empty]{background:color-mix(in oklab,var(--sun) 12%,var(--surface));border-color:color-mix(in oklab,var(--sun) 45%,var(--line))}
+.tb-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:14px;background:var(--surface-2);border:1px solid var(--line)}
+.tb-sum{margin:0;font:700 1rem/1.6 var(--font-h);color:var(--head)}
+.tb-saved{margin:0;color:var(--muted);font-size:.88rem}
+.tb-saved:empty{display:none}
+
+/* ---------- team cards ---------- */
+.tb-cards{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;margin-top:18px}
+.tb-cards:empty{display:none}
+.tb-card.pcard,.tb-waitbox.pcard{margin:0;padding:16px;min-width:0;box-shadow:var(--shadow-sm)}
+.tb-ch{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between;margin-bottom:12px}
+.tb-ch h3,.tb-wh{margin:0;font:700 1.12rem/1.5 var(--font-h);color:var(--head)}
+.tb-ch h3 small,.tb-wh small{color:var(--muted);font-size:.85rem;font-weight:600}
+.tb-badge{margin:0;padding:4px 12px;border-radius:999px;font-weight:700;font-size:.85rem;line-height:1.7;
+  background:color-mix(in oklab,var(--sun) 16%,var(--surface));color:var(--ink);border:1px solid color-mix(in oklab,var(--sun) 45%,var(--line))}
+.tb-badge[data-ok="1"]{background:color-mix(in oklab,#16a36b 14%,var(--surface));border-color:color-mix(in oklab,#16a36b 45%,var(--line));color:var(--head)}
+.tb-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:10px}
+.tb-f{display:grid;gap:4px;min-width:0}
+.tb-fl{font-weight:600;color:var(--head);font-size:.92rem;line-height:1.6}
+.tb-opt{color:var(--muted);font-weight:600}
+.tb-f input,.tb-f select,.tb-mv select{width:100%;min-height:44px;padding:8px 10px;border-radius:12px;border:1.5px solid var(--line-2);background:var(--surface-2);color:var(--ink);font:inherit}
+.tb-f input:focus,.tb-f select:focus,.tb-mv select:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 4px color-mix(in oklab,var(--brand) 18%,transparent)}
+.tb-h4{margin:16px 0 8px;font:700 .98rem/1.5 var(--font-h);color:var(--head)}
+.tb-mem{list-style:none;margin:0;padding:0;display:grid;gap:8px;counter-reset:tbm}
+.tb-mem>li{counter-increment:tbm;display:grid;grid-template-columns:minmax(0,1fr);gap:6px;padding:8px 10px;border-radius:12px;background:var(--surface-2);border:1px solid var(--line)}
+.tb-mn{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;min-width:0}
+.tb-mn::before{content:counter(tbm);display:grid;place-items:center;flex:none;width:26px;height:26px;border-radius:8px;background:color-mix(in oklab,var(--brand) 12%,var(--surface));color:var(--brand);font:700 .85rem var(--font-h)}
+.tb-mn b{color:var(--head);overflow-wrap:anywhere}
+.tb-tags{display:flex;flex-wrap:wrap;gap:4px}
+.tb-tags i{font-style:normal;font-size:.75rem;font-weight:700;padding:1px 8px;border-radius:999px;background:color-mix(in oklab,var(--brand) 12%,var(--surface));color:color-mix(in oklab,var(--brand) 70%,var(--ink))}
+.tb-mv{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:center}
+.tb-mv label{display:block;min-width:0}
+.tb-mv select{color:var(--ink-2);font-size:.92rem}
+.tb-mvb{padding-inline:16px}
+
+/* checks */
+.tb-checks{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.tb-ck{display:grid;grid-template-columns:26px minmax(0,1fr);gap:8px;align-items:start;padding:6px 0;border-bottom:1px dashed var(--line)}
+.tb-ck:last-child{border-bottom:0}
+.tb-ck-i{display:grid;place-items:center;width:24px;height:24px;margin-top:8px;border-radius:50%;font:700 .85rem/1 var(--font-h);
+  background:color-mix(in oklab,var(--sun) 22%,var(--surface));color:var(--ink)}
+.tb-ck-i::before{content:"!"}
+.tb-ck[data-ok="1"] .tb-ck-i{background:color-mix(in oklab,#16a36b 22%,var(--surface));color:var(--head)}
+.tb-ck[data-ok="1"] .tb-ck-i::before{content:"✓"}
+.tb-ckb{display:grid;gap:4px;min-width:0}
+.tb-ckt{display:flex;align-items:center;min-height:40px;color:var(--ink);line-height:1.7;overflow-wrap:anywhere}
+.tb-box.chk{min-height:44px;align-items:center;padding:4px 0}
+.tb-box.chk input{margin-top:0}
+.tb-link{display:inline-flex;align-items:center;min-height:44px;justify-self:start;color:var(--brand);font-weight:600;text-decoration:underline;text-underline-offset:3px}
+.tb-whys{display:grid;gap:6px}
+.tb-why{margin:0;padding:8px 12px;border-inline-start:3px solid color-mix(in oklab,var(--sun) 60%,var(--line));border-radius:0;border-start-end-radius:10px;border-end-end-radius:10px;background:var(--surface-2)}
+.tb-why p{margin:0;color:var(--ink-2);line-height:1.8;font-size:.92rem}
+.tb-why cite{display:block;margin-top:2px;color:var(--muted);font-style:normal;font-size:.78rem;font-weight:600}
+.tb-note .tb-why{margin-top:8px}
+.tb-push{display:grid;gap:6px;margin-top:14px;justify-items:start}
+.tb-push .btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.tb-pmsg{margin:0;color:var(--ink-2);font-weight:600}
+.tb-pmsg:empty{display:none}
+.tb-pmsg[data-bad="1"]{color:var(--t3)}
+.tb-psum{display:none}
+.tb-waitbox{margin-top:16px}
+.tb-waitbox .f-hint{margin:0 0 8px}
+
+@media (min-width:560px){
+  .tb-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .tb-mem>li{grid-template-columns:minmax(0,1fr) minmax(0,260px);align-items:center}
+}
+@media (min-width:1100px){
+  .tb-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .tb-card.pcard{padding:20px}
+  .tb-mem>li{grid-template-columns:minmax(0,1fr)}
+}
+@media (min-width:1280px){
+  .tb-mem>li{grid-template-columns:minmax(0,1fr) minmax(0,240px)}
+}
+@media (prefers-reduced-motion:reduce){
+  .tb .btn,.tb-f select,.tb-input textarea{transition:none}
+}
+
+/* ---------- print: «اطبع قوائم الفرق» shows only the team cards ---------- */
+@media print{
+  .tb-tool,.tb-when .tb-chip,.tb-ctl,.tb-wait{display:none!important}
+  .tb-psum{display:block}
+  .tb-card.pcard{box-shadow:none;border:1px solid #999;break-inside:avoid;padding:10px 14px}
+  .tb-ch .tb-badge,.tb-ch small{display:none}
+  .tb-cards{display:block}
+  .tb-card+.tb-card{margin-top:10px}
+  .tb-psum h3{display:none}
+  .tb-psum p{margin:2px 0}
+  .tb-psum ol{margin:4px 0;padding-inline-start:22px}
+  .tb-pbadge{font-weight:700}
+  body.print-team-builder>*:not(main){display:none!important}
+  body.print-team-builder main>*:not(#team-builder){display:none!important}
+  body.print-team-builder #team-builder>.wrap>*:not(.tb-cards){display:none!important}
+  body.print-team-builder #team-builder{padding:0}
+}

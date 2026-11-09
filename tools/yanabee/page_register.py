@@ -64,7 +64,8 @@ def form():
                       for i, it in enumerate(pl.items))
     p6 = part(pl, pledges, 6)
     p7 = part(adm, blocks_html(adm) + '<p class="f-hint">تملؤه إدارة المسابقة بعد مراجعة الاستمارة.</p>', 7)
-    return f'''
+    from feat_team_builder import html as team_builder  # feature «team-builder»: sits in <main> right before #c-form
+    return team_builder() + f'''
 <section class="sec dp-sec reg" id="c-form">
   <div class="wrap">
     {head(f, 'file-text', sub='المسابقة الأولى (سورة الصف) · 1 نوفمبر 2026 – 25 يناير 2027')}
