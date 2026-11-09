@@ -5,13 +5,14 @@ Content words come from COMP via t(); the rest is UI chrome. The live status (re
 results / ceremony) is computed in js/comp.js from the dates that appear in the text.
 """
 from core import COMP as C, PAGE_LABEL, btn, cta, ic, page, page_hero, plain, split_kicker, strip_colon, t
+from features import assets
 from docpage import STATUS, ayah, blocks_html, fold, head, node_html, sec, seg_bar
 
 PAGE = 'competition.html'
 
 # date window of each line of the operating plan (c-timeline), for the «الآن» marker — dates from the same lines
 WINDOWS = [('', '2026-10-31'), ('2026-11-01', '2026-11-14'), ('2026-11-15', '2026-11-30'), ('2026-12-01', '2026-12-31'),
-           ('2027-01-01', '2027-01-14'), ('2027-01-15', '2027-01-24'), ('2027-01-25', '2027-01-31')]
+           ('2027-01-01', '2027-01-15'), ('2027-01-15', '2027-01-24'), ('2027-01-25', '2027-01-31')]
 FACT_ICON = ['users', 'coins', 'calendar', 'flag', 'flag', 'trophy', 'repeat', 'file-text']
 AXIS_ICON = ['book-open', 'lightbulb', 'hand-heart', 'megaphone', 'trophy', 'cpu']
 AXIS_TONE = ['t1', 'sky', 't5', 't6', 't3', 't4']
@@ -162,5 +163,6 @@ def build():
     body = (hero() + about() + plan() + terms() + axes() + prizes() + band() + league() + partner() + ad() + guide()
             + cta(t(C.meta['title']), t(C['c-about'].paras[1]), buttons))
     desc = C['c-plan'].paras[0] + ' ' + C['c-plan']['c-target'].paras[0]
-    page(PAGE, PAGE_LABEL[PAGE], body, desc, css=('css/comp.css',), js=('js/comp.js',))
+    fcss, fjs = assets(PAGE)
+    page(PAGE, PAGE_LABEL[PAGE], body, desc, css=('css/comp.css',) + fcss, js=('js/comp.js',) + fjs)
     return PAGE

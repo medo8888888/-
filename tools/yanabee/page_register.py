@@ -6,6 +6,7 @@ draft (this browser only), a printable copy of the filled form and one parent co
 Nothing is sent anywhere by the page.
 """
 from core import COMP as C, PAGE_LABEL, btn, ic, page, page_hero, plain, strip_colon, t
+from features import assets
 from docpage import STATUS, blocks_html, head
 
 PAGE = 'register.html'
@@ -132,5 +133,6 @@ def build():
     body = (hero() + form() + consent()
             + f'<section class="sec"><div class="wrap"><p class="back rv">{btn("competition.html", "المسابقة الأولى: المحاور واللوائح والجوائز", "arrow-left", "btn-ghost")}</p></div></section>')
     desc = 'استمارة تسجيل فريق في المسابقة الأولى لمشروع ينابيع (سورة الصف) وموافقة ولي الأمر للمشارك القاصر.'
-    page(PAGE, PAGE_LABEL[PAGE], body, desc, css=('css/comp.css',), js=('js/comp.js', 'js/register.js'))
+    fcss, fjs = assets(PAGE)
+    page(PAGE, PAGE_LABEL[PAGE], body, desc, css=('css/comp.css',) + fcss, js=('js/comp.js', 'js/register.js') + fjs)
     return PAGE

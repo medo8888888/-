@@ -23,7 +23,7 @@
     const tr = document.createElement('tr');
     tr.innerHTML = '<td></td>'
       + '<td><input type="text" data-m="n" autocomplete="off" aria-label="الاسم الثلاثي"></td>'
-      + '<td><input type="number" data-m="a" min="8" max="25" inputmode="numeric" aria-label="العمر"></td>'
+      + '<td><input type="number" data-m="a" min="1" inputmode="numeric" aria-label="العمر"></td>'
       + '<td><input type="tel" data-m="c" autocomplete="off" aria-label="رقم التواصل / ولي الأمر"></td>'
       + '<td><button type="button" class="mdel" aria-label="احذف هذا العضو">' + trashIcon + '</button></td>';
     $('[data-m="n"]', tr).value = m.n || '';
@@ -167,7 +167,7 @@
       if (!m.n) return;
       const tr = rs[i];
       if (!m.a) bad($('[data-m="a"]', tr), `اكتب عمر العضو ${i + 1} (${m.n}).`);
-      else if (+m.a < 8 || +m.a > 25) bad($('[data-m="a"]', tr), `عمر العضو ${i + 1} (${m.n}) يبدو غير صحيح.`);
+      else if (!(+m.a > 0 && +m.a < 100)) bad($('[data-m="a"]', tr), `عمر العضو ${i + 1} (${m.n}) يبدو غير صحيح.`);
       if (digits(m.c).length < 7) bad($('[data-m="c"]', tr), `اكتب رقم تواصل العضو ${i + 1} (${m.n}) أو رقم ولي أمره.`);
     });
     const seen = new Set();

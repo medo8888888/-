@@ -10,6 +10,7 @@ import re
 import art
 from core import (PLATFORM as P, QURAN as Q, SEC_ICON, btn, cta, ic, logo, page, paren, short,
                   split_kicker, strip_colon, svg, t, table_html)
+from features import assets
 
 PAGE = 'quran.html'
 
@@ -441,5 +442,6 @@ def build():
 </div>
 {cta(t(t1.title), t(t1.items[1].body), buttons)}'''
     # page() runs title/description through plain() (quotes curled, escaped).
-    page(PAGE, Q.meta['title'], body, Q['intro'].paras[-1], css=('css/quran.css',), js=('js/quran.js',))
+    fcss, fjs = assets(PAGE)
+    page(PAGE, Q.meta['title'], body, Q['intro'].paras[-1], css=('css/quran.css',) + fcss, js=('js/quran.js',) + fjs)
     return PAGE

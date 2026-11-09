@@ -3,6 +3,7 @@
 Content words come from METHOD via t(); layout and visual labels are UI chrome.
 """
 from core import METHOD as M, PAGE_LABEL, btn, cta, ic, page, page_hero, plain, strip_colon, t
+from features import assets
 from docpage import ayah, blocks_html, head, num, sec, seg_bar
 
 PAGE = 'method.html'
@@ -102,5 +103,6 @@ def build():
             + meeting() + media() + showcase() + impact()
             + cta(t(M.meta['title']), t(M['m-intro'].paras[1]), buttons))
     desc = M['m-intro'].paras[1]
-    page(PAGE, PAGE_LABEL[PAGE], body, desc, css=('css/comp.css',))
+    fcss, fjs = assets(PAGE)
+    page(PAGE, PAGE_LABEL[PAGE], body, desc, css=('css/comp.css',) + fcss, js=fjs)
     return PAGE
