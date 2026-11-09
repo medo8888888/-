@@ -45,11 +45,18 @@
       opts: opts || { auto: false, tone: false, vib: false }
     };
   }
+  // a saved state is used only if every field the engine reads is sound (a damaged one starts fresh, never NaN or a crash)
   function valid(s) {
     if (!s || typeof s !== 'object' || !byId[s.agenda]) return false;
     var n = byId[s.agenda].blocks.length;
-    return Array.isArray(s.added) && s.added.length === n && Array.isArray(s.actual) && s.actual.length === n
-      && typeof s.idx === 'number' && s.idx >= 0 && s.idx < n && s.opts && typeof s.opts === 'object';
+    var fin = function (x) { return typeof x === 'number' && isFinite(x) && x >= 0; };
+    var nums = function (a) { return Array.isArray(a) && a.length === n && a.every(fin); };
+    var opt = function (x) { return x == null || fin(x); };
+    if (!nums(s.added) || !nums(s.actual) || !s.opts || typeof s.opts !== 'object') return false;
+    if (!(typeof s.idx === 'number' && s.idx % 1 === 0 && s.idx >= 0 && s.idx < n)) return false;
+    if (s.rang != null && !Array.isArray(s.rang)) return false;
+    if (s.started && !s.done && !(fin(s.segStart) && fin(s.pausedTotal) && opt(s.pausedAt))) return false;
+    return opt(s.meetStart) && opt(s.endAt);
   }
   var ag = function () { return byId[S.agenda]; };
   var blk = function (i) { return ag().blocks[i == null ? S.idx : i]; };
@@ -128,7 +135,7 @@
     S.pausedTotal = 0;
     S.pausedAt = keepPaused ? t : null;
   }
-  function leave() { S.actual[S.idx] = elapsed(); }
+  function leave() { S.actual[S.idx] = elapsed(); if (S.actual[S.idx] >= dur()) S.rang[S.idx] = true; }
   function startMeeting() {
     primeAudio();
     S.started = true; S.done = false; S.meetStart = now();
@@ -183,7 +190,9 @@
   function tick() {
     if (running()) {
       var n = ag().blocks.length, moved = false;
-      while (S.opts.auto && S.idx < n - 1 && elapsed() >= dur()) {
+      // only a segment that runs out now moves on: one that had already ended (an overrun when the option was turned
+      // on, or a finished segment the facilitator went back to) stays put, so no segment is marked as held when it was not
+      while (S.opts.auto && S.idx < n - 1 && elapsed() >= dur() && !S.rang[S.idx]) {
         // the next segment begins exactly when this one ran out (wall clock), even after a tab sleep
         var endAt = S.segStart + S.pausedTotal + dur();
         S.actual[S.idx] = dur();

@@ -56,11 +56,7 @@ def meeting():
 
 def media():
     n = M['m-media']
-    out = cards('m-media', [(strip_colon(it.label), it.body) for it in n.items], ['send', 'image', 'shield'])
-    # UI chrome: a pointer to the publish check (publish-check feature, in #m-impact)
-    link = f'<p class="btns rv pc-jump"><a class="btn btn-soft btn-sm" href="#publish-check">{ic("shield")}<span>قبل أن تنشر: افحص المادة</span></a></p>'
-    assert out.endswith('</div></section>')
-    return out[:-len('</div></section>')] + link + '</div></section>'
+    return cards('m-media', [(strip_colon(it.label), it.body) for it in n.items], ['send', 'image', 'shield'])
 
 
 def showcase():

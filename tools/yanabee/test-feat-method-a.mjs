@@ -157,12 +157,22 @@ console.log('meeting timer: run a meeting (phone, fake clock)');
   check('overrun: +00:12, «انتهى وقت الفقرة», no auto-advance', (await txt(p, '[data-mt-time]')) === '+00:12' && await visible(p, '[data-mt-over]') && (await txt(p, '[data-mt-name]')) === 'التسميع والتلاوة', await txt(p, '[data-mt-time]'));
   check('overrun: muted, calm (no animation on the time)', await p.evaluate(() => { const t = document.querySelector('[data-mt-time]'); const cs = getComputedStyle(t); return t.classList.contains('is-over') && cs.animationName === 'none'; }));
   check('overrun: segment end announced once', /انتهى وقت الفقرة: التسميع والتلاوة/.test(await txt(p, '[data-mt-live]')));
+  // auto-advance turned on during an overrun: the segment already ended, so it stays (no segment is marked as held
+  // when it was not, and a setting change does not move the meeting on its own)
   await p.check('[data-mt-opt=auto]');
   await p.clock.runFor(500);
-  check('auto-advance: moves on; the next segment started when the last ran out (19:47.5 left)', (await txt(p, '[data-mt-name]')) === 'الفهم والاستنباط' && /^19:4[78]$/.test(await txt(p, '[data-mt-time]')), (await txt(p, '[data-mt-name]')) + ' ' + (await txt(p, '[data-mt-time]')));
-  check('auto-advance: the finished segment counts its planned 26:00', (await state(p)).actual[1] === 26 * 60000);
-  check('auto-advance: goal, «التالي» and list follow', (await txt(p, '[data-mt-goal]')) === 'شرح المعاني واستخراج القيمة التربوية' && (await txt(p, '[data-mt-next]')) === 'التالي: النشاط العملي (20 د)'
-    && await p.evaluate(() => document.querySelector('[data-mt-list] li:nth-child(3)').classList.contains('is-now')));
+  check('auto on during an overrun: stays on the overrun segment', (await state(p)).idx === 1 && (await txt(p, '[data-mt-time]')) === '+00:12' && (await state(p)).actual.slice(2).every(x => x === 0), (await txt(p, '[data-mt-name]')) + ' ' + (await txt(p, '[data-mt-time]')));
+  await p.click('[data-mt-next-btn]');
+  check('next after the overrun: its real time is kept (26:12)', (await state(p)).actual[1] === 26 * 60000 + 12500 && (await txt(p, '[data-mt-time]')) === '20:00', String((await state(p)).actual[1]));
+  await p.clock.runFor(20 * 60000 + 2500);
+  check('auto-advance: moves on; the next segment started when the last ran out (19:57.5 left)', (await txt(p, '[data-mt-name]')) === 'النشاط العملي' && (await txt(p, '[data-mt-time]')) === '19:58', (await txt(p, '[data-mt-name]')) + ' ' + (await txt(p, '[data-mt-time]')));
+  check('auto-advance: the finished segment counts its planned 20:00', (await state(p)).actual[2] === 20 * 60000);
+  check('auto-advance: goal, «التالي» and list follow', (await txt(p, '[data-mt-goal]')) === 'لعبة أو تطبيق تفاعلي للقيمة' && (await txt(p, '[data-mt-next]')) === 'التالي: المهمة السلوكية (10 د)'
+    && await p.evaluate(() => document.querySelector('[data-mt-list] li:nth-child(4)').classList.contains('is-now')));
+  await p.click('[data-mt-prev]');
+  await p.clock.runFor(1000);
+  check('auto on: going back to a finished segment stays there (no bounce forward)', (await state(p)).idx === 2 && (await txt(p, '[data-mt-time]')) === '+00:01', (await state(p)).idx + ' ' + (await txt(p, '[data-mt-time]')));
+  await p.click('[data-mt-next-btn]');
   await p.uncheck('[data-mt-opt=auto]');
 
   // keyboard (RTL: ← is forward)
@@ -172,11 +182,11 @@ console.log('meeting timer: run a meeting (phone, fake clock)');
   await p.keyboard.press('Space');
   check('keyboard: Space resumes', (await state(p)).pausedAt == null);
   await p.keyboard.press('ArrowLeft');
-  check('keyboard: ← goes to the next segment', (await state(p)).idx === 3, String((await state(p)).idx));
+  check('keyboard: ← goes to the next segment', (await state(p)).idx === 4, String((await state(p)).idx));
   await p.keyboard.press('ArrowRight');
-  check('keyboard: → goes back', (await state(p)).idx === 2);
+  check('keyboard: → goes back', (await state(p)).idx === 3);
   await p.click('[data-mt-prev]');
-  check('previous: back to segment 2 with its time kept (26:00 used → +00:00)', (await state(p)).idx === 1 && (await txt(p, '[data-mt-time]')) === '+00:00', await txt(p, '[data-mt-time]'));
+  check('previous: back to segment 3 with its time kept (20:01 used → +00:01)', (await state(p)).idx === 2 && (await txt(p, '[data-mt-time]')) === '+00:01', await txt(p, '[data-mt-time]'));
   check('390px: no horizontal overflow (running)', (await overflow(p)) <= 0);
 
   // change agenda while running: confirm
@@ -198,7 +208,7 @@ console.log('meeting timer: run a meeting (phone, fake clock)');
   }));
   check('summary columns: المكون · المدة · الفعلي', sum.head.join('|') === 'المكون|المدة|الفعلي', sum.head.join('|'));
   check('summary: 6 rows with planned minutes from the table', sum.rows.length === 6 && sum.rows[0][1] === '10 دقائق' && sum.rows[1][1] === '25 دقيقة (+1 د)' && sum.rows[5][1] === '5 دقائق', JSON.stringify(sum.rows));
-  check('summary: actual times recorded', sum.rows[0][2] === '01:10' && sum.rows[1][2] === '26:00' && sum.rows[3][2] === '—', JSON.stringify(sum.rows.map(r => r[2])));
+  check('summary: actual times recorded', sum.rows[0][2] === '01:10' && sum.rows[1][2] === '26:12' && sum.rows[2][2] === '20:01' && sum.rows[5][2] === '—', JSON.stringify(sum.rows.map(r => r[2])));
   check('summary: total 90 + 1 minutes', sum.foot[0] === 'المجموع' && sum.foot[1] === '90 + 1 دقيقة', sum.foot.join('|'));
   check('summary names the agenda', sum.meta.startsWith('نموذج اللقاء الأسبوعي (90 دقيقة)'));
   check('390px: no horizontal overflow (summary)', (await overflow(p)) <= 0);
@@ -244,6 +254,22 @@ console.log('meeting timer: run a meeting (phone, fake clock)');
   check('one-block summary: generic columns', qsum === 'الفقرة|المدة|الفعلي', qsum);
   await ctx.close();
   check('no errors (engine)', errs.length === 0, errs.join(' | '));
+}
+
+console.log('meeting timer: auto-advance never bounces back');
+{
+  const { ctx, p, errs } = await open('method.html', PHONE, { clock: true });
+  await p.click('[data-mt-start]');
+  await p.check('[data-mt-opt=auto]');
+  // the clock jumps past the segment's end with no tick in between (a throttled tab), then «next» before the redraw
+  await p.clock.setSystemTime(new Date('2026-11-20T16:11:05'));
+  await p.click('[data-mt-next-btn]');
+  await p.click('[data-mt-prev]');
+  await p.clock.runFor(1000);
+  const s = await state(p);
+  check('a segment left after its end stays put when revisited (auto on)', s.idx === 0 && s.actual[0] >= 11 * 60000 && /^\+01:0\d$/.test(await txt(p, '[data-mt-time]')), s.idx + ' ' + (await txt(p, '[data-mt-time]')));
+  await ctx.close();
+  check('no errors (auto bounce)', errs.length === 0, errs.join(' | '));
 }
 
 console.log('meeting timer: reload resumes (real clock)');
@@ -305,6 +331,32 @@ console.log('meeting timer: storage blocked');
   check('storage blocked: a whole meeting runs to the summary', await visible(p, '[data-mt-sum]') && (await p.locator('[data-mt-sum-body] tr').count()) === 5);
   await ctx.close();
   check('no errors (storage blocked)', errs.length === 0, errs.join(' | '));
+}
+
+console.log('meeting timer: damaged saved state starts fresh');
+{
+  const { ctx, p, errs } = await open('method.html', PHONE);
+  const z = [0, 0, 0, 0, 0, 0];
+  const bad = [
+    { v: 1, agenda: 'm90', idx: 1.5, added: z, actual: z, opts: {}, started: true, segStart: 1, pausedTotal: 0 },
+    { v: 1, agenda: 'm90', idx: 0, added: z, actual: z, opts: {}, started: true, segStart: null, pausedTotal: 0 },
+    { v: 1, agenda: 'm90', idx: 0, added: ['x', 0, 0, 0, 0, 0], actual: z, opts: {}, started: false },
+    { v: 1, agenda: 'm90', idx: 0, added: z, actual: [0, null, 0, 0, 0, 0], opts: {}, started: false },
+    { v: 1, agenda: 'nope', idx: 0, added: z, actual: z, opts: {} },
+  ];
+  for (const s of bad) {
+    await p.evaluate(v => localStorage.setItem('yanabee-meeting-timer-v1', v), JSON.stringify(s));
+    await p.reload();
+    await p.waitForTimeout(300);
+    const r = await p.evaluate(() => [document.querySelector('[data-mt-time]').textContent, document.querySelector('[data-mt-name]').textContent, document.querySelector('[data-mt-elapsed]').textContent].join('|'));
+    check('damaged state ' + JSON.stringify(s).slice(0, 48) + '… → fresh 90-minute agenda', r === '10:00|الاستقبال والمراجعة|مضى 0 من 90 دقيقة', r);
+  }
+  await p.evaluate(() => localStorage.setItem('yanabee-meeting-timer-v1', '{not json'));
+  await p.reload();
+  await p.waitForTimeout(300);
+  check('unreadable saved state → fresh agenda', (await txt(p, '[data-mt-time]')) === '10:00' && await visible(p, '[data-mt-start]'));
+  await ctx.close();
+  check('no errors (damaged state)', errs.length === 0, errs.join(' | '));
 }
 
 // --------------------------------------------------------- publish check ---
@@ -388,7 +440,7 @@ console.log('publish check: desktop');
   await p.click('#pc-s1 [data-pc-ans=no]');
   check('desktop: Q1 لا shows Q2 as «لا ينطبق»', await visible(p, '#pc-s2 [data-pc-skip]') && !(await visible(p, '#pc-s2 [data-pc-ans=yes]')));
   check('1280: no horizontal overflow', (await overflow(p)) <= 0);
-  check('media section points to the check', (await p.getAttribute('#m-media .pc-jump a', 'href')) === '#publish-check');
+  check('media section left as it was (media() is not this bundle\'s hook)', (await p.locator('#m-media a[href="#publish-check"]').count()) === 0);
   await ctx.close();
   check('no errors (desktop)', errs.length === 0, errs.join(' | '));
 }
