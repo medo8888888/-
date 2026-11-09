@@ -361,6 +361,106 @@ console.log('\n# home follow-up card');
   check('no console errors', errs.length === 0, errs.join(' | '));
 }
 
+console.log('\n# review: long text, limits, stale print class, clear + pagehide');
+{
+  const { p, errs } = await open();
+  const words = n => 'أساعد أمي في ترتيب المائدة وأصدق في كلامي '.repeat(40).slice(0, n);
+  const lim = await p.$$eval('#pl-tool [maxlength]', a => Object.fromEntries(a.map(e => [e.id, +e.maxLength])));
+  check('every text field has a length limit', ['pl-name', 'pl-team', 'pl-pledge', 'pl-vother', 'pl-method', 'pl-who', 'pl-htask'].every(id => lim[id] > 0), JSON.stringify(lim));
+  await p.fill('#pl-pledge', words(1000));
+  check('typing past the limit stops at it', (await p.inputValue('#pl-pledge')).length === lim['pl-pledge']);
+  for (const id of ['pl-name', 'pl-team']) await p.fill('#' + id, words(lim[id]));
+  // in print media: the whole text shows, and the day boxes / notes / signatures stay inside the card
+  const fits = kind => p.evaluate(k => {
+    const out = [];
+    document.querySelectorAll('#pl-print .pl-card').forEach(c => {
+      const cr = c.getBoundingClientRect();
+      c.querySelectorAll(':scope>*').forEach(x => { const r = x.getBoundingClientRect(); if (r.bottom > cr.bottom + 0.5 || r.top < cr.top - 0.5) out.push(k + ' outside: ' + x.className); });
+      c.querySelectorAll('.pl-box, .pl-csteps').forEach(x => { if (x.scrollHeight > x.clientHeight + 1) out.push(k + ' clipped: ' + x.className); });
+    });
+    return out;
+  }, kind);
+  const printKind = async (kind, tab) => {
+    if (tab) await p.click('#pl-tab-' + tab);
+    await p.click(`[data-pl-print="${kind}"]`);
+    await p.emulateMedia({ media: 'print' });
+    const bad = await fits(kind);
+    const pages = ((await p.pdf({ preferCSSPageSize: true })).toString('latin1').match(/\/Type\s*\/Page[^s]/g) || []).length;
+    await p.emulateMedia({ media: null });
+    await p.evaluate(() => dispatchEvent(new Event('afterprint')));
+    return { bad, pages };
+  };
+  let r = await printKind('cards');
+  check('longest pledge: whole text, days and supervisor line on each card, one page', r.bad.length === 0 && r.pages === 1, JSON.stringify(r));
+  await p.click('#pl-tab-charter');
+  await p.fill('#pl-vother', words(lim['pl-vother'])); await p.fill('#pl-method', words(lim['pl-method'])); await p.fill('#pl-who', words(lim['pl-who']));
+  await p.fill('#pl-when', '2026-11-20');
+  r = await printKind('charter');
+  check('longest charter: all answers and the 7 signature lines on one page', r.bad.length === 0 && r.pages === 1, JSON.stringify(r));
+  await p.click('#pl-tab-home');
+  await p.click('.pl-pick[data-key="hm"] .pl-fbtn[data-f="1"]');
+  for (const s of await p.$$('#pl-hm-s1 .pl-seg')) await s.click();
+  await p.fill('#pl-htask', words(lim['pl-htask']));
+  r = await printKind('home');
+  check('longest home card: all tasks, days, notes and signature on both cards, one page', r.bad.length === 0 && r.pages === 1, JSON.stringify(r));
+  // a draft that is longer than the limits (older or edited storage) still keeps the card's structure
+  await p.evaluate(() => { const t = document.getElementById('pl-pledge'); t.removeAttribute('maxlength'); });
+  await p.click('#pl-tab-cards');
+  await p.fill('#pl-pledge', words(1200));
+  await p.click('[data-pl-print="cards"]');
+  await p.emulateMedia({ media: 'print' });
+  check('over-long text gives way inside its own box only', (await fits('cards')).every(x => x.startsWith('cards clipped')));
+  await p.emulateMedia({ media: null });
+  await p.evaluate(() => dispatchEvent(new Event('afterprint')));
+  // a print class left behind (no afterprint) is replaced, not stacked
+  await p.evaluate(() => { window.__printed = []; document.body.classList.add('print-pledge-home'); });
+  await p.click('#pl-tab-charter');
+  await p.click('[data-pl-print="charter"]');
+  check('stale print class dropped before printing', JSON.stringify((await p.evaluate(() => window.__printed))[0].split(' ').filter(c => c.startsWith('print-pledge-'))) === '["print-pledge-charter"]');
+  await p.evaluate(() => dispatchEvent(new Event('afterprint')));
+  // clear, then leave the page: nothing is written back
+  p.once('dialog', d => d.accept());
+  await p.click('[data-pl-clear]');
+  await p.evaluate(() => dispatchEvent(new PageTransitionEvent('pagehide')));
+  check('clear then pagehide: the key stays removed', await p.evaluate(k => localStorage.getItem(k), KEY) === null);
+  await p.fill('#pl-team', 'فريق');
+  await p.evaluate(() => dispatchEvent(new PageTransitionEvent('pagehide')));
+  check('pagehide saves a pending change at once', (await stored(p)).team === 'فريق');
+  check('no console errors', errs.length === 0, errs.join(' | '));
+}
+for (const bad of ['1.5', '-0.5', '"2"', '1e9']) {
+  const { ctx, p, errs } = await (async () => {
+    while (opened.length) await opened.pop().ctx.close().catch(() => {});
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    await ctx.addInitScript(([k, h]) => { try { localStorage.setItem(k, `{"v":1,"tab":"home","hField":${h},"hTasks":["صلة الرحم"]}`); } catch (e) { /* */ } }, [KEY, bad]);
+    const p = await ctx.newPage(); const errs = [];
+    p.on('pageerror', e => errs.push(e.message));
+    await p.route('**/fonts.g*/**', r => r.abort());
+    await p.goto(url('method.html'));
+    opened.push({ ctx, p });
+    return { ctx, p, errs };
+  })();
+  const shown = await p.waitForFunction(() => window.__yanabeeReady === true && !document.getElementById('pl-tool').hidden, null, { timeout: 5000 }).then(() => true, () => false);
+  check(`draft with hField ${bad}: tool still starts, field reset`, shown && errs.length === 0 && (await txt(p, '#pl-hsum')) === 'لم يُختر مجال ولا مهمة بعد.', errs.join(' | '));
+}
+
+console.log('\n# review: long unbroken text on a phone');
+{
+  const { p, errs } = await open(PHONE);
+  const long = 'a'.repeat(120);
+  await p.fill('#pl-team', long); await p.fill('#pl-pledge', long);
+  await p.click('#pl-tab-home');
+  await p.click('.pl-pick[data-key="hm"] .pl-fbtn[data-f="0"]');
+  await p.fill('#pl-htask', long);
+  for (const tab of ['home', 'cards', 'charter']) {
+    await p.click('#pl-tab-' + tab);
+    const ov = await p.evaluate(() => ({ doc: document.documentElement.scrollWidth - innerWidth, sec: document.getElementById('pledge').scrollWidth - document.getElementById('pledge').clientWidth,
+      out: [...document.querySelectorAll('#pl-tool *')].filter(e => e.offsetParent && (e.getBoundingClientRect().right > innerWidth + 1 || e.getBoundingClientRect().left < -1)).length }));
+    check(`unbroken text, ${tab}: nothing wider than the screen`, ov.doc <= 0 && ov.sec <= 0 && ov.out === 0, JSON.stringify(ov));
+  }
+  check('no console errors', errs.length === 0, errs.join(' | '));
+}
+
 console.log('\n# storage blocked');
 {
   const { p, errs } = await open({}, () => {

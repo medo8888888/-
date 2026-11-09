@@ -40,7 +40,7 @@
       Object.keys(s).forEach(k => { if (typeof j[k] === typeof s[k] && !Array.isArray(s[k])) s[k] = j[k]; });
       if (Array.isArray(j.hTasks)) s.hTasks = j.hTasks.filter(x => typeof x === 'string');
       if (!['cards', 'charter', 'home'].includes(s.tab)) s.tab = 'cards';
-      if (!(s.hField >= 0 && s.hField < D.fields.length)) { s.hField = -1; s.hTasks = []; }
+      if (!(Number.isInteger(s.hField) && s.hField >= 0 && s.hField < D.fields.length)) { s.hField = -1; s.hTasks = []; }   // a non-integer would index nothing
       else s.hTasks = s.hTasks.filter(x => D.fields[s.hField][1].includes(x));
       if (s.value !== '*' && !D.values.includes(s.value)) s.value = '';
       if (!s.keepName) s.name = '';
@@ -56,6 +56,7 @@
   let saveT = 0;
   const saveNow = () => {
     clearTimeout(saveT);
+    saveT = 0;   // nothing pending (pagehide only saves a pending change)
     const copy = Object.assign({}, S);
     if (!copy.keepName) copy.name = '';
     const ok = store.set(JSON.stringify(copy));
@@ -153,6 +154,8 @@
     const sheet = el('div', 'pl-sheet pl-sheet-' + (kind === 'blank' ? 'cards' : kind), Array.from({ length: n }, () => build(kind)));
     area.replaceChildren(sheet);
     say(kind === 'charter' ? 'الميثاق جاهز للطباعة.' : 'البطاقات جاهزة للطباعة.');
+    // a browser that never fired afterprint would leave an older print class behind: drop it first
+    Array.from(document.body.classList).filter(c => c.indexOf('print-pledge-') === 0).forEach(c => document.body.classList.remove(c));
     printOnly('print-pledge-' + (kind === 'blank' ? 'cards' : kind));
   };
   $$('[data-pl-print]', tool).forEach(b => b.addEventListener('click', () => doPrint(b.dataset.plPrint)));
@@ -305,6 +308,7 @@
     try { ok = window.confirm('امسح كل ما كتبته في هذه البطاقات من هذا المتصفح؟'); } catch (e) { ok = true; }
     if (!ok) return;
     clearTimeout(saveT);
+    saveT = 0;   // a cleared draft must not be written back on pagehide
     store.del();
     S = fresh();
     fill();

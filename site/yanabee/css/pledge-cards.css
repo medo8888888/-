@@ -30,7 +30,7 @@
 .pl-panel:focus-visible{outline:3px solid var(--accent);outline-offset:4px;border-radius:12px}
 
 .pl-grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:clamp(16px,3vw,32px);align-items:start}
-.pl-form{display:grid;gap:14px;min-width:0}
+.pl-form{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;min-width:0}
 .pl-form .f{min-width:0}
 .pl-form textarea{min-height:96px}
 .pl-src{margin:0;padding:12px 14px;border-radius:14px;background:var(--grad-soft);border:1px solid var(--line);color:var(--ink-2);line-height:1.9}
@@ -62,8 +62,7 @@ fieldset.pl-step legend{float:inline-start;width:100%;display:flex;align-items:c
 fieldset.pl-step legend+*{clear:both}
 fieldset.pl-step>.pl-other{margin-top:10px}
 .pl-step .f-l{display:flex;align-items:center;gap:8px}
-.pl-n{flex:none;display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--grad);color:#fff;font:700 .85rem var(--font-h)}
-[data-theme=dark] .pl-n{color:#03171c}
+.pl-n{flex:none;display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--grad);color:var(--on-brand);font:700 .85rem var(--font-h)}
 .pl-radios{display:flex;flex-wrap:wrap;gap:8px}
 .pl-radio{position:relative;display:inline-flex}
 .pl-radio input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
@@ -74,12 +73,12 @@ fieldset.pl-step>.pl-other{margin-top:10px}
 
 .pl-acts{display:flex;flex-wrap:wrap;gap:10px}
 .pl-acts .btn{min-height:44px}
-.pl-sum{margin:0;padding:10px 12px;border-radius:12px;background:var(--surface-2);border:1px solid var(--line);color:var(--ink-2);font-weight:600;line-height:1.8}
+.pl-sum{overflow-wrap:anywhere;margin:0;padding:10px 12px;border-radius:12px;background:var(--surface-2);border:1px solid var(--line);color:var(--ink-2);font-weight:600;line-height:1.8}
 .pl-sum:empty{display:none}
 .pl-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:20px;padding-top:14px;border-top:1px solid var(--line)}
 .pl-foot .btn{min-height:44px}
 .pl-msgs{display:grid;gap:2px;min-width:0;flex:1}
-.pl-status{margin:0;font-weight:600;color:var(--head)}
+.pl-status{overflow-wrap:anywhere;margin:0;font-weight:600;color:var(--head)}
 .pl-status:empty,.pl-saved:empty{display:none}
 .pl-saved{margin:0;color:var(--muted);font-size:.86rem}
 
@@ -185,4 +184,12 @@ fieldset.pl-step>.pl-other{margin-top:10px}
   .pl-print .pl-k-pledge .pl-box,.pl-print .pl-k-home .pl-box:not(.pl-notes){flex:1 1 auto;align-content:start}
   .pl-print .pl-k-pledge .pl-tick{max-width:10mm}
   .pl-print .pl-k-charter .pl-sign{margin-top:0}
+  /* a long text never pushes the day boxes, the notes or the signature lines off the card: only its own box gives way */
+  .pl-print .pl-card>*{flex-shrink:0}
+  /* home card: the chosen tasks run on as one paragraph (« ؛ » between them, as in the on-screen summary) to leave room */
+  .pl-print .pl-k-home{gap:2mm;padding:6mm 9mm}
+  .pl-print .pl-k-home .pl-tasks{padding:0;list-style:none}
+  .pl-print .pl-k-home .pl-tasks li{display:inline}
+  .pl-print .pl-k-home .pl-tasks li+li::before{content:"؛ "}
+  .pl-print .pl-k-pledge .pl-box,.pl-print .pl-k-home .pl-box:not(.pl-notes),.pl-print .pl-k-charter .pl-csteps{flex:1 1 auto;min-height:0;overflow:hidden}
 }

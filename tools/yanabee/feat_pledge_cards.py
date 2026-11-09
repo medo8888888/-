@@ -16,6 +16,9 @@ from core import METHOD as M, ic, plain, t
 
 # The four charter steps, verbatim fragments of m-workshop item 2 (asserted below).
 CHARTER_STEPS = ['قيمة من القيم', 'طريقة التطبيق', 'من المسؤول', 'متى يتم تنفيذها']
+# Longest text each field takes (UI limit, not a document number): at these lengths the printed card still shows the
+# whole text with its day boxes and signature lines (checked by tools/yanabee/test-feat-method-b.mjs).
+MAX = {'short': 40, 'pledge': 200, 'method': 300, 'task': 80}
 VALUES = ['التعاون', 'الأمانة والصدق', 'الاحترام وبر الوالدين', 'النظافة والمسؤولية']
 
 
@@ -102,7 +105,7 @@ def html(field_icons):
         <div class="pl-form">
           {_src(*D['pledge'])}
           <label class="f"><span class="f-l">وعدي: شيء أقدر أن أنفذه خلال أسبوع</span>
-            <textarea id="pl-pledge" rows="3" data-k="pledge"></textarea></label>
+            <textarea id="pl-pledge" rows="3" data-k="pledge" maxlength="{MAX["pledge"]}"></textarea></label>
           {_picker(D, 'pp', 'insert', field_icons)}
           <div class="pl-acts">
             {_btn('اطبع بطاقتي', 'printer', 'data-pl-print="cards"')}
@@ -120,13 +123,13 @@ def html(field_icons):
             <li><fieldset class="pl-step"><legend><span class="pl-n" aria-hidden="true">1</span>{t(steps[0])}</legend>
               <div class="pl-radios">{seg_vals}
                 <label class="pl-radio"><input type="radio" name="pl-value" value="" data-other><span>قيمة أخرى</span></label></div>
-              <label class="f pl-other"><span class="f-l">قيمة أخرى</span><input type="text" id="pl-vother" data-k="valueOther" autocomplete="off"></label>
+              <label class="f pl-other"><span class="f-l">قيمة أخرى</span><input type="text" id="pl-vother" data-k="valueOther" maxlength="{MAX["short"]}" autocomplete="off"></label>
             </fieldset></li>
             <li><div class="pl-step"><label class="f"><span class="f-l"><span class="pl-n" aria-hidden="true">2</span>{t(steps[1])}</span>
-              <textarea id="pl-method" rows="3" data-k="method"></textarea></label>
+              <textarea id="pl-method" rows="3" data-k="method" maxlength="{MAX["method"]}"></textarea></label>
               {_picker(D, 'cm', 'insert', field_icons)}</div></li>
             <li><div class="pl-step"><label class="f"><span class="f-l"><span class="pl-n" aria-hidden="true">3</span>{t(steps[2])}</span>
-              <input type="text" id="pl-who" data-k="who" autocomplete="off"></label></div></li>
+              <input type="text" id="pl-who" data-k="who" maxlength="{MAX["short"]}" autocomplete="off"></label></div></li>
             <li><div class="pl-step"><label class="f"><span class="f-l"><span class="pl-n" aria-hidden="true">4</span>{t(steps[3])}</span>
               <input type="date" id="pl-when" data-k="when"></label></div></li>
           </ol>
@@ -140,7 +143,7 @@ def html(field_icons):
           {_src(*D['meet'])}
           {_picker(D, 'hm', 'pick', field_icons)}
           <label class="f"><span class="f-l">المهمة كما حددها المشرف</span>
-            <input type="text" id="pl-htask" data-k="hTask" autocomplete="off"><span class="f-hint">اختياري.</span></label>
+            <input type="text" id="pl-htask" data-k="hTask" maxlength="{MAX["task"]}" autocomplete="off"><span class="f-hint">اختياري.</span></label>
           <p class="pl-sum" id="pl-hsum" aria-live="polite"></p>
           <div class="pl-acts">{_btn('اطبع بطاقة المتابعة', 'printer', 'data-pl-print="home"')}</div>
           <p class="f-hint">تُطبع بطاقتان على ورقة A4 واحدة.</p>
@@ -157,13 +160,13 @@ def html(field_icons):
     <div class="pl-nojs" data-pl-nojs>
       {_src(*D['pledge'])}
       {_src(*D['charter'])}
-      <p class="f-hint">تعمل البطاقات القابلة للطباعة عند تفعيل JavaScript في المتصفح.</p>
+      <p class="f-hint">تعمل البطاقات القابلة للطباعة عند تفعيل <bdi>JavaScript</bdi> في المتصفح.</p>
     </div>
     <div class="pl-tool" id="pl-tool" hidden>
       <fieldset class="pl-who">
         <legend class="sr-only">الاسم والفريق</legend>
-        <label class="f"><span class="f-l">الاسم (اختياري)</span><input type="text" id="pl-name" data-k="name" autocomplete="off"></label>
-        <label class="f"><span class="f-l">الفريق</span><input type="text" id="pl-team" data-k="team" autocomplete="off"></label>
+        <label class="f"><span class="f-l">الاسم (اختياري)</span><input type="text" id="pl-name" data-k="name" maxlength="{MAX["short"]}" autocomplete="off"></label>
+        <label class="f"><span class="f-l">الفريق</span><input type="text" id="pl-team" data-k="team" maxlength="{MAX["short"]}" autocomplete="off"></label>
         <label class="chk pl-keep"><input type="checkbox" id="pl-keep" data-k="keepName"><span>احفظ الاسم على هذا الجهاز</span></label>
       </fieldset>
       <div class="pl-tabs" role="tablist" aria-label="البطاقات">
