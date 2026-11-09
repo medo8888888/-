@@ -241,7 +241,7 @@
 @page md{size:A4;margin:12mm}
 @media print{
   /* paper is white in both themes: the dark tokens (light text) must not reach the printed sheet */
-  .md-kit{--bg:#fff;--surface:#fff;--surface-2:#f2f2f2;--surface-3:#e6e6e6;--ink:#000;--ink-2:#111;--head:#000;--muted:#333;--line:#bbb;--line-2:#777;--brand:#0a7680;--on-brand:#fff;--sun:#d9762a;--t3:#cf4330;--leaf:#2f9157;color:#000}
+  .md-kit{--bg:#fff;--surface:#fff;--surface-2:#f2f2f2;--surface-3:#e6e6e6;--ink:#000;--ink-2:#111;--head:#000;--muted:#333;--line:#bbb;--line-2:#777;--brand:#0a7680;--on-brand:#fff;--sun:#d9762a;--t3:#cf4330;--leaf:#2f9157;color:#000;color-scheme:light}
   .md-kit{display:none!important}
   body.print-match-day>*:not(main){display:none!important}
   body.print-match-day main>*:not(#c-league){display:none!important}
