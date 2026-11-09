@@ -11,12 +11,12 @@ Writes two generated files (never edit them by hand — docs/YANABEE.md, law 7):
 
    window.YANABEE_KB = {
      version: 1,
-     docs:  {platform: {title, subtitle}, quran: {project, title, subtitle}},
+     docs:  {platform: {title, subtitle}, quran|comp|leaders|method: {project, title, subtitle}},
      pages: [{url, title, icon, tone}],       # core.PAGES order; title = nav label (UI chrome)
      icons: {name: '<path …/>'},              # trusted Lucide markup (core.ICONS) for every icon used
      items: [{
        id,      # content id: 's1'…'s9', 'vision', 't1'…'t7', 'intro', 'goals', 'a1'…'a11', 'kpis', 'kpi1'…'kpi9'
-       doc,     # 'platform' | 'quran'
+       doc,     # 'platform' | 'quran' | 'comp' | 'leaders' | 'method'
        type,    # 'section' | 'subsection' | 'team' | 'axis' | 'kpi'
        kicker,  # 'ثانياً', 'المحور الأول', 'KPI 1' … ('' if none) — core.split_kicker
        title,   # heading without its kicker (trailing ':' dropped)
@@ -32,17 +32,17 @@ Writes two generated files (never edit them by hand — docs/YANABEE.md, law 7):
    }
 
    Sections hold only their own lines; their subsections are separate items
-   (find them with item.parent). Every source line of both documents appears
+   (find them with item.parent). Every source line of every document appears
    in exactly one item's title/kicker or text (asserted below).
 
-2. worker/knowledge-yanabee.js — `export const KNOWLEDGE_YANABEE = "…";`, both
+2. worker/knowledge-yanabee.js — `export const KNOWLEDGE_YANABEE = "…";`, all
    documents as readable text with headings (every source line, verbatim, in
    order), appended to the «مساعد ينابيع» system prompt by worker/index.js.
 """
 import json
 import re
 
-from content import DOCS, PLATFORM, QURAN, ROOT
+from content import COMP, DOCS, LEADERS, METHOD, PLATFORM, QURAN, ROOT
 from core import ICONS, PAGES, SEC_ICON, SITE, TEAMS, link_for, split_kicker, strip_colon
 
 KB_JS = SITE / 'data' / 'kb.js'
@@ -54,7 +54,9 @@ SUB_ICON = {
     'media': 'video', 'outreach': 'megaphone', 'support': 'handshake', 'structure': 'network',
     'followup': 'calendar', 'periodic': 'award', 'annual': 'trophy', 'levels': 'layers', 'kpis': 'chart',
 }
-PAGE_TONE = {'index.html': 'brand', 'teams.html': 'accent', 'operations.html': 'sky', 'quran.html': 't1', 'learn.html': 'sun', 'lab.html': 'accent'}
+PAGE_TONE = {'index.html': 'brand', 'teams.html': 'accent', 'operations.html': 'sky', 'quran.html': 't1', 'learn.html': 'sun',
+             'lab.html': 'accent', 'competition.html': 't5', 'register.html': 't5', 'leaders.html': 'sky', 'method.html': 't1'}
+EXTRA_DOCS = [('comp', COMP, 'الوثيقة الثالثة'), ('leaders', LEADERS, 'الوثيقة الرابعة'), ('method', METHOD, 'الوثيقة الخامسة')]
 UI_ICONS = ['search', 'sparkles', 'arrow-left', 'file-text', 'x', 'book-open', 'users', 'home', 'shield', 'gauge']
 
 
@@ -124,11 +126,16 @@ def build_items():
         for sub in s.subs:
             items.append(make_item(sub, 'quran', 'subsection', s.id))
     items.extend(kpi_items())
+    for name, doc, _ in EXTRA_DOCS:
+        for s in doc.sections:
+            items.append(make_item(s, name, 'section'))
+            for sub in s.subs:
+                items.append(make_item(sub, name, 'subsection', s.id))
     return items
 
 
 def check_coverage(items):
-    """Every source line of both documents must be findable in the KB."""
+    """Every source line of every document must be findable in the KB."""
     blob = []
     for it in items:
         blob += [it['kicker'], it['title'], f"{it['kicker']}: {it['title']}"] + it['text'].split('\n')
@@ -144,7 +151,7 @@ def check_coverage(items):
 
 
 def knowledge_text():
-    """Both documents as plain text with headings — every source line verbatim, in order."""
+    """All documents as plain text with headings — every source line verbatim, in order."""
     out = []
 
     def node_lines(node, level):
@@ -172,6 +179,11 @@ def knowledge_text():
     out.append(f"# الوثيقة الثانية: {Q.meta['title']} — {Q.meta['subtitle']} ({Q.meta['project']})")
     for s in Q.sections:
         node_lines(s, 2)
+    for _, D, ordinal in EXTRA_DOCS:
+        out.append('')
+        out.append(f"# {ordinal}: {D.meta['title']} — {D.meta['subtitle']} ({D.meta['project']})")
+        for s in D.sections:
+            node_lines(s, 2)
     text = '\n'.join(out).strip() + '\n'
     for name, doc in DOCS.items():  # nothing dropped, nothing reordered within a document
         pos = 0
@@ -196,6 +208,8 @@ def build():
             'platform': {'title': curl(PLATFORM.meta['title']), 'subtitle': curl(PLATFORM.meta['subtitle'])},
             'quran': {'project': curl(QURAN.meta['project']), 'title': curl(QURAN.meta['title']),
                       'subtitle': curl(QURAN.meta['subtitle'])},
+            **{name: {'project': curl(D.meta['project']), 'title': curl(D.meta['title']), 'subtitle': curl(D.meta['subtitle'])}
+               for name, D, _ in EXTRA_DOCS},
         },
         'pages': [{'url': f, 'title': label, 'icon': icon, 'tone': PAGE_TONE[f]} for f, label, icon in PAGES],
         'icons': {name: ICONS[name] for name in used},

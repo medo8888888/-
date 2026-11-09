@@ -214,7 +214,10 @@ def parse(name):
 
 PLATFORM = parse('platform')
 QURAN = parse('quran')
-DOCS = {'platform': PLATFORM, 'quran': QURAN}
+COMP = parse('competition')   # المسابقة الأولى لسورة الصف: لوائح، تسجيل، شراكة، مستهدفات
+LEADERS = parse('leaders')    # المرحلة الثانية: إعداد القادة والمساعدين
+METHOD = parse('method')      # ملحق: منهجية ربط القرآن بالسلوك والتطبيق
+DOCS = {'platform': PLATFORM, 'quran': QURAN, 'comp': COMP, 'leaders': LEADERS, 'method': METHOD}
 
 
 if __name__ == '__main__':  # quick structural dump

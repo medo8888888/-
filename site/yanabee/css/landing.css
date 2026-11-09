@@ -226,3 +226,36 @@ html.intro-on .hero-home .hero-visual{opacity:0;transition:none}
   .hp-what li:nth-child(n+4){display:none}  /* phone: the first three points; the rest are on the page below */
 }
 @media(min-width:901px){.hp-what{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}.hp-what li{min-width:0}}
+
+/* ---- the first competition (page_index.comp_band): status, numbers, register ---- */
+.cband{padding-block:56px 24px}
+.cb-card{display:grid;grid-template-columns:1.25fr 1fr;gap:32px;padding:32px;border-radius:calc(var(--r) + 6px);
+  background:linear-gradient(135deg,color-mix(in oklab,var(--t5) 10%,var(--surface)),color-mix(in oklab,var(--brand) 7%,var(--surface)));
+  border:1px solid color-mix(in oklab,var(--t5) 26%,var(--line));box-shadow:var(--shadow-sm)}
+.cb-copy h2{margin:10px 0 8px;font-size:clamp(1.5rem,2.6vw,2.05rem);color:var(--head);line-height:1.35}
+.cb-copy>p{margin:0 0 18px;color:var(--ink-2);line-height:1.9;font-size:1.02rem;max-width:58ch}
+.cb-split{list-style:none;margin:0 0 22px;padding:0;display:flex;gap:4px;height:58px}
+.cb-split li{flex:0 0 var(--w);min-width:52px;display:grid;align-content:center;justify-items:center;border-radius:12px;padding:4px 2px;
+  background:color-mix(in oklab,var(--brand) calc(12% + var(--k) * 6%),var(--surface));text-align:center}
+.cb-split li:nth-child(3){background:color-mix(in oklab,var(--t5) 30%,var(--surface))}
+.cb-split b{font:700 1.08rem/1.1 var(--font-h);color:var(--head)}
+.cb-split span{font-size:.74rem;color:var(--ink-2);white-space:nowrap}
+.cb-side{display:grid;gap:14px;align-content:start}
+.cb-facts{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.cb-facts li{display:grid;gap:2px;padding:10px 12px;border-radius:14px;background:var(--surface);border:1px solid var(--line)}
+.cb-facts li:nth-child(n+4){grid-column:span 1}
+.cb-facts b{font:700 1.15rem/1.2 var(--font-h);color:var(--head)}
+.cb-facts span{font-size:.8rem;color:var(--muted)}
+.cb-more{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.cb-more a{display:flex;align-items:center;gap:8px;min-height:44px;padding:8px 10px;border-radius:12px;color:var(--ink-2);text-decoration:none;font-size:.9rem;
+  background:color-mix(in oklab,var(--surface) 70%,transparent);border:1px solid var(--line);transition:border-color .2s,color .2s}
+.cb-more a:hover{border-color:var(--brand);color:var(--brand)}
+.cb-more .i{width:17px;height:17px;flex:none;color:var(--brand)}
+@media(max-width:900px){.cb-card{grid-template-columns:1fr;padding:22px;gap:22px}}
+@media(max-width:560px){
+  .cband{padding-block:36px 8px}
+  .cb-split{height:auto;flex-wrap:wrap}
+  .cb-split li{flex:1 1 30%;min-height:52px}
+  .cb-facts{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .cb-more{grid-template-columns:1fr}
+}

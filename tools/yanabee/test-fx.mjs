@@ -72,7 +72,7 @@ console.log('select text -> ask, section dots, theme reveal');
 {
   const { ctx, p, errs } = await open('index.html');
   check('section dots exist on wide screens', await p.evaluate(() => getComputedStyle(document.querySelector('.fx-dots')).display === 'flex' && document.querySelectorAll('.fx-dots a').length >= 4));
-  await p.evaluate(() => document.querySelector('.fx-dots a:nth-child(3)').click());
+  await p.evaluate(() => document.querySelector('.fx-dots a:nth-child(4)').click());
   await p.waitForTimeout(1300);
   check('a dot jumps to its section and turns current', await p.evaluate(() => document.querySelector('.fx-dots a.current') && document.querySelector('.fx-dots a.current').getAttribute('href') === '#behind'),
     await p.evaluate(() => (document.querySelector('.fx-dots a.current') || {}).outerHTML));

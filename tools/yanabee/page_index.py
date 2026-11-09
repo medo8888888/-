@@ -9,6 +9,7 @@ goal, growth phases and impact index exactly as written (so nothing in the docum
 import art
 import wow_gallery
 from core import PLATFORM as P, btn, cta, ic, logo, page, strip_colon, t
+from docpage import STATUS
 
 
 def _title_html():
@@ -21,7 +22,7 @@ def hero():
         f'<div class="hp-slide" style="--k:{k}">{art.photo(name, eager=(k == 0))}</div>'
         for k, name in enumerate(('hero-home', 'team-t7', 'team-t4', 'team-t3', 'team-t5')))
     what = (
-        ('users', 'فرق صغيرة', 'خمسة أو سبعة أعضاء في كل فريق'),
+        ('users', 'فرق صغيرة', 'من 5 إلى 7 أعضاء شاملًا القائد'),
         ('flag', 'تحدٍّ كل أسبوع', 'مهمة ميدانية تخدم جمعية أو حيّاً'),
         ('compass', 'سبعة مجالات', 'من القرآن والكشافة إلى التقنية والبيئة'),
         ('user-check', 'قادة من الأقران', 'طلاب مدرَّبون يقودون من هم أصغر منهم'),
@@ -64,6 +65,40 @@ def hero():
 </section>'''
 
 
+def comp_band():
+    """The first competition (competition.txt), in plain words: live status, the key numbers, register and rules."""
+    facts = (('12', 'فريقًا مستهدفًا'), ('5 إلى 7', 'أعضاء في الفريق'), ('60 إلى 84', 'مشاركًا متوقعًا'),
+             ('10 $', 'رسوم الفريق'), ('15 نوفمبر', 'الانطلاق'), ('31 يناير', 'حفل التكريم'))
+    facts_html = ''.join(f'<li><b>{t(a)}</b><span>{t(b)}</span></li>' for a, b in facts)
+    split = (('الحفظ', 10), ('الفهم', 15), ('التطبيق', 45), ('كرة القدم', 20), ('الشطرنج', 10))
+    split_html = ''.join(f'<li style="--w:{v}%;--k:{i}"><b>{v}</b><span>{t(n)}</span></li>' for i, (n, v) in enumerate(split))
+    more = (('competition.html#c-league', 'لائحة دوري كرة القدم', 'shield'), ('register.html#c-consent', 'موافقة ولي الأمر', 'user-check'),
+            ('leaders.html', 'المرحلة الثانية: إعداد القادة', 'flag'), ('method.html', 'منهجية ربط القرآن بالسلوك', 'route'))
+    more_html = ''.join(f'<a href="{h}">{ic(i)}<span>{t(lab)}</span></a>' for h, lab, i in more)
+    return f'''
+<section class="sec cband" id="competition" aria-labelledby="cband-h">
+  <div class="wrap">
+    <div class="cb-card rv">
+      <div class="cb-copy">
+        <span class="kicker">{ic('trophy')}المسابقة الأولى · سورة الصف</span>
+        <h2 id="cband-h">حفظ، فهم، تطبيق: مسابقة بين الفرق</h2>
+        <p>تحفظ الفرق سورة الصف وتفهمها، ثم تحوّل معانيها إلى أعمال في البيت والمدرسة والحي، ومعها دوري لكرة القدم وبطولة شطرنج.</p>
+        <ol class="cb-split" aria-label="توزيع النقاط من 100">{split_html}</ol>
+        <div class="btns">
+          {btn('register.html', 'سجّل فريقك', 'file-text')}
+          {btn('competition.html', 'اللوائح والمحاور والجوائز', 'trophy', 'btn-ghost')}
+        </div>
+      </div>
+      <div class="cb-side">
+        {STATUS}
+        <ul class="cb-facts">{facts_html}</ul>
+        <nav class="cb-more" aria-label="المسابقة والبرامج">{more_html}</nav>
+      </div>
+    </div>
+  </div>
+</section>'''
+
+
 def _head(icon, kicker, title, sub=''):
     s = f'<p class="sec-sub">{t(sub)}</p>' if sub else ''
     return (f'<header class="sec-head rv"><div><span class="kicker">{ic(icon)}{t(kicker)}</span>'
@@ -73,7 +108,7 @@ def _head(icon, kicker, title, sub=''):
 def how():
     photos = ('hero-home', 'team-t7', 'team-t5', 'team-t3')
     steps = (
-        ('users', 'سجّل فريقك', 'خمسة أو سبعة أعضاء يختارون مجالهم من المجالات السبعة ويسجّلون فريقهم في تطبيق «ينابيع».'),
+        ('users', 'سجّل فريقك', 'من 5 إلى 7 أعضاء شاملًا القائد يختارون مجالهم من المجالات السبعة ويسجّلون فريقهم في تطبيق «ينابيع».'),
         ('flag', 'تحدٍّ جديد كل أسبوع', 'يصل الفريق تحدٍّ ميداني عبر التطبيق، وكثير منها يلبّي حاجة حقيقية عند جمعية أو مدرسة أو حي.'),
         ('hand-heart', 'نفّذوه في الميدان', 'يعمل الفريق معاً على الأرض، ويرافقه قائد شاب من الأقران يوجّهه تحت إشراف موجّه إقليمي.'),
         ('trophy', 'نقاط وتقدّم', 'يرصد التطبيق النقاط تلقائياً، فتكون المنافسة عادلة، ويظهر القادة الموهوبون ليتأهلوا لقيادة مبادرات أكبر.'),
@@ -262,13 +297,13 @@ INTRO = f'''<div class="intro" id="intro" aria-hidden="true"><canvas class="intr
 
 
 def build():
-    body = (INTRO + hero() + how() + teams() + behind() + road() + quran() + try_it() + document()
+    body = (INTRO + hero() + comp_band() + how() + teams() + behind() + road() + quran() + try_it() + document()
             + cta(t(P.meta['title']), 'اسأل المساعد عن أي تفصيل، أو ابحث في الفرق والمحاور والمؤشرات.',
                   f'<button type="button" class="btn btn-primary" data-open-chat>{ic("sparkles")}<span>اسأل مساعد ينابيع</span></button>'
                   f'<button type="button" class="btn btn-ghost" data-open-search>{ic("search")}<span>ابحث في الموقع</span></button>'))
     desc = 'منصة وطنية تجمع الأطفال والشباب في فرق صغيرة تتنافس في تحديات ميدانية تخدم المجتمع، في سبعة مجالات وتحت مظلة وطنية واحدة.'
     page('index.html', 'مشروع «ينابيع»', body, desc,
          css=('css/home.css', 'css/landing.css', 'css/gallery.css', 'css/intro.css'),
-         js=('js/gallery.js', 'js/intro.js'),
+         js=('js/gallery.js', 'js/intro.js', 'js/comp.js'),
          head=INTRO_HEAD)
     return 'index.html'

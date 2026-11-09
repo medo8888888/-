@@ -8,7 +8,7 @@ here. Entry point: python3 tools/yanabee/build.py — see docs/YANABEE.md.
 import html as _html
 import re
 
-from content import PLATFORM, QURAN, ROOT  # noqa: F401  (re-exported for page modules)
+from content import COMP, LEADERS, METHOD, PLATFORM, QURAN, ROOT  # noqa: F401  (re-exported for page modules)
 
 SITE = ROOT / 'site' / 'yanabee'
 
@@ -42,8 +42,8 @@ def split_kicker(title):
     """'أولاً: الرؤية والرسالة' -> ('أولاً', 'الرؤية والرسالة'); 'المحور الأول: الحفظ' -> ('المحور الأول', 'الحفظ').
     Titles without such a prefix -> ('', title)."""
     m = re.match(r'^(\S+(?:\s\S+){0,2}?):\s+(.+)$', title)
-    if m and (re.match(r'^(أولاً|ثانياً|ثالثاً|رابعاً|خامساً|سادساً|سابعاً|ثامناً|تاسعاً|عاشراً)$', m.group(1))
-              or m.group(1).startswith('المحور ')):
+    if m and (re.match(r'^(أول|ثاني|ثالث|رابع|خامس|سادس|سابع|ثامن|تاسع|عاشر)(اً|ًا)$', m.group(1))  # both tanween spellings
+              or m.group(1).startswith('المحور ') or m.group(1).startswith('الشهر ')):
         return m.group(1), m.group(2)
     return '', title
 
@@ -168,13 +168,19 @@ ICONS['sparkles'] = ICONS['droplet']
 # file, nav label (UI chrome), icon
 PAGES = [
     ('index.html', 'الرئيسية', 'home'),
+    ('competition.html', 'المسابقة الأولى', 'trophy'),
     ('teams.html', 'الفرق السبع', 'users'),
-    ('operations.html', 'التشغيل والحوكمة', 'shield'),
     ('quran.html', 'حفظ، فهم، تطبيق', 'book-open'),
+    ('operations.html', 'التشغيل والحوكمة', 'shield'),
     ('learn.html', 'تعلّم والعب', 'sparkles'),
     ('lab.html', 'مختبر ينابيع', 'target'),
+    ('register.html', 'سجّل فريقك', 'file-text'),
+    ('leaders.html', 'إعداد القادة', 'user-check'),
+    ('method.html', 'منهجية التطبيق', 'route'),
 ]
 PAGE_LABEL = {f: label for f, label, _ in PAGES}
+TOP_HIDE = {'register.html', 'leaders.html', 'method.html'}  # in the menu sheet and footer, not the top bar
+TOP_PARENT = {'register.html': 'competition.html', 'method.html': 'quran.html'}
 
 # Platform sections -> page. Quran sections all live on quran.html.
 HOME_OF = {'s1': 'index.html', 's9': 'index.html', 's2': 'teams.html', 's3': 'teams.html',
@@ -195,8 +201,30 @@ SEC_ICON = {'s1': 'eye', 's2': 'users', 's3': 'accessibility', 's4': 'megaphone'
             'a9': 'coins', 'a10': 'award', 'a11': 'gauge'}
 
 
+# The newer documents: every (sub)section id -> its page (registration and consent live on register.html).
+DOC_PAGE = {}
+for _doc, _page in ((COMP, 'competition.html'), (LEADERS, 'leaders.html'), (METHOD, 'method.html')):
+    for _s in _doc.sections:
+        _pg = 'register.html' if _s.id in ('c-form', 'c-consent') else _page
+        DOC_PAGE[_s.id] = _pg
+        for _sub in _s.subs:
+            DOC_PAGE[_sub.id] = _pg
+SEC_ICON.update({
+    'c-plan': 'calendar', 'c-about': 'book-open', 'c-terms': 'file-text', 'c-axes': 'layers', 'c-prizes': 'trophy',
+    'c-score': 'chart', 'c-ad': 'megaphone', 'c-partner': 'handshake', 'c-rules': 'shield', 'c-league': 'scale',
+    'c-form': 'file-text', 'c-consent': 'user-check', 'c-ops': 'network', 'c-decisions': 'check', 'c-follow': 'gauge',
+    'c-q1': 'target', 'c-card': 'grid',
+    'l-idea': 'lightbulb', 'l-axes': 'compass', 'l-targets': 'target', 'l-select': 'user-check', 'l-weeks': 'calendar',
+    'l-meeting': 'clock', 'l-practice': 'users', 'l-success': 'gauge', 'l-roles': 'network', 'l-outputs': 'award',
+    'm-intro': 'book-open', 'm-fields': 'home', 'm-phases': 'route', 'm-workshop': 'lightbulb', 'm-roles': 'users',
+    'm-media': 'megaphone', 'm-meeting': 'clock', 'm-showcase': 'image', 'm-impact': 'chart',
+})
+
+
 def link_for(nid):
-    """Deep link for any section/subsection id of either document."""
+    """Deep link for any section/subsection id of any document."""
+    if nid in DOC_PAGE:
+        return f'{DOC_PAGE[nid]}#{nid}'
     if nid in HOME_OF:
         return f'{HOME_OF[nid]}#{nid}'
     if nid in TEAMS:
@@ -314,14 +342,24 @@ SITE_NAME = 'مشروع «ينابيع»'
 def page(fn, title, body, desc, css=(), js=(), base=None, head=''):
     """Write site/yanabee/<fn>. `title` is plain text; `body` is HTML for <main>."""
     P = PLATFORM
-    links = ''.join(
-        f'<a href="{h}"{" class=active aria-current=page" if h == fn else ""}>{lab}</a>' for h, lab, _ in PAGES)
+    top_on = TOP_PARENT.get(fn, fn)  # pages kept off the top bar light up their parent link
+
+    def top(h, lab):
+        cls = ' '.join(c for c in ('active' if h == top_on else '', 'lk-hot' if h == 'competition.html' else '') if c)
+        attr = (f' class="{cls}"' if cls else '') + (' aria-current="page"' if h == fn else '')
+        dot = '<i class="lk-dot" aria-hidden="true"></i>' if h == 'competition.html' else ''
+        return f'<a href="{h}"{attr}>{dot}{lab}</a>'
+    links = ''.join(top(h, lab) for h, lab, _ in PAGES if h not in TOP_HIDE)
     sheet = ''.join(
         f'<a class="sheet-item{" active" if h == fn else ""}" href="{h}"{" aria-current=page" if h == fn else ""}>{ic(i)}<span>{lab}</span></a>'
         for h, lab, i in PAGES)
     foot_pages = ''.join(f'<a href="{h}">{lab}</a>' for h, lab, _ in PAGES)
     foot_secs = ''.join(f'<a href="{link_for(s.id)}">{t(split_kicker(s.title)[1])}</a>' for s in P.sections)
     foot_axes = ''.join(f'<a href="quran.html#{s.id}">{t(split_kicker(s.title)[1])}</a>' for s in QURAN.sections[2:])
+    foot_comp = ''.join(f'<a href="{h}">{lab}</a>' for h, lab in (
+        ('competition.html', 'المسابقة الأولى: سورة الصف'), ('competition.html#c-league', 'لائحة دوري كرة القدم'),
+        ('register.html', 'استمارة تسجيل فريق'), ('register.html#c-consent', 'موافقة ولي الأمر'),
+        ('leaders.html', 'المرحلة الثانية: إعداد القادة'), ('method.html', 'منهجية ربط القرآن بالسلوك')))
 
     def tab(h, label, icon):
         a = ' class="active" aria-current="page"' if h == fn else ''
@@ -410,6 +448,7 @@ def page(fn, title, body, desc, css=(), js=(), base=None, head=''):
       <nav aria-label="الصفحات"><h2 class="foot-h">الصفحات</h2>{foot_pages}</nav>
       <nav aria-label="{plain(P.meta['title'])}"><h2 class="foot-h">{t(P.meta['title'])}</h2>{foot_secs}</nav>
       <nav aria-label="{plain(QURAN.meta['title'])}"><h2 class="foot-h">{t(QURAN.meta['title'])}</h2>{foot_axes}</nav>
+      <nav aria-label="المسابقة والبرامج"><h2 class="foot-h">المسابقة والبرامج</h2>{foot_comp}</nav>
     </div>
     <div class="foot-bottom"><span>{t(P.meta['title'])} {t(P.meta['subtitle'])}</span><span class="foot-credit">الصور: <a href="https://www.pexels.com" rel="noopener" target="_blank">Pexels</a></span><button type="button" class="link-btn" data-print>{ic('printer')}طباعة الصفحة</button></div>
   </div>

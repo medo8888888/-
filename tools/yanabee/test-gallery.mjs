@@ -119,7 +119,7 @@ console.log('markup');
   check('prev and next buttons exist', m.prev && m.next);
   check('verbatim detail markup is hidden until the sheet opens', m.detailHidden);
   check('the old pinned machinery is gone (pin, stage, counter, rail, hint, numerals, skip link)', m.old.length === 0, m.old.join());
-  check('the third section dot stays #behind (no id-bearing section was added)', m.sectionsWithId[2] === 'behind', m.sectionsWithId.join());
+  check('section dots: #competition banner first, then #how, #teams, #behind', m.sectionsWithId[0] === 'competition' && m.sectionsWithId[3] === 'behind', m.sectionsWithId.join());
   check('the carousel is not a main > section with an id', m.tag !== 'SECTION' && !m.id);
   check('links and photos are not draggable', m.draggable);
   check('sheet skeleton ships as a <template>', m.tpl);

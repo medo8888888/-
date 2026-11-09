@@ -1,12 +1,15 @@
 # Yanabee («ينابيع») site — architecture & contracts
 
-Arabic (RTL) mini-site for **مشروع «ينابيع»**, built from two source documents
-(Word → PDF, author Ali Shaban, September 2026):
+Arabic (RTL) mini-site for **مشروع «ينابيع»**, built from five source documents
+(Word → PDF, author Ali Shaban, September 2026; the last three added November 2026):
 
 | Source PDF | Content file | Site |
 |---|---|---|
 | مشروع "ينابيع" — المنصة الوطنية الموحدة للعمل الجماعي وتنمية النشء والشباب (8 pages) | `content/yanabee/platform.txt` | `index.html`, `teams.html`, `operations.html` |
 | مبادرة "حفظ، فهم، تطبيق" — فرق القرآن الكريم وبناء القيم والسلوك (6 pages) | `content/yanabee/quran.txt` | `quran.html` |
+| المسابقة الأولى لسورة الصف — الخطة، الشروط، المحاور، الجوائز، الشراكة، الإعلان، لائحة الدوري، الاستمارة، موافقة ولي الأمر، الربع الأول، بطاقة النشاط | `content/yanabee/competition.txt` | `competition.html`, `register.html` (`c-form`, `c-consent`) |
+| الخطة التنفيذية للمرحلة الثانية — إعداد القادة والمساعدين المتميزين | `content/yanabee/leaders.txt` | `leaders.html` |
+| ملحق: منهجية ربط القرآن الكريم بالسلوك والتطبيق | `content/yanabee/method.txt` | `method.html` |
 
 It is served at **`/yanabee/`** by the same Cloudflare Worker as the Takamul site
 (`site/yanabee/` is inside the Worker's assets directory), and it is also fully
@@ -15,8 +18,9 @@ from `file://`. Only `404.html` assumes the `/yanabee/` mount: Cloudflare serves
 `404.html` at any depth, so its asset and page URLs are absolute (`/yanabee/…`).
 
 ```
-content/yanabee/*.txt          the two documents, verbatim (markup documented in platform.txt's header)
-tools/yanabee/content.py       parser -> PLATFORM, QURAN (Doc -> sections -> subsections -> blocks/items)
+content/yanabee/*.txt          the five documents, verbatim (markup documented in platform.txt's header)
+tools/yanabee/content.py       parser -> PLATFORM, QURAN, COMP, LEADERS, METHOD (Doc -> sections -> subsections -> blocks/items); DOCS
+tools/yanabee/docpage.py       shared blocks for the document pages: head(), blocks_html(), sec(), fold(), seg_bar(), STATUS
 tools/yanabee/core.py          typography t(), icons ic()/svg(), logo(), PAGES, TEAMS, components, page() shell
 tools/yanabee/page_*.py        one module per page, each exposes build()
 tools/yanabee/build_kb.py      site/yanabee/data/kb.js (search + offline assistant) and worker/knowledge-yanabee.js
@@ -37,6 +41,12 @@ site/yanabee/js/<page>.js      page-only behaviour (springs.js = home hero canva
 site/yanabee/js/wow.js + css/wow.css       sitewide "wow" layer (cursor, page wipe, headline reveals, wave progress, parallax, sound)
 site/yanabee/js/intro.js + css/intro.css   opening scene (home, first visit per session)
 tools/yanabee/wow_gallery.py + js/gallery.js + css/gallery.css home: pinned horizontal gallery of the seven teams (+ inclusion)
+site/yanabee/css/comp.css      competition, register, leaders and method pages (+ print modes: form, consent, poster)
+site/yanabee/js/comp.js        competition status from the visitor's clock (docpage.STATUS on home + competition pages),
+                               timeline "now", open/close all chapters, print the announcement only
+site/yanabee/js/register.js    register.html: 5–7 member rows, nominee lists from the names, checks, draft in localStorage
+                               ('yanabee-reg-draft', this browser only), print form, one parent consent per minor, copy text.
+                               Sends nothing. WA = '' until the organisers announce the WhatsApp number («[رقم الواتساب]»).
 ```
 
 ## Laws
