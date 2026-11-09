@@ -177,10 +177,11 @@ PAGES = [
     ('register.html', 'سجّل فريقك', 'file-text'),
     ('leaders.html', 'إعداد القادة', 'user-check'),
     ('method.html', 'منهجية التطبيق', 'route'),
+    ('tournament.html', 'لوحة البطولة', 'chart'),
 ]
 PAGE_LABEL = {f: label for f, label, _ in PAGES}
-TOP_HIDE = {'register.html', 'leaders.html', 'method.html'}  # in the menu sheet and footer, not the top bar
-TOP_PARENT = {'register.html': 'competition.html', 'method.html': 'quran.html'}
+TOP_HIDE = {'register.html', 'leaders.html', 'method.html', 'tournament.html'}  # in the menu sheet and footer, not the top bar
+TOP_PARENT = {'register.html': 'competition.html', 'method.html': 'quran.html', 'tournament.html': 'competition.html'}
 
 # Platform sections -> page. Quran sections all live on quran.html.
 HOME_OF = {'s1': 'index.html', 's9': 'index.html', 's2': 'teams.html', 's3': 'teams.html',
@@ -205,7 +206,7 @@ SEC_ICON = {'s1': 'eye', 's2': 'users', 's3': 'accessibility', 's4': 'megaphone'
 DOC_PAGE = {}
 for _doc, _page in ((COMP, 'competition.html'), (LEADERS, 'leaders.html'), (METHOD, 'method.html')):
     for _s in _doc.sections:
-        _pg = 'register.html' if _s.id in ('c-form', 'c-consent') else _page
+        _pg = 'register.html' if _s.id in ('c-form', 'c-consent') else 'tournament.html' if _s.id == 'c-format' else _page
         DOC_PAGE[_s.id] = _pg
         for _sub in _s.subs:
             DOC_PAGE[_sub.id] = _pg
@@ -213,7 +214,7 @@ SEC_ICON.update({
     'c-plan': 'calendar', 'c-about': 'book-open', 'c-terms': 'file-text', 'c-axes': 'layers', 'c-prizes': 'trophy',
     'c-score': 'chart', 'c-ad': 'megaphone', 'c-partner': 'handshake', 'c-rules': 'shield', 'c-league': 'scale',
     'c-form': 'file-text', 'c-consent': 'user-check', 'c-ops': 'network', 'c-decisions': 'check', 'c-follow': 'gauge',
-    'c-q1': 'target', 'c-card': 'grid',
+    'c-q1': 'target', 'c-card': 'grid', 'c-format': 'trophy', 'fm-football': 'trophy', 'fm-chess': 'cpu',
     'l-idea': 'lightbulb', 'l-axes': 'compass', 'l-targets': 'target', 'l-select': 'user-check', 'l-weeks': 'calendar',
     'l-meeting': 'clock', 'l-practice': 'users', 'l-success': 'gauge', 'l-roles': 'network', 'l-outputs': 'award',
     'm-intro': 'book-open', 'm-fields': 'home', 'm-phases': 'route', 'm-workshop': 'lightbulb', 'm-roles': 'users',
@@ -359,7 +360,8 @@ def page(fn, title, body, desc, css=(), js=(), base=None, head=''):
     foot_comp = ''.join(f'<a href="{h}">{lab}</a>' for h, lab in (
         ('competition.html', 'المسابقة الأولى: سورة الصف'), ('competition.html#c-league', 'لائحة دوري كرة القدم'),
         ('register.html', 'استمارة تسجيل فريق'), ('register.html#c-consent', 'موافقة ولي الأمر'),
-        ('leaders.html', 'المرحلة الثانية: إعداد القادة'), ('method.html', 'منهجية ربط القرآن بالسلوك')))
+        ('tournament.html', 'لوحة البطولة: المجموعات والنتائج'), ('leaders.html', 'المرحلة الثانية: إعداد القادة'),
+        ('method.html', 'منهجية ربط القرآن بالسلوك')))
 
     def tab(h, label, icon):
         a = ' class="active" aria-current="page"' if h == fn else ''

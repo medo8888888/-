@@ -209,3 +209,5 @@ Tests: `tools/yanabee/test-feat-<bundle>.mjs` (in `npm run test:yanabee`).
 Contradictions between the documents found while reading (team size 5–7 / 5 or 7 / 6–10; no rule turning league
 standing into the 20 football points; إنذار vs yellow card; $ vs Turkish lira; 1–15 and 15–24 January overlap) are
 shown as the documents state them, never resolved silently.
+
+See also: [YANABEE_APP.md](YANABEE_APP.md) — accounts (Supabase), roles and the tournament manager.
