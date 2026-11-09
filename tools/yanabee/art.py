@@ -601,8 +601,8 @@ def ops_banner(uid):
     return _svg(links + ground + council + phone + ns + ppl, '0 0 1200 190', 'art-band-svg', '--tc:var(--sun)', 'xMidYMax slice')
 
 
-def _lantern(x, y, s, d=0):
-    return at(x, y, anim('sw sw-t', '<path class="qg-l" d="M0 0V60" stroke-width="2"/><circle cy="70" r="58" fill="url(#ql-%s)" class="pd" style="--d:%ss"/>' % ('U', d)
+def _lantern(x, y, s, d=0, uid='U'):
+    return at(x, y, anim('sw sw-t', '<path class="qg-l" d="M0 0V60" stroke-width="2"/><circle cy="70" r="58" fill="url(#ql-%s)" class="pd" style="--d:%ss"/>' % (uid, d)
                          + '<path class="qg" d="M-10 62L10 62L16 72L-16 72z"/><path class="qg2" d="M-16 72H16L24 104L12 120H-12L-24 104z"/>'
                            '<path class="qy" d="M-10 77H10L15 102L8 113H-8L-15 102z"/><path class="qg" d="M-14 120H14L10 128H-10z"/><circle cy="58" r="4" class="qg"/>'
                            '<path class="qg-l" d="M0 77V113M-6 80L-9 108M6 80L9 108" stroke-width="1.2" opacity=".5"/>'), s)
@@ -610,7 +610,7 @@ def _lantern(x, y, s, d=0):
 
 def quran_hero(uid, narrow=False):
     w, h = (480, 560) if narrow else (1200, 420)
-    defs = (f'<defs><radialGradient id="ql-U"><stop offset="0" class="qs" style="stop-opacity:.6"/><stop offset="1" class="qs" style="stop-opacity:0"/></radialGradient></defs>')
+    defs = (f'<defs><radialGradient id="ql-{uid}"><stop offset="0" class="qs" style="stop-opacity:.6"/><stop offset="1" class="qs" style="stop-opacity:0"/></radialGradient></defs>')
     n = 4 if narrow else 9
     sp = (w - 40) / n
     arcade = ''
@@ -624,7 +624,7 @@ def quran_hero(uid, narrow=False):
                    + at(x0 + aw / 2, top + aw / 2 - 14, anim('tk', f'<path class="qy" d="{star8(8)}"/>', k * .5)))
     stars = ''.join(spark(x, y, s, d, 'qy') for x, y, s, d in ((90, 60, 1, 0), (230, 120, .7, .8), (340, 40, .8, 1.5), (870, 70, 1, .4), (980, 130, .7, 1.1), (760, 30, .6, 2), (600, 24, .8, .6))
                     ) if not narrow else ''.join(spark(x, y, s, d, 'qy') for x, y, s, d in ((60, 150, .9, 0), (420, 190, .8, .8), (250, 40, .7, 1.4), (150, 300, .6, 1.1), (350, 330, .7, .3)))
-    lant = (_lantern(60, 0, 1.0, 0) + _lantern(420, 0, 1.0, 1.2)) if narrow else (_lantern(150, 0, 1.15, 0) + _lantern(1050, 0, 1.15, 1.2) + _lantern(330, 0, .7, .6) + _lantern(870, 0, .7, 1.8))
+    lant = (_lantern(60, 0, 1.0, 0, uid) + _lantern(420, 0, 1.0, 1.2, uid)) if narrow else (_lantern(150, 0, 1.15, 0, uid) + _lantern(1050, 0, 1.15, 1.2, uid) + _lantern(330, 0, .7, .6, uid) + _lantern(870, 0, .7, 1.8, uid))
     return _svg(defs + stars + arcade + lant, f'0 0 {w} {h}', 'art-q art-band-svg', '', 'xMidYMax slice')
 
 

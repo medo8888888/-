@@ -180,3 +180,32 @@ Motion is deliberately calm: slow photo fade/zoom, quick UI feedback; no water e
 
 
 The home page has no scroll story (the particle canvas was removed). The Quran initiative section (`#quran`) shows the banner, the three pillars (حفظ، فهم، تطبيق), eight feature cards, four numbers and a link to `quran.html`, in plain words; all of it comes from `content/yanabee/quran.txt`.
+
+## Interactive tools built on the documents (November 2026)
+
+Every line of the five documents was read for what it could become. The tools below use only the documents'
+words and numbers (UI chrome aside); data a visitor types stays in that browser (localStorage `yanabee-<id>-v1`);
+nothing is sent. Registry: `tools/yanabee/features.py` (id -> page; each page's build() loads `css/<id>.css`
+and `js/<id>.js`). Markup: `tools/yanabee/feat_<id>.py`, called by the page function that owns the section.
+Tests: `tools/yanabee/test-feat-<bundle>.mjs` (in `npm run test:yanabee`).
+
+| Page | Tool (id) | Built on |
+|---|---|---|
+| register.html | قبل التسجيل: كوّن فرقك ووزّع الأدوار (team-builder) | c-terms, c-timeline, f-team, f-nom, c-ad-how |
+| competition.html | أضف المواعيد إلى تقويمك (calendar-ics) | c-timeline, c-terms |
+| competition.html | خصّص الإعلان واطبعه (ad-maker) | c-ad and its parts |
+| competition.html | أدوات يوم المباراة: الساعة، المخالفات، الترجيح، ورقة المباراة (match-day) | lg1–lg6 |
+| competition.html | احسب ترتيب الدوري (league-table) | lg6, lg8 |
+| competition.html | ماذا لو؟ ابحث في اللائحة (rule-finder) | c-league, c-rules (search.js engine) |
+| competition.html | ورقة التحكيم وتقييم المشروع (judge-sheet) | c-score, c-rubric |
+| competition.html | املأ بطاقة نشاط (activity-card) | c-card cd1–cd6 |
+| competition.html | ملف الجهة الشريكة وتقرير الأسبوعين (partner-kit) | c-partner |
+| method.html | مؤقّت اللقاء (meeting-timer; deep link from leaders.html) | m-meeting, l-meeting, quran a4 |
+| method.html | قبل أن تنشر: افحص المادة (publish-check) | m-media, m-privacy, c-consent |
+| method.html | بطاقات الوعد والميثاق والمتابعة المنزلية (pledge-cards) | m-workshop, m-phases, m-card |
+| quran.html | دفتري: حفظ، فهم، تطبيق (student-week) | a1, a2, a4, KPIs |
+| quran.html | أدوات مجلس قادة الفرق (halaqa-council) | a3, a8, a10 |
+
+Contradictions between the documents found while reading (team size 5–7 / 5 or 7 / 6–10; no rule turning league
+standing into the 20 football points; إنذار vs yellow card; $ vs Turkish lira; 1–15 and 15–24 January overlap) are
+shown as the documents state them, never resolved silently.

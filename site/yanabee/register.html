@@ -23,6 +23,7 @@
 <link rel="stylesheet" href="css/assist.css">
 <link rel="stylesheet" href="css/art.css">
 <link rel="stylesheet" href="css/comp.css">
+<link rel="stylesheet" href="css/team-builder.css">
 <link rel="stylesheet" href="css/fx.css">
 <link rel="stylesheet" href="css/play.css">
 <link rel="stylesheet" href="css/wow.css">
@@ -35,6 +36,7 @@
 <script src="js/wow.js" defer></script>
 <script src="js/comp.js" defer></script>
 <script src="js/register.js" defer></script>
+<script src="js/team-builder.js" defer></script>
 </head>
 <body data-page="register.html">
 <div class="progress" aria-hidden="true"></div>
@@ -89,6 +91,44 @@
   <div class="cs-t"><b data-cs-title>المسابقة الأولى: سورة الصف</b><span data-cs-sub>التسجيل 1 نوفمبر 2026 · الانطلاق 15 نوفمبر 2026 · الختام 25 يناير 2027 · الحفل 31 يناير 2027</span></div>
   <div class="cs-count" data-cs-count hidden><b data-cs-n></b><small data-cs-unit></small></div>
 </div><ol class="hsteps"><li><span class="hs-n">1</span><span>اجمع فريقك (5 إلى 7 أعضاء) وعيّن قائدًا للفريق.</span></li><li><span class="hs-n">2</span><span>سارع بالتسجيل وسداد رسوم الاشتراك قبل اكتمال العدد المطلوب!</span></li><li><span class="hs-n">3</span><span>اطبع الاستمارة وموافقات أولياء الأمور، وسلّمها لمسؤول التسجيل.</span></li></ol></div>
+  </div>
+</section>
+<section class="sec dp-sec alt tb" id="team-builder" aria-labelledby="tb-title">
+  <div class="wrap">
+    <header class="sec-head rv"><div><span class="kicker"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>المسابقة الأولى · سورة الصف</span>
+      <h2 id="tb-title">قبل التسجيل: كوّن فرقك ووزّع الأدوار</h2>
+      <p class="sec-sub">للمدرسة أو الجمعية التي لديها أكثر من فريق، أو لقائد يريد التأكد من جاهزية فريقه قبل ملء الاستمارة.</p></div></header>
+    <div class="tb-when">
+      <p class="tb-chip" data-tb-chip hidden><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg><span data-tb-chip-t></span></p>
+      <p class="tb-src"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z"/><path d="M5 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z"/></svg><span>1 – 14 نوفمبر: تسجيل الفرق (5–7 أعضاء شاملة القائد)، تعريف القادة باللائحة، وتقديم الشرح الإلكتروني لسورة الصف.</span></p>
+      <p class="tb-src"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg><span>سارع بالتسجيل وسداد رسوم الاشتراك قبل اكتمال العدد المطلوب!</span></p>
+    </div>
+    <p class="tb-nojs">تعمل أداة تكوين الفرق داخل المتصفح بعد تفعيل JavaScript، ويمكن ملء الاستمارة أدناه مباشرة.</p>
+    <div class="tb-tool" data-tb-tool hidden>
+      <p class="privacy"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span>الأسماء تبقى في هذا المتصفح فقط ولا تُرسل إلى أي جهة.</span></p>
+      <div class="tb-input">
+        <label class="tb-lab" for="tb-names">اكتب أسماء الطلاب، اسمًا في كل سطر</label>
+        <textarea id="tb-names" rows="8" aria-describedby="tb-names-hint tb-names-info" autocomplete="off" spellcheck="false"></textarea>
+        <small class="f-hint" id="tb-names-hint">الاسم الثلاثي يمنع الالتباس بين الأسماء المتشابهة.</small>
+        <p class="tb-info" id="tb-names-info" data-tb-info aria-live="polite"></p>
+        <ul class="tb-dups" data-tb-dups hidden></ul>
+        <div class="tb-acts">
+          <button type="button" class="btn btn-primary btn-sm" data-tb-split><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>اقترح التقسيم</span></button>
+          <button type="button" class="btn btn-ghost btn-sm" data-tb-shuffle><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg><span>اخلط الأسماء</span></button>
+          <button type="button" class="btn btn-ghost btn-sm" data-tb-clear><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg><span>امسح القائمة</span></button>
+        </div>
+      </div>
+      <div class="tb-note" data-tb-note role="status" hidden></div>
+      <div class="tb-bar" data-tb-bar hidden>
+        <p class="tb-sum" data-tb-sum aria-live="polite"></p>
+        <button type="button" class="btn btn-ghost btn-sm" data-tb-print><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/></svg><span>اطبع قوائم الفرق</span></button>
+      </div>
+      <p class="sr-only" data-tb-say aria-live="polite"></p>
+      <p class="tb-saved" data-tb-saved aria-live="polite"></p>
+    </div>
+    <div class="tb-cards" data-tb-cards></div>
+    <div class="tb-wait" data-tb-wait hidden></div>
+    <script type="application/json" id="team-builder-data">{"min": 5, "max": 7, "start": "2026-11-01", "end": "2026-11-14", "reg": "1 – 14 نوفمبر: تسجيل الفرق (5–7 أعضاء شاملة القائد)، تعريف القادة باللائحة، وتقديم الشرح الإلكتروني لسورة الصف.", "how0": {"t": "اجمع فريقك (5 إلى 7 أعضاء) وعيّن قائدًا للفريق.", "from": "كيف تسجل فريقك؟"}, "how1": {"t": "سارع بالتسجيل وسداد رسوم الاشتراك قبل اكتمال العدد المطلوب!", "from": "كيف تسجل فريقك؟"}, "partner0": {"t": "ترشيح وتشكيل فريق من طلاب الجمعية / المدرسة، يتكون من 5 إلى 7 أعضاء شاملًا قائد الفريق، وفق شروط المسابقة والفئات العمرية المعتمدة (الصف السابع حتى الثاني عشر).", "from": "التزامات الجهة الشريكة (المدرسة أو الجمعية)"}, "ruleGrade": {"t": "اعتماد الفئة العمرية من الصف السابع إلى الصف الثاني عشر (المرحلة الإعدادية والثانوية).", "from": "ضوابط ضرورية قبل النشر والتنفيذ"}, "oneTeam": {"t": "لا يجوز للاعب المشاركة مع أكثر من فريق، ولا إشراك لاعب غير مسجل أو خارج الفئة العمرية للمسابقة.", "from": "أولًا: نظام الدوري والمشاركة"}, "law": {"t": "يُعد تسجيل الفريق وموافقة مسؤوليه إقرارًا بالاطلاع على اللائحة والالتزام بها.", "from": "عاشرًا: أحكام عامة"}, "fee": {"t": "رسوم الاشتراك المعلنة: 10 $ للفريق الواحد (وليس لكل عضو).", "from": "خامسًا: رسوم الاشتراك"}, "lblTeam": "اسم الفريق", "lblLeader": "اسم قائد الفريق", "nom": ["المُرشح الأول لتسميع سورة الصف", "المُرشح الثاني لتسميع سورة الصف", "المُرشح لبطولة الشطرنج (عضو واحد)"], "coord": "مسؤول التنسيق والتوثيق بالفريق", "nameHint": "الاسم الثلاثي"}</script>
   </div>
 </section>
 <section class="sec dp-sec reg" id="c-form">
