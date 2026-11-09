@@ -8,6 +8,8 @@ import math
 import re
 
 import art
+import feat_halaqa_council
+import feat_student_week
 from core import (PLATFORM as P, QURAN as Q, SEC_ICON, btn, cta, ic, logo, page, paren, short,
                   split_kicker, strip_colon, svg, t, table_html)
 from features import assets
@@ -280,7 +282,7 @@ def s_a3():
     <article class="q-card q-league rv">
       <div class="q-pair q-cup" aria-hidden="true"><span>{icon('trophy')}</span></div>
       <h3>{t(league.label)}</h3>{league_body}</article>
-  </div>'''
+  </div>''' + feat_halaqa_council.html()
     return sec(s, body, 3)
 
 
@@ -294,7 +296,7 @@ def s_a4():
             b = emph(b, 'أول 10 دقائق', 'strong')
         steps += (f'<li class="q-step rv">{med(str(i + 1))}<div class="q-step-c">'
                   f'<h3><span class="q-ic">{icon(icons[i])}</span><span>{t(it.label)}</span></h3><p>{b}</p></div></li>')
-    return sec(s, f'<ol class="q-steps">{steps}</ol>', 4)
+    return sec(s, f'<ol class="q-steps">{steps}</ol>' + feat_student_week.html(), 4)
 
 
 def s_a5():
