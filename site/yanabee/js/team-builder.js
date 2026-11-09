@@ -17,22 +17,25 @@
   var MIN = D.min, MAX = D.max, LIMIT = 200;
   var $ = function (s, r) { return (r || root).querySelector(s); };
   var $$ = function (s, r) { return Array.prototype.slice.call((r || root).querySelectorAll(s)); };
+  var setText = function (el, s) { if (el.textContent !== s) el.textContent = s; };
   var esc = function (s) {
     return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; });
   };
 
   /* ------------------------------------------------------------ names ---- */
   // The same name written two ways must compare equal: spaces, tashkeel, tatweel, alef forms, alef maqsura.
+  // Invisible marks that pasted text often carries (RLM/LRM, ZWJ/ZWNJ, bidi controls, BOM) are dropped everywhere.
+  var INVIS = /[\u200B-\u200F\u202A-\u202E\u2060-\u2069\uFEFF]/g;
   var norm = function (s) {
-    return String(s || '').replace(/[ً-ٰٟـ]/g, '').replace(/[أإآٱ]/g, 'ا').replace(/ى/g, 'ي')
+    return String(s || '').replace(INVIS, '').replace(/[ً-ٰٟـ]/g, '').replace(/[أإآٱ]/g, 'ا').replace(/ى/g, 'ي')
       .replace(/\s+/g, ' ').trim().toLowerCase();
   };
   // One name per line; a leading list number ('1.', '١-', '1)') or bullet is dropped.
-  var LEAD = /^\s*(?:[0-9٠-٩۰-۹]+\s*[.\-–)\]،,:/]|[-•*·–])\s*/;
+  var LEAD = /^\s*(?:[0-9٠-٩۰-۹]+(?:\s*[.\-–)\]،,:/]|\s)|[-•*·–])\s*/;
   var parse = function (text) {
     var out = [], extra = 0;
     String(text || '').split(/\r?\n/).forEach(function (raw, i) {
-      var n = raw.replace(LEAD, '').replace(/\s+/g, ' ').trim();
+      var n = raw.replace(INVIS, '').replace(LEAD, '').replace(/\s+/g, ' ').trim();
       if (!n) return;
       if (out.length >= LIMIT) { extra++; return; }
       out.push({ n: n, line: i + 1 });
@@ -82,6 +85,7 @@
   var savedEl = $('[data-tb-saved]');
   var writeNow = function () {
     clearTimeout(timer);
+    timer = 0;
     var o = {
       names: S.names, edited: S.edited, note: S.note, waiting: S.waiting,
       teams: S.teams.map(function (t) { return { name: t.name, members: t.members }; }),
@@ -91,13 +95,15 @@
     try {
       localStorage.setItem(KEY, JSON.stringify(o));
       canStore = true;
-      savedEl.textContent = '';
+      setText(savedEl, '');
     } catch (e) {
       canStore = false;
-      savedEl.textContent = 'تعذّر الحفظ في هذا المتصفح؛ تبقى القائمة حتى إغلاق الصفحة فقط.';
+      setText(savedEl, 'تعذّر الحفظ في هذا المتصفح؛ تبقى القائمة حتى إغلاق الصفحة فقط.');
     }
   };
   var save = function () { clearTimeout(timer); timer = setTimeout(writeNow, 400); };
+  // leaving the page inside the 400 ms window must not lose the last keystrokes
+  window.addEventListener('pagehide', function () { if (timer) writeNow(); });
   var str = function (v) { return typeof v === 'string' ? v : ''; };
   var load = function () {
     var o = null;
@@ -105,7 +111,10 @@
     if (!o || typeof o !== 'object') return;
     S.names = str(o.names);
     S.edited = !!o.edited;
-    S.note = o.note && typeof o.note === 'object' ? o.note : null;
+    var nt = o.note && typeof o.note === 'object' ? o.note : null;  // a stored note is trusted only in the shapes doSplit writes
+    S.note = !nt ? null : nt.kind === 'fail' && typeof nt.n === 'number' ? { kind: 'fail', n: nt.n }
+      : nt.kind === 'ok' && Array.isArray(nt.sizes) ? { kind: 'ok', sizes: nt.sizes.filter(function (x) { return typeof x === 'number'; }) }
+      : nt.kind === 'dups' || nt.kind === 'empty' ? { kind: nt.kind } : null;
     S.waiting = Array.isArray(o.waiting) ? o.waiting.filter(function (x) { return typeof x === 'string' && x; }) : [];
     S.teams = (Array.isArray(o.teams) ? o.teams : []).map(function (t, i) {
       var m = t && Array.isArray(t.members) ? t.members.filter(function (x) { return typeof x === 'string' && x; }) : [];
@@ -143,6 +152,9 @@
 
   /* ------------------------------------------------------------ checks --- */
   var unitM = function (n) { return n === 1 ? 'عضو واحد' : n === 2 ? 'عضوان' : n + (n >= 3 && n <= 10 ? ' أعضاء' : ' عضوًا'); };
+  // «1 فرق» and «8 طالبًا» do not read right: the counted noun follows the number (1, 2, 3–10, 11+)
+  var unitT = function (n) { return n === 1 ? 'فريق واحد' : n === 2 ? 'فريقان' : n + (n >= 3 && n <= 10 ? ' فرق' : ' فريقًا'); };
+  var unitS = function (n) { return n === 1 ? 'طالب واحد' : n === 2 ? 'طالبين' : n + (n >= 3 && n <= 10 ? ' طلاب' : ' طالبًا'); };
   var CHECKS = [
     { k: 'size', short: 'عدد الأعضاء', src: [D.how0] },
     { k: 'leader', short: 'القائد', src: [D.how0] },
@@ -288,7 +300,7 @@
     });
     var bar = $('[data-tb-bar]');
     bar.hidden = !S.teams.length && !S.waiting.length;
-    $('[data-tb-sum]').textContent = S.teams.length + ' فرق · ' + ready + ' جاهزة · ' + S.waiting.length + ' في قائمة الانتظار';
+    setText($('[data-tb-sum]'), unitT(S.teams.length) + ' · ' + ready + ' جاهزة · ' + S.waiting.length + ' في قائمة الانتظار');
     $('[data-tb-print]').hidden = !S.teams.length;
   };
 
@@ -306,19 +318,20 @@
     update();
   };
 
-  var noteEl = $('[data-tb-note]');
+  var noteEl = $('[data-tb-note]'), noteWas = null;
   var renderNote = function () {
-    var n = S.note;
-    if (!n) { noteEl.hidden = true; noteEl.innerHTML = ''; noteEl.removeAttribute('data-kind'); return; }
+    var n = S.note, html;
+    if (!n) { noteWas = null; noteEl.hidden = true; noteEl.innerHTML = ''; noteEl.removeAttribute('data-kind'); return; }
     if (n.kind === 'fail') {
-      noteEl.innerHTML = '<p><b>لا يمكن تقسيم ' + n.n + ' طالبًا إلى فرق من ' + MIN + ' إلى ' + MAX + ' دون بقية.</b></p>' + srcHtml(D.how0);
+      html = '<p><b>لا يمكن تقسيم ' + unitS(n.n) + ' إلى فرق من ' + MIN + ' إلى ' + MAX + ' دون بقية.</b></p>' + srcHtml(D.how0);
     } else if (n.kind === 'dups') {
-      noteEl.innerHTML = '<p><b>ميّز الأسماء المكررة أولًا، ثم اقترح التقسيم.</b></p>';
+      html = '<p><b>ميّز الأسماء المكررة أولًا، ثم اقترح التقسيم.</b></p>';
     } else if (n.kind === 'empty') {
-      noteEl.innerHTML = '<p><b>اكتب أسماء الطلاب أولًا.</b></p>';
+      html = '<p><b>اكتب أسماء الطلاب أولًا.</b></p>';
     } else {
-      noteEl.innerHTML = '<p>اقتُرح التقسيم: ' + n.sizes.map(unitM).join(' · ') + '. اختر لكل فريق قائده ومرشحيه.</p>';
+      html = '<p>اقتُرح التقسيم: ' + (n.sizes || []).map(unitM).join(' · ') + '. اختر لكل فريق قائده ومرشحيه.</p>';
     }
+    if (html !== noteWas) { noteEl.innerHTML = html; noteWas = html; }
     noteEl.setAttribute('data-kind', n.kind);
     noteEl.hidden = false;
   };
@@ -338,7 +351,7 @@
       var b = inTool.map(norm).sort().join('|');
       if (a !== b) info += ' · تغيّرت القائمة بعد آخر تقسيم؛ اضغط «اقترح التقسيم» لتحديث الفرق.';
     }
-    infoEl.textContent = info;
+    setText(infoEl, info);
     dupsEl.innerHTML = groups.map(function (g) {
       return '<li><b>«' + esc(g[0].n) + '»</b> <small>(الأسطر ' + g.map(function (x) { return x.line; }).join('، ') + ')</small> — مكرر: ميّز الاسمين قبل التقسيم</li>';
     }).join('');
@@ -363,13 +376,13 @@
     render();
     showInput();
     save();
-    say(pl.ok ? 'اقتُرح ' + pl.sizes.length + ' فرق.' : 'لا يمكن التقسيم دون بقية.');
+    say(pl.ok ? 'اقتُرح ' + unitT(pl.sizes.length) + '.' : 'لا يمكن التقسيم دون بقية.');
   };
   $('[data-tb-split]').addEventListener('click', function () { doSplit(false); });
   $('[data-tb-shuffle]').addEventListener('click', function () { doSplit(true); });
   $('[data-tb-clear]').addEventListener('click', function () {
     if (!window.confirm('ستُحذف الأسماء من هذا المتصفح. متابعة؟')) return;
-    clearTimeout(timer);
+    clearTimeout(timer); timer = 0;
     S = { names: '', teams: [], waiting: [], edited: false, note: null };
     ta.value = '';
     try { localStorage.removeItem(KEY); } catch (e) { /* storage blocked */ }
@@ -477,13 +490,14 @@
   };
 
   /* ------------------------------------------------------------ print ---- */
-  var printOnly = window.__yanabeePrintOnly || function (cls) {
+  var printLocal = function (cls) {
     document.body.classList.add(cls);
     var off = function () { document.body.classList.remove(cls); window.removeEventListener('afterprint', off); };
     window.addEventListener('afterprint', off);
     window.print();
   };
-  $('[data-tb-print]').addEventListener('click', function () { update(); printOnly('print-team-builder'); });
+  // comp.js's helper is looked up at click time, so the order the scripts load in does not matter
+  $('[data-tb-print]').addEventListener('click', function () { update(); (window.__yanabeePrintOnly || printLocal)('print-team-builder'); });
 
   /* ------------------------------------------------------------ start ---- */
   window.YanabeeTeamBuilder = { plan: plan, norm: norm, parse: function (s) { return parse(s).list.map(function (x) { return x.n; }); } };

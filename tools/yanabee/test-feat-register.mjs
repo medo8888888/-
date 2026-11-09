@@ -36,13 +36,17 @@ async function open(opts = {}) {
   p.on('console', m => { if (m.type() === 'error' && !/fonts\.g|ERR_FAILED|net::/.test(m.text() + ((m.location() && m.location().url) || ''))) errs.push(m.text()); });
   p.on('request', r => { const u = r.url(); if (!u.startsWith('file:') && !u.startsWith('data:') && !/fonts\.(googleapis|gstatic)\.com/.test(u)) netBad.push(u); });
   await p.route('**/fonts.g*/**', r => r.abort());
-  await p.addInitScript(t => { try { localStorage.setItem('yanabee-theme', t); sessionStorage.setItem('yb-intro', '1'); } catch (e) { /* blocked */ } }, theme);
+  // set the theme on the first load of the tab only: an init script that touches localStorage on a reload races the
+  // write the previous document made just before location.reload() in Chromium, and the draft read back is stale
+  await p.addInitScript(t => { try { if (!sessionStorage.getItem('tbt-theme')) { sessionStorage.setItem('tbt-theme', '1'); localStorage.setItem('yanabee-theme', t); } sessionStorage.setItem('yb-intro', '1'); } catch (e) { /* blocked */ } }, theme);
   if (init) await p.addInitScript(init);
   await p.clock.setFixedTime(date);
   await p.goto(url('register.html') + hash);
   await p.waitForTimeout(300);
   return { ctx, p, errs };
 }
+const unitT = n => (n === 1 ? 'فريق واحد' : n === 2 ? 'فريقان' : n + (n >= 3 && n <= 10 ? ' فرق' : ' فريقًا'));
+const unitS = n => (n === 1 ? 'طالب واحد' : n === 2 ? 'طالبين' : n + (n >= 3 && n <= 10 ? ' طلاب' : ' طالبًا'));
 const names = n => Array.from({ length: n }, (_, i) => `طالب ${i + 1} اسم ثلاثي`);
 const split = async (p, list, btn = '[data-tb-split]') => { await p.fill('#tb-names', list.join('\n')); await p.click(btn); await p.waitForTimeout(50); };
 const sizes = p => p.$$eval('#team-builder .tb-card', cs => cs.map(c => c.querySelectorAll('.tb-mem > li').length));
@@ -133,11 +137,11 @@ console.log('parse, duplicates, split');
     check(`split ${n} -> ${sz.join('+')}${w ? ' + ' + w + ' waiting' : ''}`, eq(s, sz) && wl.length === w, `${s} / ${wl.length}`);
     const note = await text(p, '[data-tb-note]');
     if (w) {
-      check(`split ${n}: message and the document line`, note.includes(`لا يمكن تقسيم ${n} طالبًا إلى فرق من 5 إلى 7 دون بقية.`) && note.includes(DATA.how0.t), note);
+      check(`split ${n}: message and the document line`, note.includes(`لا يمكن تقسيم ${unitS(+n)} إلى فرق من 5 إلى 7 دون بقية.`) && note.includes(DATA.how0.t), note);
       check(`split ${n}: the rest is in «قائمة الانتظار»`, eq(wl, names(+n).slice(7)) && (await text(p, '.tb-wh')).startsWith('قائمة الانتظار'));
     }
     const sum = await text(p, '[data-tb-sum]');
-    check(`split ${n}: live summary`, sum === `${sz.length} فرق · 0 جاهزة · ${w} في قائمة الانتظار`, sum);
+    check(`split ${n}: live summary`, sum === `${unitT(sz.length)} · 0 جاهزة · ${w} في قائمة الانتظار`, sum);
   }
   check('summary is aria-live', await p.$eval('[data-tb-sum]', e => e.getAttribute('aria-live') === 'polite'));
   await split(p, names(4));
@@ -159,6 +163,31 @@ console.log('parse, duplicates, split');
   // 200 limit
   await split(p, names(205));
   check('at most 200 names are taken', (await text(p, '[data-tb-info]')).includes('عدد الأسماء: 200') && (await sizes(p)).reduce((a, b) => a + b, 0) + (await waiting(p)).length === 200);
+  check('200 names: 29 teams, the count reads «29 فريقًا»', (await sizes(p)).length === 29 && (await text(p, '[data-tb-sum]')) === '29 فريقًا · 0 جاهزة · 0 في قائمة الانتظار', await text(p, '[data-tb-sum]'));
+  await split(p, names(5));
+  check('one team reads «فريق واحد»', (await text(p, '[data-tb-sum]')) === 'فريق واحد · 0 جاهزة · 0 في قائمة الانتظار', await text(p, '[data-tb-sum]'));
+  // pasted text: invisible marks (RLM, ZWNJ, BOM) and a numbered column ('1<TAB>name', '٢ name')
+  check('parse drops invisible marks and a number followed by a tab or space', eq(await p.evaluate(() => window.YanabeeTeamBuilder.parse('\u200fأحمد\u200f\n\u200f\n\ufeff1\tسالم\n٢ هدى\n3 \u200cمريم')), ['أحمد', 'سالم', 'هدى', 'مريم']));
+  await p.fill('#tb-names', ['أحمد\u200f', 'أحمد', '\u200f', 'هدى', 'مريم', 'ليلى'].join('\n'));
+  await p.waitForTimeout(30);
+  const inv = await p.$eval('[data-tb-dups]', e => (e.hidden ? '' : e.textContent));
+  check('a name with an invisible mark is flagged as a duplicate; a line of marks only is not a name', inv.includes('مكرر') && (await text(p, '[data-tb-info]')).startsWith('عدد الأسماء: 5'), inv + ' / ' + await text(p, '[data-tb-info]'));
+  check('team names with an RLM compare equal', await p.evaluate(() => window.YanabeeTeamBuilder.norm('فريق النور\u200f') === window.YanabeeTeamBuilder.norm('فريق النور')));
+  // live regions are written only when their text changes (no re-announcement on every keystroke or move)
+  await split(p, names(10));
+  const muts = await p.evaluate(async () => {
+    const sum = document.querySelector('[data-tb-sum]'), note = document.querySelector('[data-tb-note]');
+    let n = 0, m = 0;
+    new MutationObserver(r => { n += r.length; }).observe(sum, { childList: true, characterData: true, subtree: true });
+    new MutationObserver(r => { m += r.length; }).observe(note, { childList: true, characterData: true, subtree: true });
+    const inp = document.querySelector('.tb-card[data-i="0"] input[data-name]');
+    for (const ch of 'فريق') { inp.value += ch; inp.dispatchEvent(new Event('input', { bubbles: true })); }
+    await new Promise(r => setTimeout(r, 20));
+    return [n, m];
+  });
+  check('typing a team name does not rewrite the live summary or the note', muts[0] === 0 && muts[1] === 0, String(muts));
+  await moveTo(p, card(0), names(10)[0], 't1');
+  check('a move does not rewrite the note (role=status)', await p.evaluate(() => document.querySelector('[data-tb-note]').textContent.includes('اقتُرح التقسيم')) && (await text(p, '[data-tb-sum]')).startsWith('فريقان'));
   check('no errors (split)', !errs.length, errs.join(' | '));
   await ctx.close();
 }
@@ -195,7 +224,7 @@ console.log('roles, checks, moving members');
   for (const k of ['grade', 'fee', 'law']) await p.check(`${card(0)} input[data-ck="${k}"]`);
   badge = await text(p, `${card(0)} [data-badge]`);
   check('all checks pass -> «جاهز للتسجيل»', badge === 'جاهز للتسجيل', badge);
-  check('summary counts the ready team', (await text(p, '[data-tb-sum]')) === '2 فرق · 1 جاهزة · 0 في قائمة الانتظار');
+  check('summary counts the ready team', (await text(p, '[data-tb-sum]')) === 'فريقان · 1 جاهزة · 0 في قائمة الانتظار');
   check('role tags on member rows', (await text(p, `${card(0)} .tb-mem > li:first-child .tb-tags`)).includes('القائد'));
   // move the leader to team 2: team 1 drops to 4, its leader is cleared
   await moveTo(p, card(0), L[0], 't1');
@@ -243,7 +272,7 @@ console.log('storage');
   await p.reload(); await p.waitForTimeout(300);
   check('restored after reload', (await p.$eval('#tb-names', t => t.value)).includes(L[0]) && (await p.$eval(`${card(0)} input[data-name]`, i => i.value)) === 'فريق النور'
     && (await p.$eval(`${card(0)} select[data-r="leader"]`, s => s.value)) === L[2] && await p.$eval(`${card(0)} input[data-ck="law"]`, c => c.checked) && eq(await waiting(p), [L[7]]));
-  check('restored note', (await text(p, '[data-tb-note]')).includes('لا يمكن تقسيم 8 طالبًا'));
+  check('restored note', (await text(p, '[data-tb-note]')).includes('لا يمكن تقسيم 8 طلاب'));
   const msgs = [];
   p.once('dialog', d => { msgs.push(d.message()); d.dismiss(); });
   await p.click('[data-tb-clear]');
@@ -329,6 +358,48 @@ console.log('push into the registration form');
   await p.waitForTimeout(200);
   check('write throws: message shown, no reload', (await text(p, `${card(0)} [data-push-msg]`)).startsWith('تعذّر الحفظ') && (await p.$eval(`${card(0)} input[data-name]`, i => i.value)) === 'فريق الأمل');
   check('no errors (push)', !errs.length, errs.join(' | '));
+  await ctx.close();
+}
+
+/* ------------------------------------------------------------------ edge cases (review) */
+console.log('edge cases');
+{
+  // a stored note of an unexpected shape must not render «undefined»
+  const bad = () => { try { if (!sessionStorage.getItem('tbt-bad')) { sessionStorage.setItem('tbt-bad', '1'); localStorage.setItem('yanabee-team-builder-v1', JSON.stringify({ names: 'أ', teams: [], waiting: ['أ'], note: { kind: 'fail' } })); } } catch (e) { /* blocked */ } };
+  const { ctx, p, errs } = await open({ init: bad });
+  const nt = await p.$eval('[data-tb-note]', e => (e.hidden ? '' : e.textContent));
+  check('stored note of a wrong shape is ignored (no «undefined»)', !nt.includes('undefined'), nt);
+  // the last keystrokes are saved when the page is left inside the 400 ms debounce
+  await p.fill('#tb-names', 'سالم\nهدى');
+  await p.evaluate(() => dispatchEvent(new Event('pagehide')));
+  check('pagehide writes the pending change', (await p.evaluate(() => JSON.parse(localStorage.getItem('yanabee-team-builder-v1')).names)) === 'سالم\nهدى');
+  // print still works when comp.js's helper is missing
+  await split(p, names(5));
+  await p.evaluate(() => { delete window.__yanabeePrintOnly; window.__printed = []; window.print = () => window.__printed.push(document.body.className); });
+  await p.click('[data-tb-print]');
+  check('print without comp.js: local fallback adds the class', (await p.evaluate(() => window.__printed[0] || '')).split(' ').includes('print-team-builder'));
+  await p.evaluate(() => dispatchEvent(new Event('afterprint')));
+  check('print without comp.js: afterprint removes the class', !(await p.evaluate(() => document.body.classList.contains('print-team-builder'))));
+  check('no errors (edge cases)', !errs.length, errs.join(' | '));
+  await ctx.close();
+}
+{
+  // phone: long names without spaces (duplicates list, cards, waiting list) stay inside the screen
+  const { ctx, p, errs } = await open({ ...PHONE });
+  const LONG = 'عبدالرحمنمحمدعبداللهالطويلجداجداجداجداجداجداجداجداجداجداجداجدا';
+  await p.fill('#tb-names', [LONG, 'سالم', LONG, 'هدى', 'مريم', 'ليلى'].join('\n'));
+  await p.click('[data-tb-split]');
+  await p.waitForTimeout(30);
+  const out = () => p.evaluate(() => [...document.querySelectorAll('#team-builder *')].filter(e => { const r = e.getBoundingClientRect(); return r.width && (r.right > innerWidth + 1 || r.left < -1); }).map(e => e.tagName + '.' + e.className).slice(0, 5));
+  let w = await out();
+  check('390px: a long duplicated name keeps the input box on screen', !w.length, w.join(','));
+  const L = names(8); L[2] = LONG + '2';
+  await split(p, L);
+  await p.fill(`${card(0)} input[data-name]`, 'فريق'.repeat(15));
+  await role(p, 0, 'leader', L[2]);
+  w = await out();
+  check('390px: long names in cards and the waiting list stay on screen', !w.length && await p.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), w.join(','));
+  check('no errors (phone edge cases)', !errs.length, errs.join(' | '));
   await ctx.close();
 }
 
