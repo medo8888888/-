@@ -6,6 +6,8 @@ results / ceremony) is computed in js/comp.js from the dates that appear in the 
 """
 from core import COMP as C, PAGE_LABEL, btn, cta, ic, page, page_hero, plain, split_kicker, strip_colon, t
 from features import assets
+import feat_ad_maker
+import feat_calendar_ics
 from docpage import STATUS, ayah, blocks_html, fold, head, node_html, sec, seg_bar
 
 PAGE = 'competition.html'
@@ -60,7 +62,8 @@ def plan():
            f'<div class="ct-n"><b>5 إلى 7</b><span>أعضاء لكل فريق</span></div><div class="ct-n"><b>60 إلى 84</b><span>مشاركًا</span></div></div>')
     inner = (head(n) + blocks_html(n)
              + f'<div class="dp-sub" id="c-target">{head(tgt, level=3)}{blocks_html(tgt)}{big}</div>'
-             + f'<div class="dp-sub" id="c-timeline">{head(tl, level=3)}<ol class="tl" data-timeline>{steps}</ol></div>')
+             + f'<div class="dp-sub" id="c-timeline">{head(tl, level=3)}<ol class="tl" data-timeline>{steps}</ol>'
+             + feat_calendar_ics.html() + '</div>')
     return sec('c-plan', inner)
 
 
@@ -134,15 +137,17 @@ def ad():
     paras = [b for k, b in n.blocks if k == 'p']
     q = [b for k, b in n.blocks if k == 'quote'][0]
     subs = ''.join(f'<div class="ad-part" id="{s.id}"><h3>{t(strip_colon(s.title))}</h3>{blocks_html(s)}</div>' for s in n.subs)
+    subs = feat_ad_maker.mark_subs(subs)  # '[رقم الواتساب]' -> a <bdi> the ad-maker panel fills
+    lead = feat_ad_maker.mark_lead(t(paras[2]))  # 'جمعية / مدرسة ..................' -> two fillable spans
     poster = f'''
     <article class="poster rv" data-print-area>
       <header><span class="poster-k">{t(paras[0])}</span>{ayah(q)}<p class="poster-q">{t(paras[1])}</p></header>
-      <p class="poster-lead">{t(paras[2])}</p>
+      <p class="poster-lead">{lead}</p>
       <div class="ad-grid">{subs}</div>
     </article>'''
     tools = (f'<div class="fold-tools rv"><button type="button" class="btn btn-ghost btn-sm" data-print-poster>{ic("printer")}'
              f'<span>اطبع الإعلان</span></button>{btn("register.html", "سجّل فريقك", "file-text", "btn-primary btn-sm")}</div>')
-    return sec('c-ad', head(n) + tools + poster)
+    return sec('c-ad', head(n) + feat_ad_maker.html() + tools + poster)
 
 
 def guide():
