@@ -474,3 +474,9 @@ html:not(.js) .tabbar{grid-template-columns:repeat(3,1fr)}
 .cs-count[hidden]{display:none!important}
 @media (prefers-reduced-motion:reduce){.cstatus .cs-dot{animation:none!important}}
 @media(max-width:560px){.cstatus{flex-wrap:wrap;row-gap:8px}.cs-t{flex:1 1 200px}.cs-count{display:flex;align-items:baseline;gap:8px;margin-inline-start:26px;padding:4px 12px}.cs-count b{font-size:1.3rem}}
+
+/* account button (top bar) */
+.acct-btn{position:relative}
+.acct-btn.on{color:var(--brand);background:color-mix(in oklab,var(--brand) 12%,transparent)}
+.acct-dot{position:absolute;top:8px;inset-inline-end:8px;width:9px;height:9px;border-radius:50%;background:#16a36b;border:2px solid var(--surface)}
+.acct-dot[hidden]{display:none}

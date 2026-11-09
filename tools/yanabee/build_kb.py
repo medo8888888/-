@@ -55,7 +55,7 @@ SUB_ICON = {
     'followup': 'calendar', 'periodic': 'award', 'annual': 'trophy', 'levels': 'layers', 'kpis': 'chart',
 }
 PAGE_TONE = {'index.html': 'brand', 'teams.html': 'accent', 'operations.html': 'sky', 'quran.html': 't1', 'learn.html': 'sun',
-             'lab.html': 'accent', 'competition.html': 't5', 'register.html': 't5', 'leaders.html': 'sky', 'method.html': 't1', 'tournament.html': 't5'}
+             'lab.html': 'accent', 'competition.html': 't5', 'register.html': 't5', 'leaders.html': 'sky', 'method.html': 't1', 'tournament.html': 't5', 'account.html': 'brand'}
 EXTRA_DOCS = [('comp', COMP, 'الوثيقة الثالثة'), ('leaders', LEADERS, 'الوثيقة الرابعة'), ('method', METHOD, 'الوثيقة الخامسة')]
 UI_ICONS = ['search', 'sparkles', 'arrow-left', 'file-text', 'x', 'book-open', 'users', 'home', 'shield', 'gauge']
 

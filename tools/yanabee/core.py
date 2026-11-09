@@ -178,9 +178,10 @@ PAGES = [
     ('leaders.html', 'إعداد القادة', 'user-check'),
     ('method.html', 'منهجية التطبيق', 'route'),
     ('tournament.html', 'لوحة البطولة', 'chart'),
+    ('account.html', 'حسابي', 'user'),
 ]
 PAGE_LABEL = {f: label for f, label, _ in PAGES}
-TOP_HIDE = {'register.html', 'leaders.html', 'method.html', 'tournament.html'}  # in the menu sheet and footer, not the top bar
+TOP_HIDE = {'register.html', 'leaders.html', 'method.html', 'tournament.html', 'account.html'}  # in the menu sheet and footer, not the top bar
 TOP_PARENT = {'register.html': 'competition.html', 'method.html': 'quran.html', 'tournament.html': 'competition.html'}
 
 # Platform sections -> page. Quran sections all live on quran.html.
@@ -360,7 +361,7 @@ def page(fn, title, body, desc, css=(), js=(), base=None, head=''):
     foot_comp = ''.join(f'<a href="{h}">{lab}</a>' for h, lab in (
         ('competition.html', 'المسابقة الأولى: سورة الصف'), ('competition.html#c-league', 'لائحة دوري كرة القدم'),
         ('register.html', 'استمارة تسجيل فريق'), ('register.html#c-consent', 'موافقة ولي الأمر'),
-        ('tournament.html', 'لوحة البطولة: المجموعات والنتائج'), ('leaders.html', 'المرحلة الثانية: إعداد القادة'),
+        ('tournament.html', 'لوحة البطولة: المجموعات والنتائج'), ('account.html', 'حسابي: الدخول وإنشاء حساب'), ('leaders.html', 'المرحلة الثانية: إعداد القادة'),
         ('method.html', 'منهجية ربط القرآن بالسلوك')))
 
     def tab(h, label, icon):
@@ -406,6 +407,7 @@ def page(fn, title, body, desc, css=(), js=(), base=None, head=''):
 <link rel="stylesheet" href="css/wow.css">
 <script src="data/kb.js" defer></script>
 <script src="js/main.js" defer></script>
+<script src="js/acct-nav.js" defer></script>
 <script src="js/search.js" defer></script>
 <script src="js/chat.js" defer></script>
 <script src="js/fx.js" defer></script>
@@ -429,6 +431,7 @@ def page(fn, title, body, desc, css=(), js=(), base=None, head=''):
     <div class="actions">
       <button type="button" class="icon-btn search-btn" data-open-search aria-label="بحث في الموقع" title="بحث (Ctrl+K)">{ic('search')}</button>
       <button type="button" class="icon-btn theme-toggle" aria-label="تبديل الوضع الليلي والنهاري" title="الوضع الليلي / النهاري">{ic('sun', 'i sun')}{ic('moon', 'i moon')}</button>
+      <a class="icon-btn acct-btn{" on" if fn == "account.html" else ""}" href="account.html" aria-label="حسابي: الدخول وإنشاء حساب" title="حسابي" data-acct>{ic('user')}<i class="acct-dot" hidden></i></a>
       <button type="button" class="btn-ai" data-open-chat>{ic('sparkles')}<span>اسأل ينابيع</span></button>
       <button type="button" class="icon-btn menu-btn" data-open-sheet aria-label="القائمة">{ic('menu')}</button>
     </div>
