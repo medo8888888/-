@@ -55,6 +55,8 @@
       if (!t || typeof t !== 'object') return null;
       var name = cleanName(t.name), s = cleanScores(t.scores);
       if (!name || !s) return null;
+      // same rule as «أضف فريقًا»: a name appears once
+      if (out.some(function (o) { return o.name.toLowerCase() === name.toLowerCase(); })) return null;
       out.push({ name: name, scores: s });
     }
     return out;
@@ -121,7 +123,8 @@
       .replace(/[۰-۹]/g, function (d) { return d.charCodeAt(0) - 0x6F0; })
       .replace(/[٫,،]/g, '.');
     if (s === '') return { ok: true, v: null };
-    if (!/^\d+(\.\d+)?$|^\.\d+$/.test(s)) return { ok: false, msg: 'أدخل رقمًا من 0 إلى ' + max };
+    // '7.' is accepted while the decimal is being typed
+    if (!/^\d+(\.\d*)?$|^\.\d+$/.test(s)) return { ok: false, msg: 'أدخل رقمًا من 0 إلى ' + max };
     var v = parseFloat(s);
     if (!isNum(v) || v < 0) return { ok: false, msg: 'أدخل رقمًا من 0 إلى ' + max };
     if (v > max) return { ok: false, msg: 'الحد الأعلى لهذا المعيار ' + max };

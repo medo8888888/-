@@ -22,7 +22,24 @@
     return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
   }
   var bools = function (a, n) { var o = []; for (var i = 0; i < n; i++) o.push(!!(Array.isArray(a) && a[i] === true)); return o; };
-  var num = function (v) { return v === '' || v === null || v === undefined || !isFinite(+v) ? null : +v; };
+  // a non-negative number as typed (Arabic-Indic digits are normalised on input), else null
+  var NUM_RE = { dec: /^(\d+(\.\d*)?|\.\d+)$/, int: /^\d+$/ };
+  var num = function (v) { v = v === null || v === undefined ? '' : String(v).trim(); return NUM_RE.dec.test(v) ? +v : null; };
+  function normDigits(el) {
+    var kind = el.getAttribute && el.getAttribute('data-num');
+    if (!kind) return;
+    var v = el.value;
+    var n = v.replace(/[٠-٩]/g, function (d) { return d.charCodeAt(0) - 0x660; })
+      .replace(/[۰-۹]/g, function (d) { return d.charCodeAt(0) - 0x6F0; })
+      .replace(/[٫,،]/g, '.');
+    if (n !== v) {   // same length, so the caret stays where it was
+      var at = el.selectionStart;
+      el.value = n;
+      try { el.setSelectionRange(at, at); } catch (e) { /* not focused */ }
+    }
+    var bad = n.trim() !== '' && !(NUM_RE[kind] || NUM_RE.dec).test(n.trim());
+    if (bad) el.setAttribute('aria-invalid', 'true'); else el.removeAttribute('aria-invalid');
+  }
   function pctOf(target, done) {
     var tg = num(target), dn = num(done);
     return tg && dn !== null ? Math.round(dn / tg * 100) : null;   // — when the target is empty or 0; above 100 stays
@@ -101,6 +118,7 @@
     projList.textContent = '';
     var rows = Array.isArray(d.proj) && d.proj.length ? d.proj : [[]];
     rows.forEach(function (r) { addProj(Array.isArray(r) ? r : []); });
+    $$('[data-num]', form).forEach(normDigits);
     compute();
   }
   function compute() {
@@ -109,7 +127,7 @@
     return p;
   }
   function changed() { compute(); state.draft = collect(); save(); }
-  form.addEventListener('input', changed);
+  form.addEventListener('input', function (e) { normDigits(e.target); changed(); });
   form.addEventListener('change', changed);
   form.addEventListener('submit', function (e) { e.preventDefault(); });
   $('[data-proj-add]').addEventListener('click', function () { addProj().querySelector('input').focus(); changed(); });
@@ -190,7 +208,7 @@
   }
   $('[data-save]').addEventListener('click', function () {
     var d = collect();
-    var n = parseInt(d.fields.n, 10);
+    var n = NUM_RE.int.test(String(d.fields.n || '').trim()) ? +d.fields.n : NaN;
     if (!(n >= 1)) { var nf = $('[data-f=n]', form); nf.setAttribute('aria-invalid', 'true'); nf.focus(); statusEl.textContent = 'اكتب رقم التقرير'; return; }
     $('[data-f=n]', form).removeAttribute('aria-invalid');
     var entry = { n: n, date: d.fields.date || '', fields: d.fields, proj: d.proj, pct: compute(), saved: Date.now() };

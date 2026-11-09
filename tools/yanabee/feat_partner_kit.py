@@ -33,9 +33,11 @@ def _check_list(node, key):
     return f'<div class="dp-sub pk-list" id="{node.id}">{head(node, level=3)}<ul class="pk-checks">{lis}</ul></div>'
 
 
-def _num(fid, label, extra=''):
+def _num(fid, label, decimal=False):
+    # type=text + inputmode: Arabic-Indic digits are accepted and normalised by partner-kit.js (a number input drops them)
     return (f'<div class="f pk-f"><label class="f-l" for="pk-{fid}">{label}</label>'
-            f'<input id="pk-{fid}" type="number" inputmode="numeric" min="0" step="1" data-f="{fid}"{extra}></div>')
+            f'<input id="pk-{fid}" type="text" inputmode="{"decimal" if decimal else "numeric"}" autocomplete="off"'
+            f' data-num="{"dec" if decimal else "int"}" data-f="{fid}"></div>')
 
 
 def _area(fid, label):
@@ -76,7 +78,7 @@ def html():
     a_label = 'أسباب التعثر'
     fields = (
         '<div class="pk-grid pk-meta">'
-        + _num('n', 'رقم التقرير', ' min="1"')
+        + _num('n', 'رقم التقرير')
         + '<div class="f pk-f"><label class="f-l" for="pk-date">التاريخ</label><input id="pk-date" type="date" data-f="date"></div></div>'
         + f'<fieldset class="pk-set"><legend>{t(parts[0])}</legend><div class="pk-grid pk-four">'
         + _num('teamsReg', 'الفرق المسجلة') + _num('teamsReg2', 'الفرق المنتظمة')
@@ -87,7 +89,7 @@ def html():
         + '<div class="f"><label class="f-l">وصف مختصر</label><input type="text" maxlength="160" data-c="1"></div></template>'
         + '<button type="button" class="btn btn-ghost btn-sm pk-btn" data-proj-add><span>أضف فريقًا</span></button></fieldset>'
         + f'<fieldset class="pk-set"><legend>{t(parts[3])}</legend><div class="pk-grid pk-rate">'
-        + _num('target', 'المستهدف', ' step="any" inputmode="decimal"') + _num('done', 'المتحقق', ' step="any" inputmode="decimal"')
+        + _num('target', 'المستهدف', True) + _num('done', 'المتحقق', True)
         + f'<div class="f pk-f"><span class="f-l" id="pk-pct-l">{t(parts[3])}</span><output data-pct aria-labelledby="pk-pct-l" aria-live="polite">—</output></div></div>'
         + f'<p class="pk-formula">{t(formula)}</p></fieldset>'
         + '<div class="pk-grid">' + _area('challenges', t(parts[4])) + _area('causes', t(a_label)) + _area('next', t(labels[5])) + '</div>'

@@ -40,6 +40,8 @@
 .ac-rl{line-height:1.6}
 .ac .f input,.ac .f textarea,.ac-k input,.ac output{font:inherit}
 .ac-k input,.ac-tool input{width:100%;min-height:44px;padding:8px 10px;border-radius:12px;border:1.5px solid var(--line-2);background:var(--surface-2);color:var(--ink);font:inherit;text-align:center}
+.ac .f input{min-width:0}
+.ac-k input[aria-invalid=true]{border-color:var(--t3);box-shadow:0 0 0 3px color-mix(in oklab,var(--t3) 16%,transparent)}
 .ac-k input:focus,.ac-tool input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 4px color-mix(in oklab,var(--brand) 18%,transparent)}
 .ac-ex{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-bottom:14px}
 .ac-strip{margin:0;padding:6px 12px;border-radius:10px;background:color-mix(in oklab,var(--sun) 13%,var(--surface));color:var(--ink);font-size:.9rem;font-weight:600}

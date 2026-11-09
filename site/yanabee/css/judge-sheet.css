@@ -68,7 +68,9 @@
 .jsh .f select{width:100%;min-height:44px;padding:10px 12px;border-radius:12px;border:1.5px solid var(--line-2);background:var(--surface-2);color:var(--ink);font:inherit}
 .jsh .f select:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 4px color-mix(in oklab,var(--brand) 18%,transparent)}
 .jsh-card{margin-bottom:16px}
+.jsh-card legend{max-width:100%}
 .jsh-card legend b{font-size:1.1rem}
+.jsh-card legend b,.jsh-status,.jsh-rk-name{overflow-wrap:anywhere}
 .jsh-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 14px;align-items:end}
 .jsh-main{grid-template-columns:repeat(2,minmax(0,1fr))}
 .jsh-f .f-l{line-height:1.55}

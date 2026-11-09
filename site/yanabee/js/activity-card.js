@@ -21,7 +21,7 @@
     try {
       var s = window.localStorage.getItem(KEY);
       var a = s ? JSON.parse(s) : [];
-      return Array.isArray(a) ? a.filter(function (c) { return c && typeof c.id === 'string' && c.data && typeof c.data === 'object'; }) : [];
+      return Array.isArray(a) ? a.filter(function (c) { return c && typeof c.id === 'string' && c.data && typeof c.data === 'object' && typeof c.updated === 'number' && isFinite(c.updated); }) : [];
     } catch (e) { return []; }
   }
   function write() {
@@ -32,7 +32,23 @@
   var timer = 0;
 
   // ------------------------------------------------------------------ helpers
-  var num = function (v) { return v === '' || v === null || v === undefined ? null : (isFinite(+v) ? +v : null); };
+  // a non-negative number as typed (Arabic-Indic digits are normalised on input), else null
+  var NUM_RE = /^(\d+(\.\d*)?|\.\d+)$/;
+  var num = function (v) { v = v === null || v === undefined ? '' : String(v).trim(); return NUM_RE.test(v) ? +v : null; };
+  function normDigits(el) {
+    if (!el.hasAttribute || !el.hasAttribute('data-num')) return;
+    var v = el.value;
+    var n = v.replace(/[٠-٩]/g, function (d) { return d.charCodeAt(0) - 0x660; })
+      .replace(/[۰-۹]/g, function (d) { return d.charCodeAt(0) - 0x6F0; })
+      .replace(/[٫,،]/g, '.');
+    if (n !== v) {   // same length, so the caret stays where it was
+      var at = el.selectionStart;
+      el.value = n;
+      try { el.setSelectionRange(at, at); } catch (e) { /* not focused */ }
+    }
+    var bad = n.trim() !== '' && !NUM_RE.test(n.trim());
+    if (bad) el.setAttribute('aria-invalid', 'true'); else el.removeAttribute('aria-invalid');
+  }
   var r2 = function (x) { return String(Math.round(x * 100) / 100); };
   function byKey(k) { return form.querySelector('[data-k="' + k + '"]'); }
   function checked(k) { var el = byKey(k); return !!(el && el.checked); }
@@ -89,6 +105,7 @@
       var rows = Array.isArray(d['rep-' + rep.dataset.rep]) ? d['rep-' + rep.dataset.rep] : [[]];
       rows.forEach(function (r) { addRep(rep, Array.isArray(r) ? r : []); });
     });
+    $$('[data-num]', form).forEach(normDigits);
     $('[data-ex-strip]').hidden = true;
     compute();
   }
@@ -203,6 +220,7 @@
   function delCard(id) {
     var c = cards.filter(function (x) { return x.id === id; })[0];
     if (!c || !window.confirm('احذف البطاقة «' + title(c) + '» من هذا المتصفح؟')) return;
+    if (timer && cur !== id) flush();   // keep pending edits of the open card when another card is deleted
     clearTimeout(timer); timer = 0;
     cards = cards.filter(function (x) { return x.id !== id; });
     write();
@@ -212,7 +230,7 @@
   }
 
   // ------------------------------------------------------------------ events
-  form.addEventListener('input', changed);
+  form.addEventListener('input', function (e) { normDigits(e.target); changed(); });
   form.addEventListener('change', changed);
   form.addEventListener('submit', function (e) { e.preventDefault(); });
   $$('[data-rep-add]').forEach(function (b) {

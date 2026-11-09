@@ -387,6 +387,102 @@ console.log('phone 390px');
   await ctx.close();
 }
 
+// ------------------------------------------------------------------ review: edge cases found by the adversarial review
+console.log('review: markup');
+{
+  const html = fs.readFileSync(path.join(ROOT, 'site/yanabee/competition.html'), 'utf8');
+  // each tool's markup: from its root to the end of its section
+  const parts = ['jsh', 'ac', 'pk'].map(id => { const i = html.indexOf(`id="${id}"`); return html.slice(i, html.indexOf('</section>', i)); });
+  const dupAttr = [];
+  for (const part of parts) for (const m of part.matchAll(/<(input|textarea|select|button|output)\b[^>]*>/g)) {
+    const names = [...m[0].matchAll(/\s([a-z-]+)(?==|[\s>])/g)].map(a => a[1]);
+    const d = names.filter((x, i) => names.indexOf(x) !== i);
+    if (d.length) dupAttr.push(d.join(',') + ' in ' + m[0].slice(0, 80));
+  }
+  check('no duplicate attributes on the tools\' controls', dupAttr.length === 0, dupAttr.slice(0, 3).join(' | '));
+  check('no type=number in activity-card / partner-kit (Arabic-Indic digits would be dropped)', !/type="number"/.test(parts[1] + parts[2]));
+}
+console.log('review: whole-page print, digits, negatives');
+{
+  const { ctx, p, errs } = await open();
+  await p.click('#pk-t-report');
+  await p.emulateMedia({ media: 'print' });
+  check('whole-page print with the report tab open still prints the obligations and the c-p-by table', await p.evaluate(() =>
+    getComputedStyle(document.getElementById('pk-p-deal')).display !== 'none' && document.getElementById('c-p-partner').getBoundingClientRect().height > 0
+    && document.getElementById('c-p-yanabee').getBoundingClientRect().height > 0 && document.querySelector('.pk-tbl').getBoundingClientRect().height > 0));
+  check('whole-page print leaves out the empty report form', await p.evaluate(() => getComputedStyle(document.querySelector('.pk-form')).display === 'none'));
+  await p.evaluate(() => document.body.classList.add('print-partner-report'));
+  check('report print mode still shows the filled report only', await p.evaluate(() => getComputedStyle(document.querySelector('.pk-print-report')).display === 'block' && getComputedStyle(document.getElementById('pk-p-deal')).display === 'none'));
+  await p.evaluate(() => document.body.classList.remove('print-partner-report'));
+  await p.emulateMedia({ media: 'screen' });
+
+  // Arabic-Indic digits typed on the keyboard
+  await p.focus('#pk-target'); await p.keyboard.type('٤');
+  await p.focus('#pk-done'); await p.keyboard.type('٣');
+  check('partner report: Arabic-Indic digits typed (٤, ٣) → 4, 3 → 75%', (await p.inputValue('#pk-target')) === '4' && (await txt(p, '[data-pct]')) === '75%');
+  await p.fill('#pk-target', '-4');
+  check('partner report: negative target → — and aria-invalid', (await txt(p, '[data-pct]')) === '—' && (await p.getAttribute('#pk-target', 'aria-invalid')) === 'true');
+  await p.fill('#pk-target', '4');
+  check('partner report: valid again → 75%, aria-invalid cleared', (await txt(p, '[data-pct]')) === '75%' && (await p.getAttribute('#pk-target', 'aria-invalid')) === null);
+  await p.fill('#pk-n', '1.5'); await p.click('[data-save]');
+  check('partner report: a non-integer report number is not saved', (await txt(p, '.pk-status')) === 'اكتب رقم التقرير' && (await p.evaluate(() => window.YanabeePartnerKit.state().history.length)) === 0);
+  await p.focus('[data-k=subV]'); await p.keyboard.type('١٠');
+  await p.focus('[data-k=subN]'); await p.keyboard.type('١٢');
+  check('activity card: Arabic-Indic digits (١٠ × ١٢) → الإجمالي 120', (await p.inputValue('[data-k=subV]')) === '10' && (await txt(p, '[data-k=subT]')) === '120');
+  await p.fill('[data-k=subN]', '-12');
+  check('activity card: negative count → — and aria-invalid', (await txt(p, '[data-k=subT]')) === '—' && (await p.getAttribute('[data-k=subN]', 'aria-invalid')) === 'true');
+  await p.fill('[data-k=k0t]', '-4'); await p.fill('[data-k=k0a]', '2');
+  check('activity card: negative target → نسبة التحقق —', (await txt(p, '[data-pct="0"]')) === '—');
+  await p.focus('[data-k=k0t]'); await p.fill('[data-k=k0t]', ''); await p.keyboard.type('٨٫٠');
+  check('activity card: Arabic decimal separator (٨٫٠) → 8.0 → 25.0%', (await p.inputValue('[data-k=k0t]')) === '8.0' && (await txt(p, '[data-pct="0"]')) === '25.0%');
+
+  // judge sheet: a decimal being typed is not flagged
+  await p.click('#jsh-t-judge');
+  await p.fill('#jsh-name', 'فريق'); await p.click('[data-add]');
+  await p.focus('#jsh-in-a1'); await p.keyboard.type('7.');
+  check('judge sheet: «7.» while typing is not rejected', (await p.getAttribute('#jsh-in-a1', 'aria-invalid')) === null);
+  await p.keyboard.type('5');
+  check('judge sheet: 7.5 accepted, total 7.5', (await txt(p, '[data-total]')) === '7.5');
+  p.on('dialog', d => d.accept());
+  await p.setInputFiles('[data-import]', { name: 'dup.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ version: 1, teams: [{ name: 'أ', scores: [1, 0, 0, 0, 0, 0, 0, 0] }, { name: 'أ', scores: [2, 0, 0, 0, 0, 0, 0, 0] }] })) });
+  await p.waitForTimeout(200);
+  check('judge sheet: a file with the same team name twice is rejected', (await txt(p, '.jsh-status')) === 'الملف غير صالح' && (await p.evaluate(() => window.YanabeeJudgeSheet.state().teams.length)) === 1);
+  check('no page errors (review)', errs.length === 0, errs.join(' | '));
+  await ctx.close();
+}
+console.log('review: activity card pending edits');
+{
+  const { ctx, p, errs } = await open();
+  p.on('dialog', d => d.accept());
+  await p.fill('[data-k=t0]', 'الأولى'); await p.waitForTimeout(900);
+  await p.click('[data-new]');
+  await p.fill('[data-k=t0]', 'الثانية'); await p.waitForTimeout(900);
+  await p.fill('[data-k=t1]', 'تعديل لم يُحفظ بعد');
+  await p.click('.ac-list li:not(.is-cur) .ac-del');   // delete the other card within the autosave delay
+  const st = await p.evaluate(() => JSON.parse(localStorage.getItem('yanabee-activity-card-v1')));
+  check('deleting another card keeps the open card\'s pending edits', st.length === 1 && st[0].data.t0 === 'الثانية' && st[0].data.t1 === 'تعديل لم يُحفظ بعد');
+  await p.evaluate(() => localStorage.setItem('yanabee-activity-card-v1', JSON.stringify([{ id: 'x', updated: 'oops', data: {} }, { id: 'y', updated: 5, data: { t0: 'سليمة' } }])));
+  await p.reload(); await p.waitForTimeout(400);
+  check('stored cards with a broken time are skipped', (await p.$$eval('.ac-list li', l => l.length)) === 1 && (await txt(p, '.ac-list li b')) === 'سليمة');
+  check('no page errors (activity card review)', errs.length === 0, errs.join(' | '));
+  await ctx.close();
+}
+console.log('review: phone 390px');
+{
+  const { ctx, p, errs } = await open(PHONE);
+  await p.click('#jsh-t-judge');
+  await p.fill('#jsh-name', 'فريق'.repeat(15)); await p.click('[data-add]');
+  const inside = (sel, box) => p.evaluate(([s, b]) => { const e = document.querySelector(s), r = e.getBoundingClientRect(), o = e.closest(b).getBoundingClientRect(); return r.left >= o.left - 1 && r.right <= o.right + 1; }, [sel, box]);
+  check('long team name wraps inside the score card', await inside('[data-team-name]', '.jsh-card'));
+  check('status line wraps inside the tool (no text overflow)', await p.evaluate(() => { const s = document.querySelector('.jsh-status'); return s.textContent.length > 40 && s.scrollWidth <= s.clientWidth + 1; }));
+  await p.click('#pk-t-report');
+  check('partner report date input stays inside its column', await inside('#pk-date', '.pk-f'));
+  check('activity card dates stay inside their columns', await inside('[data-k=from]', '.ac-sub') && await inside('[data-k=to]', '.ac-sub'));
+  check('no horizontal overflow (review)', (await overflow(p)) <= 0);
+  check('no page errors (phone review)', errs.length === 0, errs.join(' | '));
+  await ctx.close();
+}
+
 check('no network requests (besides blocked fonts)', netReqs.length === 0, netReqs.slice(0, 3).join(' '));
 check('no console errors overall', allErrs.length === 0, allErrs.slice(0, 3).join(' | '));
 await browser.close();

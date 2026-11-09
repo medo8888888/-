@@ -48,6 +48,7 @@
 .pk-set{margin:0;padding:12px 14px 14px;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--surface-2);min-width:0}
 .pk-set legend{padding:0 6px;font:600 .98rem var(--font-h);color:var(--head)}
 .pk-set .f input{background:var(--surface)}
+.pk .f input{min-width:0}
 .pk-proj{list-style:none;margin:0 0 8px;padding:0;display:grid;gap:8px}
 .pk-proj li{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr) 44px;gap:8px;align-items:end}
 .pk-del{display:grid;place-items:center;width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--muted)}
@@ -94,6 +95,10 @@
 @media print{
   .pk-tabs,.pk-type,.pk-hint,.pk-tools,.pk-hist,.pk-draft,.pk-status,.pk-del,[data-proj-add]{display:none!important}
   .pk{box-shadow:none;border:0;padding:0}
+  /* the whole page («اطبع اللائحة», Ctrl+P): the obligations and the c-p-by table always print, whichever tab is open;
+     the report form (empty inputs) does not */
+  body:not(.print-partner-sheet):not(.print-partner-report) #pk-p-deal[hidden]{display:block!important}
+  body:not(.print-partner-sheet):not(.print-partner-report) .pk-form{display:none!important}
   body.print-partner-sheet>*:not(main),body.print-partner-report>*:not(main){display:none!important}
   body.print-partner-sheet main>*:not(#c-partner),body.print-partner-report main>*:not(#c-partner){display:none!important}
   body.print-partner-sheet #c-partner .wrap>*:not(.pk),body.print-partner-report #c-partner .wrap>*:not(.pk){display:none!important}

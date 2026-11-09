@@ -11,6 +11,9 @@ import re
 from core import COMP as C, ic, plain, split_kicker, strip_colon, t
 
 DASH = ' – '
+# Number fields are text + inputmode so Arabic-Indic digits work (a type=number input drops them); activity-card.js
+# normalises the digits and computes only from non-negative numbers.
+NUM = 'type="text" inputmode="decimal" autocomplete="off" data-num'
 
 
 def _split_dash(cell):
@@ -46,7 +49,7 @@ def _row(label, inner, cls=''):
 
 def _num(key, label, extra=''):
     return (f'<label class="f ac-sub"><span class="f-l">{t(label)}</span>'
-            f'<input type="number" inputmode="decimal" min="0" step="any" data-k="{key}" data-sub="{plain(label)}"{extra}></label>')
+            f'<input {NUM} data-k="{key}" data-sub="{plain(label)}"{extra}></label>')
 
 
 def html():
@@ -129,8 +132,8 @@ def html():
             key = 'sp' if label.startswith('الرعاية') else 'pz'
             cols = spons_parts if key == 'sp' else prize_parts
             tpl = ''.join(
-                (f'<label class="f ac-sub"><span class="f-l">{t(cl)}</span><input type="{"text" if ci == 0 else "number"}"'
-                 f'{"" if ci == 0 else " inputmode=decimal min=0 step=any"} data-c="{ci}" data-sub="{plain(cl)}"></label>')
+                (f'<label class="f ac-sub"><span class="f-l">{t(cl)}</span><input {"type=text" if ci == 0 else NUM}'
+                 f' data-c="{ci}" data-sub="{plain(cl)}"></label>')
                 for ci, cl in enumerate(cols))
             f3 += _row(label, f'<div class="ac-rep" data-rep="{key}" data-cols="{len(cols)}"><ol class="ac-rep-list"></ol>'
                        f'<template>{tpl}</template>'
@@ -139,7 +142,7 @@ def html():
         elif label in ('التكلفة التقديرية', 'التكلفة الفعلية'):
             key = 'est' if label == 'التكلفة التقديرية' else 'act'
             f3 += (f'<div class="ac-row f" data-pr="row"><label class="ac-rl f-l" for="ac-{key}" data-rl>{t(label)}</label>'
-                   f'<input id="ac-{key}" type="number" inputmode="decimal" min="0" step="any" data-k="{key}" aria-describedby="ac-{key}-h">'
+                   f'<input id="ac-{key}" {NUM} data-k="{key}" aria-describedby="ac-{key}-h">'
                    f'<span class="f-hint" id="ac-{key}-h" data-pr-text>{t(cell)}</span></div>')
             if key == 'act':
                 f3 += ('<p class="ac-diff" data-diff hidden aria-live="polite"><span>الفرق</span> <b data-diff-v></b></p>')
@@ -164,8 +167,8 @@ def html():
         note = (f'<label class="f ac-sub ac-tool"><span class="f-l">{t(tool_label)}</span><input type="text" data-k="k{r}n" data-sub="{plain(tool_label)}"></label>'
                 if impact else '')
         trs += (f'<tr><th scope="row">{t(label)}{note}</th>'
-                f'<td data-th="{plain(hd[1])}"><input type="number" inputmode="decimal" min="0" step="any" data-k="k{r}t" aria-label="{plain(hd[1] + " — " + label)}"></td>'
-                f'<td data-th="{plain(hd[2])}"><input type="number" inputmode="decimal" min="0" step="any" data-k="k{r}a" aria-label="{plain(hd[2] + " — " + label)}"></td>'
+                f'<td data-th="{plain(hd[1])}"><input {NUM} data-k="k{r}t" aria-label="{plain(hd[1] + " — " + label)}"></td>'
+                f'<td data-th="{plain(hd[2])}"><input {NUM} data-k="k{r}a" aria-label="{plain(hd[2] + " — " + label)}"></td>'
                 f'<td data-th="{plain(hd[3])}"><output data-pct="{r}" aria-live="polite">—</output></td></tr>')
     table5 = (f'<div class="ac-tbl-wrap" data-pr="grid"><table class="ac-tbl ac-k"><thead><tr>{"".join(f"<th scope=col>{t(h)}</th>" for h in hd)}</tr></thead>'
               f'<tbody>{trs}</tbody></table></div>')
