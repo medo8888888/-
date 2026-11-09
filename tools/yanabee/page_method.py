@@ -6,6 +6,7 @@ from core import METHOD as M, PAGE_LABEL, btn, cta, ic, page, page_hero, plain, 
 from features import assets
 from docpage import ayah, blocks_html, head, num, sec, seg_bar
 import feat_meeting_timer
+import feat_pledge_cards
 import feat_publish_check
 
 PAGE = 'method.html'
@@ -102,6 +103,7 @@ def build():
             + cards('m-fields', [(a, b) for a, b in f.table[1:]], FIELD_ICON, alt=True)
             + phases().replace(' alt"', '"', 1)
             + cards('m-workshop', [(strip_colon(it.label), it.body) for it in w.items], None, 'axes four', alt=True)
+            + feat_pledge_cards.html(FIELD_ICON)  # feature pledge-cards: the pledge, charter and follow-up cards of m-workshop/m-meeting
             + cards('m-roles', [(a, b) for a, b in r.table[1:]], ['cap', 'flag', 'image', 'home'])
             + meeting() + media() + showcase() + impact()
             + cta(t(M.meta['title']), t(M['m-intro'].paras[1]), buttons))
