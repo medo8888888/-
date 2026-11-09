@@ -1,0 +1,183 @@
+/* judge-sheet — «ورقة التحكيم وتقييم المشروع» (competition.html #c-score). Markup: tools/yanabee/feat_judge_sheet.py,
+   behaviour: js/judge-sheet.js. Tokens only (both themes). Print mode: body.print-judge-sheet (comp.js __yanabeePrintOnly). */
+.jsh{margin-top:30px;padding:clamp(16px,3vw,26px);border-radius:var(--r);background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow-sm)}
+.jsh[hidden],.jsh [hidden]{display:none!important}
+.jsh-title{margin:0 0 14px}
+.jsh-title .i{color:var(--brand)}
+
+/* tabs */
+.jsh-tabs{display:flex;gap:6px;padding:5px;border-radius:16px;background:var(--surface-2);border:1px solid var(--line);margin-bottom:18px;max-width:560px}
+.jsh-tabs [role=tab]{flex:1 1 0;min-width:0;min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:8px 12px;border-radius:12px;
+  font:600 .95rem/1.4 var(--font-h);color:var(--ink-2);text-align:center;transition:background-color .2s,color .2s}
+.jsh-tabs [role=tab] .i{flex:none;width:18px;height:18px}
+.jsh-tabs [role=tab][aria-selected=true]{background:var(--surface);color:var(--brand);box-shadow:var(--shadow-sm)}
+.jsh-tabs [role=tab]:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.jsh-panel:focus-visible{outline:3px solid var(--accent);outline-offset:4px;border-radius:12px}
+.jsh-btn{min-height:44px}
+.jsh-max{color:var(--muted);font-weight:500;white-space:nowrap}
+.jsh-err{color:var(--t3);font-size:.84rem;font-weight:600;line-height:1.6}
+
+/* ---------- tab 1: self-check ---------- */
+.jsh-rubt{margin:0 0 4px;font:600 .98rem/1.7 var(--font-h);color:var(--head)}
+.jsh-self{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:20px;align-items:start}
+.jsh-crits{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.jsh-crit{padding:14px 16px;border-radius:var(--r-sm);background:var(--surface-2);border:1px solid var(--line);transition:border-color .25s,box-shadow .25s}
+.jsh-crit.is-start{border-color:var(--sun);box-shadow:0 0 0 3px color-mix(in oklab,var(--sun) 20%,transparent)}
+.jsh-crit-top{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
+.jsh-crit-top .f-l{flex:1 1 180px;min-width:0;line-height:1.6}
+.jsh-start{padding:2px 10px;border-radius:999px;background:color-mix(in oklab,var(--sun) 16%,var(--surface));color:color-mix(in oklab,var(--sun) 70%,var(--ink));font:600 .8rem/1.8 var(--font-h)}
+.jsh-out{margin-inline-start:auto;font:600 .95rem var(--font-h);color:var(--ink-2);white-space:nowrap}
+.jsh-out b{font-size:1.15rem;color:var(--brand)}
+.jsh-range{--fill:0%;display:block;width:100%;height:44px;margin:4px 0 2px;background:none;cursor:pointer;-webkit-appearance:none;appearance:none;accent-color:var(--brand)}
+.jsh-range::-webkit-slider-runnable-track{height:10px;border-radius:999px;background:linear-gradient(to left,var(--brand) var(--fill),var(--line-2) var(--fill))}
+.jsh-range::-moz-range-track{height:10px;border-radius:999px;background:var(--line-2)}
+.jsh-range::-moz-range-progress{height:10px;border-radius:999px;background:var(--brand)}
+.jsh-range::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;margin-top:-8px;border-radius:50%;background:var(--surface);border:3px solid var(--brand);box-shadow:var(--shadow-sm)}
+.jsh-range::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:var(--surface);border:3px solid var(--brand)}
+.jsh-range:focus{outline:none}
+.jsh-range:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:12px}
+.jsh-ev{margin-top:4px;padding-top:8px;border-top:1px dashed var(--line-2)}
+.jsh-ev-h{display:inline-flex;align-items:center;gap:6px;font:600 .8rem var(--font-h);color:var(--muted)}
+.jsh-ev-h .i{width:15px;height:15px}
+.jsh-ev ul{list-style:none;margin:4px 0 0;padding:0;display:grid;gap:4px}
+.jsh-ev li{padding-inline-start:12px;border-inline-start:3px solid color-mix(in oklab,var(--brand) 35%,var(--line));color:var(--ink-2);font-size:.9rem;line-height:1.8}
+.jsh-side{position:sticky;top:calc(var(--nav-h,64px) + 16px);display:grid;justify-items:center;gap:10px;padding:18px 16px;border-radius:var(--r-sm);background:var(--surface-2);border:1px solid var(--line);text-align:center}
+.jsh-ring{--p:0;width:150px;aspect-ratio:1;border-radius:50%;display:grid;place-items:center;align-content:center;position:relative;
+  background:conic-gradient(var(--brand) calc(var(--p)*1%),color-mix(in oklab,var(--brand) 14%,transparent) 0);transition:--p .45s var(--ease)}
+.jsh-ring::before{content:"";position:absolute;inset:13px;border-radius:50%;background:var(--surface-2)}
+.jsh-ring>*{position:relative}
+.jsh-ring b{font:700 2.4rem/1 var(--font-h);color:var(--head)}
+.jsh-ring small{color:var(--muted);font-weight:600}
+.jsh-score{margin:0;font:600 1rem var(--font-h);color:var(--head)}
+.jsh-full{margin:0;padding:4px 12px;border-radius:999px;background:color-mix(in oklab,var(--t1) 14%,var(--surface));color:color-mix(in oklab,var(--t1) 75%,var(--ink));font-weight:600;font-size:.9rem}
+.jsh-note{display:flex;gap:6px;align-items:flex-start;margin:0 0 14px;color:var(--muted);font-size:.88rem;line-height:1.7}
+.jsh-note .i{flex:none;width:16px;height:16px;margin-top:4px;color:var(--sun)}
+
+/* ---------- tab 2: judges' worksheet ---------- */
+.jsh-banner{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;margin-bottom:16px;border-radius:var(--r-sm);background:var(--surface-2);border:1px solid var(--line)}
+.jsh-banner>.i{flex:none;color:var(--brand);margin-top:3px}
+.jsh-banner p{margin:0 0 6px;font-weight:600;color:var(--head);line-height:1.8}
+.jsh-quotes,.jsh-p-quotes{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.jsh-quotes li{padding-inline-start:12px;border-inline-start:3px solid var(--line-2);color:var(--ink-2);font-size:.9rem;line-height:1.8}
+.jsh-add,.jsh-pick{display:flex;flex-wrap:wrap;gap:10px 12px;align-items:flex-end;margin-bottom:14px}
+.jsh-add{margin-bottom:4px}
+.jsh-add-e{margin:0}
+.jsh-add-h{display:block;margin:0 0 16px}
+.jsh-sport-h{grid-column:1/-1;margin:-4px 0 0}
+.jsh-add .f,.jsh-pick .f{flex:1 1 220px}
+.jsh .f select{width:100%;min-height:44px;padding:10px 12px;border-radius:12px;border:1.5px solid var(--line-2);background:var(--surface-2);color:var(--ink);font:inherit}
+.jsh .f select:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 4px color-mix(in oklab,var(--brand) 18%,transparent)}
+.jsh-card{margin-bottom:16px}
+.jsh-card legend b{font-size:1.1rem}
+.jsh-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 14px;align-items:end}
+.jsh-main{grid-template-columns:repeat(2,minmax(0,1fr))}
+.jsh-f .f-l{line-height:1.55}
+.jsh-f input{text-align:center;font:600 1.05rem var(--font-h)}
+.jsh-apply{grid-column:1/-1;padding:14px;border-radius:var(--r-sm);background:var(--surface-2);border:1px solid var(--line)}
+.jsh-apply .f input{background:var(--surface)}
+.jsh-apply .jsh-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+.jsh-apply-h{margin:0 0 10px;font:600 .92rem/1.7 var(--font-h);color:var(--head)}
+.jsh-apply-sum{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:12px 0 0;padding-top:10px;border-top:1px dashed var(--line-2);font:600 1rem var(--font-h);color:var(--head)}
+.jsh-apply-sum output{font-size:1.35rem;color:var(--brand)}
+.jsh-total{margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+.jsh-total-n{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:0 0 10px;font:600 1.05rem var(--font-h);color:var(--head)}
+.jsh-total-n b{font-size:2rem;line-height:1;color:var(--brand)}
+.jsh-seg{list-style:none;margin:0;padding:0;display:flex;gap:4px;height:16px}
+.jsh-seg li{--c:var(--t1);flex:var(--w) 1 0;min-width:0;border-radius:6px;overflow:hidden;background:color-mix(in oklab,var(--c) 16%,var(--surface-2));border:1px solid color-mix(in oklab,var(--c) 32%,var(--line))}
+.jsh-seg i{display:block;height:100%;width:calc(var(--f,0)*100%);background:var(--c);transition:width .3s var(--ease)}
+.jsh-seg li:nth-child(5n+2),.jsh-seg-key li:nth-child(5n+2){--c:var(--sky)}
+.jsh-seg li:nth-child(5n+3),.jsh-seg-key li:nth-child(5n+3){--c:var(--t5)}
+.jsh-seg li:nth-child(5n+4),.jsh-seg-key li:nth-child(5n+4){--c:var(--sun)}
+.jsh-seg li:nth-child(5n+5),.jsh-seg-key li:nth-child(5n+5){--c:var(--t6)}
+.jsh-seg-key{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.84rem;color:var(--ink-2)}
+.jsh-seg-key li{--c:var(--t1);display:inline-flex;align-items:center;gap:6px}
+.jsh-seg-key li::before{content:"";width:10px;height:10px;border-radius:3px;background:var(--c)}
+
+.jsh-rank{margin-top:6px}
+.jsh-h4{margin:0 0 8px;font:600 1.02rem var(--font-h);color:var(--head)}
+.jsh-empty{margin:0;padding:16px;border-radius:var(--r-sm);border:1.5px dashed var(--line-2);color:var(--muted);text-align:center}
+.jsh-scroll{overflow-x:auto;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--surface)}
+.jsh-scroll:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.jsh-table{width:100%;min-width:620px;border-collapse:collapse;font-size:.95rem}
+.jsh-table th,.jsh-table td{padding:8px 10px;text-align:center;border-bottom:1px solid var(--line);white-space:nowrap}
+.jsh-table thead th{font:600 .85rem var(--font-h);color:var(--muted);background:var(--surface-2)}
+.jsh-table tbody th{text-align:start}
+.jsh-table tbody tr:last-child>*{border-bottom:0}
+.jsh-table tr.is-sel{background:color-mix(in oklab,var(--brand) 7%,transparent)}
+.jsh-rk{font:700 1.05rem var(--font-h);color:var(--brand)}
+.jsh-rk-name{min-height:44px;padding:4px 6px;border-radius:8px;font:600 .95rem var(--font-h);color:var(--head);text-align:start;white-space:normal;max-width:220px;text-decoration:underline dotted color-mix(in oklab,var(--brand) 50%,transparent);text-underline-offset:4px}
+.jsh-rk-name:hover{color:var(--brand)}
+.jsh-rk-total b{font:700 1.1rem var(--font-h);color:var(--head)}
+.jsh-tag{display:block;margin-top:2px;padding:0 8px;border-radius:999px;background:color-mix(in oklab,var(--sun) 15%,var(--surface));color:color-mix(in oklab,var(--sun) 70%,var(--ink));font:600 .74rem/1.8 var(--font-h)}
+.jsh-tie{display:flex;gap:8px;align-items:flex-start;margin:10px 0 0;color:var(--ink-2);font-size:.92rem;line-height:1.8}
+.jsh-tie .i{flex:none;width:18px;height:18px;margin-top:4px;color:var(--muted)}
+.jsh-tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.jsh-tools .btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.jsh-file{cursor:pointer}
+.jsh-file:focus-within{outline:3px solid var(--accent);outline-offset:3px}
+.jsh-status{min-height:1.6em;margin:8px 0 0;color:var(--ink-2);font-weight:600;font-size:.92rem}
+.jsh-print{display:none}
+
+@media (max-width:1000px){
+  .jsh-self{grid-template-columns:1fr;gap:12px}
+  .jsh-side{order:-1;z-index:3;grid-template-columns:auto 1fr auto;justify-items:start;align-items:center;gap:4px 12px;padding:10px 12px;text-align:start;
+    background:color-mix(in oklab,var(--surface-2) 92%,transparent);backdrop-filter:blur(8px);box-shadow:var(--shadow-sm)}
+  .jsh-ring{width:64px;grid-row:span 2}
+  .jsh-ring::before{inset:7px}
+  .jsh-ring b{font-size:1.3rem}
+  .jsh-ring small{display:none}
+  .jsh-score{grid-column:2;white-space:nowrap;font-size:.95rem}
+  .jsh-full{grid-column:2;font-size:.82rem}
+  .jsh-side .jsh-btn{grid-column:3;grid-row:1 / span 2}
+  .jsh-apply .jsh-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:520px){
+  .jsh{padding:14px 12px;margin-inline:-4px}
+  .jsh-tabs [role=tab]{font-size:.86rem;padding:6px 8px}
+  .jsh-tabs [role=tab] .i{display:none}
+  .jsh-side .jsh-btn span{font-size:.85rem}
+  .jsh-apply{padding:12px 10px}
+  .jsh-tools .btn{flex:1 1 calc(50% - 8px);justify-content:center}
+}
+@media (max-width:340px){
+  .jsh-main,.jsh-apply .jsh-grid{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){
+  .jsh-ring,.jsh-seg i,.jsh-crit,.jsh-tabs [role=tab]{transition:none}
+}
+
+/* ---------- print: the tool never prints with the page; its own sheets print alone ---------- */
+@media print{
+  .jsh{display:none!important}
+  body.print-judge-sheet>*:not(main){display:none!important}
+  body.print-judge-sheet main>*:not(#c-axes){display:none!important}
+  body.print-judge-sheet #c-axes>.wrap>*:not(#c-score){display:none!important}
+  body.print-judge-sheet #c-score>*:not(.jsh){display:none!important}
+  body.print-judge-sheet #c-axes{padding:0}
+  body.print-judge-sheet .jsh{display:block!important;margin:0;padding:0;border:0;box-shadow:none;background:none}
+  body.print-judge-sheet .jsh>*:not(.jsh-print){display:none!important}
+  body.print-judge-sheet .jsh-print{display:block!important;color:#000;font-size:11pt;line-height:1.6}
+  .jsh[data-mode=rank] .jsh-p-sheet{display:none!important}
+  .jsh:not([data-mode=rank]) .jsh-p-rank{display:none!important}
+  .jsh-print [hidden]{display:none!important}
+  .jsh-print header{display:grid;gap:2px;padding-bottom:6px;margin-bottom:8px;border-bottom:2px solid #000}
+  .jsh-print header b{font:700 15pt var(--font-h)}
+  .jsh-p-para,.jsh-p-rub{margin:0 0 6px}
+  .jsh-p-rub{font-weight:700}
+  .jsh-p-line{display:flex;gap:8px;align-items:flex-end;margin:6px 0 10px}
+  .jsh-p-line i{flex:1;min-height:22px;border-bottom:1.5px dotted #555;font-style:normal;font-weight:700;padding-inline:4px}
+  .jsh-ptable{width:100%;border-collapse:collapse;margin:4px 0 10px}
+  .jsh-ptable th,.jsh-ptable td{border:1px solid #777;padding:6px 8px;text-align:start;vertical-align:middle}
+  .jsh-ptable tr{break-inside:avoid}
+  .jsh-ptable [data-pv]{width:28mm;height:10mm;text-align:center;font-weight:700}
+  .jsh-ptable td:nth-child(2){width:16mm;text-align:center;color:#333}
+  .jsh-pr-sub th{padding-inline-start:22px;font-weight:400}
+  .jsh-pr-apply th,.jsh-pr-total th{font-weight:700}
+  .jsh-pr-total{background:#eee}
+  .jsh-p-rank .jsh-ptable th,.jsh-p-rank .jsh-ptable td{text-align:center}
+  .jsh-p-rank .jsh-ptable td:nth-child(2){text-align:start;width:auto;color:#000}
+  .jsh-p-sign{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:8px;align-items:end;margin-top:16px}
+  .jsh-p-sign i{border-bottom:1.5px dotted #555;min-height:24px}
+  .jsh-p-note{margin:12px 0 4px;font-weight:700}
+  .jsh-p-quotes li{padding-inline-start:8px;border-inline-start:2px solid #999;font-size:9.5pt}
+}
