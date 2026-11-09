@@ -1,0 +1,70 @@
+/* calendar-ics — «أضف مواعيد المسابقة إلى تقويمك» (competition.html, #c-timeline).
+   Markup: tools/yanabee/feat_calendar_ics.py. Behaviour: js/calendar-ics.js. Tokens from base.css (both themes). */
+.ics{margin-top:22px;max-width:860px;padding:clamp(16px,3vw,24px);border-radius:var(--r);background:var(--surface);
+  border:1px solid var(--line);box-shadow:var(--shadow-sm);display:grid;gap:14px;min-width:0}
+.ics[hidden],.ics [hidden]{display:none!important}
+.ics-head{display:flex;gap:12px;align-items:flex-start}
+.ics-ic{flex:none;display:grid;place-items:center;width:44px;height:44px;border-radius:14px;background:color-mix(in oklab,var(--brand) 12%,var(--surface));color:var(--brand)}
+.ics-head h4{margin:0;font-size:1.08rem;color:var(--head);line-height:1.5}
+.ics-note{margin:2px 0 0;color:var(--muted);font-size:.9rem;line-height:1.7}
+.ics-set{margin:0;padding:0;border:0;min-width:0;display:grid;gap:8px}
+.ics-leg{float:inline-start;width:100%;font:600 .95rem/1.6 var(--font-h);color:var(--ink-2);margin-bottom:4px}
+.ics-leg+*{clear:both}
+.ics-bulk{display:flex;gap:8px;flex-wrap:wrap}
+.ics-mini{min-height:44px;padding:6px 14px;border-radius:999px;border:1px solid var(--line-2);background:var(--surface-2);color:var(--ink-2);
+  font:600 .88rem var(--font-h);transition:border-color .2s,color .2s}
+.ics-mini:hover{border-color:var(--brand);color:var(--brand)}
+.ics-list{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.ics-row{display:flex;gap:12px;align-items:center;min-height:52px;padding:8px 12px;border-radius:var(--r-sm);background:var(--surface-2);
+  border:1px solid var(--line);cursor:pointer;transition:border-color .2s,background-color .2s,opacity .2s}
+label.ics-row:hover{border-color:var(--line-2)}
+.ics-row:has(.ics-cb:focus-visible){outline:3px solid var(--accent);outline-offset:2px}
+.ics-cb{flex:none;width:22px;height:22px;margin:0;accent-color:var(--brand);cursor:pointer}
+.ics-cb:focus-visible{outline:none}
+.ics-t{flex:1;min-width:0;display:grid}
+.ics-t b{font-family:var(--font-h);color:var(--head);font-size:.98rem;line-height:1.6}
+.ics-t small{color:var(--ink-2);font-size:.86rem;line-height:1.6;overflow:hidden;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical}
+.ics-ev[data-src=c-terms] .ics-t small{font-weight:600;color:var(--brand)}
+.ics-ev.is-off .ics-row{background:var(--surface);opacity:.68}
+.ics-past,.ics-day{flex:none;padding:2px 10px;border-radius:999px;font:600 .78rem/1.7 var(--font-h);background:var(--surface-3);color:var(--muted)}
+.ics-day{background:color-mix(in oklab,var(--brand) 14%,var(--surface));color:var(--brand)}
+.ics-wk .ics-row{cursor:default;border-style:dashed}
+.ics-wk .ics-t small{display:block;-webkit-line-clamp:unset;overflow:visible}
+.ics-rep{flex:none;display:grid;place-items:center;width:22px;color:var(--brand)}
+.ics-rep .i{width:18px;height:18px}
+.ics-wkpick{display:grid;gap:6px}
+.ics-wkpick label{font-weight:600;color:var(--head);font-size:.94rem;line-height:1.7}
+.ics-wkpick select{width:100%;max-width:340px;min-height:44px;padding:8px 12px;border-radius:12px;border:1.5px solid var(--line-2);background:var(--surface-2);color:var(--ink);font:inherit}
+.ics-wkpick select:focus-visible{outline:none;border-color:var(--brand);box-shadow:0 0 0 4px color-mix(in oklab,var(--brand) 18%,transparent)}
+.ics-hint{margin:0;color:var(--ink-2);font-size:.9rem;line-height:1.7}
+.ics-status{margin:0;min-height:1.7em;color:var(--ink-2);font-weight:600;font-size:.94rem}
+.ics-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.ics-actions .btn:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
+.ics-fb{border-radius:var(--r-sm);border:1px dashed var(--line-2);background:var(--surface-2)}
+.ics-fb>summary{min-height:44px;display:flex;align-items:center;padding:8px 14px;cursor:pointer;font-weight:600;color:var(--ink-2)}
+.ics-fb>p{margin:0 14px 8px;color:var(--ink-2);font-size:.9rem;line-height:1.7}
+.ics-text{display:block;width:calc(100% - 28px);margin:0 14px;padding:10px;border-radius:10px;border:1px solid var(--line-2);background:var(--surface);
+  color:var(--ink);font:.78rem/1.5 ui-monospace,Menlo,Consolas,monospace;resize:vertical;text-align:left}
+.ics-copyrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 14px 14px}
+.ics-copied{color:var(--muted);font-size:.88rem}
+@media (max-width:640px){
+  .ics-actions .ics-dl{width:100%;justify-content:center}
+  .ics-actions .ics-pr{width:100%;justify-content:center;min-height:44px}
+  .ics-wkpick select{max-width:none}
+  .ics-t small{-webkit-line-clamp:2}
+}
+@media (prefers-reduced-motion:reduce){.ics *{transition:none!important}}
+
+@media print{
+  .ics{display:none!important}  /* a full-page print keeps the timeline itself, not the controls */
+  body.print-ics>*:not(main){display:none!important}
+  body.print-ics main>*:not(#c-plan){display:none!important}
+  body.print-ics #c-plan>.wrap>*:not(#c-timeline){display:none!important}
+  body.print-ics #c-timeline>*:not(.ics){display:none!important}
+  body.print-ics .ics{display:grid!important;box-shadow:none;border:0;padding:0;max-width:none;gap:8px}
+  body.print-ics .ics-set>.ics-bulk,body.print-ics .ics-leg,body.print-ics .ics-wkpick,body.print-ics .ics-status,
+  body.print-ics .ics-actions,body.print-ics .ics-fb,body.print-ics .ics-cb,body.print-ics .ics-past{display:none!important}
+  body.print-ics .ics-ev.is-off{display:none!important}
+  body.print-ics .ics-row{background:none;border:0;border-bottom:1px solid #bbb;border-radius:0;opacity:1;padding:6px 0;break-inside:avoid}
+  body.print-ics .ics-t small{display:block;-webkit-line-clamp:unset;overflow:visible;color:#222}
+}
