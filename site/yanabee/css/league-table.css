@@ -1,0 +1,138 @@
+/* league-table: «احسب ترتيب الدوري» (competition.html #c-league, after the chapters). Markup:
+   tools/yanabee/feat_league_table.py, behaviour: js/league-table.js. Tokens only (both themes). */
+.lt[hidden],.lt [hidden]{display:none!important}
+.lt{margin-top:22px;padding:clamp(16px,2.4vw,26px);border-radius:var(--r);background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow-sm);min-width:0}
+.lt-h{display:flex;align-items:center;gap:10px}
+.lt-h .i{color:var(--brand)}
+.lt-hint{color:var(--muted);margin:4px 0 14px;font-size:.98rem}
+.lt-src{display:grid;gap:10px;margin-bottom:18px}
+.lt-q{padding:10px 14px;border-radius:var(--r-sm);background:var(--surface-2);border-inline-start:3px solid var(--brand);color:var(--ink-2)}
+.lt-rules{display:grid;gap:10px;grid-template-columns:minmax(0,220px) 1fr;align-items:start}
+.lt-pts{border-collapse:collapse;width:100%;font-size:.95rem;border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden}
+.lt-pts th,.lt-pts td{padding:6px 12px;text-align:start;border-bottom:1px solid var(--line)}
+.lt-pts thead th{background:var(--brand);color:var(--on-brand);font-family:var(--font-h);font-weight:600}
+[data-theme=dark] .lt-pts thead th{background:color-mix(in oklab,var(--brand) 26%,var(--surface));color:var(--head)}
+.lt-pts tbody th{font-weight:600;color:var(--head);background:var(--surface-2)}
+.lt-tag{display:inline-block;font-size:.8rem;font-weight:700;color:var(--brand);background:color-mix(in oklab,var(--brand) 12%,transparent);border-radius:999px;padding:0 10px;margin-inline-end:4px}
+
+.lt-in{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr))}
+.lt-box{padding:16px;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--surface-2);min-width:0}
+.lt-box h4{font-family:var(--font-h);color:var(--head);font-size:1.05rem;margin-bottom:10px}
+.lt-wide{grid-column:1/-1}
+.lt-form{display:grid;gap:10px}
+.lt-form fieldset{border:1px solid var(--line);border-radius:var(--r-sm);padding:10px 12px 12px;display:grid;gap:8px;grid-template-columns:repeat(3,minmax(0,1fr));min-width:0}
+.lt-form fieldset>.lt-f:first-of-type{grid-column:1/-1}
+.lt-form legend{padding-inline:6px;font-weight:600;color:var(--head);font-family:var(--font-h);font-size:.95rem}
+.lt-f{display:grid;gap:4px;min-width:0}
+.lt-f>span{font-size:.85rem;font-weight:600;color:var(--muted);font-family:var(--font-h)}
+.lt input[type=text],.lt input[type=number],.lt input[type=date],.lt select{width:100%;min-width:0;min-height:44px;padding:8px 12px;border-radius:12px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink);font:inherit;font-size:1rem}
+.lt input[type=number]{font-variant-numeric:tabular-nums}
+.lt input:focus-visible,.lt select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.lt-addteam{grid-template-columns:1fr minmax(0,150px)}
+.lt-addteam .lt-btn{grid-column:1/-1;justify-self:start}
+.lt-acts{display:flex;gap:8px;flex-wrap:wrap}
+.lt-btn{min-height:44px;padding:9px 18px;font-size:.95rem}
+.lt-msg{min-height:0;font-size:.92rem;color:var(--leaf);margin-top:6px}
+.lt-msg:empty{display:none}
+.lt-msg.bad{color:var(--t3)}
+.lt-dec{font-size:.95rem;color:var(--ink-2);padding:8px 12px;border-radius:12px;background:var(--surface);border:1px dashed var(--line-2)}
+.lt-dec:empty{display:none}
+.lt-cur{grid-template-columns:1fr 1fr!important}
+.lt-choice{grid-column:1/-1;display:grid;gap:6px}
+.lt-choice-h{font-weight:600;color:var(--head);font-size:.95rem}
+.lt-radio{display:flex;align-items:center;gap:10px;min-height:44px;padding:6px 12px;border-radius:12px;border:1px solid var(--line-2);background:var(--surface);cursor:pointer}
+.lt-radio input{width:20px;height:20px;accent-color:var(--brand)}
+
+.lt-teams{display:grid;gap:8px;margin-top:10px}
+.lt-team-row{display:grid;grid-template-columns:1fr minmax(0,110px) 44px;gap:6px;align-items:center}
+.lt-icon-btn{width:44px;height:44px;border-radius:12px;border:1px solid var(--line-2);background:var(--surface);color:var(--muted);font-size:1.3rem;line-height:1}
+.lt-icon-btn:hover{color:var(--t3);border-color:var(--t3)}
+
+.lt-empty{color:var(--muted)}
+.lt-rlist{display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr))}
+.lt-r{padding:10px 12px;border-radius:12px;background:var(--surface);border:1px solid var(--line);display:grid;gap:6px;min-width:0}
+.lt-sides{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.lt-sd{display:grid;grid-template-columns:1fr auto;align-items:center;gap:2px 8px;padding:6px 10px;border-radius:10px;background:var(--surface-2);min-width:0}
+.lt-sn{font-weight:600;color:var(--head);overflow-wrap:anywhere}
+.lt-sg{font:700 1.3rem var(--font-h);color:var(--brand);font-variant-numeric:tabular-nums}
+.lt-sc{grid-column:1/-1;color:var(--muted);font-size:.8rem}
+.lt-meta{display:grid;gap:4px;font-size:.88rem;color:var(--ink-2)}
+.lt-date{color:var(--muted);font-variant-numeric:tabular-nums}
+.lt-tag2 b{color:var(--head)}
+.lt-warn{color:var(--t3);font-weight:600}
+.lt-racts{display:flex;gap:6px;justify-content:flex-end}
+.lt-sm{min-height:44px;min-width:64px;padding:6px 14px;border-radius:999px;border:1px solid var(--line-2);background:var(--surface-2);color:var(--ink-2);font-weight:600;font-size:.9rem}
+.lt-sm:hover{border-color:var(--brand);color:var(--brand)}
+.lt-danger:hover{border-color:var(--t3);color:var(--t3)}
+
+/* standings */
+.lt-print{margin-top:18px}
+.lt-print-h{font-family:var(--font-h);color:var(--head);font-size:1.1rem;margin-bottom:8px}
+.lt-print-only{display:none}
+.lt-group{margin-bottom:16px}
+.lt-gtitle{font-family:var(--font-h);color:var(--head);font-size:1rem;margin:6px 0 8px}
+.lt-scroll{overflow-x:auto;max-width:100%;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);-webkit-overflow-scrolling:touch}
+.lt-scroll:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.lt-table{border-collapse:separate;border-spacing:0;width:100%;min-width:560px;font-size:.95rem;font-variant-numeric:tabular-nums}
+.lt-table th,.lt-table td{padding:8px 10px;text-align:center;border-bottom:1px solid var(--line);white-space:nowrap}
+.lt-table thead th{background:var(--surface-3);color:var(--head);font-family:var(--font-h);font-weight:600;font-size:.85rem}
+.lt-table .lt-team{position:sticky;inset-inline-start:0;z-index:1;text-align:start;background:var(--surface);min-width:150px;max-width:220px;white-space:normal}
+.lt-table thead .lt-team{background:var(--surface-3);z-index:2}
+.lt-table tbody .lt-team{box-shadow:inset -1px 0 0 var(--line)}
+.lt-tcell{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px}
+.lt-rank{flex:none;display:grid;place-items:center;width:26px;height:26px;border-radius:8px;background:color-mix(in oklab,var(--brand) 14%,transparent);color:var(--brand);font:700 .85rem var(--font-h)}
+.lt-tn{font-weight:600;color:var(--head)}
+.lt-pts-c{font-weight:700;color:var(--head)}
+.lt-badge{display:inline-block;font-size:.75rem;font-weight:700;padding:1px 8px;border-radius:999px;background:color-mix(in oklab,var(--sun) 20%,transparent);color:color-mix(in oklab,var(--sun) 60%,var(--ink))}
+.lt-why{min-height:32px;padding:2px 10px;border-radius:999px;border:1px solid var(--line-2);font-size:.8rem;color:var(--brand);background:var(--surface-2)}
+.lt-why::after{content:"";position:absolute;inset:-6px}
+.lt-why{position:relative}
+.lt-why[aria-expanded=true]{background:var(--brand);color:var(--on-brand);border-color:var(--brand)}
+.lt-note td{text-align:start;white-space:normal;background:var(--surface-2);font-size:.9rem;color:var(--ink-2)}
+.lt-note p+p,.lt-note .lt-q{margin-top:6px}
+.lt-note .lt-q{background:var(--surface)}
+.lt-sub{font-weight:600;color:var(--head)}
+.lt-mm{padding-inline-start:18px;list-style:disc}
+.lt-flag-committee .lt-team,.lt-flag-draw .lt-team{box-shadow:inset 4px 0 0 var(--sun)}
+.lt-flags{display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr))}
+.lt-flags>.lt-gtitle{grid-column:1/-1}
+.lt-flag{padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2);display:grid;gap:6px;font-size:.92rem}
+.lt-flag.on{border-color:var(--sun);background:color-mix(in oklab,var(--sun) 8%,var(--surface))}
+.lt-flag ul{list-style:disc;padding-inline-start:18px}
+.lt-flag .lt-badge{justify-self:start}
+.lt-row{display:grid;gap:4px}
+.lt-row dt{font-size:.78rem;font-weight:600;color:var(--muted)}
+.lt-row dd{color:var(--head)}
+
+.lt-tools{margin-top:14px;display:flex!important;flex-wrap:wrap;gap:8px}
+.lt-file{position:relative;cursor:pointer}
+.lt-file input{position:absolute;inset:0;opacity:0;width:100%;cursor:pointer}
+.lt-file:focus-within{outline:3px solid var(--accent);outline-offset:2px}
+.lt-privacy{display:flex;align-items:center;gap:8px;margin-top:10px;color:var(--muted);font-size:.88rem}
+.lt-privacy .i{width:16px;height:16px}
+
+@media(max-width:700px){
+  .lt-rules{grid-template-columns:1fr}
+  .lt-form fieldset{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .lt-sides{grid-template-columns:1fr}
+}
+@media(prefers-reduced-motion:reduce){.lt *{transition:none!important}}
+
+/* print: under 'اطبع الجدول' only the standings, the tie-break line and the flags; in every other print the inputs go */
+@media print{
+  .lt-in,.lt-tools,.lt-privacy,.lt-msg,.lt-why,.lt-src,.lt-hint{display:none!important}
+  .lt{box-shadow:none;border:0;padding:0}
+  .lt tr.lt-note,.lt tr.lt-note[hidden]{display:table-row!important}
+  .lt-scroll{overflow:visible;border-color:#999}
+  .lt-table{min-width:0}
+  .lt-table .lt-team{position:static}
+  .lt-table th,.lt-table td{border-color:#999}
+  body.print-league-table>*:not(main){display:none!important}
+  body.print-league-table main>*:not(#c-league){display:none!important}
+  body.print-league-table #c-league>.wrap>*:not(#league-table){display:none!important}
+  body.print-league-table #league-table>*:not(.lt-print):not(.lt-h){display:none!important}
+  body.print-league-table #league-table{display:block!important;margin:0}
+  body.print-league-table .lt-print-only{display:block}
+  body.print-league-table #c-league{padding:0;background:none}
+}
+@media(max-width:520px){.lt-table{font-size:.88rem}.lt-table th,.lt-table td{padding:7px 7px}.lt-table .lt-team{min-width:120px}}
