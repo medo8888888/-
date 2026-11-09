@@ -5,6 +5,8 @@ Content words come from METHOD via t(); layout and visual labels are UI chrome.
 from core import METHOD as M, PAGE_LABEL, btn, cta, ic, page, page_hero, plain, strip_colon, t
 from features import assets
 from docpage import ayah, blocks_html, head, num, sec, seg_bar
+import feat_meeting_timer
+import feat_publish_check
 
 PAGE = 'method.html'
 FIELD_ICON = ['home', 'building', 'heart', 'cap', 'users']
@@ -49,7 +51,7 @@ def phases():
 def meeting():
     n = M['m-meeting']
     rows = [(r[1], num(r[0]), r[0]) for r in n.table[1:]]
-    return sec('m-meeting', head(n) + seg_bar(rows, 'دقيقة', strip_colon(n.title)) + blocks_html(n), 'alt')
+    return sec('m-meeting', head(n) + seg_bar(rows, 'دقيقة', strip_colon(n.title)) + blocks_html(n) + feat_meeting_timer.html(), 'alt')
 
 
 def media():
@@ -86,7 +88,8 @@ def impact():
     tiles = ''.join(f'<li class="fact rv"><span class="fact-ic">{ic("gauge")}</span><small>{t(a)}</small><b>{t(b)}</b></li>' for a, b in k.table[1:])
     return sec('m-impact', head(n) + f'<div class="dp-sub" id="m-kpis">{head(k, level=3)}<ul class="facts" data-stagger>{tiles}</ul>'
                + f'<div class="tbl-print">{blocks_html(k)}</div></div>'
-               + f'<div class="dp-sub pcard rv" id="m-privacy">{head(p, level=3)}{blocks_html(p)}</div>', 'alt')
+               + f'<div class="dp-sub pcard rv" id="m-privacy">{head(p, level=3)}{blocks_html(p)}</div>'
+               + feat_publish_check.html(), 'alt')
 
 
 def build():

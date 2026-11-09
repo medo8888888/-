@@ -71,8 +71,11 @@ def weeks():
 def meeting():
     n = L['l-meeting']
     rows = [(a, num(b), b) for a, b in n.table[1:]]
+    # UI chrome: deep links into the meeting timer on method.html (meeting-timer feature), preselecting the agenda
+    run = lambda href, label: f'<p class="btns rv">{btn(href, label, "clock", "btn-soft btn-sm")}</p>'  # noqa: E731
     return sec('l-meeting', head(n) + seg_bar(rows, 'دقيقة', strip_colon(n.title), n.table[0]) + f'<div class="tbl-print">{blocks_html(n, skip=(0,))}</div>'
-               + f'<p class="dp-p rv">{t(n.paras[0])}</p>', 'alt')
+               + run('method.html?mt=l100#mt', 'شغّل هذا اللقاء بالمؤقّت')
+               + f'<p class="dp-p rv">{t(n.paras[0])}</p>' + run('method.html?mt=l30#mt', 'شغّل لقاء التقييم بالمؤقّت'), 'alt')
 
 
 def practice():
