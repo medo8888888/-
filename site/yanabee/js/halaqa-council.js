@@ -34,6 +34,14 @@
       fixed: { quality: '', tech: '' }, overrides: {}, teams: [], weeks: [], sel: 0, view: 'week' };
   };
   var isStr = function (x) { return typeof x === 'string'; };
+  // point tables are keyed by team name: a prototype-less object so names such as «constructor» or «__proto__» are plain keys
+  var dict = function () { return Object.create(null); };
+  // number fields are type=text inputmode=numeric so Arabic-Indic digits (٠-٩, ۰-۹) are accepted and read as 0-9
+  var latin = function (s) {
+    return String(s).replace(/[٠-٩]/g, function (c) { return String(c.charCodeAt(0) - 0x660); })
+      .replace(/[۰-۹]/g, function (c) { return String(c.charCodeAt(0) - 0x6F0); }).trim();
+  };
+  var toInt = function (s) { s = latin(s); return /^\d+$/.test(s) ? parseInt(s, 10) : NaN; };
   var clean = function (arr) {
     var out = [];
     arr.forEach(function (s) { s = String(s).trim(); if (s && out.indexOf(s) < 0) out.push(s); });
@@ -62,7 +70,7 @@
     for (var i = 0; i < o.weeks.length; i++) {
       var w = o.weeks[i];
       if (!w || typeof w !== 'object' || !pdate(w.start) || !w.pts || typeof w.pts !== 'object' || Array.isArray(w.pts)) return null;
-      var pts = {};
+      var pts = dict();
       for (var team in w.pts) {
         if (!Object.prototype.hasOwnProperty.call(w.pts, team)) continue;
         var a = w.pts[team];
@@ -216,8 +224,8 @@
   var setStart = function () { S.start = mkey(+sy.value, +sm.value); save(); renderRot(); };
   sm.addEventListener('change', setStart); sy.addEventListener('change', setStart);
   monthsIn.addEventListener('change', function () {
-    var v = parseInt(monthsIn.value, 10);
-    if (!isFinite(v)) { S.auto = true; S.months = null; }
+    var v = toInt(monthsIn.value);
+    if (!isFinite(v) || v < 1) { S.auto = true; S.months = null; }
     else { S.months = Math.min(24, Math.max(1, v)); S.auto = false; }
     save(); renderRot();
   });
@@ -267,7 +275,7 @@
       var a = w.pts[team] || [null, null, null, null];
       for (var c = 0; c < 4; c++) {
         var td = el('td'), inp = el('input', 'hc-pt');
-        inp.type = 'number'; inp.min = '0'; inp.step = '1'; inp.inputMode = 'numeric';
+        inp.type = 'text'; inp.inputMode = 'numeric'; inp.maxLength = 6; inp.autocomplete = 'off';
         inp.value = a[c] == null ? '' : String(a[c]);
         inp.dataset.team = team; inp.dataset.c = String(c);
         inp.setAttribute('aria-label', team + ' — ' + heads[c + 1]);
@@ -315,10 +323,11 @@
   $('hc-grid-body').addEventListener('input', function (e) {
     var inp = e.target.closest('input.hc-pt'), w = curWeek();
     if (!inp || !w) return;
-    var v = parseInt(inp.value, 10), team = inp.dataset.team, c = +inp.dataset.c;
+    var v = toInt(inp.value), team = inp.dataset.team, c = +inp.dataset.c;
     var a = w.pts[team] || [null, null, null, null];
     a[c] = isFinite(v) && v >= 0 ? v : null;
     if (inp.value !== '' && !(isFinite(v) && v >= 0)) inp.value = '';
+    else if (isFinite(v) && inp.value !== String(v)) inp.value = String(v);
     w.pts[team] = a;
     save();
     var tot = inp.closest('tr').querySelector('.hc-sum');
@@ -335,7 +344,7 @@
     if (last) d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7);
     var k = dkey(d);
     while (S.weeks.some(function (x) { return x.start === k; })) { d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7); k = dkey(d); }
-    var w = { start: k, pts: {} };
+    var w = { start: k, pts: dict() };
     S.weeks.push(w); sortWeeks(w);
     save(); renderLeague();
     msg('أُضيف أسبوع يبدأ ' + fDay.format(d) + '.');

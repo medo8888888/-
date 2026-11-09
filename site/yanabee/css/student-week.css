@@ -141,7 +141,8 @@
 
 @media (max-width:520px){
   .sw-tabs{border-radius:16px}
-  .sw-tabs [role=tab]{padding:8px 10px;font-size:.9rem}
+  /* the three tabs share the row and their labels may wrap, so none is cut off at 320–390px with the web font */
+  .sw-tabs [role=tab]{flex:1 1 0;min-width:0;padding:6px 8px;font-size:.9rem;white-space:normal;line-height:1.35;text-align:center}
   .sw-tabs [role=tab] .i{display:none}
   .sw-cal{padding:8px}
   .sw-wd,.sw-grid{gap:3px}
@@ -155,6 +156,7 @@
   .sw-tabs,.sw-tool,.sw-foot,.sw-store{display:none!important}
   .sw-box{box-shadow:none;border:0;padding:0}
   .sw-panel[hidden]{display:block!important}
+  .sw-panel{animation:none!important}
   body.print-student-week *:not(:has(#sw-print)):not(#sw-print):not(#sw-print *){display:none!important}
   body.print-student-week :has(#sw-print){display:block!important;margin:0!important;padding:0!important;border:0!important;
     background:none!important;box-shadow:none!important;min-height:0!important;width:auto!important;max-width:none!important}

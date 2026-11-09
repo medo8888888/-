@@ -86,7 +86,7 @@ def html():
         </fieldset>
         <div class="sw-f">
           <label for="sw-total">عدد آيات المقطع الذي أحفظه</label>
-          <input id="sw-total" type="number" min="1" step="1" inputmode="numeric" autocomplete="off" aria-describedby="sw-total-h">
+          <input id="sw-total" type="text" inputmode="numeric" maxlength="6" autocomplete="off" aria-describedby="sw-total-h">
           <small id="sw-total-h" class="sw-hint">اكتبه من مصحفك أو كما حدده المعلم</small>
         </div>
       </div>

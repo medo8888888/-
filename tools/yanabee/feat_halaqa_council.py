@@ -129,7 +129,7 @@ def html():
           <div class="hc-f">
             <label for="hc-months">عدد الأشهر</label>
             <div class="hc-pair">
-              <input id="hc-months" type="number" min="1" max="24" step="1" inputmode="numeric" aria-describedby="hc-months-h">
+              <input id="hc-months" type="text" inputmode="numeric" maxlength="2" autocomplete="off" aria-describedby="hc-months-h">
               <button type="button" class="hc-btn" id="hc-full">دورة كاملة</button>
             </div>
             <small class="hc-hint" id="hc-months-h">دورة كاملة: كل عضو يتولى القيادة مرة</small>

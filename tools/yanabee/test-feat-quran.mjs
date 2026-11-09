@@ -403,8 +403,12 @@ console.log('phone 390px');
   check('no horizontal overflow (tools filled)', (await overflow(p)) <= 0, String(await overflow(p)));
   check('tables scroll inside their own wrapper', await p.evaluate(() => { const w = document.getElementById('hc-grid-w'); return getComputedStyle(w).overflowX === 'auto' && w.getBoundingClientRect().right <= innerWidth + 1; }));
   check('tool boxes fit the viewport', await p.evaluate(() => ['student-week', 'halaqa-council'].every(id => { const r = document.getElementById(id).getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth; })));
-  check('touch targets: buttons and fields at least 40px tall', await p.evaluate(() => [...document.querySelectorAll('#student-week button, #student-week input:not([type=radio]):not([type=checkbox]), #halaqa-council button:not([role=tab]), #halaqa-council select, #halaqa-council input:not([type=file])')]
-    .filter(e => e.offsetParent).every(e => e.getBoundingClientRect().height >= 40)));
+  await p.click('#hc-tab-rot');
+  const small = await p.evaluate(() => [...document.querySelectorAll('#student-week button, #student-week input:not([type=radio]):not([type=checkbox]), #halaqa-council button, #halaqa-council select, #halaqa-council input:not([type=file])')]
+    .filter(e => e.offsetParent).filter(e => e.getBoundingClientRect().height < 44).map(e => e.id || e.className || e.tagName));
+  check('touch targets: buttons, selects and fields at least 44px tall (incl. per-month selects)', small.length === 0, small.join());
+  await p.click('#hc-tab-league');
+  check('touch targets: the view switch buttons are at least 44px tall', await p.evaluate(() => [...document.querySelectorAll('.hc-seg button, #hc-grid-body input')].every(e => e.getBoundingClientRect().height >= 44)));
   await p.click('#sw-tab-hifz');
   check('calendar cells at least 40px', await p.evaluate(() => [...document.querySelectorAll('#sw-grid .sw-day')].every(b => { const r = b.getBoundingClientRect(); return r.width >= 40 && r.height >= 40; })));
   check('all three notebook tabs visible without scrolling', await p.evaluate(() => { const tl = document.querySelector('.sw-tabs'); return tl.scrollWidth <= tl.clientWidth + 1; }));
@@ -412,6 +416,92 @@ console.log('phone 390px');
   check('keyboard focus is visible on a day button', await p.evaluate(() => { const b = document.activeElement; return b.classList.contains('sw-day') && getComputedStyle(b).outlineStyle !== 'none'; }));
   check('no page errors', errs.length === 0, errs.join(' | '));
   check('no network requests', net.length === 0, net.join(' '));
+  await ctx.close();
+}
+
+// ============================================================================ review: regressions found after the first build
+console.log('review: the tools never move the page on load');
+for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 }]) {
+  const { ctx, p, errs } = await open({ viewport });
+  await p.waitForTimeout(600);
+  check(`${viewport.width}px: page stays at the top after load (no jump to #a4)`, (await p.evaluate(() => scrollY)) === 0, String(await p.evaluate(() => scrollY)));
+  await p.click('#sw-tab-fahm');
+  const y = await p.evaluate(() => scrollY);
+  await p.click('#sw-tab-tatbeeq');
+  check(`${viewport.width}px: choosing a notebook tab does not scroll the page`, (await p.evaluate(() => scrollY)) === y);
+  check(`${viewport.width}px: no page errors`, errs.length === 0, errs.join(' | '));
+  await ctx.close();
+}
+{
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+  const p = await ctx.newPage();
+  await p.route('**/fonts.g*/**', r => r.abort());
+  await p.addInitScript(() => { try { sessionStorage.setItem('yb-intro', '1'); } catch (e) { /* blocked */ } });
+  await p.goto(URL_Q + '#a1'); await p.waitForTimeout(800);
+  check('a link to quran.html#a1 still lands on #a1', await p.evaluate(() => Math.abs(document.getElementById('a1').getBoundingClientRect().top) < 200), String(await p.evaluate(() => document.getElementById('a1').getBoundingClientRect().top)));
+  await ctx.close();
+}
+
+console.log('review: notebook tabs are never cut off on small phones');
+for (const width of [320, 360, 390]) {
+  const { ctx, p } = await open({ viewport: { width, height: 800 }, isMobile: true, hasTouch: true });
+  check(`${width}px: all three notebook tabs fit fully inside the tab row`, await p.evaluate(() => {
+    const tl = document.querySelector('.sw-tabs'), r = tl.getBoundingClientRect();
+    return tl.scrollWidth <= tl.clientWidth + 1 && [...tl.querySelectorAll('[role=tab]')].every(t => { const b = t.getBoundingClientRect(); return b.left >= r.left - 1 && b.right <= r.right + 1 && b.height >= 44 && t.scrollWidth <= t.clientWidth + 1; });
+  }));
+  check(`${width}px: no horizontal page overflow`, (await overflow(p)) <= 0, String(await overflow(p)));
+  await ctx.close();
+}
+
+console.log('review: Arabic-Indic digits are read as numbers');
+{
+  const { ctx, p, errs } = await open();
+  await p.check('input[name=sw-pace][value="2"]');
+  await p.click('#sw-total'); await p.keyboard.type('٧');
+  check('typing «٧» with pace 2 -> «عدد الأيام بهذا المقدار: 4»', (await txt(p, '#sw-days')) === 'عدد الأيام بهذا المقدار: 4', await txt(p, '#sw-days'));
+  check('the field shows the digit as 7 and the state keeps 7', (await p.inputValue('#sw-total')) === '7' && await p.evaluate(() => window.YanabeeStudentWeek.state.total === 7));
+  await p.fill('#sw-total', '۱۲');
+  check('Extended Arabic-Indic «۱۲» with pace 2 -> 6', (await txt(p, '#sw-days')) === 'عدد الأيام بهذا المقدار: 6', await txt(p, '#sw-days'));
+  await p.fill('#sw-total', '2.5');
+  check('a non-integer gives a prompt, no number of days', !/\d/.test(await txt(p, '#sw-days')) && await p.evaluate(() => window.YanabeeStudentWeek.state.total === null));
+  await type(p, '#hc-names', 'أ\nب\nج\nد\nه\nو\nز');
+  await p.fill('#hc-months', '١٤'); await p.dispatchEvent('#hc-months', 'change');
+  check('months «١٤» -> 14 rows', (await p.$$('#hc-rot-body tr')).length === 14 && (await p.inputValue('#hc-months')) === '14');
+  await p.click('#hc-tab-league');
+  await type(p, '#hc-teams', 'النور\nالهدى');
+  await p.click('#hc-week-add');
+  await p.click('#hc-grid-body input[data-team="النور"][data-c="0"]'); await p.keyboard.type('٥');
+  await p.click('#hc-grid-body input[data-team="النور"][data-c="1"]'); await p.keyboard.type('١٠');
+  check('points «٥» + «١٠» -> sum 15 in the grid and the totals', (await txt(p, '#hc-grid-body tr:first-child .hc-sum')) === '15' && (await txt(p, '#hc-tot-body tr:first-child .hc-sum')) === '15');
+  check('the point fields show 5 and 10', (await p.inputValue('#hc-grid-body input[data-team="النور"][data-c="0"]')) === '5' && (await p.inputValue('#hc-grid-body input[data-team="النور"][data-c="1"]')) === '10');
+  check('no page errors', errs.length === 0, errs.join(' | '));
+  await ctx.close();
+}
+
+console.log('review: team names that are JavaScript object keys');
+{
+  const { ctx, p, errs } = await open();
+  await p.click('#hc-tab-league');
+  await type(p, '#hc-teams', 'constructor\n__proto__\ntoString');
+  await p.click('#hc-week-add');
+  check('three grid rows for «constructor», «__proto__», «toString»', (await p.$$('#hc-grid-body tr')).length === 3);
+  await type(p, '#hc-grid-body input[data-team="constructor"][data-c="0"]', '3');
+  await type(p, '#hc-grid-body input[data-team="__proto__"][data-c="2"]', '4');
+  check('their sums are 3, 4 and 0', JSON.stringify(await p.$$eval('#hc-grid-body .hc-sum', s => s.map(x => x.textContent))) === '["3","4","0"]');
+  check('«__proto__» points are stored', await p.evaluate(k => JSON.parse(localStorage.getItem(k)).weeks[0].pts.__proto__[2] === 4, KEY_HC));
+  await p.reload(); await p.waitForTimeout(300); await p.click('#hc-tab-league');
+  check('they survive a reload', JSON.stringify(await p.$$eval('#hc-grid-body .hc-sum', s => s.map(x => x.textContent))) === '["3","4","0"]');
+  check('no page errors', errs.length === 0, errs.join(' | '));
+  await ctx.close();
+}
+
+console.log('review: whole-page print shows the panels without a fade');
+{
+  const { ctx, p } = await open({ reducedMotion: 'no-preference' });
+  await p.click('#sw-tab-tatbeeq'); await p.click('#hc-tab-league');
+  await p.emulateMedia({ media: 'print' });
+  check('print media: no fade animation on the open panels', await p.evaluate(() => ['sw-p-tatbeeq', 'hc-p-league'].every(id => getComputedStyle(document.getElementById(id)).animationName === 'none')));
+  check('print media: every panel of both tools is laid out', await p.evaluate(() => ['sw-p-hifz', 'sw-p-fahm', 'sw-p-tatbeeq', 'hc-p-rot', 'hc-p-league'].every(id => getComputedStyle(document.getElementById(id)).display !== 'none')));
   await ctx.close();
 }
 

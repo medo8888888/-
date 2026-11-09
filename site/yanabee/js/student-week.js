@@ -72,7 +72,13 @@
       if (p) p.hidden = !on;
     });
     if (focus) tab.focus();
-    try { tab.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch (e) { /* old engines */ }
+    // keep the chosen tab visible inside the sideways-scrolling tab row only; never scroll the page
+    // (scrollIntoView here made quran.html jump to #a4 on load)
+    if (tablist.scrollWidth > tablist.clientWidth) {
+      var tr = tab.getBoundingClientRect(), lr = tablist.getBoundingClientRect();
+      if (tr.left < lr.left) tablist.scrollLeft -= lr.left - tr.left;
+      else if (tr.right > lr.right) tablist.scrollLeft += tr.right - lr.right;
+    }
   };
   tabs.forEach(function (t, i) {
     t.addEventListener('click', function () { select(t, false); });
@@ -89,10 +95,16 @@
   /* ---------------- hifz: pace, days needed, calendar ---------------- */
   var paceInputs = [].slice.call(box.querySelectorAll('input[name=sw-pace]'));
   var total = $('sw-total');
+  // the count field is type=text inputmode=numeric so Arabic-Indic digits (٠-٩, ۰-۹) are accepted and read as 0-9
+  var latin = function (s) {
+    return String(s).replace(/[٠-٩]/g, function (c) { return String(c.charCodeAt(0) - 0x660); })
+      .replace(/[۰-۹]/g, function (c) { return String(c.charCodeAt(0) - 0x6F0); }).trim();
+  };
   var renderDays = function () {
     var out = $('sw-days');
     var n = S.total, p = S.pace;
     if (p && n) out.textContent = 'عدد الأيام بهذا المقدار: ' + Math.ceil(n / p);
+    else if (!n && total.value.trim()) out.textContent = 'اكتب عدد آيات المقطع بالأرقام.';
     else if (!p && !n) out.textContent = 'اختر مقدارك اليومي واكتب عدد آيات المقطع.';
     else if (!p) out.textContent = 'اختر مقدارك اليومي.';
     else out.textContent = 'اكتب عدد آيات المقطع.';
@@ -101,7 +113,9 @@
     r.addEventListener('change', function () { if (r.checked) { S.pace = +r.value; save(); renderDays(); } });
   });
   total.addEventListener('input', function () {
-    var v = parseInt(total.value, 10);
+    var s = latin(total.value);
+    if (/^\d+$/.test(s) && s !== total.value) total.value = s;
+    var v = /^\d+$/.test(s) ? parseInt(s, 10) : NaN;
     S.total = isFinite(v) && v >= 1 ? v : null;
     save(); renderDays();
   });
