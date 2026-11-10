@@ -23,6 +23,7 @@
 <link rel="stylesheet" href="css/assist.css">
 <link rel="stylesheet" href="css/art.css">
 <link rel="stylesheet" href="css/comp.css">
+<link rel="stylesheet" href="css/tournament.css">
 <link rel="stylesheet" href="css/fx.css">
 <link rel="stylesheet" href="css/play.css">
 <link rel="stylesheet" href="css/wow.css">
@@ -35,6 +36,10 @@
 <script src="js/play.js" defer></script>
 <script src="js/wow.js" defer></script>
 <script src="js/comp.js" defer></script>
+<script src="js/yb-config.js" defer></script>
+<script src="js/yb-api.js" defer></script>
+<script src="js/tournament-engine.js" defer></script>
+<script src="js/tournament.js" defer></script>
 </head>
 <body data-page="tournament.html">
 <div class="progress" aria-hidden="true"></div>
@@ -69,7 +74,7 @@
 
 <main id="main">
 
-<section class="hero hero-page comp-hero">
+<section class="hero hero-page comp-hero tn-hero">
   <div class="hero-bg" aria-hidden="true"><span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span></div>
   <div class="wrap hero-grid">
     <div class="hero-copy">
@@ -83,7 +88,7 @@
 </svg>المسابقة الأولى · سورة الصف</span>
       <h1 class="rv">لوحة البطولة</h1>
       <p class="hero-lead rv">المجموعات والنتائج والترتيب لدوري كرة القدم وبطولة الشطرنج.</p>
-      <nav class="chips rv" aria-label="أقسام الصفحة"><a class="chip" href="#c-format">نظام البطولة</a><a class="chip" href="competition.html#c-league">لائحة الدوري</a><a class="chip" href="register.html">سجّل فريقك</a></nav>
+      <nav class="chips rv" aria-label="أقسام الصفحة"><a class="chip" href="#tn-app">لوحة المتابعة</a><a class="chip" href="#c-format">نظام البطولة</a><a class="chip" href="competition.html#c-league">لائحة الدوري</a><a class="chip" href="register.html">سجّل فريقك</a></nav>
     </div>
     <div class="ch-visual rv"><div class="cstatus" data-comp-status aria-live="polite">
   <span class="cs-dot" aria-hidden="true"></span>
@@ -91,7 +96,14 @@
   <div class="cs-count" data-cs-count hidden><b data-cs-n></b><small data-cs-unit></small></div>
 </div></div>
   </div>
-</section><section class="sec dp-sec " id="c-format"><div class="wrap"><header class="sec-head rv"><div><span class="kicker"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>المسابقة الأولى · سورة الصف</span><h2>نظام بطولة كرة القدم والشطرنج</h2></div></header><div class="dp-sub" id="fm-football"><h3 class="dp-h3 rv" id="h-fm-football">دوري كرة القدم</h3><ul class="list dp-list rv"><li class="item"><span class="body">يتم تقسيم الـ 12 فرقة إلى 3 مجموعات، كل مجموعة 4 فرق.</span></li><li class="item"><span class="body">المجموعة سوف تلعب 3 مباريات.</span></li><li class="item"><span class="body">الأول من كل مجموعة يدخل في التصفيات.</span></li><li class="item"><span class="body">التصفيات 3 فرق، كل فرقة تلعب 2 مباراة، يحدد فيها الأول والثاني والثالث.</span></li></ul></div><div class="dp-sub" id="fm-chess"><h3 class="dp-h3 rv" id="h-fm-chess">بطولة الشطرنج</h3><ul class="list dp-list rv"><li class="item"><b class="lbl">نظام الكأس</b><span class="body">يلعب 12 فرقة 6 مباريات.</span></li><li class="item"><span class="body">الفائزون 6 أعضاء يلعبون 3 مباريات.</span></li><li class="item"><span class="body">الفائزون 3 أعضاء، كل عضو يلعب 2 مباراة.</span></li><li class="item"><span class="body">الأول والثاني يلعبان المباراة النهائية، وتوزع الجوائز على الفائزين الثلاثة.</span></li></ul></div></div></section>
+</section>
+<section class="sec tn-sec" aria-label="لوحة البطولة">
+  <div class="wrap">
+    <div id="tn-app" class="tn" data-tn aria-busy="true"><div class="tn-skel" aria-hidden="true"><i></i><i></i><i></i></div><p class="tn-nojs">تحتاج لوحة البطولة إلى تفعيل JavaScript في المتصفح. نظام البطولة مكتوب أدناه.</p></div>
+  </div>
+</section>
+<section class="tn-printwrap" id="tn-print" aria-hidden="true"></section>
+<script type="application/json" id="tn-words">{"fbTitle": "دوري كرة القدم", "fbLines": ["يتم تقسيم الـ 12 فرقة إلى 3 مجموعات، كل مجموعة 4 فرق.", "المجموعة سوف تلعب 3 مباريات.", "الأول من كل مجموعة يدخل في التصفيات.", "التصفيات 3 فرق، كل فرقة تلعب 2 مباراة، يحدد فيها الأول والثاني والثالث."], "chTitle": "بطولة الشطرنج", "chLines": ["نظام الكأس: يلعب 12 فرقة 6 مباريات.", "الفائزون 6 أعضاء يلعبون 3 مباريات.", "الفائزون 3 أعضاء، كل عضو يلعب 2 مباراة.", "الأول والثاني يلعبان المباراة النهائية، وتوزع الجوائز على الفائزين الثلاثة."], "lg2Title": "التأخر والغياب والانسحاب", "lg6Title": "احتساب النقاط والترتيب", "points": [["الفوز", "3 نقاط"], ["التعادل", "نقطة واحدة"], ["الخسارة", "صفر"]], "tiebreak": "عند التساوي: فارق الأهداف، ثم الأهداف المسجلة، ثم المواجهات المباشرة، ثم الأقل بطاقات حمراء فصفراء، ثم قرعة علنية.", "committee": "تفصل اللجنة في الحالات غير المنصوص عليها مع مراعاة العدالة وسلامة المشاركين.", "forfeit": {"late": [["تأخر الفريق لأكثر من 10 دقائق", "تُحسب النتيجة بخسارة الفريق المتأخر 0 – 3"]], "absent": [["غياب الفريق دون عذر", "تُحسب النتيجة بخسارة الفريق المتغيب 0 – 3"]], "withdraw": [["انسحاب الفريق قبل المباراة", "تُحسب النتيجة بخسارة الفريق المنسحب 0 – 3"], ["انسحاب الفريق أثناء المباراة", "تُحسب النتيجة بخسارة الفريق المنسحب 0 – 3 أو تثبيت النتيجة القائمة إذا كانت أكبر لمصلحة الفريق المنافس"]], "unregistered": [["إشراك لاعب غير مسجل", "خسارة اعتبارية 3 – 0"]]}}</script><section class="sec dp-sec alt" id="c-format"><div class="wrap"><header class="sec-head rv"><div><span class="kicker"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>المسابقة الأولى · سورة الصف</span><h2>نظام بطولة كرة القدم والشطرنج</h2></div></header><div class="dp-sub" id="fm-football"><h3 class="dp-h3 rv" id="h-fm-football">دوري كرة القدم</h3><ul class="list dp-list rv"><li class="item"><span class="body">يتم تقسيم الـ 12 فرقة إلى 3 مجموعات، كل مجموعة 4 فرق.</span></li><li class="item"><span class="body">المجموعة سوف تلعب 3 مباريات.</span></li><li class="item"><span class="body">الأول من كل مجموعة يدخل في التصفيات.</span></li><li class="item"><span class="body">التصفيات 3 فرق، كل فرقة تلعب 2 مباراة، يحدد فيها الأول والثاني والثالث.</span></li></ul></div><div class="dp-sub" id="fm-chess"><h3 class="dp-h3 rv" id="h-fm-chess">بطولة الشطرنج</h3><ul class="list dp-list rv"><li class="item"><b class="lbl">نظام الكأس</b><span class="body">يلعب 12 فرقة 6 مباريات.</span></li><li class="item"><span class="body">الفائزون 6 أعضاء يلعبون 3 مباريات.</span></li><li class="item"><span class="body">الفائزون 3 أعضاء، كل عضو يلعب 2 مباراة.</span></li><li class="item"><span class="body">الأول والثاني يلعبان المباراة النهائية، وتوزع الجوائز على الفائزين الثلاثة.</span></li></ul></div></div></section>
 </main>
 
 <footer class="footer">

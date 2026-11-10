@@ -602,17 +602,17 @@ test('rpc: arguments, results and error bodies', async () => {
 test('getState / publishState', async () => {
   const p = makeEnv();
   const env = makeEnv({ stored: storedSession(p) });
-  env.on('GET', '/rest/v1/tournament_state', { body: { state: { v: 1 }, updated_at: '2026-11-09T10:00:00.123456+00:00' } });
+  env.on('GET', '/rest/v1/tournament_state', { body: [{ state: { v: 1 }, updated_at: '2026-11-09T10:00:00.123456+00:00' }] });
   eq(await env.YB.getState(), { state: { v: 1 }, updated_at: '2026-11-09T10:00:00.123456+00:00' }, 'getState returns {state, updated_at}');
-  eq(pathOf(env.calls[0].url), '/rest/v1/tournament_state?select=state%2Cupdated_at&id=eq.1', 'getState query');
-  eq(env.calls[0].headers.Accept, 'application/vnd.pgrst.object+json', 'getState asks for one object');
+  eq(pathOf(env.calls[0].url), '/rest/v1/tournament_state?select=state%2Cupdated_at&id=eq.1&limit=1', 'getState query (limit=1)');
+  ok(env.calls[0].headers.Accept !== 'application/vnd.pgrst.object+json', 'getState asks for an array, so an empty table is a 200, not a 406');
   const anon = makeEnv();
-  anon.on('GET', '/rest/v1/tournament_state', { body: { state: {}, updated_at: 'x' } });
+  anon.on('GET', '/rest/v1/tournament_state', { body: [{ state: {}, updated_at: 'x' }] });
   await anon.YB.getState();
   eq(anon.calls[0].headers.Authorization, 'Bearer ' + ANON, 'getState works anonymously (anon key)');
   const none = makeEnv();
-  none.on('GET', '/rest/v1/tournament_state', { status: 406, body: { code: 'PGRST116', message: 'no rows' } });
-  eq(await none.YB.getState(), null, 'getState with no row -> null');
+  none.on('GET', '/rest/v1/tournament_state', { body: [] });
+  eq(await none.YB.getState(), null, 'getState with no row -> null (empty array, no error)');
 
   env.on('POST', '/rest/v1/rpc/publish_state', { body: { ok: true, conflict: false, updated_at: '2026-11-09T10:01:00.654321+00:00' } });
   const r = await env.YB.publishState({ v: 1, teams: [] }, '2026-11-09T10:00:00.123456+00:00');

@@ -938,5 +938,69 @@ section(`randomized simulation: ${N} complete tournaments (seeded)`);
   check('simulation exercised both kinds of tie, forfeits and chess ties', draws > 0 && committees > 0 && chessTies > 0 && forfeits > 0 && edits > 0, `${draws}/${committees}/${chessTies}/${forfeits}/${edits}`);
 }
 
+/* ================================================================ fixtures planned in advance + taking back a tie decision */
+section('schedule (fb.sched) and clearOrder');
+{
+  const s0 = fixed();
+  const s1 = Y.setSchedule(s0, 't1', 't2', { date: '2026-11-20', time: '16:00' });
+  check('setSchedule stores date and time under the pair key', same(s1.fb.sched['t1|t2'], { date: '2026-11-20', time: '16:00' }));
+  check('input state is untouched (immutable)', !s0.fb.sched['t1|t2'] && same(s0.fb.sched, {}));
+  const g0 = Y.football(s1).groups[0].rounds.flatMap(r => r.matches).find(m => m.key === 't1|t2');
+  check('football() exposes the plan on the match, orientation-free', same(g0.sched, { date: '2026-11-20', time: '16:00' }) && g0.res === null);
+  check('the order of the two teams does not matter', same(Y.setSchedule(s0, 't2', 't1', { date: '2026-11-20', time: '16:00' }).fb.sched, s1.fb.sched));
+  const v = Y.teamView(s1, 't2');
+  const m12 = v.matches.find(m => m.opponent === 't1');
+  check('teamView shows the planned date/time while unplayed', m12 && m12.date === '2026-11-20' && m12.time === '16:00' && !m12.played);
+  check('the next match of t1 is its earliest unplayed fixture with the plan attached', Y.teamView(s1, 't1').next && Y.teamView(s1, 't1').next.opponent !== undefined);
+  const s2 = sr(s1, 't1', 't2', 2, 1);
+  check('a result without its own date keeps showing the plan', Y.teamView(s2, 't1').matches.find(m => m.opponent === 't2').date === '2026-11-20');
+  const s3 = sr(s1, 't1', 't2', 2, 1, { date: '2026-11-22', time: '10:30' });
+  check('a result date wins over the plan', Y.teamView(s3, 't1').matches.find(m => m.opponent === 't2').date === '2026-11-22');
+  check('empty date and time remove the plan', same(Y.setSchedule(s1, 't1', 't2', { date: '', time: '' }).fb.sched, {}));
+  check('a time alone is allowed', same(Y.setSchedule(s0, 't3', 't4', { time: '15:00' }).fb.sched['t3|t4'], { date: '', time: '15:00' }));
+  check('unknown team / same team / no groups / long text are rejected', throwsCode(() => Y.setSchedule(s0, 't1', 'zz', { date: 'x' }), 'unknown_team')
+    && throwsCode(() => Y.setSchedule(s0, 't1', 't1', { date: 'x' }), 'same_team')
+    && throwsCode(() => Y.setSchedule(base(), 't1', 't2', { date: 'x' }), 'no_groups')
+    && throwsCode(() => Y.setSchedule(s0, 't1', 't2', { date: 'x'.repeat(201) }), 'bad_text'));
+  check('a cross-group fixture is refused until both are known qualifiers', throwsCode(() => Y.setSchedule(s0, 't1', 't5', { date: 'x' }), 'final_not_ready'));
+  const done = groupsDone(s0);
+  check('final-round fixtures can be planned between the three qualifiers', same(Y.setSchedule(done, 't1', 't5', { date: '2026-12-01' }).fb.sched['t1|t5'], { date: '2026-12-01', time: '' }));
+  check('...but not with a team that did not qualify', throwsCode(() => Y.setSchedule(done, 't1', 't6', { date: 'x' }), 'not_in_final'));
+  const fin = Y.setSchedule(done, 't1', 't5', { date: '2026-12-01' });
+  const refin = Y.football(fin).final.rounds.flatMap(r => r.matches).find(m => m.key === 't1|t5');
+  check('football().final carries the plan', refin && refin.sched && refin.sched.date === '2026-12-01');
+  const changed = sr(fin, 't5', 't6', 0, 5);   // t6 now first of its group: t5 is no longer a qualifier
+  check('a plan for a pair that stopped being a fixture is dropped automatically', !('t1|t5' in changed.fb.sched) && same(Y.validate(changed), []));
+  const moved = Y.moveTeam(s1, 't2', 1);
+  check('moving a team away drops the plans of fixtures that no longer exist', !('t1|t2' in moved.fb.sched) && same(Y.validate(moved), []));
+  check('a new group draw clears the plans', same(Y.drawGroups(s1, rr1()).fb.sched, {}));
+  check('removing a team clears plans that name it', same(Y.setTeams(s1, TEAMS.slice(0, 11)).fb.sched, {}));
+  const dec = Y.decode(Y.encode(s1));
+  check('encode/decode keeps the plan', same(dec.fb.sched, s1.fb.sched));
+  check('normalize drops garbage plans', same(Y.normalize({ ...s1, fb: { ...s1.fb, sched: { 'x|y': { date: 'a' }, 't2|t1': { date: 'a' }, 't1|t2': 5, 't1|t3': { date: 'ok', time: '' } } } }).fb.sched, { 't1|t3': { date: 'ok', time: '' } }));
+  check('validate flags a stale plan', Y.validate({ ...s1, fb: { ...s1.fb, sched: { 't1|t5': { date: 'a', time: '' } } } }).some(c => c.startsWith('stale_sched')));
+  check('validate is clean after setSchedule', same(Y.validate(s1), []));
+  check('old states without sched load fine', same(Y.normalize({ v: 1, teams: TEAMS, groups: s0.groups, fb: { res: {}, order: {} } }).fb.sched, {}));
+
+  // clearOrder
+  const tie = apply(fixed(), [['t1', 't2', 0, 0], ['t1', 't3', 0, 0], ['t1', 't4', 0, 0], ['t2', 't3', 0, 0], ['t2', 't4', 0, 0], ['t3', 't4', 0, 0]]);
+  check('an all-draw group is a flagged draw tie', Y.football(tie).groups[0].ties.length === 1 && Y.football(tie).groups[0].ties[0].flag === 'draw');
+  const drawn = Y.draw(tie, 'g0', mulberry32(5));
+  check('after draw() the tie is decided and the group has a first', Y.football(drawn).groups[0].first !== null && !!drawn.fb.order.g0);
+  const cleared = Y.clearOrder(drawn, 'g0');
+  check('clearOrder(scope) takes the decision back: tie flagged again', !cleared.fb.order.g0 && Y.football(cleared).groups[0].first === null && Y.football(cleared).groups[0].ties[0].flag === 'draw');
+  check('the decision can be drawn again afterwards', Y.football(Y.draw(cleared, 'g0', mulberry32(6))).groups[0].first !== null);
+  const ids4 = Y.football(drawn).groups[0].ties[0].ids;
+  check('clearOrder(scope, ids) removes only that tied set', !Y.clearOrder(drawn, 'g0', ids4).fb.order.g0);
+  check('clearOrder with another set changes nothing', same(Y.clearOrder(drawn, 'g0', ['t1', 't2']).fb.order, drawn.fb.order));
+  check('clearOrder is idempotent', same(Y.clearOrder(cleared, 'g0'), cleared));
+  check('clearOrder errors: bad scope, no groups, final not ready, bad ids', throwsCode(() => Y.clearOrder(tie, 'zz'), 'bad_scope')
+    && throwsCode(() => Y.clearOrder(base(), 'g0'), 'no_groups') && throwsCode(() => Y.clearOrder(tie, 'final'), 'final_not_ready')
+    && throwsCode(() => Y.clearOrder(tie, 'g0', 'nope'), 'bad_order'));
+  check('clearOrder keeps the state valid', same(Y.validate(cleared), []));
+  const frozen = deepFreeze(clone(drawn));
+  check('clearOrder and setSchedule never touch a frozen input', code(() => Y.clearOrder(frozen, 'g0')) === null && code(() => Y.setSchedule(deepFreeze(clone(s0)), 't1', 't2', { date: 'd' })) === null);
+}
+
 console.log(`\n${fails.length ? 'FAIL' : 'PASS'} ${pass}/${pass + fails.length} tournament-engine tests`);
 if (fails.length) { console.log(fails.map(f => ' - ' + f).join('\n')); process.exit(1); }

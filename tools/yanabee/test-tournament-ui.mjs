@@ -67,8 +67,9 @@ function makeBackend(init = {}) {
     if (B.fail) return json(500, { message: 'boom' });
     const p = url.pathname;
     if (p === '/rest/v1/tournament_state' && req.method() === 'GET') {
-      if (!B.state) return json(406, { code: 'PGRST116', message: 'no rows' });
-      return json(200, { state: B.state, updated_at: B.at });
+      // like PostgREST for `?limit=1` (an array): an empty table is a plain 200 [] — never a 406
+      if (!B.state) return json(200, []);
+      return json(200, [{ state: B.state, updated_at: B.at }]);
     }
     if (p === '/rest/v1/rpc/publish_state') {
       if (!who || who.role !== 'admin') return json(403, { code: '42501', message: 'permission_denied' });
@@ -397,7 +398,7 @@ section('forfeits and clear');
   const m = fb.groups[0].rounds[0].matches[0];
   const f = p.locator(`form.tn-fx[data-key="${m.key}"]`);
   await f.locator('[aria-expanded]').click();
-  check('details toggle expands the panel (date, time, cards, forfeit)', await f.locator('.tn-more').isVisible() && await f.locator('input[type=date]').count() === 1 && await f.locator('input[type=time]').count() === 1 && await f.locator('input[name=ca]').count() === 1);
+  check('details toggle expands the panel (date, time, cards, forfeit)', await f.locator('.tn-more').isVisible() && await f.locator('.tn-more input[type=date]').count() === 1 && await f.locator('.tn-more input[type=time]').count() === 1 && await f.locator('input[name=ca]').count() === 1);
   check('forfeit menu has the four kinds in chrome words', (await f.locator('select[name=kind] option').allTextContents()).join('|') === 'اختر القرار…|لم يحضر|تأخر|انسحب|لاعب غير مسجل');
   await f.locator('select[name=kind]').selectOption('absent');
   check('selecting a kind shows the lg2 rule verbatim', /غياب الفريق دون عذر/.test(await f.locator('.tn-rule').textContent()) && /0 – 3/.test(await f.locator('.tn-rule').textContent()));
@@ -941,6 +942,53 @@ section('390px: no overflow, 44px targets; dark theme; keyboard; labels');
   await p.waitForTimeout(100);
   check('Escape closes the dialog without doing anything', await count(p, '.tn-dlg') === 0 && (await ST(p)).teams.length === 12);
   await ctx.close();
+}
+
+/* ================================================================== 13b. fixtures planned in advance (fb.sched) */
+section('fixtures planned in advance: plan row, public view, upcoming list, result keeps the date');
+{
+  const { ctx, p, errs } = await open();
+  await demoDraw(p);
+  await tab(p, 'football');
+  let s = await ST(p);
+  const m = Y.football(s).groups[0].rounds[0].matches[0];
+  const f = p.locator(`form.tn-fx[data-key="${m.key}"]`);
+  check('an unplayed fixture has a plan row with date, time and a save button', await f.locator('.tn-plan input[name=pdate]').count() === 1 && await f.locator('.tn-plan input[name=ptime]').count() === 1 && await f.locator('[data-act=save-when]').count() === 1);
+  await f.locator('input[name=pdate]').fill('2026-11-20');
+  await f.locator('input[name=ptime]').fill('16:00');
+  await f.locator('[data-act=save-when]').click();
+  await p.waitForTimeout(120);
+  s = await ST(p);
+  check('the plan is stored in the state (fb.sched)', JSON.stringify(s.fb.sched[m.key]) === JSON.stringify({ date: '2026-11-20', time: '16:00' }), JSON.stringify(s.fb.sched));
+  check('a plain confirmation is announced', /حُفظ موعد المباراة/.test(await toast(p)));
+  await tab(p, 'overview');
+  const nx = await txt(p, '.tn-next');
+  check('«المباريات القادمة» shows the planned day and time', /نوفمبر/.test(nx) && /16:00/.test(nx), nx);
+  await tab(p, 'football');
+  await fillFx(p, m.key, 2, 1);
+  s = await ST(p);
+  check('entering the result without touching the date keeps the planned date and time', s.fb.res[m.key] && s.fb.res[m.key].date === '2026-11-20' && s.fb.res[m.key].time === '16:00', JSON.stringify(s.fb.res[m.key]));
+  check('a played fixture has no plan row any more', await p.locator(`form.tn-fx[data-key="${m.key}"] .tn-plan`).count() === 0);
+  // another fixture: clear a plan by saving empty fields
+  const m2 = Y.football(s).groups[1].rounds[0].matches[0];
+  const f2 = p.locator(`form.tn-fx[data-key="${m2.key}"]`);
+  await f2.locator('input[name=pdate]').fill('2026-11-21'); await f2.locator('[data-act=save-when]').click(); await p.waitForTimeout(100);
+  check('a date alone is a plan', (await ST(p)).fb.sched[m2.key] && (await ST(p)).fb.sched[m2.key].date === '2026-11-21');
+  await p.locator(`form.tn-fx[data-key="${m2.key}"] input[name=pdate]`).fill('');
+  await p.locator(`form.tn-fx[data-key="${m2.key}"] [data-act=save-when]`).click(); await p.waitForTimeout(100);
+  check('saving empty fields removes the plan', !(await ST(p)).fb.sched[m2.key]);
+  check('no console errors', errs.length === 0, errs.join(' | '));
+  await ctx.close();
+
+  // the public / share view shows the plan read-only
+  const enc = Y.encode(Y.setSchedule(s, m2.a, m2.b, { date: '2026-11-22', time: '09:30' }), { public: true });
+  const v = await open({ hash: '#v=' + enc });
+  await tab(v.p, 'football');
+  check('share view: no forms, the planned date and time are visible', await count(v.p, 'form.tn-fx') === 0 && /09:30/.test(await txt(v.p, '#tn-p-football')) && /الموعد/.test(await txt(v.p, '#tn-p-football')));
+  check('share view: no plan inputs', await count(v.p, 'input[name=pdate]') === 0);
+  await tab(v.p, 'myteam');
+  check('no console errors in the share view', v.errs.length === 0, v.errs.join(' | '));
+  await v.ctx.close();
 }
 
 /* ================================================================== 14. the rest of the site is untouched */

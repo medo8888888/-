@@ -461,7 +461,10 @@
   }
 
   function getState() {
-    return q('tournament_state', { select: 'state,updated_at', filter: { id: 'eq.1' }, single: true });
+    // an array with limit=1 (not a single object): an empty table is then a plain 200 [], not a 406 the browser logs on every poll
+    return Promise.resolve(q('tournament_state', { select: 'state,updated_at', filter: { id: 'eq.1' }, limit: 1 })).then(function (rows) {
+      return Array.isArray(rows) && rows.length ? rows[0] : null;
+    });
   }
 
   function publishState(st, prev) {

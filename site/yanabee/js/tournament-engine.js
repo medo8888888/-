@@ -85,10 +85,13 @@
   }
 
   /* ------------------------------------------------------------------ state */
+  // fb.sched[pairKey] = { date, time }: when a fixture is planned (kept apart from the result, which can carry its own date/time)
+  function newFb() { return { res: {}, order: {}, sched: {} }; }
+
   function emptyState() {
     return {
       v: VERSION, updated: '', teams: [], groups: null,
-      fb: { res: {}, order: {} },
+      fb: newFb(),
       chess: { r1: [], r2: [], rr: { res: {}, order: null }, final: { w: null } }
     };
   }
@@ -207,6 +210,19 @@
     return out;
   }
 
+  function cleanSchedMap(raw, ids) {
+    var out = {};
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+    Object.keys(raw).forEach(function (k) {
+      var parts = k.split('|'), v = raw[k];
+      if (parts.length !== 2 || !ids[parts[0]] || !ids[parts[1]] || parts[0] === parts[1] || pairKey(parts[0], parts[1]) !== k) return;
+      if (!v || typeof v !== 'object') return;
+      var date = cleanText(v.date, 40), time = cleanText(v.time, 40);
+      if (date || time) out[k] = { date: date, time: time };
+    });
+    return out;
+  }
+
   // Tolerant: anything in, a valid and self-consistent v1 state out (unknown ids dropped, stale later results removed).
   function normalize(input, raw) {
     var src = input && typeof input === 'object' && !Array.isArray(input) ? input : {};
@@ -218,6 +234,7 @@
     var fb = src.fb && typeof src.fb === 'object' ? src.fb : {};
     st.fb.res = cleanResMap(fb.res, ids);
     st.fb.order = cleanOrderMap(fb.order, ids);
+    st.fb.sched = cleanSchedMap(fb.sched, ids);
     st.chess = cleanChess(src.chess, ids);
     return raw ? st : reconcile(st, true, true);
   }
@@ -409,7 +426,7 @@
   // Keeps the football part consistent: results only between group mates (or between teams that can still be
   // qualifiers), tie decisions only for ties that exist right now.
   function reconcileFb(st) {
-    if (!groupsOk(st)) { st.groups = null; st.fb = { res: {}, order: {} }; return; }
+    if (!groupsOk(st)) { st.groups = null; st.fb = newFb(); return; }
     var res = st.fb.res, order = st.fb.order, gof = newMap();
     st.groups.forEach(function (g, gi) { g.forEach(function (id) { gof[id] = gi; }); });
     Object.keys(res).forEach(function (k) {
@@ -431,6 +448,12 @@
     });
     var q = firsts.every(function (f) { return f !== null; }) ? firsts : null;
     putOrder(order, 'final', q ? pruneRuns(q, res, order.final) : null);
+    var sched = st.fb.sched || (st.fb.sched = {});
+    Object.keys(sched).forEach(function (k) {
+      var ab = k.split('|'), ga = gof[ab[0]], gb = gof[ab[1]];
+      if (ga === undefined || gb === undefined) { delete sched[k]; return; }
+      if (ga !== gb && !(q && q.indexOf(ab[0]) >= 0 && q.indexOf(ab[1]) >= 0)) delete sched[k];
+    });
     Object.keys(order).forEach(function (k) { if (SCOPES.indexOf(k) < 0) delete order[k]; });
   }
 
@@ -438,13 +461,14 @@
     if (!res) return { sa: null, sb: null };
     return res.a === a ? { sa: res.sa, sb: res.sb } : { sa: res.sb, sb: res.sa };
   }
-  function roundsOf(ids, results) {
+  function roundsOf(ids, results, sched) {
     return roundRobin(ids).map(function (matches, ri) {
       return {
         round: ri + 1,
         matches: matches.map(function (m) {
           var key = pairKey(m[0], m[1]), res = results[key] ? Object.assign({}, results[key]) : null, o = orient(res, m[0], m[1]);
-          return { key: key, a: m[0], b: m[1], res: res, sa: o.sa, sb: o.sb };
+          var sc = sched && sched[key] ? { date: sched[key].date, time: sched[key].time } : null;
+          return { key: key, a: m[0], b: m[1], res: res, sa: o.sa, sb: o.sb, sched: sc };
         })
       };
     });
@@ -461,7 +485,7 @@
     core.tables.forEach(function (t, g) {
       var ids = st.groups[g];
       out.groups.push({
-        index: g, name: GROUP_NAMES[g], teams: ids.slice(), rounds: roundsOf(ids, st.fb.res), table: t.rows,
+        index: g, name: GROUP_NAMES[g], teams: ids.slice(), rounds: roundsOf(ids, st.fb.res, st.fb.sched), table: t.rows,
         complete: t.complete, played: t.played, total: t.total, first: core.firsts[g], ties: clone(t.clusters)
       });
       out.played += t.played;
@@ -470,7 +494,7 @@
     if (core.qualifiers) {
       var f = core.finalTable;
       out.final = {
-        teams: core.qualifiers.slice(), rounds: roundsOf(core.qualifiers, st.fb.res), table: f.rows,
+        teams: core.qualifiers.slice(), rounds: roundsOf(core.qualifiers, st.fb.res, st.fb.sched), table: f.rows,
         complete: f.complete, played: f.played, total: f.total, ties: clone(f.clusters)
       };
       out.played += f.played;
@@ -654,7 +678,7 @@
     var st = prep(s);
     if (!groupsShapeOk(groups, idMap(st.teams), st.teams.length)) fail('bad_groups');
     st.groups = groups.map(function (g) { return g.slice(); });
-    st.fb = { res: {}, order: {} };
+    st.fb = newFb();
     return settle(st);
   }
 
@@ -663,7 +687,7 @@
     if (st.teams.length !== MAX_TEAMS) fail('need_12_teams');
     var ids = shuffle(st.teams.map(function (t) { return t.id; }), rng);
     st.groups = [ids.slice(0, 4), ids.slice(4, 8), ids.slice(8, 12)];
-    st.fb = { res: {}, order: {} };
+    st.fb = newFb();
     return settle(st);
   }
 
@@ -777,6 +801,42 @@
     var runs = runsOf(st.fb.order[scope]).filter(function (r) { return !sameSet(r, ids); });
     runs.push(ids.slice());
     st.fb.order[scope] = serializeRuns(runs);
+    return settle(st);
+  }
+
+  // Plans a fixture (date/time before it is played). Both empty = remove the plan. Same group, or two known qualifiers.
+  function setSchedule(s, a, b, when) {
+    var st = prep(s);
+    requireTeam(st, a); requireTeam(st, b);
+    if (a === b) fail('same_team');
+    if (!groupsOk(st)) fail('no_groups');
+    var w = when && typeof when === 'object' ? when : {};
+    var date = textField(w.date), time = textField(w.time);
+    var gof = newMap();
+    st.groups.forEach(function (g, gi) { g.forEach(function (id) { gof[id] = gi; }); });
+    if (gof[a] !== gof[b]) {
+      var q = fbCore(st).qualifiers;
+      if (!q) fail('final_not_ready');
+      if (q.indexOf(a) < 0 || q.indexOf(b) < 0) fail('not_in_final');
+    }
+    var k = pairKey(a, b);
+    if (date || time) st.fb.sched[k] = { date: date, time: time };
+    else delete st.fb.sched[k];
+    return settle(st);
+  }
+
+  // Takes back a committee/draw decision: of one tied set (`ids`) or of the whole scope (no ids).
+  function clearOrder(s, scope, ids) {
+    var st = prep(s);
+    scopeIds(st, scope);
+    var runs = runsOf(st.fb.order[scope]);
+    if (ids === undefined || ids === null) runs = [];
+    else {
+      if (!Array.isArray(ids) || !ids.every(isStr)) fail('bad_order');
+      runs = runs.filter(function (r) { return !sameSet(r, ids); });
+    }
+    if (runs.length) st.fb.order[scope] = serializeRuns(runs);
+    else delete st.fb.order[scope];
     return settle(st);
   }
 
@@ -922,7 +982,7 @@
           view.matches.push({
             stage: stage, round: round.round, key: m.key, opponent: mine ? m.b : m.a, played: played,
             result: played ? { gf: gf, ga: ga, outcome: outcome(gf, ga), adm: res.adm || null } : null,
-            date: res ? res.date : '', time: res ? res.time : '', note: res ? res.note : ''
+            date: (res && res.date) || (m.sched && m.sched.date) || '', time: (res && res.time) || (m.sched && m.sched.time) || '', note: res ? res.note : ''
           });
         });
       };
@@ -1083,6 +1143,9 @@
     Object.keys(fb.order && typeof fb.order === 'object' ? fb.order : {}).forEach(function (k) {
       if (canon(fb.order[k]) !== canon(n.fb.order[k])) out.push('stale_order:' + k);
     });
+    Object.keys(fb.sched && typeof fb.sched === 'object' && !Array.isArray(fb.sched) ? fb.sched : {}).forEach(function (k) {
+      if (!n.fb.sched[k] || canon(fb.sched[k]) !== canon(n.fb.sched[k])) out.push('stale_sched:' + k);
+    });
     var c = s.chess && typeof s.chess === 'object' ? s.chess : {}, nc = n.chess;
     if (canon(projPairs(c.r1)) !== canon(projPairs(nc.r1))) out.push('chess_r1');
     if (canon(projPairs(c.r2)) !== canon(projPairs(nc.r2))) out.push('chess_r2');
@@ -1107,7 +1170,7 @@
     emptyState: emptyState, normalize: normalize, validate: validate, stamp: stamp, pairKey: pairKey,
     setTeams: setTeams, drawGroups: drawGroups, setGroups: setGroups, moveTeam: moveTeam, groupsValid: groupsValid,
     roundRobin: roundRobin, table: table, football: football,
-    setResult: setResult, clearResult: clearResult, adminResult: adminResult, setOrder: setOrder, draw: draw,
+    setResult: setResult, clearResult: clearResult, adminResult: adminResult, setOrder: setOrder, clearOrder: clearOrder, setSchedule: setSchedule, draw: draw,
     chess: chess, drawPairs: drawPairs, setChessPairs: setChessPairs, setChessWinner: setChessWinner,
     setChessRR: setChessRR, setChessFinal: setChessFinal, setChessOrder: setChessOrder,
     teamView: teamView, overview: overview, encode: encode, decode: decode

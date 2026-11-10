@@ -99,6 +99,7 @@
   const OUT = { W: 'فوز', D: 'تعادل', L: 'خسارة' };
 
   const ICON = {
+    calendar: '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>',
     check: '<path d="M20 6 9 17l-5-5"/>',
     alert: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
     printer: '<path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/>',
@@ -815,10 +816,10 @@
     const { fb, ch } = view();
     const out = [];
     fb.groups.forEach(g => {
-      for (const rd of g.rounds) { const m = rd.matches.find(x => !x.res); if (m) { out.push({ tab: 'football', text: `المجموعة ${g.name} · الجولة ${rd.round}: ${nm(m.a)} ضد ${nm(m.b)}` }); break; } }
+      for (const rd of g.rounds) { const m = rd.matches.find(x => !x.res); if (m) { out.push({ tab: 'football', text: `المجموعة ${g.name} · الجولة ${rd.round}: ${nm(m.a)} ضد ${nm(m.b)}` + (fxWhen(m.sched) ? ' · ' + fxWhen(m.sched) : '') }); break; } }
     });
     if (fb.final) {
-      for (const rd of fb.final.rounds) { const m = rd.matches.find(x => !x.res); if (m) { out.push({ tab: 'football', text: `التصفيات · الجولة ${rd.round}: ${nm(m.a)} ضد ${nm(m.b)}` }); break; } }
+      for (const rd of fb.final.rounds) { const m = rd.matches.find(x => !x.res); if (m) { out.push({ tab: 'football', text: `التصفيات · الجولة ${rd.round}: ${nm(m.a)} ضد ${nm(m.b)}` + (fxWhen(m.sched) ? ' · ' + fxWhen(m.sched) : '') }); break; } }
     }
     const pushCh = (label, ms) => ms.filter(m => !m.w).slice(0, 2).forEach(m => out.push({ tab: 'chess', text: `الشطرنج · ${label}: ${nm(m.a)} ضد ${nm(m.b)}` }));
     if (ch.r1.matches.length && !ch.r1.complete) pushCh('الجولة 1', ch.r1.matches);
@@ -952,8 +953,9 @@
         h('span', { class: 'tn-fxt' }, nm(m.a)),
         r ? h('b', { class: 'tn-fxs', dir: 'rtl' }, `${m.sa} – ${m.sb}`) : h('span', { class: 'tn-fxs idle' }, 'ضد'),
         h('span', { class: 'tn-fxt' }, nm(m.b))),
-      r ? h('div', { class: 'tn-fxmeta' }, admBadge(r), fxWhen(r) ? h('span', null, fxWhen(r)) : null,
-        r.ca || r.cb ? h('span', null, `بطاقات: ${r.ca} / ${r.cb}`) : null) : null);
+      r ? h('div', { class: 'tn-fxmeta' }, admBadge(r), (fxWhen(r) || fxWhen(m.sched)) ? h('span', null, fxWhen(r) || fxWhen(m.sched)) : null,
+        r.ca || r.cb ? h('span', null, `بطاقات: ${r.ca} / ${r.cb}`) : null)
+        : (fxWhen(m.sched) ? h('div', { class: 'tn-fxmeta tn-when' }, svg('calendar'), h('span', null, 'الموعد: ' + fxWhen(m.sched))) : null));
   }
   function numInput(name, label, value, o) {
     return h('input', Object.assign({
@@ -964,7 +966,8 @@
     const g = n => form.elements[n].value.trim();
     const num = n => (g(n) === '' ? null : Number(g(n)));
     return { a: m.a, b: m.b, sa: num('sa'), sb: num('sb'), ca: num('ca') === null ? 0 : num('ca'), cb: num('cb') === null ? 0 : num('cb'),
-      ra: num('ra') === null ? 0 : num('ra'), rb: num('rb') === null ? 0 : num('rb'), date: g('date'), time: g('time') };
+      ra: num('ra') === null ? 0 : num('ra'), rb: num('rb') === null ? 0 : num('rb'),
+      date: g('date') || (form.elements.pdate ? g('pdate') : ''), time: g('time') || (form.elements.ptime ? g('ptime') : '') };
   }
   function nextEmptyAfter(key) {
     const panel = els.panels.querySelector('.tn-panel:not([hidden])');
@@ -1029,8 +1032,20 @@
           `طُبّق قرار إداري (${KIND[kindSel.value]}) على «${nm(sideSel.value)}».`, { keep: 'fb:' + key });
       } }), ruleP));
     if (r) panel.append(h('div', { class: 'tn-clear' }, btn('مسح النتيجة', { cls: 'danger sm', icon: 'trash', act: 'clear', on: () => act(S => YT.clearResult(S, m.a, m.b), 'مُسحت النتيجة.', { keep: 'fb:' + key }) })));
+    // the fixture's planned date/time (before it is played): fb.sched via YT.setSchedule
+    let plan = null;
+    if (!r) {
+      const pd = h('input', { type: 'date', name: 'pdate', value: m.sched ? m.sched.date : '', 'data-fk': 'pdate:' + key });
+      const pt = h('input', { type: 'time', name: 'ptime', value: m.sched ? m.sched.time : '', 'data-fk': 'ptime:' + key });
+      plan = h('div', { class: 'tn-plan' },
+        h('label', { class: 'tn-lab' }, h('span', null, 'موعد المباراة'), pd),
+        h('label', { class: 'tn-lab' }, h('span', null, 'الوقت'), pt),
+        btn('حفظ الموعد', { cls: 'ghost sm', icon: 'calendar', act: 'save-when', on: () => act(S => YT.setSchedule(S, m.a, m.b, { date: pd.value.trim(), time: pt.value.trim() }),
+          pd.value || pt.value ? `حُفظ موعد المباراة: ${nm(m.a)} ضد ${nm(m.b)}.` : 'أُزيل موعد المباراة.', { keep: 'fb:' + key }) }));
+    }
     form.append(
       h('div', { class: 'tn-fxrow' }, h('span', { class: 'tn-fxt' }, A_), sa, h('span', { class: 'tn-x', 'aria-hidden': 'true' }, '–'), sb, h('span', { class: 'tn-fxt' }, B_)),
+      plan,
       h('div', { class: 'tn-fxact' }, btn('حفظ', { cls: 'primary sm', act: 'save-fx', on: () => saveFx(form, m, false) }), moreBtn,
         r ? h('em', { class: 'tn-chip ok' }, svg('check'), 'محفوظة') : null, admBadge(r)),
       panel);
@@ -1244,6 +1259,7 @@
           m.played ? h('span', { class: 'tn-res' }, h('em', { class: 'tn-chip ' + (m.result.outcome === 'W' ? 'ok' : m.result.outcome === 'L' ? 'bad' : '') }, OUT[m.result.outcome]),
             h('bdi', { dir: 'rtl' }, `${m.result.gf} – ${m.result.ga}`), m.result.adm ? h('em', { class: 'tn-chip warn' }, 'قرار إداري') : null)
             : h('span', { class: 'tn-res idle' }, 'لم تُلعب بعد'),
+          fxWhen(m) ? h('span', { class: 'tn-mwhen' }, fxWhen(m)) : null,
           fxWhen(m) ? h('span', { class: 'tn-fine' }, fxWhen(m)) : null)))));
     }
     if (cs.matches.length) {
