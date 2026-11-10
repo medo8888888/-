@@ -237,6 +237,44 @@
   .a-tabs-4 .a-tab .i{display:block}
 }
 
+/* ---------- why sign up + demo (وضع تجريبي) ---------- */
+.a-auth-2{max-width:1000px;display:grid;gap:16px;grid-template-columns:minmax(0,1fr)}
+.a-auth-2>.a-banner{order:-2;margin:0}
+.a-auth-2>.a-demo{order:-1}
+.a-hub{max-width:1000px;margin-inline:auto;display:grid;gap:16px;grid-template-columns:minmax(0,1fr)}
+.a-notice{display:flex;gap:14px;align-items:flex-start}
+.a-notice>.i{flex:none;width:28px;height:28px;margin-top:4px;color:var(--brand)}
+.a-notice h2{font-size:1.2rem;margin:0 0 4px}
+.a-notice p{margin:0 0 6px;color:var(--ink-2);line-height:1.8}
+.a-notice-l a,.a-why-pub a{color:var(--brand);font-weight:600}
+.a-why-list{display:grid;gap:12px;margin:4px 0 12px}
+.a-why-list li{display:flex;gap:12px;align-items:flex-start}
+.a-ico-s{flex:none;display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:color-mix(in oklab,var(--brand) 12%,var(--surface));color:var(--brand)}
+.a-why-list b{font-family:var(--font-h);color:var(--head)}
+.a-why-list p{margin:0;color:var(--ink-2);line-height:1.8;font-size:.95rem}
+.a-why-pub{display:flex;gap:8px;align-items:flex-start;margin:0;padding:12px 14px;border-radius:var(--r-sm);background:var(--grad-soft);color:var(--ink-2);line-height:1.8}
+.a-why-pub>.i{flex:none;color:var(--brand);margin-top:4px}
+.a-demo{background:linear-gradient(135deg,color-mix(in oklab,var(--brand) 10%,var(--surface)),var(--surface));border-color:color-mix(in oklab,var(--brand) 40%,var(--line))}
+.a-demo-btns{display:grid;gap:10px;grid-template-columns:minmax(0,1fr)}
+.a-demo-btn{display:grid;grid-template-columns:auto 1fr;grid-template-areas:"i t" "i s";gap:0 12px;align-items:center;text-align:start;min-height:72px;padding:14px 18px;border-radius:var(--r);
+  border:2px solid var(--brand);background:var(--surface);color:var(--head);transition:transform .2s var(--ease),box-shadow .2s,background-color .2s}
+.a-demo-btn .i{grid-area:i;width:30px;height:30px;color:var(--brand)}
+.a-demo-btn b{grid-area:t;font:700 1.15rem var(--font-h)}
+.a-demo-btn small{grid-area:s;color:var(--ink-2);line-height:1.6}
+.a-demo-btn:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+.a-demo-btn.is-main{background:var(--brand);border-color:var(--brand);color:var(--on-brand)}
+.a-demo-btn.is-main b,.a-demo-btn.is-main .i,.a-demo-btn.is-main small{color:var(--on-brand)}
+.a-demo .a-err{margin-top:10px}
+@media (min-width:900px){
+  .a-auth-2{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}
+  .a-auth-2>.a-banner{grid-column:1/-1}
+  .a-auth-2>.a-forms{grid-row:2/4}
+  .a-auth-2>.a-demo{order:0;grid-column:2;grid-row:2}
+  .a-auth-2>.a-why{grid-column:2;grid-row:3}
+  .a-hub{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}
+  .a-hub>.a-banner,.a-hub>.a-notice{grid-column:1/-1}
+}
+
 /* ---------- print: the admin sheet only ---------- */
 @media print{
   body.acct-printing main>*:not(#account){display:none!important}

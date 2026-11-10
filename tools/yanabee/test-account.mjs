@@ -23,7 +23,7 @@ const check = (n, ok, d = '') => { if (ok) { pass++; console.log('  ok  ' + n); 
 const section = t => console.log('\n' + t);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-execSync('python3 tools/yanabee/build.py account', { cwd: ROOT, stdio: 'pipe' }); // account.html from page_account.py (nothing else is rebuilt)
+execSync('python3 tools/yanabee/build.py account tournament', { cwd: ROOT, stdio: 'pipe' }); // account.html and tournament.html (nothing else is rebuilt)
 
 /* ---------------------------------------------------------------- static server for the site */
 const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json', '.webmanifest': 'application/json' };
@@ -502,6 +502,16 @@ section('source: no secrets, no logging, no HTML injection, no direct network');
   check('page loads yb-config, yb-api, tournament-engine, account in that order', order.every(i => i > 0) && order.every((v, i) => !i || v > order[i - 1]), order.join());
   check('page loads css/account.css after css/comp.css', page.indexOf('css/comp.css') > 0 && page.indexOf('css/account.css') > page.indexOf('css/comp.css'));
   check('no account data in the served HTML (only the shell)', !/@[a-z]+\.test|access_token/.test(page));
+  const demoJs = fs.readFileSync(path.join(SITE, 'js/yb-demo.js'), 'utf8');
+  const demoCode = demoJs.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+  check('yb-demo.js: never logs, no eval / XHR / sendBeacon, no HTML injection, the only URL literal is the fake host', !/\bconsole\./.test(demoCode) && !/\beval\(|new Function|XMLHttpRequest|sendBeacon|WebSocket|\.innerHTML\s*=|insertAdjacentHTML/.test(demoCode)
+    && (demoCode.match(/['"`]https?:\/\/[^'"`]+['"`]/g) || []).every(u => u.includes('demo.yanabee.invalid')));
+  check('yb-demo.js: it is inert without the tab flag and wraps fetch only after the flag check', /if \(!active\) return;/.test(demoJs) && demoJs.indexOf('window.fetch = function') > demoJs.indexOf('if (!active) return;'));
+  check('yb-demo.js loads before yb-config.js on account.html and tournament.html', ['account.html', 'tournament.html'].every(f => { const h = fs.readFileSync(path.join(SITE, f), 'utf8'); return h.indexOf('js/yb-demo.js') > 0 && h.indexOf('js/yb-demo.js') < h.indexOf('js/yb-config.js'); }));
+  const sqlDir = path.join(ROOT, 'supabase/migrations');
+  const sql = fs.readdirSync(sqlDir).map(f => fs.readFileSync(path.join(sqlDir, f), 'utf8')).join('\n');
+  check('no demo account or credential exists in the repo\'s SQL', !/demo/i.test(sql));
+  check('the other pages and scripts hold no demo token', !/demo-t-|demo-anon/.test(fs.readFileSync(path.join(SITE, 'js/yb-api.js'), 'utf8') + fs.readFileSync(path.join(SITE, 'js/tournament.js'), 'utf8') + fs.readFileSync(path.join(SITE, 'js/account.js'), 'utf8')));
 }
 
 /* ================================================================ 2. unconfigured */
@@ -1394,6 +1404,228 @@ section('keyboard');
   check('every control shows a focus outline (focus-visible)', visible !== undefined);
   check('aria-live region exists and is polite', (await P.locator('[data-live]').getAttribute('aria-live')) === 'polite' && (await P.locator('[data-live]').getAttribute('role')) === 'status');
   await close(P);
+}
+
+/* ================================================================ 8b. DEMO MODE (وضع تجريبي): fake data, tab only, no admin */
+section('demo mode: why sign up + three demo users, no admin, no backend');
+{
+  const BANNER = 'وضع تجريبي: بيانات وهمية تُحفظ في هذا المتصفح فقط ولا تتصل بأي قاعدة بيانات';
+  const foreign = [];
+  const watch = p => p.on('request', r => { try { const u = new URL(r.url()); if (u.host !== new URL(ORIGIN).host && !FONT_HOST.test(u.host) && !/^(data|blob):/.test(r.url())) foreign.push(r.url()); } catch (e) { /* ignore */ } });
+  const demoFlag = p => p.evaluate(() => sessionStorage.getItem('yanabee-demo'));
+  const lsSession = p => p.evaluate(() => { try { return JSON.parse(localStorage.getItem('yanabee-session-v1') || 'null'); } catch (e) { return null; } });
+  const dbOf = p => p.evaluate(() => { try { return JSON.parse(sessionStorage.getItem('yanabee-demo-db-v1') || 'null'); } catch (e) { return null; } });
+  const wait = (p, fn, arg) => p.waitForFunction(fn, arg, { timeout: 8000 });
+
+  /* ---- the signed-out hub when the backend is not connected */
+  const p = await open(null, { config: 'none', label: 'demo-hub' });
+  watch(p);
+  await settle(p);
+  const tx = await text(p);
+  check('unconfigured: the honest line stays (the owner must connect the database) and is the only h2', /الحسابات غير مفعّلة بعد على هذا الموقع/.test(tx) && /مالك الموقع/.test(tx) && (await p.locator('[data-account-root] h2').count()) === 1);
+  check('unconfigured: «ليش تنشئ حسابًا؟» with a benefit per role and the public-board line + link', /ليش تنشئ حسابًا؟/.test(tx) && ['قائد فريق', 'عضو في فريق', 'ولي أمر'].every(x => tx.includes(x)) && /لا تحتاج حسابًا لمتابعة الترتيب العام/.test(tx) && (await p.locator('.a-why a[href="tournament.html"]').count()) === 1);
+  check('unconfigured: three demo buttons (قائد فريق / عضو / ولي أمر), NO admin button and no admin wording', (await p.locator('[data-demo]').count()) === 3 && !/جرّب كإدارة|جرّب كمدير/.test(tx)
+    && (await p.locator('[data-demo]').evaluateAll(b => b.map(x => x.dataset.demo))).join() === 'leader,member,parent' && /جرّب كقائد فريق/.test(tx) && /جرّب كعضو/.test(tx) && /جرّب كولي أمر/.test(tx));
+  check('unconfigured: no sign-up / login form, no tabs', !(await p.locator('[data-account-root] form').count()) && !(await p.locator('[role=tab]').count()));
+  check('no demo banner and no demo session before the demo is entered', !(await p.locator('.yd-bar').count()) && (await demoFlag(p)) === null && (await lsSession(p)) === null);
+  check('without the flag the fetch wrapper is NOT installed (native fetch) and YBDemo is inactive', await p.evaluate(() => /native code/.test(Function.prototype.toString.call(window.fetch)) && window.YBDemo.active === false));
+  check('no request left the page', foreign.length === 0, foreign.join());
+  /* keyboard: focus a demo button and press Enter */
+  await p.locator('[data-demo=leader]').focus();
+  await p.keyboard.press('Enter');
+  await p.waitForSelector('.yd-bar', { timeout: 8000 });
+  await p.waitForSelector('.a-app', { timeout: 8000 });
+  await settle(p);
+
+  /* ---- inside the leader demo */
+  check('banner text is exactly the owner\'s sentence; region with a label', (await p.locator('.yd-msg').innerText()) === BANNER && (await p.locator('.yd-bar').getAttribute('role')) === 'region');
+  check('switcher offers ONLY leader / member / parent; leader pressed; exit button', (await p.locator('[data-yd-user]').evaluateAll(b => b.map(x => x.dataset.ydUser + ':' + x.getAttribute('aria-pressed')))).join() === 'leader:true,member:false,parent:false' && (await p.locator('[data-yd-exit]').count()) === 1);
+  check('banner has no admin wording', !/الإدارة|مدير/.test(await p.locator('.yd-bar').innerText()));
+  const sess = await lsSession(p);
+  check('fake session: token starts with demo-, flag set in this tab only', sess && sess.access_token.startsWith('demo-') && (await demoFlag(p)) === '1' && (await p.evaluate(() => localStorage.getItem('yanabee-demo'))) === null);
+  check('YB is configured by the demo (fake host, non-writable config) — the real config is never used', await p.evaluate(() => YB.configured === true && window.YB_CONFIG.url === 'https://demo.yanabee.invalid' && window.YB_CONFIG.anonKey === 'demo-anon' && (() => { window.YB_CONFIG = { url: 'https://evil.test', anonKey: 'x' }; return window.YB_CONFIG.url === 'https://demo.yanabee.invalid'; })()));
+  check('leader screen: badge قائد الفريق, header shows «خروج من التجربة»', (await p.locator('.a-head .a-badge').innerText()) === 'قائد الفريق' && /خروج من التجربة/.test(await p.locator('.a-head').innerText()));
+  check('leader team: فريق الينابيع الافتراضي, draft, 5 / 7, join code of 6 characters, submit enabled (5 demo members)', /فريق الينابيع الافتراضي/.test(await p.locator('.a-teamcard').innerText()) && (await p.locator('.a-teamcard .a-chip').first().innerText()) === 'مسودة'
+    && (await p.locator('[data-counter]').innerText()) === '5 / 7' && /^[A-HJ-KM-NP-Z2-9]{6}$/.test(await p.locator('[data-code]').innerText()) && await p.locator('button[data-fk=submit]').isEnabled());
+  const names = await p.locator('.a-mem-h b').allInnerTexts();
+  check('every demo person is clearly fake (names end in «الافتراضي»)', names.length === 5 && names.every(n => n.endsWith('الافتراضي')), names.join('|'));
+  check('the pre-published board shows fixtures and results on the leader screen (group, played and pending matches)', await ok(wait(p, () => /المجموعة [أبج]/.test(document.querySelector('.a-sched').innerText) && /\d – \d · (فوز|خسارة|تعادل)/.test(document.querySelector('.a-sched').innerText) && /لم تُلعب بعد/.test(document.querySelector('.a-sched').innerText))));
+  // add / consent / delete / regenerate / submit, all against the in-page fake
+  const add = p.locator('form.a-add');
+  await add.locator('input[name=name]').fill('هدى رشيد الافتراضي');
+  await add.locator('input[name=age]').fill('13');
+  await add.locator('input[name=gname]').fill('ولي هدى الافتراضي');
+  await add.locator('button[type=submit]').click();
+  await p.waitForFunction(() => document.querySelector('[data-counter]').textContent.startsWith('6 /'));
+  const rm = p.locator('[data-member] button[aria-label="حذف هدى رشيد الافتراضي"]');
+  await rm.click(); await rm.click();
+  await p.waitForFunction(() => document.querySelector('[data-counter]').textContent.startsWith('5 /'));
+  check('demo: add a member (6/7) then delete it (5/7)', (await p.locator('[data-counter]').innerText()) === '5 / 7');
+  const sw = p.locator('[data-member] input[role=switch]').nth(2);
+  const was = await sw.isChecked();
+  await sw.setChecked(!was, { force: true });
+  await p.waitForFunction(w => { const e = document.querySelectorAll('[data-member] input[role=switch]')[2]; return e && e.checked !== w && !e.disabled; }, was);
+  check('demo: the paper-consent switch works', (await p.locator('[data-member] input[role=switch]').nth(2).isChecked()) === !was);
+  const code1 = await p.locator('[data-code]').innerText();
+  const rg = p.locator('button[data-fk=regen]'); await rg.click(); await rg.click();
+  await p.waitForFunction(c => document.querySelector('[data-code]').textContent !== c, code1);
+  check('demo: regenerate the join code', (await p.locator('[data-code]').innerText()) !== code1);
+  await p.locator('button[data-fk=submit]').click();
+  await p.waitForSelector('button[data-fk=withdraw]');
+  check('demo: submit for approval (5 members) → مُرسَل للاعتماد; nobody in the demo can approve it', (await p.locator('.a-teamcard .a-chip').first().innerText()) === 'مُرسَل للاعتماد');
+  const leaderCode = await p.locator('[data-code]').innerText();
+
+  /* ---- no admin anywhere in the demo (database, session, endpoints) */
+  const adm = await p.evaluate(async () => {
+    const out = {};
+    out.users = YBDemo.users.map(u => u.key).join();
+    out.role = YB.session().profile.role;
+    const a = await YB.rpc('approve_team', { team_id: 'team-1', ok: true, note: null });
+    const r = await YB.rpc('set_user_role', { target: 'u-member', new_role: 'leader' });
+    const pub = await YB.publishState({ v: 1, teams: [] }, null);
+    const ins = await YB.insert('tournament_state', { id: 1, state: {} });
+    out.errs = [a.error, r.error, pub.error, ins.error].join();
+    out.profiles = (await YB.q('profiles', { select: 'id,role' })).map(x => x.role).join();
+    out.teams = (await YB.q('teams', { select: 'id' })).length;
+    out.others = (await YB.q('team_members', { select: 'id', filter: { team_id: 'eq.team-2' } })).length;
+    out.approveOwn = (await YB.update('teams', { id: 'eq.team-1' }, { status: 'approved' }, { returning: true })).error;
+    return out;
+  });
+  check('the session role is leader and the only demo users are leader / member / parent', adm.role === 'leader' && adm.users === 'leader,member,parent');
+  check('admin-only endpoints answer permission_denied: approve_team, set_user_role, publish_state, writing the tournament', adm.errs === 'permission_denied,permission_denied,permission_denied,permission_denied', adm.errs);
+  check('RLS-like reads: own profile only (not admin), own team only, no other team\'s roster', adm.profiles === 'leader' && adm.teams === 1 && adm.others === 0, JSON.stringify(adm));
+  check('a leader cannot approve their own team (status approved refused)', adm.approveOwn === 'permission_denied');
+  const dbj = await dbOf(p);
+  check('the fake DB holds NO admin profile: 12 demo teams (11 with fake leaders + the user team, a draft), all names fake', dbj && !dbj.profiles.some(x => x.role === 'admin') && dbj.teams.length === 12 && dbj.teams.filter(t => t.status === 'approved').length === 11 && dbj.teams.every(t => t.name.endsWith('الافتراضي')) && !JSON.stringify(dbj).includes('"admin"'));
+  check('the pre-published board is deterministic: 12 teams, groups drawn, 9 group matches played, no final round', await p.evaluate(async () => { const r = await YB.getState(); const o = YTour.overview(r.state); const fb = YTour.football(r.state); return r.state.teams.length === 12 && o.drawn === true && fb.played === 9 && !fb.final; }));
+  // tampering: a session claiming to be admin, or a user key 'admin', never yields an admin
+  await p.evaluate(() => { sessionStorage.setItem('yanabee-demo-user', 'admin'); localStorage.setItem('yanabee-session-v1', JSON.stringify({ access_token: 'demo-t-u-admin', refresh_token: 'demo-r-u-admin', expires_at: 4102444800, user: { id: 'u-admin', email: 'admin@demo.invalid' } })); });
+  await p.reload(); await p.waitForSelector('.a-app', { timeout: 8000 }); await settle(p);
+  check('tampering with the user key or the token still gives the leader (no admin exists to become)', (await p.locator('.a-head .a-badge').innerText()) === 'قائد الفريق' && (await lsSession(p)).user.id === 'u-leader');
+
+  /* ---- the switcher: member and parent see the same shared data, and it persists across reloads */
+  await p.locator('[data-yd-user=member]').click();
+  await p.waitForSelector('.a-teamcard', { timeout: 8000 }); await settle(p);
+  const mt = await text(p);
+  check('switch to عضو: badge, team, roster names (all fake), consent received', (await p.locator('.a-head .a-badge').innerText()) === 'عضو' && /فريق الينابيع الافتراضي/.test(mt) && (await p.locator('.a-names-roster li').count()) === 5 && /استُلمت موافقة ولي الأمر/.test(mt) && !mt.includes(leaderCode));
+  check('member screen: the leader\'s submitted status is visible (state shared in the fake DB)', (await p.locator('.a-teamcard .a-chip').first().innerText()) === 'مُرسَل للاعتماد');
+  check('member: fixtures and results from the pre-published board', await ok(wait(p, () => /\d – \d · (فوز|خسارة|تعادل)/.test(document.querySelector('.a-sched').innerText))));
+  check('member sees no guardian data and cannot read other people (own roster row only)', !/09000/.test(mt) && (await p.evaluate(async () => (await YB.q('team_members', { select: 'id' })).length)) === 1);
+  await p.locator('[data-yd-user=parent]').click();
+  await p.waitForSelector('.a-child', { timeout: 8000 }); await settle(p);
+  check('switch to ولي أمر: one linked child (fake name), consent, schedule; the switcher keeps the choice', (await p.locator('.a-head .a-badge').innerText()) === 'ولي أمر' && /عضو التجربة الافتراضي/.test(await text(p)) && (await p.locator('[data-yd-user=parent]').getAttribute('aria-pressed')) === 'true' && (await p.locator('.a-sched').count()) === 1);
+  await p.locator('[data-yd-user=leader]').click();
+  await p.waitForSelector('[data-counter]', { timeout: 8000 }); await settle(p);
+  check('back to leader: the earlier changes (submitted, same join code) were kept in the tab\'s fake DB', (await p.locator('.a-teamcard .a-chip').first().innerText()) === 'مُرسَل للاعتماد' && (await p.locator('[data-code]').innerText()) === leaderCode);
+
+  /* ---- the nav dot is orange for the demo */
+  check('top-bar account dot: shown, orange (demo), label says demo', await p.evaluate(() => { const a = document.querySelector('[data-acct]'), d = a.querySelector('.acct-dot'); return !d.hidden && /وضع تجريبي/.test(a.getAttribute('aria-label')) && d.style.background.includes('--sun'); }));
+
+  /* ---- the tournament page in the demo: public view + «فريقي», never the manager */
+  await p.goto(`${ORIGIN}/tournament.html`);
+  await p.waitForSelector('.yd-bar', { timeout: 8000 });
+  await wait(p, () => document.querySelector('#tn-app').getAttribute('aria-busy') === 'false');
+  await sleep(300);
+  const tt = await p.locator('#tn-app').innerText();
+  check('tournament page: the same banner, public view (عرض عام), no «نشر للجميع», no «الإعداد» tab', (await p.locator('.yd-msg').innerText()) === BANNER && (await p.locator('.tn-badge').innerText()) === 'عرض عام' && !(await p.locator('[data-act=publish]:visible').count()) && !(await p.locator('#tn-t-setup:visible').count()));
+  check('tournament page: overview shows the pre-published board (groups drawn, 9 of 18 group matches) and the «فريقي» tab exists', /تمت القرعة/.test(tt) && /9 من 18/.test(tt) && (await p.locator('#tn-t-myteam:visible').count()) === 1);
+  await p.locator('#tn-t-myteam').click();
+  await sleep(300);
+  const myt = await p.locator('#tn-p-myteam').innerText();
+  check('«فريقي» lists the 12 demo teams (all fake) and shows the leader\'s team standing', (myt.match(/الافتراضي/g) || []).length >= 12 && /المجموعة [أبج] · المركز/.test(myt));
+  const tw = await p.evaluate(async () => (await YB.publishState(YTour.emptyState(), null)).error);
+  check('tournament page: publishing from the demo is refused by the fake (permission_denied)', tw === 'permission_denied');
+  check('tournament banner: the current page is marked in the banner links', (await p.locator('.yd-bar a[aria-current=page]').evaluate(e => e.textContent)) === 'لوحة البطولة');
+
+  /* ---- exit the demo */
+  await p.locator('[data-yd-exit]').click();
+  await p.waitForFunction(() => !document.querySelector('.yd-bar'), null, { timeout: 8000 });
+  await sleep(300);
+  check('exit: the demo flag, database and fake session are gone', (await demoFlag(p)) === null && (await dbOf(p)) === null && (await lsSession(p)) === null && !(await p.evaluate(() => JSON.stringify({ ...localStorage }))).includes('demo-'));
+  await p.goto(`${ORIGIN}/account.html`);
+  await settle(p);
+  check('after exit: the signed-out page with the demo buttons again, native fetch, no banner', (await p.locator('[data-demo]').count()) === 3 && !(await p.locator('.yd-bar').count()) && await p.evaluate(() => /native code/.test(Function.prototype.toString.call(window.fetch))));
+  check('demo: no request ever left the page (only the page origin and shell fonts)', foreign.length === 0, foreign.slice(0, 3).join());
+  check('demo: no console error', p.errs.length === 0, p.errs.join('|'));
+  await close(p);
+
+  /* ---- a real session blocks the demo and is never overwritten */
+  const R = await open(null, { config: 'none', label: 'demo-real-session' });
+  await R.evaluate(() => localStorage.setItem('yanabee-session-v1', JSON.stringify({ access_token: 'real-token-123', refresh_token: 'r', expires_at: 4102444800, user: { id: 'real-1', email: 'real@x.test' } })));
+  await R.reload(); await settle(R);
+  check('a real session in storage: no demo buttons are offered', (await R.locator('[data-demo]').count()) === 0 && /ليش تنشئ حسابًا؟/.test(await text(R)));
+  check('…YBDemo refuses to start and the real token is untouched', await R.evaluate(() => YBDemo.canEnter() === false && YBDemo.enter('leader') === false && JSON.parse(localStorage.getItem('yanabee-session-v1')).access_token === 'real-token-123' && sessionStorage.getItem('yanabee-demo') === null));
+  await R.evaluate(() => sessionStorage.setItem('yanabee-demo', '1'));
+  await R.reload(); await settle(R);
+  check('a demo flag + a real session: the demo switches itself off, the real session stays', await R.evaluate(() => sessionStorage.getItem('yanabee-demo') === null && JSON.parse(localStorage.getItem('yanabee-session-v1')).access_token === 'real-token-123' && YBDemo.active === false) && !(await R.locator('.yd-bar').count()));
+  await close(R);
+
+  /* ---- stale demo token (no tab flag) is removed before it can reach a real backend */
+  const fake = new Fake();
+  const S1 = await open(fake, { label: 'demo-stale' });
+  const seedStale = t => localStorage.setItem('yanabee-session-v1', JSON.stringify({ access_token: t, refresh_token: 'demo-r-u-leader', expires_at: 4102444800, user: { id: 'u-leader', email: 'leader@demo.invalid' } }));
+  await S1.evaluate(seedStale, 'demo-t-u-leader');
+  await S1.reload(); await settle(S1);
+  check('stale demo token + real backend configured: removed by acct-nav, signed-out page, ZERO requests to the real backend', (await lsSession(S1)) === null && fake.log.length === 0 && (await S1.locator('#panel-login').isVisible()), JSON.stringify(fake.log));
+  await S1.evaluate(seedStale, 'demo-t-u-leader');
+  await S1.goto(`${ORIGIN}/index.html`);
+  check('…the cleanup runs on every page (home page too)', await ok(S1.waitForFunction(() => localStorage.getItem('yanabee-session-v1') === null, null, { timeout: 4000 })));
+  await S1.goto(`${ORIGIN}/account.html`); await settle(S1);
+  check('with a real backend the page still offers sign-up AND the demo side by side', (await S1.locator('[data-demo]').count()) === 3 && (await S1.locator('#panel-login').isVisible()) && /ليش تنشئ حسابًا؟/.test(await text(S1)));
+  await S1.locator('[data-demo=parent]').click();
+  await S1.waitForSelector('.yd-bar', { timeout: 8000 }); await S1.waitForSelector('.a-app', { timeout: 8000 }); await settle(S1);
+  check('demo over a CONFIGURED real backend: the fake answers, the real backend gets ZERO requests and never sees the real key', fake.log.length === 0 && (await S1.locator('.a-head .a-badge').innerText()) === 'ولي أمر' && (await S1.evaluate(() => YB_CONFIG.anonKey)) === 'demo-anon');
+  await S1.locator('[data-yd-exit]').click();
+  await S1.waitForFunction(() => !document.querySelector('.yd-bar'), null, { timeout: 8000 }); await settle(S1);
+  check('…after the demo, the real backend config is back (sign-in form works again)', await S1.evaluate(() => YB.configured === true && YB_CONFIG.url === 'https://fake.supabase.test') && fake.log.length === 0);
+  await close(S1);
+
+  /* ---- layout, themes in the demo */
+  for (const mobile of [true, false]) for (const scheme of ['light', 'dark']) {
+    for (const who of [null, 'leader', 'member', 'parent', 'tour']) {
+      const label = `demo-${who || 'hub'}-${mobile ? 390 : 1280}-${scheme}`;
+      const P = await open(null, { config: 'none', mobile, colorScheme: scheme, label });
+      watch(P);
+      await settle(P);
+      if (who) {
+        await P.evaluate(w => { YBDemo.enter(w === 'tour' ? 'leader' : w); }, who);
+        await P.waitForSelector('.yd-bar', { timeout: 8000 });
+        if (who === 'tour') { await P.goto(`${ORIGIN}/tournament.html`); await P.waitForSelector('.yd-bar'); await wait(P, () => document.querySelector('#tn-app').getAttribute('aria-busy') === 'false'); }
+        else { await P.waitForSelector('.a-app', { timeout: 8000 }); await settle(P); await P.waitForFunction(() => !document.querySelector('.a-sched .a-skel'), null, { timeout: 8000 }).catch(() => {}); }
+      }
+      await sleep(300);
+      const ov = await overflow(P);
+      check(`${label}: no horizontal overflow`, ov <= 0, String(ov));
+      if (scheme === 'light') {
+        const small = await P.evaluate(() => [...document.querySelectorAll('.yd-bar button, .yd-bar a, [data-demo], [data-account-root] button, [data-account-root] a.btn, [data-account-root] input:not([type=radio]):not([type=checkbox])')]
+          .filter(e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && !e.closest('[hidden]') && !e.closest('details:not([open])') && (r.height < 43.5 || r.width < 43.5); })
+          .map(e => `${e.tagName}.${e.className}:${Math.round(e.getBoundingClientRect().width)}x${Math.round(e.getBoundingClientRect().height)}`));
+        check(`${label}: banner buttons, demo buttons and controls are at least 44px`, small.length === 0, small.slice(0, 4).join(' '));
+      }
+      const lowc = await P.evaluate(() => {
+        const cvs = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
+        const rgb = c => { cvs.clearRect(0, 0, 1, 1); cvs.fillStyle = '#000'; cvs.fillStyle = c; cvs.fillRect(0, 0, 1, 1); const d = cvs.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2], d[3] / 255]; };
+        const lum = ([r, g, b]) => { const f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
+        const bgOf = el => { let e = el; while (e) { const c = rgb(getComputedStyle(e).backgroundColor); if (c[3] > 0.95) return c; e = e.parentElement; } return rgb('#fff'); };
+        const bad = [];
+        document.querySelectorAll('.yd-bar *, .a-why *, .a-demo *, .a-notice *').forEach(el => {
+          if (![...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim()) || el.closest('[hidden]') || el.closest('details:not([open])')) return;
+          const fg = rgb(getComputedStyle(el).color), bg = bgOf(el), L1 = lum(fg), L2 = lum(bg), ratio = (Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05);
+          if (ratio < 4.5 && !el.matches('.yd-tag')) bad.push(`${el.tagName}.${el.className}:${ratio.toFixed(2)}`);
+        });
+        return bad;
+      });
+      check(`${label}: text contrast of the banner, panels and demo buttons ≥ 4.5:1`, lowc.length === 0, lowc.slice(0, 5).join(' '));
+      if (process.env.ACCOUNT_SHOTS) {
+        fs.mkdirSync(process.env.ACCOUNT_SHOTS, { recursive: true });
+        await P.evaluate(() => window.scrollTo(0, 0));
+        await P.screenshot({ path: path.join(process.env.ACCOUNT_SHOTS, label + '.png') });
+      }
+      check(`${label}: no console error`, P.errs.length === 0, P.errs.join('|'));
+      await close(P);
+    }
+  }
+  check('demo layout runs: no request to any foreign host', foreign.length === 0, foreign.slice(0, 3).join());
 }
 
 /* ================================================================ 9. wrap up: hosts and console */

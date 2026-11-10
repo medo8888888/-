@@ -46,7 +46,7 @@ def data_blob():
 
 def build():
     hero = page_hero(PAGE, 'المسابقة الأولى · سورة الصف', 'حسابي',
-                     'سجّل الدخول أو أنشئ حسابًا، وستجد شاشة تناسب دورك: إدارة، قائد فريق، عضو، أو ولي أمر.', [], '', 'comp-hero acct-hero')
+                     'سجّل الدخول أو أنشئ حسابًا، وستجد شاشة تناسب دورك: قائد فريق، أو عضو، أو ولي أمر. أو جرّب أولًا بحسابات وهمية.', [], '', 'comp-hero acct-hero')
     skel = ('<div class="a-skel" aria-hidden="true"><i></i><i></i><i></i></div>')
     body = f'''{hero}
 <section class="sec acct-sec" id="account">
@@ -57,7 +57,7 @@ def build():
     <script type="application/json" id="acct-data">{data_blob()}</script>
   </div>
 </section>'''
-    page(PAGE, PAGE_LABEL[PAGE], body, 'الدخول وإنشاء حساب في مسابقة ينابيع، وشاشة لكل دور: الإدارة وقائد الفريق والعضو وولي الأمر.',
+    page(PAGE, PAGE_LABEL[PAGE], body, 'الدخول وإنشاء حساب في مسابقة ينابيع، وشاشة لكل دور: قائد الفريق والعضو وولي الأمر، وتجربة بحسابات وهمية.',
          css=('css/comp.css', 'css/account.css'),
-         js=('js/yb-config.js', 'js/yb-api.js', 'js/tournament-engine.js', 'js/account.js'))
+         js=('js/yb-demo.js', 'js/yb-config.js', 'js/yb-api.js', 'js/tournament-engine.js', 'js/account.js'))
     return PAGE

@@ -82,5 +82,5 @@ def build():
     desc = C['c-format'].title
     page(PAGE, PAGE_LABEL[PAGE], body, desc,
          css=('css/comp.css', 'css/tournament.css'),
-         js=('js/comp.js', 'js/yb-config.js', 'js/yb-api.js', 'js/tournament-engine.js', 'js/tournament.js'))
+         js=('js/comp.js', 'js/yb-demo.js', 'js/yb-config.js', 'js/yb-api.js', 'js/tournament-engine.js', 'js/tournament.js'))
     return PAGE

@@ -195,9 +195,49 @@
     }
   }
 
+  /* ------------------------------------------------------------------ demo (وضع تجريبي) + why sign up */
+  // window.YBDemo (js/yb-demo.js) starts a tab-only demo with fake data and four fake users; account.js only asks it to start, switch or exit.
+  const DEMO = window.YBDemo || null;
+  const WHY = [
+    ['users', 'قائد فريق', 'سجّل فريقك وأعضاءه في مكان واحد، واحصل على رمز انضمام تعطيه لأعضائك وأولياء أمورهم، وتابع حالة الاعتماد ثم المباريات والنتائج.'],
+    ['user', 'عضو في فريق', 'انضم بالرمز الذي يعطيه لك قائد فريقك، وشاهد فريقك ومبارياتك ونتائجك وحالة موافقة ولي أمرك.'],
+    ['hand-heart', 'ولي أمر', 'تابع فريق ابنك أو ابنتك، واطّلع على حالة الموافقة وجدول المباريات والنتائج.']];
+  function whyCard() {
+    const id = uid('why');
+    return h('section', { class: 'a-card a-why', 'aria-labelledby': id },
+      h('h3', { id, text: 'ليش تنشئ حسابًا؟' }),
+      h('p', { class: 'a-lead', text: 'لكل دور شاشته الخاصة، وتتغيّر بحسب من تكون:' }),
+      h('ul', { class: 'a-why-list' }, WHY.map(w => h('li', {}, h('span', { class: 'a-ico-s' }, icon(w[0])), h('div', {}, h('b', { text: w[1] }), h('p', { text: w[2] }))))),
+      h('p', { class: 'a-why-pub' }, icon('chart'), h('span', {}, 'لا تحتاج حسابًا لمتابعة الترتيب العام. ', h('a', { href: 'tournament.html', text: 'افتح لوحة البطولة' }), '.')));
+  }
+  function demoCard() {
+    if (!DEMO || !DEMO.canEnter()) return null;
+    const id = uid('demo');
+    const msg = h('p', { class: 'a-err', hidden: true, 'data-demo-err': '' });
+    const go = key => () => { if (!DEMO.enter(key)) { msg.textContent = 'تعذّر بدء التجربة: يمنع المتصفح حفظ البيانات المؤقتة في هذه الصفحة.'; msg.hidden = false; say(msg.textContent); } };
+    return h('section', { class: 'a-card a-demo', 'aria-labelledby': id },
+      h('h3', { id, text: 'جرّبها قبل أن تسجّل' }),
+      h('p', { class: 'a-lead', text: 'ادخل تجربة بحسابات وهمية وتنقّل بين الشاشات كما تشاء. البيانات وهمية وتُحفظ في هذا المتصفح فقط.' }),
+      h('div', { class: 'a-demo-btns' },
+        h('button', { type: 'button', class: 'a-demo-btn is-main', 'data-demo': 'leader', onclick: go('leader') }, icon('users'), h('b', { text: 'جرّب كقائد فريق' }), h('small', { text: 'لديك فريق مسودة فيه 5 أعضاء وهميين' })),
+        h('button', { type: 'button', class: 'a-demo-btn', 'data-demo': 'member', onclick: go('member') }, icon('user'), h('b', { text: 'جرّب كعضو' }), h('small', { text: 'عضو منضمّ إلى فريق وهمي' })),
+        h('button', { type: 'button', class: 'a-demo-btn', 'data-demo': 'parent', onclick: go('parent') }, icon('hand-heart'), h('b', { text: 'جرّب كولي أمر' }), h('small', { text: 'ولي أمر مرتبط بعضو في الفريق' }))),
+      msg);
+  }
+
   /* ------------------------------------------------------------------ unconfigured / fatal */
   function viewUnconfigured() {
     const problem = YB && YB.configProblem === 'service_key';
+    if (DEMO) {   // no dead end: the honest line, why sign up, and the demo
+      mount(h('div', { class: 'a-hub' },
+        problem ? h('div', { class: 'a-banner bad', role: 'alert' }, icon('alert'), h('span', { text: 'تحذير: وُضع في ملف إعداد الموقع مفتاح سرّي يمنح صلاحيات الإدارة الكاملة، فعُطّل الاتصال حمايةً للبيانات. على مالك الموقع استبداله بالمفتاح العلني وإعادة نشر الموقع، وتغيير المفتاح السري لأنه ظهر علنًا.' })) : null,
+        h('div', { class: 'a-card a-notice' }, icon('lock'), h('div', {},
+          h('h2', { text: 'الحسابات غير مفعّلة بعد على هذا الموقع', tabindex: '-1', 'data-focus': '' }),
+          h('p', { text: 'لم يربط مالك الموقع قاعدة البيانات بعد، فيفتح التسجيل الحقيقي بعد ربطها. باقي صفحات الموقع تعمل كما هي.' }),
+          h('p', { class: 'a-notice-l' }, h('a', { href: 'register.html', text: 'استمارة التسجيل' }), ' · ', h('a', { href: 'index.html', text: 'الرئيسية' })))),
+        demoCard(), whyCard()));
+      return;
+    }
     mount(h('div', { class: 'a-card a-center' },
       h('span', { class: 'a-ico' }, icon('lock')),
       h('h2', { text: 'الحسابات غير مفعّلة بعد على هذا الموقع', tabindex: '-1', 'data-focus': '' }),
@@ -346,7 +386,7 @@
       top.push(banner(YB.linkError === 'otp_expired' ? YB.errorText('otp_expired') : 'الرابط غير صالح أو انتهت صلاحيته. اطلب رابطًا جديدًا من «نسيت كلمة المرور».', 'bad'));
       YB.linkError = null; // shown once
     }
-    mount(h('div', { class: 'a-auth' }, top, h('div', { class: 'a-card' }, tablist, loginPanel, signPanel)));
+    mount(h('div', { class: 'a-auth a-auth-2' }, top, h('div', { class: 'a-card a-forms' }, tablist, loginPanel, signPanel), demoCard(), whyCard()));
     show(mode, false);
     if (opts.focus) show(mode, true);
     say(opts.notice || '');
@@ -399,7 +439,12 @@
       pwBtn.setAttribute('aria-expanded', String(open));
       if (open) p1.input.focus(); else pwBtn.focus();
     }
-    const outBtn = btn('خروج', 'x', 'btn-ghost', async () => { S.manualOut = true; outBtn.disabled = true; await YB.signOut(); });
+    const outBtn = btn(DEMO && DEMO.active ? 'خروج من التجربة' : 'خروج', 'x', 'btn-ghost', async () => {
+      outBtn.disabled = true;
+      if (DEMO && DEMO.active) { DEMO.exit(); return; }
+      S.manualOut = true;
+      await YB.signOut();
+    });
     const body = h('div', { class: 'a-body' });
     const roleName = ROLE[profile.role] || 'عضو';
     const head = h('header', { class: 'a-head a-card' },
