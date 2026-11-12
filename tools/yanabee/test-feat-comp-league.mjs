@@ -126,7 +126,7 @@ console.log('rule-finder');
     cs = await cards();
     check(`«${w}»: results, max 8, no c-rules line, no header row`, cs.length > 0 && cs.length <= 8 && noRules(cs) && noHeader(cs), String(cs.length));
     if (w === 'إصابة') check('«إصابة»: the lg5 items', ['يوقف الحكم اللعب عند الإصابة التي تستدعي التدخل.', 'عند الاشتباه في إصابة الرأس أو الارتجاج لا يعود اللاعب للمباراة.'].every(s => cs.some(c => c.text === s)));
-    if (w === 'تظلم') check('«تظلم»: 24 and 48 hour lines', cs.some(c => c.text.includes('خلال 24 ساعة')) && cs.some(c => c.text === 'يُبت في التظلم خلال 48 ساعة.'));
+    if (w === 'تظلم') check('«تظلم»: 24 and 48 hour lines', cs.some(c => c.text.includes('خلال 24 ساعة')) && cs.some(c => c.text === 'يُبت في التظلم خلال 48 ساعة من قبل لجنة التحكيم وإدارة المسابقة.'));
   }
 
   // open the chapter twice (closing it in between)
@@ -285,7 +285,7 @@ const LT = {
 
   // results by regulation
   await LT.forfeit(p, 'هـ1', 'هـ2', 'هـ1', 'غياب الفريق دون عذر');
-  check('decision cell shown for the reason', (await txt(p, '#lt-fdec')) === 'القرار: تُحسب النتيجة بخسارة الفريق المتغيب 0 – 3');
+  check('decision cell shown for the reason', (await txt(p, '#lt-fdec')) === 'القرار: تُحسب النتيجة بخسارة الفريق المتغيب 0 – 3 & إنذار أول بالخروج من المسابقة');
   await p.click('#lt-fadd');
   T = await LT.table(p, 'هـ');
   check('forfeit: offending team 0, opponent 3 (هـ2 3 points)', T && T[0].name === 'هـ2' && T[0].v.join() === '1,1,0,0,3,0,+3,3' && T[1].v.join() === '1,0,0,1,0,3,-3,0', JSON.stringify(T));
@@ -299,7 +299,7 @@ const LT = {
   await p.click('#lt-fadd');
   check('lateness and the lg4 reason are not counted as absences', await p.$eval('#lt-flags', f => !f.querySelector('.lt-flag.on')));
   T = await LT.table(p, 'هـ');
-  check('lg4 forfeit also gives the offender 0 and the opponent 3', T && T[0].v.join() === '3,3,0,0,9,0,+9,9', T && T[0].v.join());
+  check('revised scores: absence 0 – 3 + lateness 0 – 2 + lg4 3 – 0 = 8 goals for the opponent, 9 points', T && T[0].v.join() === '3,3,0,0,8,0,+8,9', T && T[0].v.join());
 
   // withdrawal during the match: choice only when the opponent leads
   await LT.forfeit(p, 'هـ1', 'هـ2', 'هـ1', 'انسحاب الفريق أثناء المباراة');
@@ -417,12 +417,12 @@ const MD = {
   check('tabs: arrow key (RTL) moves to the next tab', await visible(p, '#md-p-cards') && await p.evaluate(() => document.activeElement.id === 'md-tab-cards'));
   await MD.tab(p, 'clock');
 
-  // derived times (lg2: 15 minutes before; lg1: 15 + 5 + 15)
+  // derived times (lg2: 20 minutes before, revised Nov 2026; lg1: 15 + 5 + 15)
   await p.fill('#md-kick', '15:00');
-  check('arrival = kickoff − 15 (14:45)', (await txt(p, '#md-arrive')) === '14:45');
+  check('arrival = kickoff − 20 (14:40)', (await txt(p, '#md-arrive')) === '14:40');
   check('end = kickoff + 15 + 5 + 15 (15:35)', (await txt(p, '#md-end')) === '15:35');
   check('arithmetic shown as 15 + 5 + 15', (await txt(p, '#md-p-clock .md-sum')) === '15 + 5 + 15');
-  check('source lines under the times', (await p.textContent('#md-p-clock .md-times')).includes('يلتزم كل فريق بالحضور قبل موعد المباراة بخمس عشرة دقيقة لإتمام التجهيز والتسجيل.') && (await p.textContent('#md-p-clock .md-times')).includes('مدة المباراة 30 دقيقة على شوطين، كل شوط 15 دقيقة، وبينهما استراحة خمس دقائق.'));
+  check('source lines under the times', (await p.textContent('#md-p-clock .md-times')).includes('يلتزم كل فريق بالحضور قبل موعد المباراة بعشرين دقيقة لإتمام التجهيز والتسجيل.') && (await p.textContent('#md-p-clock .md-times')).includes('مدة المباراة 30 دقيقة على شوطين، كل شوط 15 دقيقة، وبينهما استراحة خمس دقائق.'));
   check('pause rules quoted (lg3, lg5)', (await p.textContent('#md-p-clock .md-why')).includes('للحكم إيقاف المباراة عند وجود خطر على اللاعبين أو سلوك غير رياضي.') && (await p.textContent('#md-p-clock .md-why')).includes('يوقف الحكم اللعب عند الإصابة التي تستدعي التدخل.'));
   check('tone off by default', !(await p.isChecked('#md-tone')));
 
@@ -473,7 +473,7 @@ const MD = {
   await p.click('#md-reset-clock');
   await p.fill('#md-kick', '15:30');
   await p.click('#md-start');
-  check('late > 10: lg2 decision verbatim with the label', (await p.textContent('#md-late')).includes('تُحسب النتيجة بخسارة الفريق المتأخر 0 – 3') && (await p.textContent('#md-late')).includes('إن كان التأخر من أحد الفريقين — القرار للحكم واللجنة'));
+  check('late > 10: lg2 decision verbatim with the label', (await p.textContent('#md-late')).includes('تُحسب النتيجة بخسارة الفريق المتأخر 0 – 2') && (await p.textContent('#md-late')).includes('إن كان التأخر من أحد الفريقين — القرار للحكم واللجنة'));
   check('late > 10: clock not started, score untouched', (await MD.state(p)).clock.phase === null && (await MD.state(p)).teams.every(t => t.goals[0] + t.goals[1] === 0));
   await p.click('#md-force');
   check('late > 10: referee can still run the clock (15:00)', (await MD.digits(p)) === '15:00');
@@ -490,19 +490,19 @@ const MD = {
   check('offences are the lg4 cells verbatim', offs.slice(1).every(o => inDoc('| ' + o + ' |')), offs.join('|'));
   await p.click('#md-player .md-opt:has(b:text-is("الإساءة اللفظية أو السخرية"))');
   await p.click('#md-player button[type=submit]');
-  check('verbal abuse logged with «طرد دقيقتين»', (await p.textContent('#md-log')).includes('الإساءة اللفظية أو السخرية') && (await p.textContent('#md-log')).includes('العقوبة: طرد دقيقتين'));
+  check('verbal abuse logged with «طرد 5 دقائق»', (await p.textContent('#md-log')).includes('الإساءة اللفظية أو السخرية') && (await p.textContent('#md-log')).includes('العقوبة: طرد 5 دقائق'));
   check('an offence alone creates no card', (await txt(p, '#md-teams .md-t0 .md-red')) === 'بطاقات حمراء: 0' && (await txt(p, '#md-teams .md-t0 .md-yel')) === 'بطاقات صفراء: 0');
-  check('offer: «طرد دقيقتين» chip 02:00', (await txt(p, '#md-player .md-offer')) === 'ابدأ مؤقت «طرد دقيقتين» (02:00)');
+  check('offer: «طرد 5 دقائق» chip 05:00', (await txt(p, '#md-player .md-offer')) === 'ابدأ مؤقت «طرد 5 دقائق» (05:00)');
   await p.click('#md-player .md-offer');
-  check('chip started at 02:00', (await txt(p, '#md-chips .md-chip-n')) === '02:00' && (await txt(p, '#md-chips .md-chip-t b')) === 'طرد دقيقتين');
+  check('chip started at 05:00', (await txt(p, '#md-chips .md-chip-n')) === '05:00' && (await txt(p, '#md-chips .md-chip-t b')) === 'طرد 5 دقائق');
   await p.click('#md-player .md-small:not(.md-primary)');
   await p.clock.runFor(30000);
-  check('chip runs on wall-clock time (01:30)', (await txt(p, '#md-chips .md-chip-n')) === '01:30');
+  check('chip runs on wall-clock time (04:30)', (await txt(p, '#md-chips .md-chip-n')) === '04:30');
   await p.click('#md-chips .md-chip-b');
   await p.clock.runFor(20000);
-  check('chip has its own pause (01:30)', (await txt(p, '#md-chips .md-chip-n')) === '01:30' && (await txt(p, '#md-chips .md-chip-b')) === 'استأنف');
+  check('chip has its own pause (04:30)', (await txt(p, '#md-chips .md-chip-n')) === '04:30' && (await txt(p, '#md-chips .md-chip-b')) === 'استأنف');
   await p.click('#md-chips .md-chip-b');
-  await p.clock.runFor(95000);
+  await p.clock.runFor(275000);
   check('chip ends: «انتهى»', (await txt(p, '#md-chips .md-chip-n')) === 'انتهى');
   await p.click('#md-chips .md-chip-x');
   check('chip removed', !(await visible(p, '#md-chips')));

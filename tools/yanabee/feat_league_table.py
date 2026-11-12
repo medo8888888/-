@@ -4,7 +4,8 @@ Placed by page_competition.league() after the chapters (.folds) and before #c-ru
 read here from content.COMP, asserted, and shipped as JSON (#lt-data) for js/league-table.js:
   - points from the lg6 table (الفوز 3 / التعادل 1 / الخسارة 0);
   - the tie-break chain from the lg6 line 'عند التساوي: …' (5 steps, in order);
-  - the 0 – 3 decisions of lg2 plus the lg4 row 'إشراك لاعب غير مسجل' (results by regulation);
+  - the lg2 decisions with a forfeit score (0 – N, read from the row: 0 – 2 or 0 – 3 since the Nov 2026 revision) plus the lg4
+    row 'إشراك لاعب غير مسجل' (results by regulation);
   - the lg2 exclusion row 'تكرار غياب الفريق أو الانسحاب مرتين' (a flag for the committee, never automatic);
   - lines found by their text: the lg1 format line, the lg6 knockout line, the lg8 duty line, the lg10 line.
 The tool decides head-to-head only in the unambiguous case and sends every other case to the committee (lg10).
@@ -39,17 +40,18 @@ def data():
     steps = tb[len('عند التساوي: '):].rstrip('.').split('، ثم ')
     assert steps == ['فارق الأهداف', 'الأهداف المسجلة', 'المواجهات المباشرة', 'الأقل بطاقات حمراء فصفراء', 'قرعة علنية'], steps
 
-    # results by regulation: lg2 rows with 0 – 3, plus the lg4 row
+    # results by regulation: lg2 rows with a forfeit score «0 – N» (N read from the row itself), plus the lg4 row
     assert lg2.table[0] == ['الحالة', 'القرار'] and lg4.table[0] == ['المخالفة', 'العقوبة']
-    f2 = [r for r in lg2.table[1:] if '0 – 3' in r[1]]
+    f2 = [r for r in lg2.table[1:] if re.search(r'0 – \d', r[1])]
     assert [r[0] for r in f2] == ['تأخر الفريق لأكثر من 10 دقائق', 'غياب الفريق دون عذر', 'انسحاب الفريق قبل المباراة',
                                   'انسحاب الفريق أثناء المباراة'], f2
     f4 = [r for r in lg4.table[1:] if r[0] == 'إشراك لاعب غير مسجل']
     assert f4 == [['إشراك لاعب غير مسجل', 'خسارة اعتبارية 3 – 0']], f4
     absence = {'غياب الفريق دون عذر', 'انسحاب الفريق قبل المباراة', 'انسحاب الفريق أثناء المباراة'}
     reasons = [{'k': r[0], 'd': r[1], 'h': lg2.table[0], 'count': r[0] in absence,
-                'keep': 'تثبيت النتيجة القائمة' in r[1]} for r in f2]
-    reasons.append({'k': f4[0][0], 'd': f4[0][1], 'h': lg4.table[0], 'count': False, 'keep': False})
+                'keep': 'تثبيت النتيجة القائمة' in r[1], 'win': int(re.search(r'0 – (\d)', r[1]).group(1))} for r in f2]
+    assert [r['win'] for r in reasons] == [2, 3, 2, 3], [r['win'] for r in reasons]
+    reasons.append({'k': f4[0][0], 'd': f4[0][1], 'h': lg4.table[0], 'count': False, 'keep': False, 'win': 3})
     assert sum(r['keep'] for r in reasons) == 1 and reasons[3]['keep']
     assert 'إذا كانت أكبر لمصلحة الفريق المنافس' in reasons[3]['d']
 

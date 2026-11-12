@@ -71,24 +71,25 @@ console.log('judge-sheet: self-check');
   check('no prize labels or amounts inside the judge sheet', await p.evaluate(() => !/المركز|700|500|300|\$/.test(document.getElementById('jsh').textContent)));
   const data = await p.evaluate(() => JSON.parse(document.getElementById('jsh-data').textContent));
   check('weights from the document: 10/15/45/20/10 (sum 100)', JSON.stringify(data.weights) === '[10,15,45,20,10]' && data.total === 100);
-  check('rubric from the document: 10/10/15/10 (sum 45)', JSON.stringify(data.rubric) === '[10,10,15,10]' && data.applyMax === 45);
+  check('rubric from the document (revised Nov 2026): 10/30/5 (sum 45)', JSON.stringify(data.rubric) === '[10,30,5]' && data.applyMax === 45);
   check('rubric title shown as written', (await txt(p, '#jsh-p-self .jsh-rubt')) === 'التقييم المقترح لمحور التطبيق السلوكي (45 نقطة)');
-  check('ranges: max = rubric rows', JSON.stringify(await p.$$eval('.jsh-range', r => r.map(x => +x.max))) === '[10,10,15,10]');
-  check('evidence lines quoted (f-apply, cd4 warning)', (await txt(p, '.jsh-crit[data-i="0"] .jsh-ev')).includes('يختار الفريق أنشطة مناسبة لتطبيق قيم سورة الصف')
-    && (await txt(p, '.jsh-crit[data-i="3"] .jsh-ev')).includes('تنبيه: لا تُنشر صور أو بيانات المشاركين القاصرين'));
-  check('start: largest gap highlighted (التنفيذ الفعلي للمشروع, 15)', await p.evaluate(() => {
-    const c = document.querySelectorAll('.jsh-crit'); return c[2].classList.contains('is-start') && !c[2].querySelector('.jsh-start').hidden && document.querySelectorAll('.jsh-crit.is-start').length === 1; }));
+  check('ranges: max = rubric rows', JSON.stringify(await p.$$eval('.jsh-range', r => r.map(x => +x.max))) === '[10,30,5]');
+  check('evidence lines quoted (f-nom roles, cd4 warning); the removed criterion is gone', (await txt(p, '.jsh-crit[data-i="0"] .jsh-ev')).includes('جميع الأعضاء')
+    && (await txt(p, '.jsh-crit[data-i="2"] .jsh-ev')).includes('تنبيه: لا تُنشر صور أو بيانات المشاركين القاصرين')
+    && !(await txt(p, '#jsh-p-self')).includes('وضوح فكرة المشروع') && (await p.locator('.jsh-crit').count()) === 3);
+  check('start: largest gap highlighted (التنفيذ الفعلي للمشروع, 30)', await p.evaluate(() => {
+    const c = document.querySelectorAll('.jsh-crit'); return c[1].classList.contains('is-start') && !c[1].querySelector('.jsh-start').hidden && document.querySelectorAll('.jsh-crit.is-start').length === 1; }));
   // keyboard on a slider: RTL range, End = max
-  await p.focus('#jsh-s2'); await p.keyboard.press('End');
-  check('slider End → 15/15, aria-valuetext «15 من 15»', (await p.getAttribute('#jsh-s2', 'aria-valuetext')) === '15 من 15');
-  check('ring + live text: «تقديركم: 15 من 45»', (await txt(p, '.jsh-score')) === 'تقديركم: 15 من 45' && (await txt(p, '[data-ring-n]')) === '15');
-  check('tie of gaps → first in document order', await p.evaluate(() => document.querySelectorAll('.jsh-crit')[0].classList.contains('is-start')));
+  await p.focus('#jsh-s1'); await p.keyboard.press('End');
+  check('slider End → 30/30, aria-valuetext «30 من 30»', (await p.getAttribute('#jsh-s1', 'aria-valuetext')) === '30 من 30');
+  check('ring + live text: «تقديركم: 30 من 45»', (await txt(p, '.jsh-score')) === 'تقديركم: 30 من 45' && (await txt(p, '[data-ring-n]')) === '30');
+  check('then the next largest gap (المشاركة 10 > التوثيق 5) is highlighted', await p.evaluate(() => document.querySelectorAll('.jsh-crit')[0].classList.contains('is-start')));
   await p.evaluate(() => { document.querySelectorAll('.jsh-range').forEach(r => { r.value = r.max; r.dispatchEvent(new Event('input')); }); });
   check('all at max: no highlight, «اكتملت الدرجات في تقديركم»', await p.evaluate(() => !document.querySelector('.jsh-crit.is-start') && !document.querySelector('.jsh-full').hidden) && (await txt(p, '.jsh-score')) === 'تقديركم: 45 من 45');
   await p.evaluate(() => { const r = document.getElementById('jsh-s1'); r.value = 4; r.dispatchEvent(new Event('input')); });
-  check('stored: only the four integers', await p.evaluate(() => JSON.stringify(JSON.parse(localStorage.getItem('yanabee-judge-sheet-v1')).self) === '[10,4,15,10]'));
+  check('stored: only the three integers', await p.evaluate(() => JSON.stringify(JSON.parse(localStorage.getItem('yanabee-judge-sheet-v1')).self) === '[10,4,5]'));
   await p.reload(); await p.waitForTimeout(400);
-  check('self-check restored after reload (39 من 45)', (await txt(p, '.jsh-score')) === 'تقديركم: 39 من 45');
+  check('self-check restored after reload (19 من 45)', (await txt(p, '.jsh-score')) === 'تقديركم: 19 من 45');
   await p.click('[data-self-reset]');
   check('أعد الضبط → 0 من 45', (await txt(p, '.jsh-score')) === 'تقديركم: 0 من 45');
 
@@ -105,7 +106,7 @@ console.log('judge-sheet: self-check');
   await typeIn(p, '#jsh-name', 'فريق الصدق'); await p.click('[data-add]');
   check('duplicate name rejected', (await txt(p, '#jsh-name-e')) === 'هذا الاسم مضاف من قبل');
   const maxes = await p.$$eval('.jsh-card input[data-k]', a => a.map(i => i.dataset.k + ':' + i.dataset.max).join(' '));
-  check('field maximums from W and R', maxes === 'a0:10 a1:15 r0:10 r1:10 r2:15 r3:10 a3:20 a4:10', maxes);
+  check('field maximums from W and R', maxes === 'a0:10 a1:15 r0:10 r1:30 r2:5 a3:20 a4:10', maxes);
   await typeIn(p, '#jsh-in-a0', '11');
   check('above max rejected: «الحد الأعلى لهذا المعيار 10»', (await txt(p, '#jsh-e-a0')) === 'الحد الأعلى لهذا المعيار 10' && (await p.getAttribute('#jsh-in-a0', 'aria-invalid')) === 'true');
   await typeIn(p, '#jsh-in-a0', '-2');
@@ -114,9 +115,9 @@ console.log('judge-sheet: self-check');
   check('non-numeric rejected, total keeps last valid (—)', (await txt(p, '#jsh-e-a0')) === 'أدخل رقمًا من 0 إلى 10' && (await txt(p, '[data-total]')) === '—');
   await typeIn(p, '#jsh-in-a0', '٨');
   check('Arabic-Indic digit accepted (٨ = 8), error cleared', (await p.getAttribute('#jsh-in-a0', 'aria-invalid')) === null && (await txt(p, '[data-total]')) === '8');
-  const fill = async (vals) => { const ks = ['a0', 'a1', 'r0', 'r1', 'r2', 'r3', 'a3', 'a4']; for (let i = 0; i < ks.length; i++) await typeIn(p, '#jsh-in-' + ks[i], String(vals[i])); };
-  await fill([8, 12.5, 9, 7, 13, 8, 15, 6]);
-  check('التطبيق / 45 = 9+7+13+8 = 37', (await txt(p, '[data-apply-sum]')) === '37');
+  const fill = async (vals) => { const ks = ['a0', 'a1', 'r0', 'r1', 'r2', 'a3', 'a4']; for (let i = 0; i < ks.length; i++) await typeIn(p, '#jsh-in-' + ks[i], String(vals[i])); };
+  await fill([8, 12.5, 9, 24, 4, 15, 6]);
+  check('التطبيق / 45 = 9+24+4 = 37', (await txt(p, '[data-apply-sum]')) === '37');
   check('المجموع / 100 = 8+12.5+37+15+6 = 78.5', (await txt(p, '[data-total]')) === '78.5');
   check('5-segment bar fills each axis (الحفظ 0.8, التطبيق 37/45)', await p.evaluate(() => { const f = [...document.querySelectorAll('.jsh-seg i')].map(i => +i.style.getPropertyValue('--f')); return Math.abs(f[0] - 0.8) < 1e-3 && Math.abs(f[2] - 37 / 45) < 1e-3 && f.length === 5; }));
   await typeIn(p, '#jsh-in-a3', '21');
@@ -124,7 +125,7 @@ console.log('judge-sheet: self-check');
   await p.locator('#jsh-in-a3').blur();
   check('blur after a rejected entry shows the kept value (15)', (await p.inputValue('#jsh-in-a3')) === '15');
   await typeIn(p, '#jsh-name', 'فريق الأمانة'); await p.click('[data-add]');
-  await fill([9, 11.5, 9, 8, 12, 8, 14, 7]);   // 9+11.5+37+14+7 = 78.5
+  await fill([9, 11.5, 9, 24, 4, 14, 7]);   // 9+11.5+37+14+7 = 78.5
   await typeIn(p, '#jsh-name', 'فريق الوفاء'); await p.click('[data-add]');
   await typeIn(p, '#jsh-in-a0', '5');
   const rank = await p.evaluate(() => window.YanabeeJudgeSheet.ranking());
@@ -158,9 +159,9 @@ console.log('judge-sheet: self-check');
   console.log('judge-sheet: file save / open');
   const [dl] = await Promise.all([p.waitForEvent('download'), p.click('[data-export]')]);
   const saved = JSON.parse(fs.readFileSync(await dl.path(), 'utf8'));
-  check('saved file: version 1, 3 teams, scores within maxima', saved.version === 1 && saved.teams.length === 3 && saved.teams[0].scores.length === 8 && saved.teams[1].scores[1] === 11.5);
+  check('saved file: version 1, 3 teams, scores within maxima', saved.version === 1 && saved.teams.length === 3 && saved.teams[0].scores.length === 7 && saved.teams[1].scores[1] === 11.5);
   p.on('dialog', d => d.accept());
-  await p.setInputFiles('[data-import]', { name: 'bad.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ version: 1, teams: [{ name: 'x', scores: [11, 0, 0, 0, 0, 0, 0, 0] }] })) });
+  await p.setInputFiles('[data-import]', { name: 'bad.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ version: 1, teams: [{ name: 'x', scores: [11, 0, 0, 0, 0, 0, 0] }] })) });
   await p.waitForTimeout(200);
   check('out-of-range file rejected: «الملف غير صالح», teams unchanged', (await txt(p, '.jsh-status')) === 'الملف غير صالح' && (await p.evaluate(() => window.YanabeeJudgeSheet.state().teams.length)) === 3);
   await p.setInputFiles('[data-import]', { name: 'bad2.json', mimeType: 'application/json', buffer: Buffer.from('{not json') });
@@ -444,7 +445,7 @@ console.log('review: whole-page print, digits, negatives');
   await p.keyboard.type('5');
   check('judge sheet: 7.5 accepted, total 7.5', (await txt(p, '[data-total]')) === '7.5');
   p.on('dialog', d => d.accept());
-  await p.setInputFiles('[data-import]', { name: 'dup.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ version: 1, teams: [{ name: 'أ', scores: [1, 0, 0, 0, 0, 0, 0, 0] }, { name: 'أ', scores: [2, 0, 0, 0, 0, 0, 0, 0] }] })) });
+  await p.setInputFiles('[data-import]', { name: 'dup.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ version: 1, teams: [{ name: 'أ', scores: [1, 0, 0, 0, 0, 0, 0] }, { name: 'أ', scores: [2, 0, 0, 0, 0, 0, 0] }] })) });
   await p.waitForTimeout(200);
   check('judge sheet: a file with the same team name twice is rejected', (await txt(p, '.jsh-status')) === 'الملف غير صالح' && (await p.evaluate(() => window.YanabeeJudgeSheet.state().teams.length)) === 1);
   check('no page errors (review)', errs.length === 0, errs.join(' | '));

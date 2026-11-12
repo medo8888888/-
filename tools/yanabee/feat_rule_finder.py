@@ -44,7 +44,7 @@ def html():
     for w in TOPICS:
         assert w in league_text, w
     assert not any(e['k'] == 't' and e['cells'][0][1] in ('الحالة', 'المخالفة', 'النتيجة') for e in E)
-    assert any(e.get('text') == 'يلتزم كل فريق بالحضور قبل موعد المباراة بخمس عشرة دقيقة لإتمام التجهيز والتسجيل.' for e in E)
+    assert any(e.get('text') == 'يلتزم كل فريق بالحضور قبل موعد المباراة بعشرين دقيقة لإتمام التجهيز والتسجيل.' for e in E)  # revised Nov 2026 (was 15)
     # row chips: one per lg2 'الحالة' and lg4 'المخالفة' cell, opening that exact row
     rows = [(i, e) for i, e in enumerate(E) if e['k'] == 't' and e['f'] in ('lg2', 'lg4')]
     assert len(rows) == 7 + 9, len(rows)

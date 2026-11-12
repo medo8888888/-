@@ -94,7 +94,7 @@ console.log('markup');
   check('assets loaded', ['css/calendar-ics.css', 'js/calendar-ics.js', 'css/ad-maker.css', 'js/ad-maker.js'].every(a => html.includes(a)));
   check('calendar block sits inside #c-timeline after the timeline', /id="c-timeline">[\s\S]*?<\/ol>\s*<div class="ics"/.test(html));
   check('ad-maker panel before the poster tools', html.indexOf('data-ad-maker') < html.indexOf('data-print-poster') && html.indexOf('data-ad-maker') > html.indexOf('id="c-ad"'));
-  check('blank spans wrapped once', (html.match(/data-ad-kind>/g) || []).length === 1 && (html.match(/data-ad-org>/g) || []).length === 1 && (html.match(/<bdi data-ad-wa>\[رقم الواتساب\]<\/bdi>/g) || []).length === 1);
+  check('blank spans wrapped once', (html.match(/data-ad-kind>/g) || []).length === 1 && (html.match(/data-ad-org>/g) || []).length === 1 && (html.match(/<bdi data-ad-wa>05305175431<\/bdi>/g) || []).length === 1);
   check('c-decisions row shown verbatim', html.includes('اعتماد رابط التسجيل ورقم التواصل') && html.includes('بعد استكمال الموافقات'));
   for (const f of ['js/calendar-ics.js', 'js/ad-maker.js']) {
     const src = fs.readFileSync(path.join(ROOT, 'site/yanabee', f), 'utf8').replace(/\/\/.*$/gm, '');
@@ -290,16 +290,16 @@ console.log('ad-maker: live filling');
   check('no duplicated sub-items', (clip.match(/الحفظ والتسميع/g) || []).length === 1 && (clip.match(/دوري الشطرنج/g) || []).length === 1);
   check('parents and children with label: body', L.includes('• المحور الإيماني والمعرفي:') && L.includes('   ◦ الحفظ والتسميع: اختيار عضوين، عضو أساسي والآخر احتياطي، من الفريق للتسميع المباشر لسورة الصَّف.'));
   check('every c-ad line present', DOC.slice(DOC.findIndex(l => l.startsWith('# c-ad ')) + 1, DOC.findIndex(l => l.startsWith('# c-partner'))).filter(l => l.trim() && !l.startsWith('#') && !l.startsWith('>'))
-    .map(l => l.replace(/^\s*- /, '').replace('جمعية / مدرسة ..................', 'مدرسة النور الأهلية').replace('[رقم الواتساب]', '\u2066+90 555 12-3 (4)\u2069'))
+    .map(l => l.replace(/^\s*- /, '').replace('جمعية / مدرسة ..................', 'مدرسة النور الأهلية').replace('05305175431', '\u2066+90 555 12-3 (4)\u2069'))
     .every(l => clip.includes(l)));
   check('section headings in order', ['شروط وأحكام المشاركة', 'محاور وشروط المسابقة الأولى (سورة الصَّف)', 'الجدول الزمني للمسابقة', 'كيف تسجل فريقك؟'].every((h, i, a) => L.indexOf(h) > (i ? L.indexOf(a[i - 1]) : 3)));
   check('success status, no warning', (await text(p, '[data-ad-status]')) === 'نُسخ النص. الصقه في مجموعة الواتساب.');
   check('status is aria-live', (await p.getAttribute('[data-ad-status]', 'aria-live')) === 'polite');
   await p.fill('#adm-wa', '');
-  check('empty number -> placeholder back, no dir', (await text(p, '[data-ad-wa]')) === '[رقم الواتساب]' && (await p.getAttribute('[data-ad-wa]', 'dir')) === null);
+  check('empty number -> placeholder back, no dir', (await text(p, '[data-ad-wa]')) === '05305175431' && (await p.getAttribute('[data-ad-wa]', 'dir')) === null);
   await p.click('[data-ad-copy]'); await p.waitForTimeout(100);
   check('warning when a blank is left', (await text(p, '[data-ad-status]')).includes('تنبيه: ما زال في النص فراغ لم يُملأ.'));
-  check('placeholder copied as is', (await p.evaluate(() => window.__clip)).includes('• للتسجيل والاستفسار: [رقم الواتساب]'));
+  check('placeholder copied as is', (await p.evaluate(() => window.__clip)).includes('• للتسجيل والاستفسار: 05305175431'));
   await p.evaluate(() => {
     Object.defineProperty(navigator, 'clipboard', { value: { writeText: () => Promise.reject(new Error('no')) }, configurable: true });
     document.execCommand = () => false;
@@ -327,7 +327,7 @@ console.log('ad-maker: live filling');
   await p.emulateMedia({ media: 'screen' });
   await p.click('[data-ad-reset]');
   check('reset: originals back, radio reset, storage removed', (await text(p, '.poster-lead')).startsWith('تعلن جمعية / مدرسة .................. عن فتح')
-    && (await text(p, '[data-ad-wa]')) === '[رقم الواتساب]' && await p.isChecked('input[name=adm-kind][value=""]') && (await p.inputValue('#adm-org')) === ''
+    && (await text(p, '[data-ad-wa]')) === '05305175431' && await p.isChecked('input[name=adm-kind][value=""]') && (await p.inputValue('#adm-org')) === ''
     && (await p.evaluate(() => localStorage.getItem('yanabee-ad-maker-v1'))) === null);
   check('no console errors', errs.length === 0, errs.join(' | '));
   check('no network requests', net.length === 0, net.join(' '));
@@ -342,10 +342,10 @@ console.log('review: number edge cases');
   await p.fill('#adm-wa', '+961 3\t123 456');
   check('pasted NBSP / tab / thin space kept as spaces (digit groups not merged)', (await text(p, '[data-ad-wa]')) === '+961 3 123 456', await text(p, '[data-ad-wa]'));
   await p.fill('#adm-wa', '+');
-  check('«+» alone is not a number: blank kept, no dir', (await text(p, '[data-ad-wa]')) === '[رقم الواتساب]' && (await p.getAttribute('[data-ad-wa]', 'dir')) === null);
+  check('«+» alone is not a number: blank kept, no dir', (await text(p, '[data-ad-wa]')) === '05305175431' && (await p.getAttribute('[data-ad-wa]', 'dir')) === null);
   await p.fill('#adm-wa', '( ) -');
   await p.click('[data-ad-copy]'); await p.waitForTimeout(100);
-  check('symbols only: copy keeps the blank and warns', (await p.evaluate(() => window.__clip)).includes('• للتسجيل والاستفسار: [رقم الواتساب]')
+  check('symbols only: copy keeps the blank and warns', (await p.evaluate(() => window.__clip)).includes('• للتسجيل والاستفسار: 05305175431')
     && (await text(p, '[data-ad-status]')).includes('تنبيه: ما زال في النص فراغ لم يُملأ.'));
   await p.fill('#adm-wa', '0555 22');
   await p.focus('#adm-wa');

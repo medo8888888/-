@@ -446,12 +446,12 @@
         cur = [+co, +cp];
         if (cur[1] > cur[0]) {
           const pick = box.querySelector('input[name=keep]:checked');
-          if (!pick) return err('اختر ما تقرره اللجنة: خسارة 0 – 3 أو تثبيت النتيجة القائمة.');
+          if (!pick) return err(`اختر ما تقرره اللجنة: خسارة 0 – ${D.reasons[ri].win || 3} أو تثبيت النتيجة القائمة.`);
           keep = pick.value === '1';
         }
       }
     }
-    const go = keep ? cur[0] : 0, gp = keep ? cur[1] : 3;
+    const go = keep ? cur[0] : 0, gp = keep ? cur[1] : (D.reasons[ri].win || 3);   // the forfeit score of the chosen lg2 / lg4 row
     const r = { id: editingF || uid(), kind: 'reg', a, b, ga: off === a ? go : gp, gb: off === a ? gp : go, ra: 0, ya: 0, rb: 0, yb: 0,
       date: $('#lt-fdate').value || '', off, reason: ri, keep, cur };
     put(r);

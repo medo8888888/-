@@ -13,7 +13,7 @@ from core import COMP as C, ic, plain, t
 
 KIND = 'جمعية / مدرسة'
 DOTS = '..................'
-WA = '[رقم الواتساب]'
+WA_LABEL = 'للتسجيل والاستفسار'   # c-ad-how: the line that carries the registration WhatsApp number
 DECISION = 'اعتماد رابط التسجيل ورقم التواصل'
 
 
@@ -32,11 +32,18 @@ def mark_lead(lead_html):
             .replace(DOTS, f'<span data-ad-org>{DOTS}</span>'))
 
 
+def wa_value():
+    """The WhatsApp value of c-ad-how, verbatim: the official number since the Nov 2026 revision (was '[رقم الواتساب]')."""
+    hit = [it.body for it in C['c-ad']['c-ad-how'].items if it.text.startswith(WA_LABEL)]
+    assert len(hit) == 1 and hit[0], 'ad-maker: c-ad-how has no WhatsApp line'
+    return hit[0]
+
+
 def mark_subs(subs_html):
-    """The rendered c-ad sub-parts -> '[رقم الواتساب]' wrapped once in a <bdi> the panel can fill."""
-    assert any(it.body == WA for it in C['c-ad']['c-ad-how'].items), 'ad-maker: c-ad-how has no WhatsApp blank'
-    assert subs_html.count(WA) == 1, 'ad-maker: WhatsApp blank not found once in the poster'
-    return subs_html.replace(WA, f'<bdi data-ad-wa>{WA}</bdi>')
+    """The rendered c-ad sub-parts -> the WhatsApp value wrapped once in a <bdi> the panel can replace."""
+    wa = wa_value()
+    assert subs_html.count(wa) == 1, 'ad-maker: WhatsApp value not found once in the poster'
+    return subs_html.replace(wa, f'<bdi data-ad-wa>{wa}</bdi>')
 
 
 def _decision():
@@ -63,7 +70,7 @@ def html():
       <input type="text" id="adm-org" maxlength="80" autocomplete="organization" data-ad-in-org></div>
     <div class="adm-f"><label for="adm-wa">رقم الواتساب المعتمد للتسجيل</label>
       <input type="tel" id="adm-wa" inputmode="tel" dir="ltr" maxlength="20" autocomplete="off" aria-describedby="adm-wa-hint" data-ad-in-wa>
-      <small id="adm-wa-hint" class="adm-hint">اكتب الرقم الذي اعتمدته جهتكم؛ لا يضع الموقع أي رقم من عنده.</small></div>
+      <small id="adm-wa-hint" class="adm-hint">الرقم المعتمد في الإعلان ظاهر في الملصق؛ اكتب رقمًا آخر فقط إن اعتمدت جهتكم رقمًا مختلفًا.</small></div>
   </div>
   {_decision()}
   <div class="adm-actions">

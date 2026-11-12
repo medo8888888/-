@@ -70,7 +70,7 @@
     rr_unresolved: 'لا يُلعب النهائي قبل حسم المركزين الأولين.',
     bad_share: 'رابط المشاركة غير صالح أو تالف.'
   };
-  const KIND = { absent: 'لم يحضر', late: 'تأخر', withdraw: 'انسحب', unregistered: 'لاعب غير مسجل' };
+  const KIND = { absent: 'لم يحضر', late: 'تأخر', withdraw: 'انسحب قبل المباراة', withdraw_during: 'انسحب أثناء المباراة', unregistered: 'لاعب غير مسجل' };
   const STEP_TXT = {
     gd: 'بفارق الأهداف', gf: 'بالأهداف المسجلة', h2h: 'بالمواجهات المباشرة',
     cards: 'بعدد البطاقات (الأقل بطاقات حمراء فصفراء)'
@@ -1083,7 +1083,7 @@
   }
   function admBadge(res) {
     if (!res || !res.adm) return null;
-    return h('em', { class: 'tn-chip warn' }, `قرار إداري · ${KIND[res.adm]} · ${nm(res.fault)}`);
+    return h('em', { class: 'tn-chip warn' }, `قرار إداري · ${KIND[res.adm] || res.adm} · ${nm(res.fault)}`);
   }
   function fxRead(m) {
     const r = m.res;
@@ -1382,6 +1382,9 @@
     try { tv = YT.teamView(A.S, A.myTeam); } catch (e) { box.append(h('p', { class: 'tn-fine', role: 'alert' }, errMsg(e))); return; }
     const status = [];
     status.push(h('li', null, h('b', null, 'كرة القدم: '), FB_STATUS[tv.status] || ''));
+    const warn = YT.warnings ? YT.warnings(A.S, A.myTeam) : 0;   // lg2: «إنذار أول بالخروج من المسابقة»
+    if (warn) status.push(h('li', { class: 'tn-warnline' }, h('em', { class: 'tn-chip ' + (warn > 1 ? 'bad' : 'warn') }, warn > 1 ? `${warn} قرارات غياب/انسحاب` : 'إنذار أول'),
+      ' ', warn > 1 && WF.repeat ? `${WF.repeat[0][0]}: ${WF.repeat[0][1]}` : 'إنذار أول بالخروج من المسابقة (اللائحة: ثانيًا).'));
     if (tv.groupName) status.push(h('li', null, `المجموعة ${tv.groupName}` + (tv.position ? ` · المركز ${tv.position} من 4` : '')));
     const cs = tv.chess;
     status.push(h('li', null, h('b', null, 'الشطرنج: '), (CH_STATUS[cs.stage] || '') + (cs.stage === 'out' && cs.outAt ? ' (في ' + ROUND_TXT[cs.outAt] + ')' : '')));

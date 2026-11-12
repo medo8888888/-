@@ -291,9 +291,32 @@ section('football: forfeits (lg2 / lg4)');
   const r = absent.fb.res['t1|t2'];
   check('absence of t1: 0-3 against t1 (the side at fault scores 0)', r.sa === 0 && r.sb === 3 && r.adm === 'absent' && r.fault === 't1');
   const late = Y.adminResult(s0, 't1', 't2', 'late', 't2');
-  check('late arrival of t2: 0-3 against t2', late.fb.res['t1|t2'].sa === 3 && late.fb.res['t1|t2'].sb === 0 && late.fb.res['t1|t2'].adm === 'late');
+  check('late arrival of t2 (> 10 min): 0-2 against t2 (revised lg2)', late.fb.res['t1|t2'].sa === 2 && late.fb.res['t1|t2'].sb === 0 && late.fb.res['t1|t2'].adm === 'late');
   const wd = Y.adminResult(s0, 't2', 't1', 'withdraw', 't2');
-  check('withdrawal of t2 (pair given the other way round)', wd.fb.res['t1|t2'].sa === 0 && wd.fb.res['t1|t2'].sb === 3 && wd.fb.res['t1|t2'].a === 't2');
+  check('withdrawal of t2 before the match: 0-2 (pair given the other way round)', wd.fb.res['t1|t2'].sa === 0 && wd.fb.res['t1|t2'].sb === 2 && wd.fb.res['t1|t2'].a === 't2');
+  const wdd = Y.adminResult(s0, 't1', 't2', 'withdraw_during', 't1');
+  check('withdrawal of t1 during the match: 0-3', wdd.fb.res['t1|t2'].sa === 0 && wdd.fb.res['t1|t2'].sb === 3 && wdd.fb.res['t1|t2'].adm === 'withdraw_during');
+  // the engine scores agree with the regulation text (competition.txt lg2 / lg4)
+  {
+    const txt = fs.readFileSync(new URL('../../content/yanabee/competition.txt', import.meta.url), 'utf8');
+    const row = start => { const l = txt.split('\n').find(x => x.startsWith('| ' + start)); return l ? l : ''; };
+    const goals = l => { const m = /0 – (\d)/.exec(l); return m ? +m[1] : null; };
+    check('FORFEIT_GOALS = the lg2 rows (late 0 – 2, absent 0 – 3, withdraw before 0 – 2, during 0 – 3)',
+      Y.FORFEIT_GOALS.late === goals(row('تأخر الفريق لأكثر من 10 دقائق')) && Y.FORFEIT_GOALS.absent === goals(row('غياب الفريق دون عذر'))
+      && Y.FORFEIT_GOALS.withdraw === goals(row('انسحاب الفريق قبل المباراة')) && Y.FORFEIT_GOALS.withdraw_during === goals(row('انسحاب الفريق أثناء المباراة')),
+      JSON.stringify(Y.FORFEIT_GOALS));
+    check('unregistered player = lg4 «خسارة اعتبارية 3 – 0»', Y.FORFEIT_GOALS.unregistered === 3 && /إشراك لاعب غير مسجل \| خسارة اعتبارية 3 – 0/.test(txt));
+  }
+  // «إنذار أول بالخروج من المسابقة»: absence and withdrawals count, lateness and an unregistered player do not
+  {
+    let w = Y.adminResult(s0, 't1', 't2', 'absent', 't1');
+    check('one absence = 1 warning for the team at fault, 0 for the other', Y.warnings(w, 't1') === 1 && Y.warnings(w, 't2') === 0);
+    w = Y.adminResult(w, 't1', 't3', 'withdraw', 't1');
+    check('a second absence / withdrawal = 2 (the committee decides on exclusion)', Y.warnings(w, 't1') === 2);
+    w = Y.adminResult(w, 't1', 't4', 'late', 't1');
+    check('lateness carries no warning', Y.warnings(w, 't1') === 2);
+    check('an unregistered player carries no warning', Y.warnings(Y.adminResult(s0, 't1', 't2', 'unregistered', 't1'), 't1') === 0);
+  }
   const unreg = Y.adminResult(s0, 't1', 't2', 'unregistered', 't1');
   check('unregistered player of t1: a 3-0 loss for t1, three points to the other side', unreg.fb.res['t1|t2'].sa === 0 && unreg.fb.res['t1|t2'].sb === 3 && unreg.fb.res['t1|t2'].adm === 'unregistered');
   const t = Y.football(absent).groups[0].table;
@@ -783,7 +806,7 @@ section(`randomized simulation: ${N} complete tournaments (seeded)`);
       if (ri(2)) [a, b] = [b, a];
       if (ri(100) < 6) {
         const fault = ri(2) ? a : b;
-        s = Y.adminResult(s, a, b, pick(['absent', 'late', 'withdraw', 'unregistered']), fault);
+        s = Y.adminResult(s, a, b, pick(['absent', 'late', 'withdraw', 'withdraw_during', 'unregistered']), fault);
         played[Y.pairKey(a, b)] = { a, b, sa: fault === a ? 0 : 3, sb: fault === b ? 0 : 3 };
         forfeits++;
       } else {

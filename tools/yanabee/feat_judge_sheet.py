@@ -25,7 +25,8 @@ def _data():
     rub = s['c-rubric']
     R = [(label, int(v)) for label, v in rub.table[1:] if label != TOTAL_ROW]
     total = [int(v) for label, v in rub.table[1:] if label == TOTAL_ROW]
-    assert len(R) == 4 and total and sum(v for _, v in R) == total[0] == dict(W)[APPLY] == 45, (R, total)
+    # three criteria since the Nov 2026 revision (10 + 30 + 5 = 45; «وضوح فكرة المشروع» was removed)
+    assert len(R) == 3 and total and sum(v for _, v in R) == total[0] == dict(W)[APPLY] == 45, (R, total)
     return s, para, W, rub, R
 
 
@@ -43,7 +44,6 @@ def _evidence(R):
     warn = [p for p in card['cd4'].paras if p.startswith('تنبيه:')]
     assert len(warn) == 1
     ev = {
-        'وضوح فكرة المشروع وارتباطها بقيم السورة': [form['f-apply'].paras[0]],
         'مشاركة أعضاء الفريق وتوزيع الأدوار': [_find(form['f-nom'].items, 'جميع الأعضاء:'),
                                               _find(form['f-apply'].items, 'مسؤول التنسيق والتوثيق بالفريق')],
         'التنفيذ الفعلي للمشروع': [C['c-partner']['c-p-partner'].items[4].text,

@@ -69,7 +69,8 @@ offline with PGlite, then goes live in one apply (slice 20).
     - UI: a leader filter panel (age group, minimum goals, wins, team player, Quran winner) with a "best match" sort; an invite inbox for players and parents.
     - Tests: RLS (only opted-in players, first name and age group only, no email, phone or guardian data; approved leaders only).
 21. [ ] **Certificates** (SPEC 4.5) and **admin quality-of-life** (SPEC 4.8: the audit log, backup and restore, user search, password reset).
-22. [ ] 🔒 **Owner content decisions** (SPEC 4.7): the WhatsApp number, the lira amounts, the 4 contradictions in the documents, and whether students may join the chat.
+22. [~] 🔒 **Owner content decisions** (SPEC 4.7). The revised terms (12 Nov 2026) settled the WhatsApp number (05305175431, now on the register page and the ad). Still open: the lira amounts, the remaining contradictions in the documents, and whether students may join the chat.
+    - Revised terms applied: forfeits 0 – 2 (late, withdraw before) and 0 – 3 (absent, withdraw during) with «إنذار أول»; arrival 20 minutes early; verbal abuse = 5-minute send-off; rubric 10 / 30 / 5; appeals decided within 48 hours; new sections «نظام الدوري» and «نظام دوري الشطرنج». No database change was needed.
 23. [ ] **Release hardening**: fix the flaky wow and gallery tests, remove `.lab-stub`, run the integration check at 390 and 1280px, build the final zip (the owner uploads it; never auto-deploy).
 24. [ ] *(Optional)* **Web Push** for the inbox, private chess labels, Arabic email templates, a custom domain (SPEC 4.9); 🔒 a live quiz with a buzzer for hifz and fahm, only if the owner wants it (SPEC 4.11).
 

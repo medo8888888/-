@@ -401,7 +401,7 @@ section('forfeits and clear');
   const f = p.locator(`form.tn-fx[data-key="${m.key}"]`);
   await f.locator('[aria-expanded]').click();
   check('details toggle expands the panel (date, time, cards, forfeit)', await f.locator('.tn-more').isVisible() && await f.locator('.tn-more input[type=date]').count() === 1 && await f.locator('.tn-more input[type=time]').count() === 1 && await f.locator('input[name=ca]').count() === 1);
-  check('forfeit menu has the four kinds in chrome words', (await f.locator('select[name=kind] option').allTextContents()).join('|') === 'اختر القرار…|لم يحضر|تأخر|انسحب|لاعب غير مسجل');
+  check('forfeit menu has the five kinds in chrome words', (await f.locator('select[name=kind] option').allTextContents()).join('|') === 'اختر القرار…|لم يحضر|تأخر|انسحب قبل المباراة|انسحب أثناء المباراة|لاعب غير مسجل');
   await f.locator('select[name=kind]').selectOption('absent');
   check('selecting a kind shows the lg2 rule verbatim', /غياب الفريق دون عذر/.test(await f.locator('.tn-rule').textContent()) && /0 – 3/.test(await f.locator('.tn-rule').textContent()));
   await f.locator('select[name=fault]').selectOption(m.a);

@@ -52,7 +52,9 @@ def words():
         'forfeit': {
             'late': [_row(lg2.table, 'تأخر الفريق لأكثر')],
             'absent': [_row(lg2.table, 'غياب الفريق دون')],
-            'withdraw': [_row(lg2.table, 'انسحاب الفريق قبل'), _row(lg2.table, 'انسحاب الفريق أثناء')],
+            'withdraw': [_row(lg2.table, 'انسحاب الفريق قبل')],
+            'withdraw_during': [_row(lg2.table, 'انسحاب الفريق أثناء')],
+            'repeat': [_row(lg2.table, 'تكرار غياب الفريق')],
             'unregistered': [_row(lg4.table, 'إشراك لاعب غير مسجل')],
         },
     }

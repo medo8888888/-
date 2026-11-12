@@ -18,7 +18,12 @@
   var VERSION = 1;
   var SCOPES = ['g0', 'g1', 'g2', 'final'];
   var GROUP_NAMES = ['أ', 'ب', 'ج'];
-  var FORFEIT_KINDS = ['absent', 'late', 'withdraw', 'unregistered'];
+  var FORFEIT_KINDS = ['absent', 'late', 'withdraw', 'withdraw_during', 'unregistered'];
+  // goals given to the other side by each administrative result (competition.txt lg2 / lg4, revised Nov 2026):
+  // late > 10 min 0 – 2, absent 0 – 3, withdrawal before 0 – 2, withdrawal during 0 – 3, unregistered player 3 – 0
+  var FORFEIT_GOALS = { late: 2, absent: 3, withdraw: 2, withdraw_during: 3, unregistered: 3 };
+  // the kinds that carry «إنذار أول بالخروج من المسابقة» (lg2); a second one goes to the committee (exclusion row)
+  var WARNING_KINDS = ['absent', 'withdraw', 'withdraw_during'];
   var MAX_SCORE = 999;
   var MAX_TEAMS = 12;
   var TOTAL_FOOTBALL = 21; // 3 groups x 6 + final round 3
@@ -764,7 +769,9 @@
     return settle(st);
   }
 
-  // Administrative result (lg2 / lg4): the side at fault scores 0, the other side 3, whatever the kind.
+  // Administrative result (lg2 / lg4): the side at fault scores 0, the other side FORFEIT_GOALS[kind].
+  // (lg2 also allows keeping the current score when a team withdraws during the match and the score is bigger:
+  // that is an ordinary result entered with setResult.)
   function adminResult(s, a, b, kind, sideAtFault, opts) {
     var st = prep(s);
     if (FORFEIT_KINDS.indexOf(kind) < 0) fail('bad_kind');
@@ -773,7 +780,7 @@
     if (sideAtFault !== a && sideAtFault !== b) fail('bad_side');
     var o = opts && typeof opts === 'object' ? opts : {};
     return putResult(st, {
-      a: a, b: b, sa: sideAtFault === a ? 0 : 3, sb: sideAtFault === b ? 0 : 3, ca: 0, cb: 0,
+      a: a, b: b, sa: sideAtFault === a ? 0 : FORFEIT_GOALS[kind], sb: sideAtFault === b ? 0 : FORFEIT_GOALS[kind], ca: 0, cb: 0,
       date: o.date, time: o.time, note: o.note
     }, { adm: kind, fault: sideAtFault });
   }
@@ -960,6 +967,14 @@
   //   football.status: not_drawn | group | tie (group finished, first place still undecided and the team is in that tie)
   //                    | qualified | final | first | second | third | out
   //   chess.stage: none | r1 | r2 | rr | final | first | second | third | out (outAt: r1 | r2)
+  // «إنذار أول بالخروج من المسابقة» (lg2): administrative results of the warning kinds where the team was at fault.
+  // 1 = first warning; 2 or more = «تكرار غياب الفريق أو الانسحاب مرتين» → the committee decides (never automatic).
+  function warnings(s, teamId) {
+    var st = normalize(s), n = 0;
+    Object.keys(st.fb.res).forEach(function (k) { var r = st.fb.res[k]; if (r && r.adm && r.fault === teamId && WARNING_KINDS.indexOf(r.adm) >= 0) n++; });
+    return n;
+  }
+
   function teamView(s, teamId) {
     var st = normalize(s);
     requireTeam(st, teamId);
@@ -1170,7 +1185,7 @@
     emptyState: emptyState, normalize: normalize, validate: validate, stamp: stamp, pairKey: pairKey,
     setTeams: setTeams, drawGroups: drawGroups, setGroups: setGroups, moveTeam: moveTeam, groupsValid: groupsValid,
     roundRobin: roundRobin, table: table, football: football,
-    setResult: setResult, clearResult: clearResult, adminResult: adminResult, setOrder: setOrder, clearOrder: clearOrder, setSchedule: setSchedule, draw: draw,
+    setResult: setResult, clearResult: clearResult, adminResult: adminResult, warnings: warnings, FORFEIT_GOALS: FORFEIT_GOALS, setOrder: setOrder, clearOrder: clearOrder, setSchedule: setSchedule, draw: draw,
     chess: chess, drawPairs: drawPairs, setChessPairs: setChessPairs, setChessWinner: setChessWinner,
     setChessRR: setChessRR, setChessFinal: setChessFinal, setChessOrder: setChessOrder,
     teamView: teamView, overview: overview, encode: encode, decode: decode

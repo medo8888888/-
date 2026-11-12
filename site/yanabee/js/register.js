@@ -2,7 +2,7 @@
 // Everything stays in this browser: a draft in localStorage, a printable form, consent copies, copyable text.
 // Nothing is sent over the network. A WhatsApp link appears only if WA below is set to the organisers' number.
 (() => {
-  const WA = ''; // رقم واتساب التسجيل بصيغة دولية بلا + (مثال: 2189XXXXXXXX). يبقى فارغًا حتى تعلنه الجهة المنظِّمة.
+  const WA = '905305175431'; // c-ad-how «للتسجيل والاستفسار: 05305175431» in international form without + (Turkey, 90)
   const KEY = 'yanabee-reg-draft';
   const MIN = 5, MAX = 7;
   const $ = (s, r = document) => r.querySelector(s);

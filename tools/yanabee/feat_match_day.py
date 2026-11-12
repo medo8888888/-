@@ -40,13 +40,14 @@ def data():
     late_bad = _row(lg2.table, 'تأخر الفريق لأكثر من 10 دقائق')
     grace = int(re.search(r'حتى (\d+) دقائق', late_ok[0]).group(1))
     assert grace == 10 and 'ولا يتغير موعد انتهاء المباراة' in late_ok[1]
-    assert 'بخمس عشرة دقيقة' in lg2.paras[0]
-    arrive = 15
+    assert 'بعشرين دقيقة' in lg2.paras[0]   # revised Nov 2026 (was 15)
+    arrive = 20
 
     assert lg4.table[0] == ['المخالفة', 'العقوبة']
     verbal = _row(lg4.table, 'الإساءة اللفظية أو السخرية')
-    assert verbal[1] == 'طرد دقيقتين'
-    two_min = 2
+    assert verbal[1] == 'طرد 5 دقائق'   # revised Nov 2026 (was 2 minutes)
+    two_min = int(re.search(r'طرد (\d+) دقائق', verbal[1]).group(1))
+    assert two_min == 5
     two_y = _row(lg4.table, 'بطاقتان صفراوان في مباراة')
     after = int(re.search(r'بعد (\d+) دقائق', two_y[1]).group(1))
     assert after == 3
