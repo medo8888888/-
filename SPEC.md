@@ -485,6 +485,20 @@ This section supersedes the earlier sections where they overlap. Each item names
 - **Push:** when the PWA is installed and the user has opted in, the optional push slice (4.9) delivers the same rows
   as push messages.
 
+### 4.11 Ideas borrowed from comparable platforms (owner's list: TryAbqar, eTalenter, TeamSnap, Invitem)
+Those platforms are generic, paid, and mostly not RTL. None of them knows this competition's rules or its privacy rule,
+so the app stays custom and takes only what fills a gap:
+- **Attendance (TeamSnap):**
+  - `yb_attendance(event_id, team_id, rsvp 'yes'|'no'|null, checked_in_at, late_minutes, marked_by)`.
+  - The leader confirms the team's attendance before each event; the officer checks teams in on the day.
+  - Lateness and absence are shown next to the lg2 rule rows, word for word; the app applies no penalty by itself.
+  - Part of slice 13.
+- **Big-screen display (TryAbqar):** `tournament.html?screen=1` shows the live results, the next matches, and
+  announcements in large type, rotating, with no controls. Read-only. Part of slice 14.
+- **Live quiz with a buzzer (TryAbqar):** optional and owner-gated. Only if the owner wants a quiz format for hifz or
+  fahm; the documents describe those as judged tests. Slice 24.
+- **eTalenter's flow** (registration → judging panels → results) is already covered by 4.10.1, 4.3 and 4.10.6.
+
 ---
 
 ## 5. API surface after completion (client → Supabase)

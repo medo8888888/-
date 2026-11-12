@@ -31,12 +31,12 @@ offline with PGlite, then goes live in one apply (slice 20).
 13. [ ] **Unified schedule and alerts** (SPEC 4.10.3).
     - DB: migration 0003 with `yb_events`, `yb_public_events`, and a notify trigger.
     - API: event CRUD and reads.
-    - UI: the «الجدول» tab with filters (team, competition, category), "my team", `.ics` export; event editing for officers and the admin.
+    - UI: the «الجدول» tab with filters (team, competition, category), "my team", `.ics` export; event editing for officers and the admin; **attendance** (leader confirms, officer checks teams in; lg2 rows shown word for word; SPEC 4.11).
     - Tests: RLS (the public sees no team-private events), notifications fan out to the right users only, UI filters.
 14. [ ] **Live and approved results, plus stage approval** (SPEC 4.10.4, 4.10.5).
     - DB: migration 0004 with `yb_results` and `yb_result_history`, and the approval rules.
     - API: result methods and polling.
-    - UI: the officer's live score entry, the «جارية» and «نهائية» badges, the admin approve queue, the correction log, the "next opponent" card shown only after stage approval.
+    - UI: the officer's live score entry, the «جارية» and «نهائية» badges, the admin approve queue, the correction log, the "next opponent" card shown only after stage approval; the **big-screen display** `?screen=1` (SPEC 4.11).
     - Tests: engine overlay, history written on every post-approval edit, only approved results feed standings.
 15. [ ] **Project and initiative submissions** (SPEC 4.10.6).
     - DB: migration 0005 with `yb_submissions`, the private Storage bucket, and Storage RLS.
@@ -65,6 +65,6 @@ offline with PGlite, then goes live in one apply (slice 20).
 21. [ ] **Certificates** (SPEC 4.5) and **admin quality-of-life** (SPEC 4.8: the audit log, backup and restore, user search, password reset).
 22. [ ] 🔒 **Owner content decisions** (SPEC 4.7): the WhatsApp number, the lira amounts, the 4 contradictions in the documents, and whether students may join the chat.
 23. [ ] **Release hardening**: fix the flaky wow and gallery tests, remove `.lab-stub`, run the integration check at 390 and 1280px, build the final zip (the owner uploads it; never auto-deploy).
-24. [ ] *(Optional)* **Web Push** for the inbox, private chess labels, Arabic email templates, a custom domain (SPEC 4.9).
+24. [ ] *(Optional)* **Web Push** for the inbox, private chess labels, Arabic email templates, a custom domain (SPEC 4.9); 🔒 a live quiz with a buzzer for hifz and fahm, only if the owner wants it (SPEC 4.11).
 
 Build order: 12 → 13 → 14 → 15 → 16 → 17 → 18 → 19 → 20 → 21 → 23. Item 22 happens whenever the owner answers.
