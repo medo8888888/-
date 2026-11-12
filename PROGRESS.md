@@ -28,11 +28,10 @@ offline with PGlite, then goes live in one apply (slice 20).
     - API: `yb-api` sends the app tag, creates a missing profile only on a real "no rows" answer, maps `{ok:false, error}` answers to failures, and has new error texts.
     - UI: the owner's status words, the leader's timeline, return-with-note and resubmit; the admin's اعتماد / إرجاع للتعديل / رفض; officer competitions in «الأشخاص»; the officer screen with its review queue; the notifications bell and inbox. In the demo, the app plays the reviewer.
     - Tests: `supabase/tests/workflow.test.mjs` 129/129 (shared `harness.mjs`), `rls.test.mjs` 523/523, `test-yb-api` 438/438, `test-account` 499/499.
-13. [ ] **Unified schedule and alerts** (SPEC 4.10.3).
-    - DB: migration 0004 with `yb_events`, `yb_public_events`, and a notify trigger.
-    - API: event CRUD and reads.
-    - UI: the «الجدول» tab with filters (team, competition, category), "my team", `.ics` export; event editing for officers and the admin; **attendance** (leader confirms, officer checks teams in; lg2 rows shown word for word; SPEC 4.11).
-    - Tests: RLS (the public sees no team-private events), notifications fan out to the right users only, UI filters.
+13. [x] **Unified schedule, alerts and attendance** (SPEC 4.10.3, 4.11). **Live since 12 Nov 2026.**
+    - DB: `0004_yb_schedule.sql` adds `yb_events` and `yb_attendance`, alerts on add, change and cancel, `yb_rsvp` and `yb_mark_attendance`. The public sees only dates for every team or dates between approved teams. Applied live; the live check passed (RLS forced, anon read-only).
+    - UI: the «الجدول» tab on the tournament page (filters by team, competition and category, "my team only", changed and cancelled marks, `.ics` download, plus football fixtures planned on the board). A dates manager for the admin (tab «الجدول») and for officers of their competitions. Attendance check-in next to the lg2 rules, word for word. «المواعيد القادمة» with سنحضر / نعتذر for leaders, read-only for members and parents. Inbox texts for date alerts. Sample dates in the demo.
+    - Tests: `schedule.test.mjs` 79, `tournament-ui` 245, `account` 517, all backend suites green.
 14. [ ] **Live and approved results, plus stage approval** (also records **goal scorers** and the **«روح الفريق»** badge per match, which feed SPEC 4.12) (SPEC 4.10.4, 4.10.5).
     - DB: migration 0005 with `yb_results` and `yb_result_history`, and the approval rules.
     - API: result methods and polling.
