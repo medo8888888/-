@@ -13,7 +13,10 @@
 | الملف | وظيفته |
 |---|---|
 | `supabase/migrations/0001_yanabee.sql` | يُنشئ الجداول والأدوار وقواعد الأمان (RLS) والدوال. تلصقه مرة واحدة في Supabase. |
+| `supabase/migrations/0002_yb_officer_role.sql` | يضيف دور «مسؤول المسابقة». سطر واحد، ويجب تشغيله **وحده** بعد 0001. |
+| `supabase/migrations/0003_yb_workflow.sql` | حالات التسجيل (منها «مطلوب تعديل»)، ومسؤولو المسابقات، والإشعارات، وحدّ محاولات الانضمام. يُشغَّل بعد 0002. |
 | `supabase/tests/rls.test.mjs` | اختبارات تثبت أن قواعد الأمان تعمل (تُشغَّل على جهازك، لا تحتاج حسابًا). |
+| `supabase/tests/workflow.test.mjs` | اختبارات الملفين 0002 و0003 (تستخدم `harness.mjs`). |
 | `site/yanabee/js/yb-config.js` | ملف الإعداد: فيه عنوان المشروع والمفتاح العلني فقط. |
 | `site/yanabee/js/yb-api.js` | مكتبة صغيرة تتصل بها صفحات الموقع بقاعدة البيانات. |
 
@@ -28,7 +31,9 @@
 1. من القائمة الجانبية افتح **SQL Editor** ثم **New query**.
 2. افتح الملف `supabase/migrations/0001_yanabee.sql` وانسخ **كل** محتواه والصقه في المحرر.
 3. اضغط **Run**. يجب أن ترى `Success`. الملف آمن للتشغيل أكثر من مرة (لا يحذف بياناتك).
-4. للتحقق: افتح **Table Editor** وتأكد من وجود الجداول: `profiles` و`teams` و`team_members` و`parent_links` و`tournament_state` و`audit_log`، وأن بجانب كل جدول علامة **RLS enabled**.
+4. كرّر الأمر نفسه مع `0002_yb_officer_role.sql` **في استعلام مستقل**، ثم مع `0003_yb_workflow.sql` في استعلام ثالث.
+   لا تلصق الملفات الثلاثة معًا: إضافة الدور الجديد يجب أن تُحفظ قبل أن يستخدمه الملف 0003.
+5. للتحقق: افتح **Table Editor** وتأكد من وجود الجداول: `profiles` و`teams` و`team_members` و`parent_links` و`tournament_state` و`audit_log`، وأن بجانب كل جدول علامة **RLS enabled**.
 
 ### ٣) إعدادات المصادقة (Authentication)
 افتح **Authentication** وراجع ما يلي:

@@ -17,8 +17,12 @@
 
   /* ------------------------------------------------------------------ constants (chrome) */
   const MIN = 5, MAX = 7, EXPECTED = 12, DRAFT_KEY = 'yanabee-reg-draft', POLL_MS = 20000;
-  const STATUS = { draft: 'مسودة', submitted: 'مُرسَل للاعتماد', approved: 'معتمد', rejected: 'مرفوض' };
-  const ROLE = { admin: 'الإدارة', leader: 'قائد الفريق', member: 'عضو', parent: 'ولي أمر' };
+  // the owner's words for the registration states (requirements table: متابعة التسجيل)
+  const STATUS = { draft: 'مسودة', submitted: 'قيد المراجعة', returned: 'مطلوب تعديل', approved: 'معتمد', rejected: 'مرفوض' };
+  const ROLE = { admin: 'الإدارة', officer: 'مسؤول مسابقة', leader: 'قائد الفريق', member: 'عضو', parent: 'ولي أمر' };
+  const COMPS = { registration: 'التسجيل ومراجعة الفرق', football: 'دوري كرة القدم', chess: 'بطولة الشطرنج', projects: 'المشاريع والمبادرات',
+    hifz: 'الحفظ', fahm: 'الفهم', workshops: 'الورش' };
+  const INBOX_MS = 60000;
   const SESSION_ERRS = { jwt_expired: 1, not_authenticated: 1, session_expired: 1, refresh_token_not_found: 1 };
   const FOOT = { not_drawn: 'لم تُجرَ القرعة بعد', group: 'في دور المجموعات', tie: 'تساوٍ على صدارة المجموعة، ينتظر قرار اللجنة',
     qualified: 'متأهل إلى الدور النهائي', final: 'في الدور النهائي', first: 'المركز الأول', second: 'المركز الثاني', third: 'المركز الثالث', out: 'خرج من المنافسة' };
@@ -76,7 +80,15 @@
   const isMinor = age => age === null || age === undefined || age < 18;
   const fmtDate = iso => { try { return new Date(iso).toLocaleDateString('ar', { year: 'numeric', month: 'long', day: 'numeric' }); } catch (e) { return ''; } };
   const chip = (text, tone) => h('span', { class: 'a-chip ' + (tone || ''), text });
-  const statusChip = s => chip(STATUS[s] || s, { draft: 'muted', submitted: 'sun', approved: 'ok', rejected: 'bad' }[s]);
+  const statusChip = s => chip(STATUS[s] || s, { draft: 'muted', submitted: 'brand', returned: 'sun', approved: 'ok', rejected: 'bad' }[s]);
+  // مسودة ← قيد المراجعة ← مطلوب تعديل / معتمد / مرفوض
+  function timeline(st) {
+    const last = st === 'returned' || st === 'rejected' ? st : 'approved';
+    const steps = [['draft', STATUS.draft], ['submitted', STATUS.submitted], [last, STATUS[last]]];
+    const at = { draft: 0, submitted: 1, returned: 2, approved: 2, rejected: 2 }[st];
+    return h('ol', { class: 'a-steps', 'aria-label': 'مراحل التسجيل' }, steps.map(([k, label], i) => h('li', {
+      class: (i < at ? 'done' : i === at ? 'now s-' + k : ''), 'aria-current': i === at ? 'step' : null, text: label })));
+  }
 
   /* ------------------------------------------------------------------ data helpers */
   async function read(table, opts) {
@@ -96,7 +108,7 @@
   }
 
   /* ------------------------------------------------------------------ app state */
-  const S = { seq: 0, uid: null, role: null, expired: false, manualOut: false, recoveryDone: false, stopPoll: null, rendered: null, modeSet: null, confirmedShown: false };
+  const S = { seq: 0, uid: null, role: null, expired: false, manualOut: false, recoveryDone: false, stopPoll: null, stopInbox: null, rendered: null, modeSet: null, confirmedShown: false };
   const clearData = () => { A.teams = []; A.members = []; A.profiles = []; A.state = undefined; L.team = null; L.members = []; };
 
   function mount(node, focus) {
@@ -446,16 +458,74 @@
       await YB.signOut();
     });
     const body = h('div', { class: 'a-body' });
+    const inbox = inboxBox();
     const roleName = ROLE[profile.role] || 'عضو';
     const head = h('header', { class: 'a-head a-card' },
       h('span', { class: 'a-avatar', 'aria-hidden': 'true', text: initial }),
       h('div', { class: 'a-who' },
         h('h2', { text: profile.full_name || 'حسابي', tabindex: '-1', 'data-focus': '' }),
         h('div', { class: 'a-who-m' }, h('span', { class: 'a-badge r-' + profile.role, text: roleName }), h('small', { class: 'a-mail', dir: 'ltr', text: profile.email || '' }))),
-      h('div', { class: 'a-head-b' }, pwBtn, outBtn));
-    const el = h('div', { class: 'a-app a-role-' + profile.role }, head, pwWrap, flash, body);
+      h('div', { class: 'a-head-b' }, inbox.bell, pwBtn, outBtn));
+    const el = h('div', { class: 'a-app a-role-' + profile.role }, head, inbox.panel, pwWrap, flash, body);
+    inbox.start();
     if (S.flash) { flash.append(banner(S.flash, 'ok')); say(S.flash); S.flash = ''; }
     return { el, body, flash };
+  }
+
+
+  /* ------------------------------------------------------------------ notifications (in-app inbox) */
+  // rows carry a kind + data (ids, the team name, status words); the Arabic sentence is made here
+  function noteText(n) {
+    const d = (n && n.data) || {};
+    const team = !d.team_name ? 'الفريق' : /^فريق\s/.test(String(d.team_name)) ? String(d.team_name) : `فريق ${d.team_name}`;
+    if (n.kind === 'team_status') return `تغيّرت حالة ${team}: ${STATUS[d.to] || d.to || ''}.`;
+    if (n.kind === 'team_submitted') return `أرسل ${team} طلب التسجيل، وهو بانتظار المراجعة.`;
+    if (n.kind === 'team_approved') return `اعتُمد ${team} في المسابقة.`;
+    return 'إشعار جديد.';
+  }
+  function inboxBox() {
+    const count = h('b', { class: 'a-bell-n', hidden: true });
+    const bell = h('button', { type: 'button', class: 'btn btn-ghost btn-sm a-bell', hidden: true, 'aria-expanded': 'false', 'data-fk': 'bell',
+      onclick: () => open(panel.hidden) }, icon('bell'), h('span', { text: 'الإشعارات' }), count);
+    const list = h('ul', { class: 'a-inbox-l' });
+    const panel = h('section', { class: 'a-card a-inbox', hidden: true, 'aria-label': 'الإشعارات' },
+      h('div', { class: 'a-inbox-h' }, h('h3', {}, icon('bell'), h('span', { text: 'الإشعارات' })),
+        h('button', { type: 'button', class: 'a-link', text: 'إغلاق', onclick: () => open(false) })), list);
+    let rows = [];
+    function paint() {
+      const unread = rows.filter(n => !n.read_at).length;
+      count.textContent = String(unread);
+      count.hidden = !unread;
+      bell.setAttribute('aria-label', unread ? `الإشعارات: ${unread} غير مقروء` : 'الإشعارات');
+      list.replaceChildren(...(rows.length ? rows.map(n => h('li', { class: 'a-inbox-i' + (n.read_at ? '' : ' new') },
+        h('p', { text: noteText(n) }),
+        n.data && n.data.note ? h('p', { class: 'a-note' }, h('b', { text: 'الملاحظة: ' }), String(n.data.note)) : null,
+        h('small', { class: 'a-hint', text: fmtDate(n.created_at) }))) : [h('li', { class: 'a-empty', text: 'لا توجد إشعارات بعد.' })]));
+    }
+    async function load() {
+      const r = await read('yb_notifications', { select: 'id,kind,data,read_at,created_at', order: 'created_at.desc', limit: 30 });
+      if (!r.ok) return; // no inbox on this backend yet: the bell stays hidden
+      rows = Array.isArray(r.data) ? r.data : [];
+      bell.hidden = false;
+      paint();
+    }
+    async function open(on) {
+      panel.hidden = !on;
+      bell.setAttribute('aria-expanded', String(on));
+      if (!on) { bell.focus({ preventScroll: true }); return; }
+      const h3 = panel.querySelector('h3');
+      if (h3) { h3.tabIndex = -1; h3.focus({ preventScroll: true }); }
+      if (rows.some(n => !n.read_at)) {
+        const r = await YB.rpc('yb_mark_read', {});
+        if (r.ok) { const now = new Date().toISOString(); rows.forEach(n => { if (!n.read_at) n.read_at = now; }); setTimeout(paint, 1500); }
+      }
+    }
+    function start() {
+      if (S.stopInbox) { S.stopInbox(); S.stopInbox = null; }
+      S.stopInbox = YB.poll ? YB.poll(load, INBOX_MS) : null;
+      if (!S.stopInbox) load();
+    }
+    return { bell, panel, start };
   }
 
   /* ------------------------------------------------------------------ schedule / results (tournament state) */
@@ -536,7 +606,7 @@
   function stopPoll() { if (S.stopPoll) { S.stopPoll(); S.stopPoll = null; } }
 
   /* ------------------------------------------------------------------ ADMIN */
-  const A = { teams: [], members: [], profiles: [], state: undefined, tab: 'teams', filter: 'all', q: '', open: {}, notes: {}, pq: '', roleDraft: {}, body: null, me: null };
+  const A = { teams: [], members: [], profiles: [], officers: [], state: undefined, tab: 'teams', filter: 'all', q: '', open: {}, notes: {}, pq: '', roleDraft: {}, body: null, me: null };
 
   async function loadAdmin() {
     const [t, m, p] = await Promise.all([
@@ -545,6 +615,8 @@
       read('profiles', { select: 'id,email,full_name,role,phone,created_at', order: 'created_at.desc' })]);
     for (const r of [t, m, p]) if (!r.ok) return r;
     A.teams = t.data || []; A.members = m.data || []; A.profiles = p.data || [];
+    const o = await read('yb_officers', { select: 'user_id,competition' });
+    A.officers = o.ok && Array.isArray(o.data) ? o.data : [];
     return { ok: true };
   }
   const membersOf = id => A.members.filter(m => m.team_id === id).sort((a, b) => (b.is_leader ? 1 : 0) - (a.is_leader ? 1 : 0));
@@ -567,7 +639,7 @@
   }
 
   function counters() {
-    const c = { draft: 0, submitted: 0, approved: 0, rejected: 0 };
+    const c = { draft: 0, submitted: 0, returned: 0, approved: 0, rejected: 0 };
     A.teams.forEach(t => { if (c[t.status] !== undefined) c[t.status]++; });
     const tiles = [['all', 'كل الفرق', A.teams.length]].concat(Object.keys(STATUS).map(k => [k, STATUS[k], c[k]]));
     return h('ul', { class: 'a-counters', 'aria-label': 'عدد الفرق حسب الحالة' }, tiles.map(([k, label, n]) => h('li', {},
@@ -691,22 +763,30 @@
       await refreshAdmin(okMsg, 'th-' + t.id);
     };
     const noteVal = () => (note.value.trim() || null);
-    const approve = btn('اعتماد', 'check', 'btn-primary', () => act(() => YB.rpc('approve_team', { team_id: t.id, ok: true, note: noteVal() }), `اعتُمد فريق ${t.name}.`), { 'data-fk': 'ap-' + t.id });
-    const reject = armed(btn('رفض', 'x', 'btn-ghost btn-danger', () => {}, { 'data-fk': 'rj-' + t.id }), 'اضغط مرة أخرى لتأكيد الرفض', () => act(() => YB.rpc('approve_team', { team_id: t.id, ok: false, note: noteVal() }), `رُفض فريق ${t.name}.`));
+    const review = (decision, okMsg) => act(() => YB.rpc('yb_review_team', { team_id: t.id, decision, note: noteVal() }), okMsg);
+    const needNote = h('p', { class: 'a-live-msg', role: 'alert', hidden: true, text: 'اكتب في الملاحظة ما المطلوب تعديله، ثم اضغط «إرجاع للتعديل».' });
+    const approve = btn('اعتماد', 'check', 'btn-primary', () => review('approve', `اعتُمد فريق ${t.name}.`), { 'data-fk': 'ap-' + t.id });
+    const giveBack = btn('إرجاع للتعديل', 'repeat', 'btn-ghost', () => {
+      if (!noteVal()) { needNote.hidden = false; say(needNote.textContent); note.focus(); return; }
+      needNote.hidden = true;
+      review('return', `أُرجع فريق ${t.name} لقائده للتعديل.`);
+    }, { 'data-fk': 'rt-' + t.id });
+    const reject = armed(btn('رفض', 'x', 'btn-ghost btn-danger', () => {}, { 'data-fk': 'rj-' + t.id }), 'اضغط مرة أخرى لتأكيد الرفض', () => review('reject', `رُفض فريق ${t.name}.`));
     const reopen = btn('إعادة فتح', 'repeat', 'btn-ghost', () => act(() => YB.update('teams', { id: 'eq.' + t.id }, { status: 'draft' }, { returning: true }), `أُعيد فتح فريق ${t.name} للتعديل.`), { 'data-fk': 'ro-' + t.id });
-    approve.disabled = !(st === 'submitted' || st === 'rejected');
-    reject.disabled = !(st === 'submitted' || st === 'approved');
+    approve.disabled = !(st === 'submitted' || st === 'returned' || st === 'rejected');
+    giveBack.disabled = !(st === 'submitted' || st === 'approved');
+    reject.disabled = !(st === 'submitted' || st === 'returned' || st === 'approved');
     reopen.disabled = st === 'draft';
     const bar = h('div', { class: 'a-decide' },
-      h('label', { for: idn, class: 'a-l', text: 'ملاحظة للقائد (اختيارية)' }), note,
-      h('div', { class: 'a-actions' }, approve, reject, reopen),
+      h('label', { for: idn, class: 'a-l', text: 'ملاحظة للقائد (مطلوبة عند الإرجاع للتعديل)' }), note, needNote,
+      h('div', { class: 'a-actions' }, approve, giveBack, reject, reopen),
       st === 'draft' ? h('small', { class: 'a-hint', text: 'ما زال الفريق مسودة: لم يرسله قائده للاعتماد بعد.' }) : null);
     return bar;
   }
 
   /* --- people */
   function drawAdminPeople(panel) {
-    const roles = { admin: 0, leader: 0, member: 0, parent: 0 };
+    const roles = { admin: 0, officer: 0, leader: 0, member: 0, parent: 0 };
     A.profiles.forEach(p => { if (roles[p.role] !== undefined) roles[p.role]++; });
     const list = h('div', { class: 'a-list', 'aria-live': 'polite' });
     const fill = () => {
@@ -727,7 +807,7 @@
     if (p.id === A.me) row.append(chip('أنت', 'brand'));
     else if (p.role !== 'admin') {
       const sid = uid('role');
-      const sel = h('select', { id: sid, class: 'a-select', 'aria-label': 'دور ' + (p.full_name || p.email) }, ['leader', 'member', 'parent'].map(k => h('option', { value: k, selected: p.role === k, text: ROLE[k] })));
+      const sel = h('select', { id: sid, class: 'a-select', 'aria-label': 'دور ' + (p.full_name || p.email) }, ['officer', 'leader', 'member', 'parent'].map(k => h('option', { value: k, selected: p.role === k, text: ROLE[k] })));
       const save = btn('حفظ الدور', 'check', 'btn-ghost', async () => {
         if (save.dataset.busy) return;
         save.dataset.busy = '1';
@@ -737,8 +817,25 @@
       }, { disabled: true, 'data-fk': 'rs-' + p.id });
       sel.addEventListener('change', () => { save.disabled = sel.value === p.role; });
       row.append(h('div', { class: 'a-person-a' }, sel, save));
+      if (p.role === 'officer') row.append(officerComps(p));
     }
     return row;
+  }
+  // which competitions an officer runs (admin only; yb_set_officer)
+  function officerComps(p) {
+    const mine = A.officers.filter(o => o.user_id === p.id).map(o => o.competition);
+    const boxes = Object.keys(COMPS).map(k => {
+      const cb = h('input', { type: 'checkbox', checked: mine.includes(k), 'data-fk': 'oc-' + p.id + '-' + k });
+      cb.addEventListener('change', async () => {
+        cb.disabled = true;
+        const r = await YB.rpc('yb_set_officer', { target: p.id, competition: k, assign: cb.checked });
+        if (!r.ok) { cb.checked = !cb.checked; cb.disabled = false; if (!sessionLost(r)) say(errMsg(r)); return; }
+        await refreshAdmin(cb.checked ? `أُسندت «${COMPS[k]}» إلى ${p.full_name || p.email}.` : `أُلغي إسناد «${COMPS[k]}».`, 'oc-' + p.id + '-' + k);
+      });
+      return h('label', { class: 'a-check' }, cb, h('span', { text: COMPS[k] }));
+    });
+    return h('fieldset', { class: 'a-comps' }, h('legend', { text: 'المسابقات التي يديرها' }), ...boxes,
+      mine.length ? null : h('small', { class: 'a-hint', text: 'لم تُسند إليه مسابقة بعد.' }));
   }
 
   /* --- tournament */
@@ -811,9 +908,110 @@
         }, { 'data-fk': 'print' }))), printArea);
   }
 
+
+  /* ------------------------------------------------------------------ OFFICER (مسؤول المسابقة) */
+  // Sees only what the server gives an officer: the competitions assigned to them and, for 'registration', the review
+  // queue (team names, counts, roster names and consent ticks: no ages, no guardian data).
+  const O = { comps: [], teams: [], open: {}, roster: {}, notes: {}, body: null };
+  async function loadOfficer() {
+    const c = await YB.rpc('yb_my_competitions', {});
+    if (!c.ok) return c;
+    O.comps = (Array.isArray(c.data) ? c.data : []).map(x => (typeof x === 'string' ? x : x && (x.yb_my_competitions || x.competition))).filter(Boolean);
+    O.teams = [];
+    if (O.comps.includes('registration')) {
+      const q = await YB.rpc('yb_review_list', {});
+      if (!q.ok) return q;
+      O.teams = Array.isArray(q.data) ? q.data : [];
+    }
+    return { ok: true };
+  }
+  async function viewOfficer(profile, seq) {
+    const sh = shell(profile);
+    sh.body.append(skeleton());
+    mount(sh.el, S.focusNext);
+    const r = await loadOfficer();
+    if (seq !== S.seq) return;
+    if (!r.ok) {
+      if (sessionLost(r)) return;
+      sh.body.replaceChildren(errorBlock(errMsg(r), () => { sh.body.replaceChildren(skeleton()); route(); }));
+      return;
+    }
+    O.body = sh.body;
+    drawOfficer();
+  }
+  function drawOfficer(focusKey) {
+    const nodes = [h('section', { class: 'a-card' }, h('h3', {}, icon('flag'), h('span', { text: 'مسابقاتك' })),
+      O.comps.length ? h('ul', { class: 'a-chips' }, O.comps.map(k => h('li', {}, chip(COMPS[k] || k, 'brand'))))
+        : h('p', { class: 'a-lead', text: 'لم تُسند إليك مسابقة بعد. يسندها المشرف العام من قسم «الأشخاص».' }))];
+    if (O.comps.includes('registration')) nodes.push(reviewQueue());
+    O.comps.filter(k => k !== 'registration').forEach(k => nodes.push(h('section', { class: 'a-card' },
+      h('h3', {}, icon('calendar'), h('span', { text: COMPS[k] || k })),
+      h('p', { class: 'a-lead', text: 'ستظهر هنا مواعيد هذه المسابقة ونتائجها لتسجّلها، بعد تفعيل الجدول الموحّد والنتائج المباشرة.' }))));
+    O.body.replaceChildren(...nodes);
+    if (focusKey) { const f = O.body.querySelector(`[data-fk="${CSS.escape(focusKey)}"]`); if (f) f.focus({ preventScroll: true }); }
+  }
+  function reviewQueue() {
+    const waiting = O.teams.filter(t => t.status === 'submitted').length;
+    return h('section', { class: 'a-card', 'aria-labelledby': 'o-q-h' },
+      h('h3', { id: 'o-q-h' }, icon('users'), h('span', { text: 'مراجعة طلبات التسجيل' })),
+      h('p', { class: 'a-lead', text: waiting ? `${waiting} من الطلبات قيد المراجعة.` : 'لا توجد طلبات قيد المراجعة الآن.' }),
+      O.teams.length ? h('div', { class: 'a-list' }, O.teams.map(officerTeam)) : h('p', { class: 'a-empty', text: 'لا توجد فرق بعد.' }));
+  }
+  function officerTeam(t) {
+    const open = !!O.open[t.team_id];
+    const toggle = h('button', { type: 'button', class: 'a-team-h', 'aria-expanded': String(open), 'data-fk': 'ot-' + t.team_id,
+      onclick: async () => {
+        O.open[t.team_id] = !open;
+        if (!open && !O.roster[t.team_id]) {
+          const r = await YB.rpc('yb_review_roster', { team_id: t.team_id });
+          if (!r.ok) { if (!sessionLost(r)) say(errMsg(r)); O.open[t.team_id] = false; return; }
+          O.roster[t.team_id] = Array.isArray(r.data) ? r.data : [];
+        }
+        drawOfficer('ot-' + t.team_id);
+      } },
+      h('span', { class: 'a-team-n' }, h('b', { text: t.team_name }), t.area ? h('small', { text: t.area }) : null),
+      h('span', { class: 'a-team-m' }, statusChip(t.status), h('small', { text: `${t.members} من ${MAX} أعضاء · موافقات مستلمة ${t.consents} من ${t.members}` })));
+    const card = h('article', { class: 'a-team' + (open ? ' open' : '') }, toggle);
+    if (open) {
+      const ro = O.roster[t.team_id] || [];
+      card.append(h('ul', { class: 'a-roster a-roster-ro' }, ro.map(m => h('li', { class: 'a-mem' },
+        h('div', { class: 'a-mem-h' }, h('b', { text: m.full_name }), m.is_leader ? chip('قائد', 'brand') : null,
+          chip(m.consent_status === 'received' ? 'استُلمت الموافقة' : 'لم تُستلم الموافقة', m.consent_status === 'received' ? 'ok' : 'muted'))))));
+      if (t.admin_note) card.append(h('p', { class: 'a-note' }, h('b', { text: 'آخر ملاحظة: ' }), t.admin_note));
+      card.append(officerDecision(t));
+    }
+    return card;
+  }
+  function officerDecision(t) {
+    if (t.status !== 'submitted') return h('p', { class: 'a-hint', text: 'يراجع مسؤول التسجيل الطلبات التي حالتها «قيد المراجعة» فقط.' });
+    const idn = uid('onote');
+    const note = h('textarea', { id: idn, class: 'a-note-in', rows: 2, maxlength: 500, placeholder: 'تظهر لقائد الفريق مع القرار', value: O.notes[t.team_id] || '', oninput: e => { O.notes[t.team_id] = e.target.value; } });
+    const msg = h('p', { class: 'a-live-msg', role: 'alert', hidden: true });
+    const bar = h('div', { class: 'a-decide' });
+    const go = async (decision, okMsg) => {
+      const nv = note.value.trim() || null;
+      if (decision === 'return' && !nv) { msg.textContent = 'اكتب في الملاحظة ما المطلوب تعديله.'; msg.hidden = false; say(msg.textContent); note.focus(); return; }
+      if (bar.dataset.busy) return;
+      bar.dataset.busy = '1';
+      const r = await YB.rpc('yb_review_team', { team_id: t.team_id, decision, note: nv });
+      if (!r.ok) { delete bar.dataset.busy; if (sessionLost(r)) return; msg.textContent = errMsg(r); msg.hidden = false; say(msg.textContent); return; }
+      delete O.notes[t.team_id]; delete O.roster[t.team_id];
+      const l = await loadOfficer();
+      if (!l.ok) { if (!sessionLost(l)) say(errMsg(l)); return; }
+      drawOfficer('ot-' + t.team_id);
+      say(okMsg);
+    };
+    bar.append(h('label', { for: idn, class: 'a-l', text: 'ملاحظة للقائد (مطلوبة عند الإرجاع للتعديل)' }), note, msg,
+      h('div', { class: 'a-actions' },
+        btn('اعتماد', 'check', 'btn-primary', () => go('approve', `اعتُمد فريق ${t.team_name}.`), { 'data-fk': 'oap-' + t.team_id }),
+        btn('إرجاع للتعديل', 'repeat', 'btn-ghost', () => go('return', `أُرجع فريق ${t.team_name} لقائده للتعديل.`), { 'data-fk': 'ort-' + t.team_id }),
+        armed(btn('رفض', 'x', 'btn-ghost btn-danger', () => {}, { 'data-fk': 'orj-' + t.team_id }), 'اضغط مرة أخرى لتأكيد الرفض', () => go('reject', `رُفض فريق ${t.team_name}.`))));
+    return bar;
+  }
+
   /* ------------------------------------------------------------------ LEADER */
-  const L = { team: null, members: [], editing: null, boxes: {}, sched: null, profile: null, adding: false, addForm: null, editTeam: false };
-  const editable = () => L.team && (L.team.status === 'draft' || L.team.status === 'submitted');
+  const L = { team: null, members: [], rs: {}, editing: null, boxes: {}, sched: null, profile: null, adding: false, addForm: null, editTeam: false };
+  const editable = () => L.team && (L.team.status === 'draft' || L.team.status === 'submitted' || L.team.status === 'returned');
 
   async function loadLeader() {
     const r = await YB.rpc('my_team');
@@ -824,6 +1022,9 @@
     if (!m.ok) return { ok: false, error: m.error };
     L.team = row;
     L.members = (m.data || []).sort((a, b) => (b.is_leader ? 1 : 0) - (a.is_leader ? 1 : 0));
+    L.rs = {};
+    const rs = await YB.rpc('yb_my_team_roster_status', {}); // optional: who joined, linked guardians
+    if (rs.ok && Array.isArray(rs.data)) rs.data.forEach(x => { L.rs[x.member_id] = x; });
     return { ok: true };
   }
   async function viewLeader(profile, seq) {
@@ -881,7 +1082,8 @@
   function statusText(t) {
     return ({
       draft: 'الفريق مسودة. أضف أعضاءه ثم أرسله للاعتماد.',
-      submitted: 'أُرسل الفريق وينتظر اعتماد الإدارة. يمكنك سحب الإرسال لتعديل الفريق.',
+      submitted: 'طلب الفريق قيد المراجعة. ستصلك رسالة هنا عند تغيّر الحالة، ويمكنك سحب الإرسال لتعديل الفريق.',
+      returned: 'طلبت الإدارة تعديلات على الفريق. راجع الملاحظة أدناه، عدّل البيانات ثم أعد الإرسال.',
       approved: 'اعتُمد فريقك. أصبح اسمه ظاهرًا للعموم، ولا يمكن تعديل القائمة الآن.',
       rejected: 'لم تعتمد الإدارة الفريق. راجع الملاحظة أدناه وتواصل مع الإدارة لإعادة فتحه.'
     })[t.status] || '';
@@ -892,8 +1094,9 @@
     const nodes = [h('div', { class: 'a-team-top' },
       h('div', {}, h('h3', { id: 'l-team-h', tabindex: '-1', 'data-focus': '', text: t.team_name }), t.area ? h('small', { class: 'a-hint', text: t.area }) : null),
       statusChip(t.status)),
+    timeline(t.status),
     h('p', { class: 'a-lead', text: statusText(t) })];
-    if (t.admin_note) nodes.push(h('p', { class: 'a-note' }, h('b', { text: 'ملاحظة الإدارة: ' }), t.admin_note));
+    if (t.admin_note) nodes.push(h('p', { class: 'a-note' }, h('b', { text: 'ملاحظة المراجعة: ' }), t.admin_note));
     if (L.editTeam && editable()) {
       const nm = field({ label: W.teamName || 'اسم الفريق', name: 'team', required: true, max: 60, value: t.team_name });
       const ar = field({ label: W.area || 'الحي / المنطقة', name: 'area', max: 60, value: t.area || '' });
@@ -910,9 +1113,9 @@
       nodes.push(form);
     } else {
       const acts = [];
-      if (t.status === 'draft') {
+      if (t.status === 'draft' || t.status === 'returned') {
         const ok = n >= MIN && n <= MAX;
-        const submit = btn('أرسل الفريق للاعتماد', 'send', 'btn-primary', () => setStatus('submitted'), { 'data-fk': 'submit', disabled: !ok });
+        const submit = btn(t.status === 'returned' ? 'أعد إرسال الفريق للمراجعة' : 'أرسل الفريق للاعتماد', 'send', 'btn-primary', () => setStatus('submitted'), { 'data-fk': 'submit', disabled: !ok });
         acts.push(submit);
         if (!ok) acts.push(h('small', { class: 'a-hint', text: n < MIN ? `ينقصك ${MIN - n} للوصول إلى الحد الأدنى (${MIN}).` : `زاد العدد عن الحد الأقصى (${MAX}).` }));
       }
@@ -936,7 +1139,7 @@
       }
       return topMsg(errMsg(r));
     }
-    await reloadLeader(st === 'submitted' ? 'أُرسل الفريق للاعتماد.' : 'سُحب الإرسال، والفريق الآن مسودة.');
+    await reloadLeader(st === 'submitted' ? 'أُرسل الفريق، وطلبه الآن قيد المراجعة.' : 'سُحب الإرسال، والفريق الآن مسودة.');
   }
   async function reloadLeader(msg) {
     const r = await loadLeader();
@@ -988,7 +1191,8 @@
       }));
     }
     return h('li', { class: 'a-mem', 'data-member': m.id },
-      h('div', { class: 'a-mem-h' }, h('b', { text: m.full_name }), m.is_leader ? chip('قائد', 'brand') : (m.user_id ? chip('انضم بحسابه', 'ok') : chip('لم ينضم بعد', 'muted'))),
+      h('div', { class: 'a-mem-h' }, h('b', { text: m.full_name }), m.is_leader ? chip('قائد', 'brand') : (m.user_id ? chip('انضم بحسابه', 'ok') : chip('لم ينضم بعد', 'muted')),
+        !m.is_leader && L.rs[m.id] ? (L.rs[m.id].parents > 0 ? chip('ولي الأمر مرتبط بحسابه', 'ok') : chip('لم يرتبط ولي الأمر بعد', 'muted')) : null),
       h('dl', { class: 'a-dl' },
         h('div', {}, h('dt', { text: W.age || 'العمر' }), h('dd', { text: m.age === null || m.age === undefined ? '—' : String(m.age) })),
         h('div', {}, h('dt', { text: W.guardianName || 'اسم ولي الأمر' }), h('dd', { text: m.guardian_name || '—' })),
@@ -1191,6 +1395,7 @@
     opts = opts || {};
     const seq = ++S.seq;
     stopPoll();
+    if (S.stopInbox) { S.stopInbox(); S.stopInbox = null; }
     S.modeSet = null;
     S.focusNext = !!opts.focus;
     if (!YB || !YB.configured) { S.rendered = 'unconfigured'; viewUnconfigured(); return; }
@@ -1228,6 +1433,7 @@
     clearData();
     const role = profile.role;
     if (role === 'admin') return viewAdmin(profile, seq);
+    if (role === 'officer') return viewOfficer(profile, seq);
     if (role === 'leader') return viewLeader(profile, seq);
     if (role === 'parent') return viewParent(profile, seq);
     return viewMember(profile, seq);

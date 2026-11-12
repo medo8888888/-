@@ -23,32 +23,32 @@ something from the owner first.
 Order changed after the owner's requirements table (SPEC 4.10). All the database work comes first and is tested
 offline with PGlite, then goes live in one apply (slice 20).
 
-12. [ ] **Roles, registration workflow, inbox** (SPEC 4.10.1, 4.10.2, 4.10.9, 4.2).
-    - DB: migration 0002 adds the `officer` role, `yb_officers`, the `returned` status, the `yb_leader_can_edit` rewrite, `yb_review_team`, `yb_notifications` with status-change triggers, the `app:'yanabee'` tag, `yb_join_attempts`, and `yb_my_team_roster_status`.
-    - API: `yb-api` methods for each; error keys.
-    - UI: the leader status timeline and note; the admin review buttons (اعتماد / إرجاع / رفض); the officer screen and the admin "assign officer" control; the notification bell and list; the demo fake mirrors all of it.
-    - Tests: RLS (officer limits, the leader editing in `returned`, no cross-team reads), `test-yb-api`, `test-account`.
+12. [x] **Roles, registration workflow, inbox** (SPEC 4.10.1, 4.10.2, 4.10.9, 4.2).
+    - DB: `0002_yb_officer_role.sql` adds the `officer` role (it needs its own migration). `0003_yb_workflow.sql` adds `yb_officers`, the `returned` status and a status guard, `yb_review_team`, `yb_review_list`, `yb_review_roster`, `yb_notifications` with the status trigger, the `app:'yanabee'` tag with `yb_ensure_profile`, `yb_join_attempts` (10 per 15 minutes; join and link answer `{ok:false, error}`), and `yb_my_team_roster_status`. Both files are ASCII only.
+    - API: `yb-api` sends the app tag, creates a missing profile only on a real "no rows" answer, maps `{ok:false, error}` answers to failures, and has new error texts.
+    - UI: the owner's status words, the leader's timeline, return-with-note and resubmit; the admin's اعتماد / إرجاع للتعديل / رفض; officer competitions in «الأشخاص»; the officer screen with its review queue; the notifications bell and inbox. In the demo, the app plays the reviewer.
+    - Tests: `supabase/tests/workflow.test.mjs` 129/129 (shared `harness.mjs`), `rls.test.mjs` 523/523, `test-yb-api` 438/438, `test-account` 499/499.
 13. [ ] **Unified schedule and alerts** (SPEC 4.10.3).
-    - DB: migration 0003 with `yb_events`, `yb_public_events`, and a notify trigger.
+    - DB: migration 0004 with `yb_events`, `yb_public_events`, and a notify trigger.
     - API: event CRUD and reads.
     - UI: the «الجدول» tab with filters (team, competition, category), "my team", `.ics` export; event editing for officers and the admin; **attendance** (leader confirms, officer checks teams in; lg2 rows shown word for word; SPEC 4.11).
     - Tests: RLS (the public sees no team-private events), notifications fan out to the right users only, UI filters.
 14. [ ] **Live and approved results, plus stage approval** (SPEC 4.10.4, 4.10.5).
-    - DB: migration 0004 with `yb_results` and `yb_result_history`, and the approval rules.
+    - DB: migration 0005 with `yb_results` and `yb_result_history`, and the approval rules.
     - API: result methods and polling.
     - UI: the officer's live score entry, the «جارية» and «نهائية» badges, the admin approve queue, the correction log, the "next opponent" card shown only after stage approval; the **big-screen display** `?screen=1` (SPEC 4.11).
     - Tests: engine overlay, history written on every post-approval edit, only approved results feed standings.
 15. [ ] **Project and initiative submissions** (SPEC 4.10.6).
-    - DB: migration 0005 with `yb_submissions`, the private Storage bucket, and Storage RLS.
+    - DB: migration 0006 with `yb_submissions`, the private Storage bucket, and Storage RLS.
     - API: upload (client resize), signed URLs.
     - UI: the leader's submit form with the photos warning and confirmation; the officer's review (return with a note, or accept with a grade).
     - Tests: RLS and Storage (never public, cross-team denied), size and type limits.
 16. [ ] **Judging and final results** (SPEC 4.3; submission grades feed التطبيق).
-    - DB: migration 0006 with `yb_scores`, `yb_rubric`, `yb_settings`, `yb_public_results`.
+    - DB: migration 0007 with `yb_scores`, `yb_rubric`, `yb_settings`, `yb_public_results`.
     - UI: the «التحكيم» grid, the public «النتائج» tab, the team score cards.
     - Tests: caps equal `competition.txt`; nothing is visible before publication.
 17. [ ] **Announcements and the supervised chat** (SPEC 4.4, 4.10.7).
-    - DB: migration 0007 with `yb_announcements` (by audience) and the `yb_chat_*` tables (leaders room, reports, mutes, the contact-data filter, the rate limit).
+    - DB: migration 0008 with `yb_announcements` (by audience) and the `yb_chat_*` tables (leaders room, reports, mutes, the contact-data filter, the rate limit).
     - UI: the announcements channel and public strip; the leaders room; the admin moderation queue.
     - Tests: RLS (members and parents have no chat access), phone numbers and emails rejected, the rate limit.
 18. [ ] **Excel export** (SPEC 4.10.8).
@@ -59,7 +59,7 @@ offline with PGlite, then goes live in one apply (slice 20).
     - UI: `js/pwa.js` handles the install button and iOS sheet, the update toast, the offline indicator, and the offline cache of public data.
     - Tests: `test-pwa.mjs` plus a WebKit pass; Supabase, `/api` and Storage are never cached.
 20. [ ] 🔒 **Go-live of the backend** (SPEC 4.1). The owner approves the apply prompt.
-    - Apply migrations 0001–0007 to `dhjmdiqausbcyhrguinl` in one go; post-check SQL; review the advisors; add the Storage bucket.
+    - Apply migrations 0001–0008 to `dhjmdiqausbcyhrguinl` in one go; post-check SQL; review the advisors; add the Storage bucket.
     - Put the URL and key in `yb-config.js`. The owner sets the redirect URL and runs `set_admin`.
     - `smoke-live.mjs` covers every role, including an officer.
 21. [ ] **Certificates** (SPEC 4.5) and **admin quality-of-life** (SPEC 4.8: the audit log, backup and restore, user search, password reset).

@@ -49,7 +49,7 @@ const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 class Fake {
   constructor(o = {}) {
     this.autoConfirm = o.autoConfirm ?? true;
-    this.users = []; this.profiles = []; this.teams = []; this.members = []; this.links = []; this.tour = null;
+    this.users = []; this.profiles = []; this.teams = []; this.members = []; this.links = []; this.tour = null; this.notes = []; this.officers = []; this.noteSeq = 0;
     this.tokens = new Map(); this.refresh = new Map(); this.log = []; this.recovers = []; this.fail = []; this.delay = 0; this.tick = 0;
   }
   uid() { return crypto.randomUUID(); }
@@ -63,6 +63,15 @@ class Fake {
     return this.profiles[this.profiles.length - 1];
   }
   profileByEmail(e) { return this.profiles.find(p => p.email === e); }
+  // mirrors the trigger yb_teams_status_notify (migration 0003)
+  notify(uids, kind, data) { [...new Set(uids.filter(Boolean))].forEach(u => this.notes.push({ id: ++this.noteSeq, user_id: u, kind, data, read_at: null, created_at: this.now() })); }
+  statusChanged(t, from, actor) {
+    if (t.status === from) return;
+    if (t.leader_id !== actor) this.notify([t.leader_id], 'team_status', { team_id: t.id, team_name: t.name, from, to: t.status, note: t.admin_note });
+    if (t.status === 'submitted') this.notify([...this.profiles.filter(p => p.role === 'admin').map(p => p.id), ...this.officers.filter(o => o.competition === 'registration').map(o => o.user_id)], 'team_submitted', { team_id: t.id, team_name: t.name });
+    if (t.status === 'approved') this.notify([...this.members.filter(m => m.team_id === t.id && !m.is_leader).map(m => m.user_id), ...this.links.filter(l => this.members.find(m => m.id === l.member_id && m.team_id === t.id)).map(l => l.parent_id)], 'team_approved', { team_id: t.id, team_name: t.name });
+  }
+  setRole(email, role) { const p = this.profileByEmail(email); p.role = role; return p; }
   setAdmin(email) { const p = this.profileByEmail(email); if (!p) throw new Error('user_not_found'); p.role = 'admin'; return p; }
   confirm(email) { this.users.find(u => u.email === email).confirmed = true; }
   session(uid) {
@@ -229,6 +238,8 @@ class Fake {
     }
     if (table === 'audit_log') return admin && method === 'GET' ? finish([]) : (method === 'GET' ? finish([]) : deny());
 
+    if (table === 'yb_notifications') return method === 'GET' ? finish(this.notes.filter(n => n.user_id === me).map(n => ({ ...n }))) : deny();
+    if (table === 'yb_officers') return method === 'GET' ? finish(this.officers.filter(o => admin || o.user_id === me).map(o => ({ ...o }))) : deny();
     if (table === 'teams') {
       const mine = t => t.leader_id === me;
       if (method === 'GET') return finish((admin ? this.teams : this.teams.filter(mine)).map(t => ({ ...t })));
@@ -247,9 +258,9 @@ class Fake {
       }
       if (method === 'PATCH') {
         if (Object.keys(body || {}).some(k => !['name', 'area', 'status'].includes(k))) return deny();
-        const targets = filterRows(this.teams.filter(t => admin || (mine(t) && ['draft', 'submitted'].includes(t.status))), q); // USING
+        const targets = filterRows(this.teams.filter(t => admin || (mine(t) && ['draft', 'submitted', 'returned'].includes(t.status))), q); // USING
         if (!admin && body.status && !['draft', 'submitted'].includes(body.status)) return err(403, '42501', 'new row violates row-level security policy for table "teams"'); // WITH CHECK
-        if (targets.length && body.status && !['draft', 'submitted', 'approved', 'rejected'].includes(body.status)) return err(400, '23514', 'violates check constraint "teams_status_chk"');
+        if (targets.length && body.status && !['draft', 'submitted', 'returned', 'approved', 'rejected'].includes(body.status)) return err(400, '23514', 'violates check constraint "teams_status_chk"');
         for (const t of targets) {
           const nm = body.name !== undefined ? String(body.name).trim() : t.name;
           if (nm.length < 2 || nm.length > 60) return err(400, '23514', 'violates check constraint "teams_name_len"');
@@ -259,7 +270,7 @@ class Fake {
             if (n < 5 || n > 7) return err(400, 'P0001', 'members_count_invalid');
           }
         }
-        targets.forEach(t => { Object.assign(t, body, body.name !== undefined ? { name: String(body.name).trim() } : {}); t.updated_at = this.now(); });
+        targets.forEach(t => { const from = t.status; Object.assign(t, body, body.name !== undefined ? { name: String(body.name).trim() } : {}); t.updated_at = this.now(); this.statusChanged(t, from, me); });
         return rep ? { status: 200, body: targets.map(t => ({ ...t })) } : { status: 204 };
       }
       return deny();
@@ -267,7 +278,7 @@ class Fake {
 
     if (table === 'team_members') {
       const teamOf = id => this.teams.find(t => t.id === id);
-      const canEdit = tid => admin || (teamOf(tid) && teamOf(tid).leader_id === me && ['draft', 'submitted'].includes(teamOf(tid).status));
+      const canEdit = tid => admin || (teamOf(tid) && teamOf(tid).leader_id === me && ['draft', 'submitted', 'returned'].includes(teamOf(tid).status));
       const readable = m => admin || (teamOf(m.team_id) && teamOf(m.team_id).leader_id === me) || m.user_id === me || this.links.some(l => l.parent_id === me && l.member_id === m.id);
       if (method === 'GET') return finish(this.members.filter(readable).map(m => ({ ...m })));
       if (method === 'POST') {
@@ -316,8 +327,16 @@ class Fake {
     const raise = (key, code = 'P0001') => err(code === '42501' ? 403 : 400, code, key);
     const admin = c.role === 'admin';
     const SIG = { my_team: [], join_team: ['code', 'member_name'], link_child: ['code', 'child_name'], approve_team: ['team_id', 'ok', 'note'], mark_consent: ['member_id', 'received'],
-      unlink_member: ['member_id'], regenerate_join_code: ['team_id'], set_user_role: ['target', 'new_role'] };
+      unlink_member: ['member_id'], regenerate_join_code: ['team_id'], set_user_role: ['target', 'new_role'],
+      yb_review_team: ['team_id', 'decision', 'note'], yb_review_list: [], yb_review_roster: ['team_id'], yb_my_competitions: [], yb_set_officer: ['target', 'competition', 'assign'],
+      yb_mark_read: [], yb_my_team_roster_status: [] };
     if (!SIG[name]) return err(404, 'PGRST202', 'Could not find the function public.' + name);
+    if (name === 'yb_mark_read') {
+      const ids = body && Array.isArray(body.ids) ? body.ids : null;
+      let n = 0;
+      this.notes.forEach(x => { if (x.user_id === me && !x.read_at && (!ids || ids.includes(x.id))) { x.read_at = this.now(); n++; } });
+      return { status: 200, body: n };
+    }
     if (name === 'approve_team' ? !(body && 'team_id' in body && 'ok' in body && Object.keys(body).every(k => SIG[name].includes(k))) : !need(...SIG[name])) return err(404, 'PGRST202', 'Could not find the function public.' + name + ' in the schema cache');
     const cleanCode = s => String(s || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
 
@@ -353,16 +372,61 @@ class Fake {
       if (body.note && String(body.note).length > 500) return raise('invalid_argument');
       const t = this.teams.find(x => x.id === body.team_id);
       if (!t) return raise('team_not_found');
+      const from = t.status;
       t.status = body.ok ? 'approved' : 'rejected';
       t.admin_note = String(body.note || '').trim() || null;
       t.updated_at = this.now();
+      this.statusChanged(t, from, me);
       return { status: 200, body: { ok: true, status: t.status } };
+    }
+    const officerOf = comp => c.role === 'officer' && this.officers.some(o => o.user_id === me && o.competition === comp);
+    const canReview = admin || officerOf('registration');
+    if (name === 'yb_review_team') {
+      if (!canReview) return raise('permission_denied', '42501');
+      const st = { approve: 'approved', return: 'returned', reject: 'rejected' }[body.decision];
+      const nt = String(body.note || '').trim() || null;
+      if (!st) return raise('invalid_argument');
+      if (nt && nt.length > 500) return raise('invalid_argument');
+      if (st === 'returned' && !nt) return raise('note_required');
+      const t = this.teams.find(x => x.id === body.team_id);
+      if (!t) return raise('team_not_found');
+      if (!admin && t.status !== 'submitted') return raise('invalid_status');
+      const from = t.status;
+      t.status = st; t.admin_note = nt; t.reviewed_at = this.now(); t.updated_at = this.now();
+      this.statusChanged(t, from, me);
+      return { status: 200, body: { ok: true, status: st } };
+    }
+    if (name === 'yb_review_list') {
+      if (!canReview) return raise('permission_denied', '42501');
+      const rank = { submitted: 0, returned: 1, draft: 2 };
+      return { status: 200, body: this.teams.slice().sort((a, b) => (rank[a.status] ?? 3) - (rank[b.status] ?? 3)).map(t => {
+        const ms = this.members.filter(m => m.team_id === t.id);
+        return { team_id: t.id, team_name: t.name, area: t.area, status: t.status, admin_note: t.admin_note, members: ms.length, consents: ms.filter(m => m.consent_status === 'received').length, updated_at: t.updated_at, reviewed_at: t.reviewed_at || null };
+      }) };
+    }
+    if (name === 'yb_review_roster') {
+      if (!canReview) return raise('permission_denied', '42501');
+      return { status: 200, body: this.members.filter(m => m.team_id === body.team_id).map(m => ({ member_id: m.id, full_name: m.full_name, is_leader: m.is_leader, consent_status: m.consent_status, joined: m.user_id !== null })) };
+    }
+    if (name === 'yb_my_competitions') return { status: 200, body: c.role === 'officer' ? this.officers.filter(o => o.user_id === me).map(o => o.competition).sort() : [] };
+    if (name === 'yb_set_officer') {
+      if (!admin) return raise('permission_denied', '42501');
+      const p = this.profiles.find(x => x.id === body.target);
+      if (!p) return raise('user_not_found');
+      if (body.assign && p.role !== 'officer') return raise('wrong_role', '42501');
+      this.officers = this.officers.filter(o => !(o.user_id === p.id && o.competition === body.competition));
+      if (body.assign) this.officers.push({ user_id: p.id, competition: body.competition });
+      return { status: 200, body: { ok: true } };
+    }
+    if (name === 'yb_my_team_roster_status') {
+      const t = this.teams.find(x => x.leader_id === me);
+      return { status: 200, body: t ? this.members.filter(m => m.team_id === t.id).map(m => ({ member_id: m.id, joined: m.user_id !== null, parents: this.links.filter(l => l.member_id === m.id).length })) : [] };
     }
     if (name === 'mark_consent' || name === 'unlink_member') {
       const m = this.members.find(x => x.id === body.member_id);
       if (!m) return raise('member_not_found');
       const t = this.teams.find(x => x.id === m.team_id);
-      if (!(admin || (t.leader_id === me && ['draft', 'submitted'].includes(t.status)))) return raise('permission_denied', '42501');
+      if (!(admin || (t.leader_id === me && ['draft', 'submitted', 'returned'].includes(t.status)))) return raise('permission_denied', '42501');
       if (name === 'mark_consent') {
         if (typeof body.received !== 'boolean') return raise('invalid_argument');
         m.consent_status = body.received ? 'received' : 'pending';
@@ -387,7 +451,8 @@ class Fake {
       const p = this.profiles.find(x => x.id === body.target);
       if (!p) return raise('user_not_found');
       if (p.role === 'admin') return raise('permission_denied', '42501');
-      if (!['leader', 'member', 'parent'].includes(body.new_role)) return err(400, '22P02', 'invalid input value for enum user_role');
+      if (!['officer', 'leader', 'member', 'parent'].includes(body.new_role)) return err(400, '22P02', 'invalid input value for enum user_role');
+      if (p.role === 'officer' && body.new_role !== 'officer') this.officers = this.officers.filter(o => o.user_id !== p.id);
       p.role = body.new_role;
       return { status: 200, body: { ok: true, role: p.role } };
     }
@@ -785,7 +850,8 @@ let teamId = '';
   // submit
   await L.locator('button[data-fk=submit]').click();
   await L.waitForSelector('button[data-fk=withdraw]');
-  check('submit → status مُرسَل للاعتماد, withdraw button appears', world.teams[0].status === 'submitted' && (await L.locator('.a-teamcard .a-chip').first().innerText()) === 'مُرسَل للاعتماد');
+  check('submit → status قيد المراجعة (owner\'s wording), withdraw button appears', world.teams[0].status === 'submitted' && (await L.locator('.a-teamcard .a-chip').first().innerText()) === 'قيد المراجعة');
+  check('the status timeline marks step 2 (قيد المراجعة) as current', (await L.locator('.a-steps li[aria-current=step]').innerText()) === 'قيد المراجعة' && (await L.locator('.a-steps li.done').count()) === 1);
   await L.locator('button[data-fk=withdraw]').click();
   await L.waitForSelector('button[data-fk=submit]');
   check('withdraw → back to draft', world.teams[0].status === 'draft');
@@ -815,13 +881,16 @@ let teamId = '';
   check('admin screen: role badge الإدارة, four tabs', (await AD.locator('.a-head .a-badge').innerText()) === 'الإدارة' && (await AD.locator('[role=tab]').allInnerTexts()).join('|').replace(/\s+/g, ' ').includes('الفرق') && (await AD.locator('[role=tab]').count()) === 4);
   check('admin load does NOT poll or read the tournament state', world.count(/tournament_state/) === stateBefore);
   const counts = await AD.locator('.a-counters .a-count').allInnerTexts();
-  check('counters by status (1 مُرسَل للاعتماد, total 1)', counts.some(c => /^1\s*كل الفرق/.test(c.replace(/\n/g, ' '))) && counts.some(c => /^1\s*مُرسَل للاعتماد/.test(c.replace(/\n/g, ' '))) && counts.some(c => /^0\s*معتمد/.test(c.replace(/\n/g, ' '))));
+  check('counters by status (1 قيد المراجعة, 0 مطلوب تعديل, total 1)', counts.some(c => /^1\s*كل الفرق/.test(c.replace(/\n/g, ' '))) && counts.some(c => /^1\s*قيد المراجعة/.test(c.replace(/\n/g, ' '))) && counts.some(c => /^0\s*مطلوب تعديل/.test(c.replace(/\n/g, ' '))) && counts.some(c => /^0\s*معتمد/.test(c.replace(/\n/g, ' '))));
   const card = AD.locator('.a-team').first();
   check('team card collapsed: name, area, leader, status, member count and consent count', /فريق الينابيع/.test(await card.innerText()) && /حي الأمل/.test(await card.innerText()) && /القائد: خالد المنصور/.test(await card.innerText()) && /7 من 7 أعضاء/.test(await card.innerText()));
   check('roster hidden until expanded', !(await AD.locator('.a-roster').count()));
   await card.locator('.a-team-h').click();
   check('expanding shows age, guardian and phone of every member', (await AD.locator('.a-team .a-mem').count()) === 7 && /ولي سارة/.test(await card.innerText()) && (await AD.locator('.a-team a[href^="tel:"]').count()) >= 6);
-  check('approve / reject / reopen buttons present; draft-only hint absent', (await AD.locator('.a-decide button').count()) === 3 && await AD.locator('button[data-fk^="ap-"]').isEnabled() && await AD.locator('button[data-fk^="rj-"]').isEnabled() && await AD.locator('button[data-fk^="ro-"]').isEnabled());
+  check('approve / return for edits / reject / reopen buttons present; draft-only hint absent', (await AD.locator('.a-decide button').count()) === 4 && await AD.locator('button[data-fk^="ap-"]').isEnabled() && await AD.locator('button[data-fk^="rt-"]').isEnabled() && await AD.locator('button[data-fk^="rj-"]').isEnabled() && await AD.locator('button[data-fk^="ro-"]').isEnabled());
+  await AD.waitForSelector('.a-bell:not([hidden]) .a-bell-n:not([hidden])', { timeout: 8000 }).catch(() => {});
+  const adminSubs = world.notes.filter(n => n.kind === 'team_submitted' && n.user_id === world.profileByEmail(ADMIN.email).id).length;
+  check('the admin was notified of each submission (the leader submitted twice → bell shows 2)', adminSubs === 2 && (await AD.locator('.a-bell .a-bell-n').innerText()) === '2');
   // consent
   const sara = world.members.find(m => m.full_name === NAMES[0]);
   await AD.locator(`input[data-fk="sw-${sara.id}"]`).check({ force: true });
@@ -843,7 +912,38 @@ let teamId = '';
   check('draft team: approve and reject are disabled with a hint', await AD.locator('button[data-fk^="ap-"]').isDisabled() && await AD.locator('button[data-fk^="rj-"]').isDisabled() && /مسودة/.test(await AD.locator('.a-decide').innerText()));
   world.teams[0].status = 'submitted'; // the leader submits again
   await AD.locator('button', { hasText: 'تحديث' }).click();
-  await AD.waitForFunction(() => /مُرسَل/.test(document.querySelector('.a-team-h').innerText));
+  await AD.waitForFunction(() => /قيد المراجعة/.test(document.querySelector('.a-team-h').innerText));
+  // return for edits: the note is required
+  await AD.locator('textarea.a-note-in').fill('');
+  await AD.locator('button[data-fk^="rt-"]').click();
+  check('return for edits without a note → asks for the note, nothing sent', world.teams[0].status === 'submitted' && /اكتب في الملاحظة ما المطلوب تعديله/.test(await AD.locator('.a-decide').innerText()));
+  await AD.locator('textarea.a-note-in').fill('أضف رقم ولي أمر العضو الثالث.');
+  await AD.locator('button[data-fk^="rt-"]').click();
+  await AD.waitForFunction(() => /مطلوب تعديل/.test(document.querySelector('.a-team-h').innerText));
+  check('return → مطلوب تعديل with the note (yb_review_team)', world.teams[0].status === 'returned' && world.teams[0].admin_note === 'أضف رقم ولي أمر العضو الثالث.');
+  {
+    const L = world.L;
+    await reload(L);
+    check('leader: chip مطلوب تعديل, timeline step 3 is «مطلوب تعديل», the note is shown', (await L.locator('.a-teamcard .a-chip').first().innerText()) === 'مطلوب تعديل'
+      && (await L.locator('.a-steps li[aria-current=step]').innerText()) === 'مطلوب تعديل' && /أضف رقم ولي أمر العضو الثالث/.test(await L.locator('.a-teamcard .a-note').innerText()));
+    check('returned: the leader can edit again (edit buttons) and resubmit', (await L.locator('[data-member] button', { hasText: 'تعديل' }).count()) === 7 && /أعد إرسال الفريق للمراجعة/.test(await L.locator('button[data-fk=submit]').innerText()));
+    await L.waitForSelector('.a-bell:not([hidden])');
+    const unreadL = world.notes.filter(n => n.user_id === world.teams[0].leader_id && !n.read_at).length;
+    check('leader bell shows the unread notifications (reject, reopen, return)', unreadL === 3 && (await L.locator('.a-bell .a-bell-n').innerText()) === '3');
+    await L.locator('.a-bell').click();
+    await L.waitForSelector('.a-inbox:not([hidden]) .a-inbox-i');
+    const inboxText = await L.locator('.a-inbox').innerText();
+    check('inbox: Arabic sentences from kind + data, newest first, with the reviewer note', (await L.locator('.a-inbox-i').count()) === 3 && /تغيّرت حالة فريق الينابيع: مطلوب تعديل/.test(await L.locator('.a-inbox-i').first().innerText()) && /أضف رقم ولي أمر العضو الثالث/.test(inboxText) && /مرفوض/.test(inboxText));
+    await L.waitForFunction(() => !document.querySelector('.a-bell .a-bell-n') || document.querySelector('.a-bell .a-bell-n').hidden);
+    check('opening the inbox marks everything read (yb_mark_read)', world.notes.filter(n => n.user_id === world.teams[0].leader_id && !n.read_at).length === 0);
+    await L.locator('button[data-fk=submit]').click();
+    await L.waitForSelector('button[data-fk=withdraw]');
+    check('the leader resubmits → قيد المراجعة again', world.teams[0].status === 'submitted');
+  }
+  await AD.locator('button', { hasText: 'تحديث' }).click();
+  await AD.waitForFunction(() => /قيد المراجعة/.test(document.querySelector('.a-team-h').innerText));
+  if (!(await AD.locator('.a-decide').count())) await AD.locator('.a-team-h').first().click();
+  await AD.locator('textarea.a-note-in').fill('');
   await AD.locator('button[data-fk^="ap-"]').click();
   await AD.waitForFunction(() => /معتمد/.test(document.querySelector('.a-team-h').innerText));
   check('approve → status معتمد, note cleared (empty note sent)', world.teams[0].status === 'approved' && world.teams[0].admin_note === null);
@@ -905,7 +1005,7 @@ let memberEmail = 'sara@t.test', parentEmail = 'parent@t.test';
   check('member sees own consent status (received: set by the admin)', /استُلمت موافقة ولي الأمر/.test(mt));
   check('no admin / leader controls on the member screen', !(await M.locator('input[role=switch], form.a-add, button[data-fk=submit], .a-tabs-4').count()));
   const reqs = world.log.filter(l => l.who === world.profileByEmail(memberEmail).id).map(l => l.path.replace('/rest/v1/', ''));
-  check('member screen reads only my_team, my_roster, tournament_state and the own profile (never teams, team_members, profiles list)', reqs.every(r => /^(rpc\/(my_team|join_team)|my_roster|tournament_state|profiles)$/.test(r)), [...new Set(reqs)].join());
+  check('member screen reads only my_team, my_roster, tournament_state and the own profile (never teams, team_members, profiles list)', reqs.every(r => /^(rpc\/(my_team|join_team|yb_mark_read)|my_roster|tournament_state|profiles|yb_notifications)$/.test(r)), [...new Set(reqs)].join());
   const tour = await M.locator('.a-sched').innerText();
   check('schedule card shows the empty state before the tournament is published', /لم تُنشر بيانات البطولة بعد/.test(tour));
   // second account tries the same name
@@ -960,7 +1060,7 @@ let memberEmail = 'sara@t.test', parentEmail = 'parent@t.test';
   const chips = await P.locator('.a-child .a-consent .a-chip').allInnerTexts();
   check('two children: one «استُلمت», one «لم تُستلم بعد»; ONE schedule card for the shared team', chips.some(c => /^استُلمت/.test(c)) && chips.some(c => /لم تُستلم/.test(c)) && (await P.locator('.a-sched').count()) === 1);
   const preqs = world.log.filter(l => l.who === world.profileByEmail(parentEmail).id).map(l => l.path.replace('/rest/v1/', ''));
-  check('parent screen reads only my_children, tournament_state and the own profile', preqs.every(r => /^(rpc\/link_child|my_children|tournament_state|profiles)$/.test(r)), [...new Set(preqs)].join());
+  check('parent screen reads only my_children, tournament_state and the own profile', preqs.every(r => /^(rpc\/(link_child|yb_mark_read)|my_children|tournament_state|profiles|yb_notifications)$/.test(r)), [...new Set(preqs)].join());
   check('parent console clean', P.errs.length === 0, P.errs.join('|'));
   world.P = P;
 }
@@ -1069,7 +1169,7 @@ section('admin: tabs, people, tournament, export, print');
   await settle(A);
   await signInOk(A, 'a@t.test');
   const tile = async name => (await A.locator('.a-counters .a-count').filter({ hasText: name }).first().innerText()).split('\n')[0].trim();
-  check('counters: all 3, draft 0, submitted 1, approved 1, rejected 1', (await tile('كل الفرق')) === '3' && (await tile('مسودة')) === '0' && (await tile('مُرسَل للاعتماد')) === '1' && (await tile('معتمد')) === '1' && (await tile('مرفوض')) === '1');
+  check('counters: all 3, draft 0, submitted 1, returned 0, approved 1, rejected 1', (await tile('كل الفرق')) === '3' && (await tile('مسودة')) === '0' && (await tile('قيد المراجعة')) === '1' && (await tile('مطلوب تعديل')) === '0' && (await tile('معتمد')) === '1' && (await tile('مرفوض')) === '1');
   await A.locator('.a-counters .a-count', { hasText: 'معتمد' }).click();
   check('clicking a counter filters the list by status (aria-pressed)', (await A.locator('.a-team').count()) === 1 && /الصقور/.test(await A.locator('.a-team').innerText()) && (await A.locator('.a-counters .a-count', { hasText: 'معتمد' }).getAttribute('aria-pressed')) === 'true');
   check('focus stays on the pressed counter after the redraw', await A.evaluate(() => document.activeElement && document.activeElement.dataset.fk === 'count-approved'));
@@ -1093,9 +1193,9 @@ section('admin: tabs, people, tournament, export, print');
   /* people */
   await A.locator('#at-people').click();
   const rc = await A.locator('.a-rolecount li').allInnerTexts();
-  check('people tab: counts by role (1 admin, 3 leaders, 1 member, 1 parent)', rc.join('|').replace(/\n/g, ' ') === '1 الإدارة|3 قائد الفريق|1 عضو|1 ولي أمر');
+  check('people tab: counts by role (1 admin, 0 officers, 3 leaders, 1 member, 1 parent)', rc.join('|').replace(/\n/g, ' ') === '1 الإدارة|0 مسؤول مسابقة|3 قائد الفريق|1 عضو|1 ولي أمر');
   check('profiles list is read-only data (6 accounts); the admin row says «أنت» and has no role select', (await A.locator('.a-person').count()) === 6 && /أنت/.test(await A.locator('.a-person', { hasText: 'المدير' }).innerText()) && !(await A.locator('.a-person', { hasText: 'المدير' }).locator('select').count()));
-  check('role select offers only leader / member / parent (never admin)', (await A.locator('.a-person', { hasText: 'عضو تجريبي' }).locator('option').allInnerTexts()).join('|') === 'قائد الفريق|عضو|ولي أمر');
+  check('role select offers officer / leader / member / parent (never admin)', (await A.locator('.a-person', { hasText: 'عضو تجريبي' }).locator('option').allInnerTexts()).join('|') === 'مسؤول مسابقة|قائد الفريق|عضو|ولي أمر');
   const row = A.locator('.a-person', { hasText: 'عضو تجريبي' });
   check('«حفظ الدور» is disabled until the role changes', await row.locator('button').isDisabled());
   await row.locator('select').selectOption('parent');
@@ -1242,7 +1342,7 @@ section('failure paths: network, server errors, expiry, recovery link');
   await signInOk(p, 'u@t.test');
   await p.locator('.a-head button', { hasText: 'تغيير كلمة المرور' }).click();
   const pf = p.locator('form[aria-label="تغيير كلمة المرور"]');
-  check('change-password panel opens (aria-expanded) with the first field focused', (await p.locator('.a-head button[aria-expanded]').getAttribute('aria-expanded')) === 'true' && await p.evaluate(() => document.activeElement.name === 'password'));
+  check('change-password panel opens (aria-expanded) with the first field focused', (await p.locator('.a-head button[aria-expanded]', { hasText: 'تغيير كلمة المرور' }).getAttribute('aria-expanded')) === 'true' && await p.evaluate(() => document.activeElement.name === 'password'));
   await pf.locator('input[name=password]').fill('Newpass99');
   await pf.locator('input[name=confirm]').fill('Newpass00');
   await pf.locator('button[type=submit]').click();
@@ -1471,8 +1571,12 @@ section('demo mode: why sign up + three demo users, no admin, no backend');
   await p.waitForFunction(c => document.querySelector('[data-code]').textContent !== c, code1);
   check('demo: regenerate the join code', (await p.locator('[data-code]').innerText()) !== code1);
   await p.locator('button[data-fk=submit]').click();
-  await p.waitForSelector('button[data-fk=withdraw]');
-  check('demo: submit for approval (5 members) → مُرسَل للاعتماد; nobody in the demo can approve it', (await p.locator('.a-teamcard .a-chip').first().innerText()) === 'مُرسَل للاعتماد');
+  await p.waitForSelector('.a-steps li.now.s-returned');
+  check('demo: submit (5 members) → the demo plays the reviewer: مطلوب تعديل with an example note', (await p.locator('.a-teamcard .a-chip').first().innerText()) === 'مطلوب تعديل' && /مراجعة تجريبية/.test(await p.locator('.a-teamcard .a-note').innerText()));
+  await p.waitForSelector('.a-bell:not([hidden])');
+  await p.evaluate(() => YB.rpc('yb_my_team_roster_status', {}));
+  check('demo: the leader bell shows 1 notification about the return', (await p.locator('.a-bell .a-bell-n').innerText()) === '1' || await p.evaluate(async () => (await YB.q('yb_notifications', { select: 'id' })).length === 1));
+  check('demo: roster status ticks (the parent of عضو التجربة is linked)', /ولي الأمر مرتبط بحسابه/.test(await p.locator('.a-roster').innerText()));
   const leaderCode = await p.locator('[data-code]').innerText();
 
   /* ---- no admin anywhere in the demo (database, session, endpoints) */
@@ -1508,7 +1612,7 @@ section('demo mode: why sign up + three demo users, no admin, no backend');
   await p.waitForSelector('.a-teamcard', { timeout: 8000 }); await settle(p);
   const mt = await text(p);
   check('switch to عضو: badge, team, roster names (all fake), consent received', (await p.locator('.a-head .a-badge').innerText()) === 'عضو' && /فريق الينابيع الافتراضي/.test(mt) && (await p.locator('.a-names-roster li').count()) === 5 && /استُلمت موافقة ولي الأمر/.test(mt) && !mt.includes(leaderCode));
-  check('member screen: the leader\'s submitted status is visible (state shared in the fake DB)', (await p.locator('.a-teamcard .a-chip').first().innerText()) === 'مُرسَل للاعتماد');
+  check('member screen: the leader\'s team status is visible (state shared in the fake DB)', (await p.locator('.a-teamcard .a-chip').first().innerText()) === 'مطلوب تعديل');
   check('member: fixtures and results from the pre-published board', await ok(wait(p, () => /\d – \d · (فوز|خسارة|تعادل)/.test(document.querySelector('.a-sched').innerText))));
   check('member sees no guardian data and cannot read other people (own roster row only)', !/09000/.test(mt) && (await p.evaluate(async () => (await YB.q('team_members', { select: 'id' })).length)) === 1);
   await p.locator('[data-yd-user=parent]').click();
@@ -1516,7 +1620,14 @@ section('demo mode: why sign up + three demo users, no admin, no backend');
   check('switch to ولي أمر: one linked child (fake name), consent, schedule; the switcher keeps the choice', (await p.locator('.a-head .a-badge').innerText()) === 'ولي أمر' && /عضو التجربة الافتراضي/.test(await text(p)) && (await p.locator('[data-yd-user=parent]').getAttribute('aria-pressed')) === 'true' && (await p.locator('.a-sched').count()) === 1);
   await p.locator('[data-yd-user=leader]').click();
   await p.waitForSelector('[data-counter]', { timeout: 8000 }); await settle(p);
-  check('back to leader: the earlier changes (submitted, same join code) were kept in the tab\'s fake DB', (await p.locator('.a-teamcard .a-chip').first().innerText()) === 'مُرسَل للاعتماد' && (await p.locator('[data-code]').innerText()) === leaderCode);
+  check('back to leader: the earlier changes (returned, same join code) were kept in the tab\'s fake DB', (await p.locator('.a-teamcard .a-chip').first().innerText()) === 'مطلوب تعديل' && (await p.locator('[data-code]').innerText()) === leaderCode);
+  await p.locator('button[data-fk=submit]').click();
+  await p.waitForFunction(() => /معتمد/.test(document.querySelector('.a-teamcard .a-chip').textContent));
+  check('demo: resubmitting → approved; the member and the parent get «اعتُمد» notifications', await p.evaluate(() => {
+    const d = JSON.parse(sessionStorage.getItem('yanabee-demo-db-v1') || '{}');
+    const kinds = (d.notes || []).map(n => n.user_id + ':' + n.kind);
+    return kinds.includes('u-member:team_approved') && kinds.includes('u-parent:team_approved');
+  }));
 
   /* ---- the nav dot is orange for the demo */
   check('top-bar account dot: shown, orange (demo), label says demo', await p.evaluate(() => { const a = document.querySelector('[data-acct]'), d = a.querySelector('.acct-dot'); return !d.hidden && /وضع تجريبي/.test(a.getAttribute('aria-label')) && d.style.background.includes('--sun'); }));
@@ -1626,6 +1737,58 @@ section('demo mode: why sign up + three demo users, no admin, no backend');
     }
   }
   check('demo layout runs: no request to any foreign host', foreign.length === 0, foreign.slice(0, 3).join());
+}
+
+/* ================================================================ 8b. competition officer (مسؤول المسابقة) */
+section('competition officer: assigned by the admin, review queue, notifications');
+{
+  const fake = new Fake();
+  fake.addUser({ email: 'boss@t.test', name: 'المشرف', role: 'member' }); fake.setAdmin('boss@t.test');
+  const off = fake.addUser({ email: 'off@t.test', name: 'مسؤولة التسجيل', role: 'member' }); fake.setRole('off@t.test', 'officer');
+  fake.addUser({ email: 'lo@t.test', name: 'قائد مراجع', role: 'leader' });
+  const mem = n => Array.from({ length: n }, (_, i) => ({ name: `لاعب رقم ${i + 1}`, age: 13 }));
+  fake.seedTeam({ leaderEmail: 'lo@t.test', name: 'الفجر', area: 'حي الصباح', status: 'submitted', members: mem(4) });
+  /* the admin assigns the competition */
+  const A = await open(fake, { label: 'officer-admin' });
+  await settle(A); await signInOk(A, 'boss@t.test');
+  await A.locator('#at-people').click();
+  const orow = A.locator('.a-person', { hasText: 'مسؤولة التسجيل' });
+  check('officer row: badge مسؤول مسابقة and a competitions box (7 competitions, none ticked)', /مسؤول مسابقة/.test(await orow.innerText()) && (await orow.locator('.a-comps input[type=checkbox]').count()) === 7 && (await orow.locator('.a-comps input:checked').count()) === 0);
+  await orow.locator('.a-comps label', { hasText: 'التسجيل ومراجعة الفرق' }).locator('input').check({ force: true });
+  await A.waitForFunction(() => [...document.querySelectorAll('.a-person')].some(r => /مسؤولة التسجيل/.test(r.textContent) && r.querySelector('.a-comps input:checked')));
+  check('ticking «التسجيل ومراجعة الفرق» assigns it (yb_set_officer)', fake.officers.some(o => o.user_id === off.id && o.competition === 'registration'));
+  check('rows of non-officers have no competitions box', !(await A.locator('.a-person', { hasText: 'قائد مراجع' }).locator('.a-comps').count()));
+  check('admin console clean (officer assignment)', A.errs.length === 0, A.errs.join('|'));
+  await close(A);
+  /* the officer screen */
+  const O = await open(fake, { label: 'officer' });
+  await settle(O); await signInOk(O, 'off@t.test');
+  await O.waitForSelector('.a-team', { timeout: 8000 });
+  const ot = await text(O);
+  check('officer screen: badge, the assigned competition, the review queue (1 waiting)', (await O.locator('.a-head .a-badge').innerText()) === 'مسؤول مسابقة' && /التسجيل ومراجعة الفرق/.test(ot) && /1 من الطلبات قيد المراجعة/.test(ot));
+  check('the officer gets no admin tools (no counters, no people list, no tabs)', !(await O.locator('.a-counters, .a-person, [role=tab]').count()));
+  await O.locator('.a-team-h').first().click();
+  await O.waitForSelector('.a-roster-ro .a-mem');
+  const card = await O.locator('.a-team').first().innerText();
+  check('the review roster shows names and consent only: no ages, no guardian names, no phones', (await O.locator('.a-roster-ro .a-mem').count()) === 5 && !/0912345678/.test(card) && !/ولي الأمر\s*$/m.test(card) && !(await O.locator('.a-team a[href^="tel:"]').count()));
+  await O.locator('button[data-fk^="ort-"]').click();
+  check('returning without a note asks for one; nothing is sent', fake.teams[0].status === 'submitted' && /اكتب في الملاحظة/.test(await O.locator('.a-decide').innerText()));
+  await O.locator('textarea.a-note-in').fill('ينقص عضو واحد على الأقل.');
+  await O.locator('button[data-fk^="ort-"]').click();
+  await O.waitForFunction(() => /مطلوب تعديل/.test(document.querySelector('.a-team-h').innerText));
+  check('the officer returns the team with the note', fake.teams[0].status === 'returned' && fake.teams[0].admin_note === 'ينقص عضو واحد على الأقل.');
+  check('after the decision the officer has no decision buttons (only «قيد المراجعة» teams)', !(await O.locator('button[data-fk^="oap-"]').count()));
+  check('the leader is notified of the return', fake.notes.some(n => n.kind === 'team_status' && n.data.to === 'returned' && n.user_id === fake.teams[0].leader_id));
+  const api = await O.evaluate(async () => [(await YB.rpc('set_user_role', { target: 'x', new_role: 'leader' })).error, (await YB.rpc('yb_set_officer', { target: 'x', competition: 'chess', assign: true })).error]);
+  check('an officer cannot change roles or assign competitions', api.join() === 'permission_denied,permission_denied', api.join());
+  check('officer console clean', O.errs.length === 0, O.errs.join('|'));
+  await close(O);
+  /* an officer without a competition */
+  fake.officers = [];
+  const O2 = await open(fake, { label: 'officer2' });
+  await settle(O2); await signInOk(O2, 'off@t.test');
+  check('an officer with no competition sees a clear message and no queue', /لم تُسند إليك مسابقة بعد/.test(await text(O2)) && !(await O2.locator('.a-team').count()));
+  await close(O2);
 }
 
 /* ================================================================ 9. wrap up: hosts and console */

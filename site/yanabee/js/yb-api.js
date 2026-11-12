@@ -72,6 +72,11 @@
     } catch (e) { /* private mode / blocked: keep the session in memory only */ }
   }
 
+  // name + role from the sign-up metadata only (used to create a missing profile)
+  function userMeta(u) {
+    var m = isObj(u.user_metadata) ? u.user_metadata : (isObj(u.meta) ? u.meta : {});
+    return { full_name: String(m.full_name || '').slice(0, 80), role: ROLES[m.role] ? m.role : 'member' };
+  }
   function buildSession(body, prev) {
     var u = isObj(body.user) ? body.user : (prev && prev.user) || {};
     var exp = Number(body.expires_at);
@@ -80,7 +85,7 @@
       access_token: body.access_token,
       refresh_token: body.refresh_token || (prev && prev.refresh_token) || '',
       expires_at: exp,
-      user: { id: u.id || '', email: u.email || '' }
+      user: { id: u.id || '', email: u.email || '', meta: userMeta(u) }
     };
   }
   function setSession(s) {
@@ -194,6 +199,9 @@
     team_full: 'اكتمل الحد الأقصى لأعضاء الفريق.',
     members_count_invalid: 'عدد الأعضاء الحالي لا يسمح بإرسال الفريق للاعتماد. راجع شروط التسجيل.',
     member_not_found: 'العضو غير موجود.',
+    too_many_attempts: 'محاولات خاطئة كثيرة. انتظر ربع ساعة ثم أعد المحاولة.',
+    note_required: 'اكتب ملاحظة توضّح المطلوب تعديله.',
+    invalid_status: 'لا يمكن تنفيذ هذا الإجراء في حالة الطلب الحالية.',
     user_not_found: 'المستخدم غير موجود.',
     invalid_argument: 'البيانات المدخلة غير صالحة.',
     invalid_data: 'البيانات المدخلة غير صالحة.',
@@ -315,8 +323,15 @@
   }
   function validEmail(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
 
+  // The auth project is shared with another app: an account without a Yanabee
+  // profile (signed up elsewhere, or before the app tag) gets one here.
+  function ensureProfile() {
+    var u = (state.session && state.session.user) || {};
+    var meta = userMeta(u);
+    return api('POST', '/rest/v1/rpc/yb_ensure_profile', { body: { full_name: meta.full_name, role: meta.role } }).then(function () { return loadProfile(); }, function () { return null; });
+  }
   function afterSignIn(event) {
-    return loadProfile().then(function () { emit(event); });
+    return loadProfile().then(function (p) { return p || (state.noProfile ? ensureProfile() : null); }).then(function () { emit(event); });
   }
 
   function signUp(o) {
@@ -327,7 +342,7 @@
     if (!validEmail(email)) return Promise.resolve({ ok: false, error: 'invalid_email' });
     if (password.length < MIN_PASSWORD) return Promise.resolve({ ok: false, error: 'weak_password' });
     var role = ROLES[o.role] ? o.role : 'member';
-    var body = { email: email, password: password, data: { full_name: String(o.fullName || '').trim().slice(0, 80), role: role } };
+    var body = { email: email, password: password, data: { full_name: String(o.fullName || '').trim().slice(0, 80), role: role, app: 'yanabee' } };
     return http('POST', withRedirect('/auth/v1/signup'), { body: body }).then(function (r) {
       if (!r.ok) { var f = failure(r); return { ok: false, error: f.error, message: f.message, status: f.status }; }
       if (isObj(r.data) && r.data.access_token) {
@@ -387,7 +402,9 @@
     var id = state.session.user.id;
     return api('GET', '/rest/v1/profiles?select=id,email,full_name,role,phone&id=' + enc('eq.' + id),
       { accept: 'application/vnd.pgrst.object+json' }).then(function (r) {
-      if (r.ok && isObj(r.data) && state.session && state.session.user.id === id) { state.profile = r.data; return r.data; }
+      if (r.ok && isObj(r.data) && state.session && state.session.user.id === id) { state.profile = r.data; state.noProfile = false; return r.data; }
+      // 406 = "no rows": the account exists but has no Yanabee profile (not a server error)
+      state.noProfile = !r.ok && r.status === 406;
       return null;
     });
   }
@@ -457,7 +474,14 @@
   function rpc(name, args) {
     if (!configured) return notConfigured();
     if (!IDENT.test(String(name))) return Promise.resolve(badRequest('bad_function'));
-    return api('POST', '/rest/v1/rpc/' + name, { body: isObj(args) ? args : {} }).then(writeResult);
+    return api('POST', '/rest/v1/rpc/' + name, { body: isObj(args) ? args : {} }).then(function (r) {
+      var out = writeResult(r);
+      // some functions answer {ok:false, error:'key'} instead of raising (so the server keeps a record)
+      if (out.ok && isObj(out.data) && out.data.ok === false && typeof out.data.error === 'string' && KEY_RE.test(out.data.error)) {
+        return { ok: false, error: out.data.error, message: out.data.error, code: '', hint: '', details: '', status: out.status };
+      }
+      return out;
+    });
   }
 
   function getState() {

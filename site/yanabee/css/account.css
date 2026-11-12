@@ -276,6 +276,34 @@
 }
 
 /* ---------- print: the admin sheet only ---------- */
+
+/* ---- registration workflow, officers, notifications (SPEC 4.10) */
+.a-badge.r-officer{background:color-mix(in oklab,var(--brand) 14%,transparent);color:color-mix(in oklab,var(--brand) 80%,var(--ink))}
+.a-count.s-returned b{color:var(--t3)}
+.a-steps{list-style:none;margin:.6rem 0 .2rem;padding:0;display:flex;gap:.35rem;flex-wrap:wrap;counter-reset:st}
+.a-steps li{counter-increment:st;display:inline-flex;align-items:center;gap:.35rem;padding:3px 12px 3px 10px;border-radius:999px;font:600 .82rem/1.7 var(--font-h);background:var(--surface-3);color:var(--muted)}
+.a-steps li::before{content:counter(st);display:inline-grid;place-items:center;width:1.35em;height:1.35em;border-radius:50%;background:var(--surface);font-size:.75em}
+.a-steps li.done{color:var(--ink-2)}
+.a-steps li.done::before{content:"\2713";background:color-mix(in oklab,var(--leaf) 22%,var(--surface));color:var(--leaf)}
+.a-steps li.now{background:color-mix(in oklab,var(--brand) 14%,var(--surface));color:color-mix(in oklab,var(--brand) 80%,var(--ink))}
+.a-steps li.now.s-returned{background:color-mix(in oklab,var(--sun) 18%,var(--surface));color:color-mix(in oklab,var(--sun) 45%,var(--ink))}
+.a-steps li.now.s-approved{background:color-mix(in oklab,var(--leaf) 16%,var(--surface));color:color-mix(in oklab,var(--leaf) 50%,var(--ink))}
+.a-steps li.now.s-rejected{background:color-mix(in oklab,var(--t3) 14%,var(--surface));color:color-mix(in oklab,var(--t3) 55%,var(--ink))}
+.a-bell{position:relative}
+.a-bell-n{display:inline-grid;place-items:center;min-width:1.4em;height:1.4em;padding:0 .3em;border-radius:999px;background:var(--t3);color:#fff;font:700 .72rem/1 var(--font-h)}
+.a-inbox{margin-block:.75rem}
+.a-inbox-h{display:flex;justify-content:space-between;align-items:center;gap:.5rem}
+.a-inbox-l{list-style:none;margin:.4rem 0 0;padding:0;display:grid;gap:.5rem;max-height:60vh;overflow:auto}
+.a-inbox-i{padding:.6rem .8rem;border-radius:12px;border:1px solid var(--line);background:var(--surface)}
+.a-inbox-i p{margin:0 0 .2rem}
+.a-inbox-i.new{border-color:color-mix(in oklab,var(--brand) 45%,var(--line));background:color-mix(in oklab,var(--brand) 6%,var(--surface))}
+.a-comps{border:1px dashed var(--line);border-radius:12px;padding:.5rem .75rem;margin:.6rem 0 0;display:flex;flex-wrap:wrap;gap:.35rem .9rem;width:100%}
+.a-comps legend{font:600 .85rem/1.6 var(--font-h);padding:0 .3rem}
+.a-check{display:inline-flex;align-items:center;gap:.4rem;min-height:44px;cursor:pointer}
+.a-check input{width:1.15rem;height:1.15rem;accent-color:var(--brand)}
+.a-chips{list-style:none;margin:.3rem 0 0;padding:0;display:flex;flex-wrap:wrap;gap:.4rem}
+.a-roster-ro{margin:.6rem 0}
+
 @media print{
   body.acct-printing main>*:not(#account){display:none!important}
   body.acct-printing .a-head,body.acct-printing .a-pwbox,body.acct-printing .a-flash,body.acct-printing .a-counters,body.acct-printing .a-tabs,body.acct-printing .a-panel>.a-card{display:none!important}

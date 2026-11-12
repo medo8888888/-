@@ -119,6 +119,29 @@
       persist();
     } catch (e) { db.tour = null; }
   }
+  var EDITABLE = ['draft', 'submitted', 'returned'];
+  function notify(uids, kind, data) {
+    db.notes = db.notes || [];
+    uids.forEach(function (u) { if (u) db.notes.push({ id: ++db.noteSeq || (db.noteSeq = 1), user_id: u, kind: kind, data: data, read_at: null, created_at: now() }); });
+  }
+  // Nobody reviews in the demo, so the demo plays the reviewer: the first submission comes back as "needs edits"
+  // with an example note, the next one is approved. Every step sends the notifications the real server sends.
+  function demoReview(t) {
+    t.demoReviews = (t.demoReviews || 0) + 1;
+    var from = 'submitted';
+    if (t.demoReviews === 1) {
+      t.status = 'returned';
+      t.admin_note = 'مراجعة تجريبية: تأكّد من تسجيل موافقة ولي أمر كل عضو، ثم أعد الإرسال.';
+    } else {
+      t.status = 'approved';
+      t.admin_note = null;
+      var people = db.members.filter(function (m) { return m.team_id === t.id && !m.is_leader && m.user_id; }).map(function (m) { return m.user_id; });
+      db.links.forEach(function (l) { var m = db.members.filter(function (x) { return x.id === l.member_id; })[0]; if (m && m.team_id === t.id) people.push(l.parent_id); });
+      notify(people.filter(function (u, i, a) { return a.indexOf(u) === i; }), 'team_approved', { team_id: t.id, team_name: t.name });
+    }
+    t.reviewed_at = now();
+    notify([t.leader_id], 'team_status', { team_id: t.id, team_name: t.name, from: from, to: t.status, note: t.admin_note });
+  }
   function persist() { if (!ssSet(DB_KEY, JSON.stringify(db))) { /* kept in memory only */ } }
   function loadDb() {
     var raw = ssGet(DB_KEY);
@@ -249,6 +272,10 @@
         return { member_id: m.id, team_id: m.team_id, full_name: m.full_name, is_leader: m.is_leader, joined: m.user_id !== null, is_me: m.user_id === me, consent_status: m.user_id === me ? m.consent_status : null };
       }));
     }
+    if (table === 'yb_notifications') {
+      if (method !== 'GET') return deny();
+      return finish((db.notes || []).filter(function (x) { return x.user_id === me; }).map(copy));
+    }
     if (table === 'my_children') {
       if (method !== 'GET') return deny();
       return finish(db.links.filter(function (l) { return l.parent_id === me; }).map(function (l) {
@@ -290,9 +317,9 @@
       }
       if (method === 'PATCH') {
         if (Object.keys(body || {}).some(function (k) { return ['name', 'area', 'status'].indexOf(k) < 0; })) return deny();
-        var targets = filterRows(db.teams.filter(function (t) { return mine(t) && ['draft', 'submitted'].indexOf(t.status) >= 0; }), q);
+        var targets = filterRows(db.teams.filter(function (t) { return mine(t) && EDITABLE.indexOf(t.status) >= 0; }), q);
         if (body.status && ['draft', 'submitted'].indexOf(body.status) < 0) return err(403, '42501', 'new row violates row-level security policy for table "teams"');
-        if (targets.length && body.status && ['draft', 'submitted', 'approved', 'rejected'].indexOf(body.status) < 0) return err(400, '23514', 'violates check constraint "teams_status_chk"');
+        if (targets.length && body.status && ['draft', 'submitted', 'returned', 'approved', 'rejected'].indexOf(body.status) < 0) return err(400, '23514', 'violates check constraint "teams_status_chk"');
         for (var i = 0; i < targets.length; i++) {
           var tt = targets[i], nm = body.name !== undefined ? String(body.name).trim() : tt.name;
           if (nm.length < 2 || nm.length > 60) return err(400, '23514', 'violates check constraint "teams_name_len"');
@@ -302,7 +329,11 @@
             if (cnt < 5 || cnt > 7) return err(400, 'P0001', 'members_count_invalid');
           }
         }
-        targets.forEach(function (tt) { Object.assign(tt, body); if (body.name !== undefined) tt.name = String(body.name).trim(); tt.updated_at = now(); });
+        targets.forEach(function (tt) {
+          var was = tt.status;
+          Object.assign(tt, body); if (body.name !== undefined) tt.name = String(body.name).trim(); tt.updated_at = now();
+          if (body.status === 'submitted' && was !== 'submitted') demoReview(tt);
+        });
         persist();
         return rep ? { status: 200, body: targets.map(copy) } : { status: 204 };
       }
@@ -310,7 +341,7 @@
     }
 
     if (table === 'team_members') {
-      var canEdit = function (tid) { var t = teamOf(tid); return !!(t && t.leader_id === me && ['draft', 'submitted'].indexOf(t.status) >= 0); };
+      var canEdit = function (tid) { var t = teamOf(tid); return !!(t && t.leader_id === me && EDITABLE.indexOf(t.status) >= 0); };
       var readable = function (m) { var t = teamOf(m.team_id); return !!(t && t.leader_id === me) || m.user_id === me || isLinked(m.id); };
       if (method === 'GET') return finish(db.members.filter(readable).map(copy));
       if (method === 'POST') {
@@ -359,10 +390,12 @@
     var me = c.uid;
     if (!me) return err(401, '42501', 'permission denied for function ' + name);
     if (name === 'approve_team' || name === 'set_user_role' || name === 'publish_state') return err(403, '42501', 'permission_denied');   // admin only: nobody in the demo is an admin
-    var SIG = { my_team: [], join_team: ['code', 'member_name'], link_child: ['code', 'child_name'], mark_consent: ['member_id', 'received'], unlink_member: ['member_id'], regenerate_join_code: ['team_id'] };
+    if (/^yb_(review_|set_officer)/.test(name)) return err(403, '42501', 'permission_denied');   // reviewers and officers are not part of the demo
+    var SIG = { my_team: [], join_team: ['code', 'member_name'], link_child: ['code', 'child_name'], mark_consent: ['member_id', 'received'], unlink_member: ['member_id'], regenerate_join_code: ['team_id'],
+      yb_mark_read: [], yb_my_team_roster_status: [], yb_my_competitions: [] };
     if (!SIG[name]) return err(404, 'PGRST202', 'Could not find the function public.' + name);
     var keys = Object.keys(body || {});
-    var optional = [];
+    var optional = name === 'yb_mark_read' ? ['ids'] : [];
     if (keys.some(function (k) { return SIG[name].indexOf(k) < 0; }) || SIG[name].some(function (k) { return keys.indexOf(k) < 0 && optional.indexOf(k) < 0; })) return err(404, 'PGRST202', 'Could not find the function public.' + name + ' in the schema cache');
     function raise(key, code) { return err(code === '42501' ? 403 : 400, code || 'P0001', key); }
     function clean(s) { return String(s || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase(); }
@@ -409,7 +442,7 @@
       var m = memberById(body.member_id);
       if (!m) return raise('member_not_found');
       var t2 = teamById(m.team_id);
-      if (!(t2.leader_id === me && ['draft', 'submitted'].indexOf(t2.status) >= 0)) return raise('permission_denied', '42501');
+      if (!(t2.leader_id === me && EDITABLE.indexOf(t2.status) >= 0)) return raise('permission_denied', '42501');
       if (name === 'mark_consent') {
         if (typeof body.received !== 'boolean') return raise('invalid_argument');
         m.consent_status = body.received ? 'received' : 'pending';
@@ -423,6 +456,20 @@
       persist();
       return { status: 200, body: { ok: true } };
     }
+    if (name === 'yb_mark_read') {
+      var nmk = 0, want = Array.isArray(body.ids) ? body.ids : null;
+      (db.notes || []).forEach(function (x) { if (x.user_id === me && !x.read_at && (!want || want.indexOf(x.id) >= 0)) { x.read_at = now(); nmk++; } });
+      persist();
+      return { status: 200, body: nmk };
+    }
+    if (name === 'yb_my_team_roster_status') {
+      var lt = db.teams.filter(function (t) { return t.leader_id === me; })[0];
+      if (!lt) return { status: 200, body: [] };
+      return { status: 200, body: db.members.filter(function (m) { return m.team_id === lt.id; }).map(function (m) {
+        return { member_id: m.id, joined: m.user_id !== null, parents: db.links.filter(function (l) { return l.member_id === m.id; }).length };
+      }) };
+    }
+    if (name === 'yb_my_competitions') return { status: 200, body: [] };
     if (name === 'regenerate_join_code') {
       var t3 = teamById(body.team_id);
       if (!t3) return raise('team_not_found');

@@ -35,6 +35,13 @@ Tournament format (content/yanabee/competition.txt, `c-format`, `fm-football`, `
 - **member («عضو»)**: join a team with join code + own name (matched to the roster row added by the leader), then: my team, roster names, my consent status, my group/matches/results, my chess role if chosen.
 - **parent («ولي أمر»)**: link a child with team join code + child's name, then: the child's team, consent status (pending/received), schedule/results.
 - Public (no account): tournament.html standings/fixtures/bracket (team names only).
+- **officer («مسؤول مسابقة»)** (migration 0002/0003; SPEC 4.10.2): the admin gives the role in «الأشخاص» and ticks the competitions it runs (`yb_officers`: registration, football, chess, projects, hifz, fahm, workshops). An officer of `registration` reviews teams in a queue (`yb_review_list`, `yb_review_roster`: names and consent ticks only — no ages, no guardian data) and decides with `yb_review_team` (approve / return with a required note / reject; only teams that are `submitted`). Other competitions show a placeholder until the schedule and live-results slices land.
+- **Registration states** (owner's words): مسودة `draft` → قيد المراجعة `submitted` → مطلوب تعديل `returned` (the leader edits and resubmits) / معتمد `approved` / مرفوض `rejected`. The leader edits while draft, submitted or returned. The leader screen shows the timeline and the reviewer's note.
+- **Notifications** (`yb_notifications`, kind + data, rendered in Arabic by account.js): the leader on every status change someone else made; admins and registration officers on every submission; linked members and parents on approval. A bell with the unread count on every role screen; opening it calls `yb_mark_read()`.
+
+### Migrations after 0001
+- `0002_yb_officer_role.sql` — `alter type user_role add value 'officer'` (alone: a new enum value cannot be used in the same transaction).
+- `0003_yb_workflow.sql` — ASCII only. Officers, review RPCs, the `returned` status and its guard trigger (a non-admin client may only set draft/submitted), notifications, the sign-up app tag (`raw_user_meta_data.app = 'yanabee'`; the auth project is shared with another app) + `yb_ensure_profile()` for accounts without a profile, the join/link attempt limit (10 failures / 15 min; failures return `{ok:false, error}` so the attempt row survives; yb-api turns that into a failure), `yb_my_team_roster_status()`. Tests: `supabase/tests/workflow.test.mjs` (shared emulation in `harness.mjs`).
 
 ## Database (supabase/migrations/0001_yanabee.sql) — schema public
 ```

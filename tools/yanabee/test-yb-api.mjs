@@ -216,7 +216,7 @@ test('sign-up', async () => {
   const r = await env.YB.signUp({ email: ' New@Example.com ', password: 'abcdefgh', fullName: '  قائد  ', role: 'leader' });
   eq(r, { ok: true, needsConfirm: true }, 'sign-up with e-mail confirmation: ok + needsConfirm');
   const c = env.calls[0];
-  eq(c.body, { email: 'New@Example.com', password: 'abcdefgh', data: { full_name: 'قائد', role: 'leader' } }, 'sends data:{full_name, role} metadata');
+  eq(c.body, { email: 'New@Example.com', password: 'abcdefgh', data: { full_name: 'قائد', role: 'leader', app: 'yanabee' } }, 'sends data:{full_name, role, app} metadata (app tag: the auth project is shared)');
   ok(c.url.includes('/auth/v1/signup?redirect_to=' + encodeURIComponent('https://site.test/yanabee/account.html')), 'redirect_to = current page');
   eq(env.storage(), null, 'no session stored when confirmation is pending');
   await env.YB.signUp({ email: 'a@b.co', password: 'abcdefgh', fullName: 'x', role: 'admin' });
@@ -259,7 +259,7 @@ test('sign-in, session persistence, onAuth', async () => {
   eq(env.calls[1].body, { email: 'a@b.test', password: 'goodpass1' }, 'password grant body (e-mail trimmed)');
   const st = env.storage();
   eq(Object.keys(st).sort(), ['access_token', 'expires_at', 'refresh_token', 'user'], 'stored object has exactly the 4 contract fields');
-  eq([st.access_token, st.refresh_token, st.user], ['acc1', 'ref1', { id: 'user-1', email: 'a@b.test' }], 'stored values');
+  eq([st.access_token, st.refresh_token, st.user], ['acc1', 'ref1', { id: 'user-1', email: 'a@b.test', meta: { full_name: '', role: 'member' } }], 'stored values (meta = name + role only)');
   eq(typeof st.expires_at, 'number', 'expires_at is a number (seconds)');
   const s = env.YB.session();
   eq([s.user.id, s.user.email, s.profile.role, s.profile.full_name], ['user-1', 'a@b.test', 'leader', 'اسم'], 'session() returns user + cached profile');
@@ -597,6 +597,45 @@ test('rpc: arguments, results and error bodies', async () => {
   eq(env.calls.length, n, 'no request for an invalid function name');
   env.on('POST', '/rest/v1/rpc/my_team', { body: [{ team_id: 't', my_role: 'leader' }] });
   eq((await env.YB.rpc('my_team')).data[0].my_role, 'leader', 'table-returning function gives an array');
+});
+
+test('shared auth project: app tag, missing profile, {ok:false} answers', async () => {
+  const env = makeEnv();
+  const body = sessionBody(env);
+  body.user = Object.assign({}, body.user, { user_metadata: { full_name: 'قائد جديد', role: 'leader', other: 'x' } });
+  env.on('POST', 'grant_type=password', { body });
+  let made = false;
+  env.on('GET', '/rest/v1/profiles', () => made ? { body: PROFILE } : { status: 406, body: { code: 'PGRST116', message: 'no rows' } });
+  env.on('POST', '/rest/v1/rpc/yb_ensure_profile', (c) => { made = true; return { body: { ok: true, created: true, role: c.body.role } }; });
+  eq(await env.YB.signIn('a@b.test', 'goodpass1'), { ok: true }, 'sign-in ok for an account without a Yanabee profile');
+  const ens = env.calls.find((c) => c.url.includes('/rpc/yb_ensure_profile'));
+  ok(!!ens, 'a missing profile is created with yb_ensure_profile');
+  eq(ens && ens.body, { full_name: 'قائد جديد', role: 'leader' }, 'it sends only the name and role from the sign-up metadata');
+  eq(env.YB.session().profile.role, 'leader', 'the profile is loaded after it was created');
+  eq(env.storage().user.meta, { full_name: 'قائد جديد', role: 'leader' }, 'the stored session keeps only name + role of the metadata');
+  const e2 = makeEnv();
+  const b2 = sessionBody(e2);
+  b2.user = Object.assign({}, b2.user, { user_metadata: { role: 'admin' } });
+  e2.on('POST', 'grant_type=password', { body: b2 });
+  e2.on('GET', '/rest/v1/profiles', { status: 406, body: { code: 'PGRST116', message: 'no rows' } });
+  e2.on('POST', '/rest/v1/rpc/yb_ensure_profile', { body: { ok: true } });
+  await e2.YB.signIn('a@b.test', 'goodpass1');
+  eq(e2.calls.find((c) => c.url.includes('/rpc/yb_ensure_profile')).body.role, 'member', 'a role outside leader/member/parent becomes member');
+  const e3 = makeEnv();
+  e3.on('POST', 'grant_type=password', { body: sessionBody(e3) });
+  e3.on('GET', '/rest/v1/profiles', { body: PROFILE });
+  await e3.YB.signIn('a@b.test', 'goodpass1');
+  ok(!e3.calls.some((c) => c.url.includes('yb_ensure_profile')), 'an existing profile is never re-created');
+  const p = makeEnv();
+  const e4 = makeEnv({ stored: storedSession(p) });
+  e4.on('POST', '/rest/v1/rpc/join_team', { body: { ok: false, error: 'too_many_attempts' } });
+  const r = await e4.YB.rpc('join_team', { code: 'X', member_name: 'y' });
+  eq([r.ok, r.error, r.status], [false, 'too_many_attempts', 200], 'a {ok:false, error} answer becomes a failure with that key');
+  eq(e4.YB.errorText(r), e4.YB.errorText('too_many_attempts'), 'and has its Arabic text');
+  ok(e4.YB.errorText('too_many_attempts') !== e4.YB.errorText('unknown'), 'too_many_attempts has its own text');
+  e4.on('POST', '/rest/v1/rpc/odd', { body: { ok: false, error: 'Not A Key!' } });
+  eq((await e4.YB.rpc('odd', {})).ok, true, 'a non-key error string is left as data');
+  for (const k of ['note_required', 'invalid_status']) ok(e4.YB.errorText(k) !== e4.YB.errorText('unknown'), k + ' has its own text');
 });
 
 test('getState / publishState', async () => {
