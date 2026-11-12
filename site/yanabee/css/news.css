@@ -1,0 +1,13 @@
+/* «آخر الإعلانات» strip (js/yb-news.js): home page and tournament board */
+.yb-news{padding:clamp(18px,3vw,28px) 0}
+.yb-news[hidden]{display:none}
+.ybn-h{display:flex;align-items:center;gap:8px;margin:0 0 12px;font-size:clamp(1.1rem,2.4vw,1.35rem);color:var(--ink)}
+.ybn-h .i{width:22px;height:22px;color:var(--brand)}
+.ybn-l{list-style:none;margin:0;padding:0;display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr))}
+.ybn-i{display:grid;gap:6px;align-content:start;padding:14px 16px;border-radius:var(--r-sm,14px);background:var(--surface);border:1px solid var(--line);border-inline-start:4px solid var(--brand)}
+.ybn-d{font-size:.85rem;color:var(--ink-2)}
+.ybn-t{margin:0;font-size:1.05rem;color:var(--ink);line-height:1.6}
+.ybn-b{margin:0;line-height:1.85;color:var(--ink-2);white-space:pre-line;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.ybn-i.open .ybn-b{display:block;-webkit-line-clamp:unset}
+.ybn-more{justify-self:start;min-height:40px;padding:6px 2px;border:0;background:none;color:var(--brand);font:inherit;font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.ybn-more:focus-visible{outline:3px solid var(--brand);outline-offset:2px;border-radius:6px}

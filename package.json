@@ -14,7 +14,7 @@
     "test:account": "node tools/yanabee/test-account.mjs && node tools/yanabee/test-register-online.mjs",
     "check": "python3 tools/check_content.py && python3 tools/yanabee/check_content.py",
     "test:yanabee": "node tools/yanabee/test-ui.mjs && node tools/yanabee/test-fx.mjs && node tools/yanabee/test-learn.mjs && node tools/yanabee/test-studio.mjs && node tools/yanabee/test-season.mjs && node tools/yanabee/test-intro.mjs && node tools/yanabee/test-gallery.mjs && node tools/yanabee/test-wow.mjs && node tools/yanabee/test-feat-register.mjs && node tools/yanabee/test-feat-comp-plan.mjs && node tools/yanabee/test-feat-comp-league.mjs && node tools/yanabee/test-feat-comp-judge.mjs && node tools/yanabee/test-feat-method-a.mjs && node tools/yanabee/test-feat-method-b.mjs && node tools/yanabee/test-feat-quran.mjs",
-    "test:backend": "node supabase/tests/rls.test.mjs && node supabase/tests/workflow.test.mjs && node supabase/tests/schedule.test.mjs && node supabase/tests/register.test.mjs && node supabase/tests/waitlist.test.mjs && node supabase/tests/results.test.mjs && node supabase/tests/submissions.test.mjs && node tools/yanabee/test-yb-api.mjs"
+    "test:backend": "node supabase/tests/rls.test.mjs && node supabase/tests/workflow.test.mjs && node supabase/tests/schedule.test.mjs && node supabase/tests/register.test.mjs && node supabase/tests/waitlist.test.mjs && node supabase/tests/results.test.mjs && node supabase/tests/submissions.test.mjs && node supabase/tests/comms.test.mjs && node tools/yanabee/test-yb-api.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.16",

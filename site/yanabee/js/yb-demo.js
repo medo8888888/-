@@ -277,6 +277,7 @@
     if (table === 'public_teams') {
       return method === 'GET' ? finish(db.teams.filter(function (t) { return t.status === 'approved'; }).map(function (t) { return { id: t.id, name: t.name, area: t.area }; })) : deny();
     }
+    if (table === 'yb_announcements') return method === 'GET' ? finish([]) : deny();   // no announcements in the demo
     if (!me) return deny();
     if (table === 'my_roster') {
       if (method !== 'GET') return deny();
@@ -414,7 +415,8 @@
     if (/^yb_(review_|set_officer)/.test(name)) return err(403, '42501', 'permission_denied');   // reviewers and officers are not part of the demo
     var SIG = { my_team: [], join_team: ['code', 'member_name'], link_child: ['code', 'child_name'], mark_consent: ['member_id', 'received'], unlink_member: ['member_id'], regenerate_join_code: ['team_id'],
       yb_mark_read: [], yb_my_team_roster_status: [], yb_my_competitions: [], yb_rsvp: ['event_id', 'team_id', 'answer'],
-      yb_team_checklist: ['team_id'], yb_claim_team: ['ref', 'phone'], yb_set_roles: ['team_id', 'reciter', 'reserve', 'chess', 'coord'] };
+      yb_team_checklist: ['team_id'], yb_claim_team: ['ref', 'phone'], yb_set_roles: ['team_id', 'reciter', 'reserve', 'chess', 'coord'],
+      yb_chat_unread: [], yb_chat_list: [], yb_chat_seen: ['last_id'], yb_chat_post: ['body'], yb_chat_report: ['message_id', 'reason'] };
     if (!SIG[name]) return err(404, 'PGRST202', 'Could not find the function public.' + name);
     var keys = Object.keys(body || {});
     var optional = name === 'yb_mark_read' ? ['ids'] : [];
@@ -527,6 +529,25 @@
         consents: minors.filter(function (m) { return m.consent_status === 'received'; }).length,
         claimed: true, group: grp, next: nx ? { title: nx.title, starts_at: nx.starts_at, place: nx.place, competition: nx.competition } : null,
         created_at: tc.created_at, reviewed_at: null } };
+    }
+    // the leaders room (migration 0009): only the demo leader is in it; messages stay in this tab
+    if (/^yb_chat_/.test(name)) {
+      var cme = db.profiles.filter(function (x) { return x.id === me; })[0];
+      if (!cme || cme.role !== 'leader') return raise('permission_denied', '42501');
+      db.chat = db.chat || [];
+      if (name === 'yb_chat_unread' ) return { status: 200, body: 0 };
+      if (name === 'yb_chat_seen') return { status: 200, body: null };
+      if (name === 'yb_chat_report') return { status: 200, body: { ok: false, error: 'invalid_argument' } };
+      if (name === 'yb_chat_list') return { status: 200, body: db.chat.map(function (m) { return { id: m.id, author_name: cme.full_name, author_role: 'leader', mine: true, body: m.body, hidden: false, created_at: m.created_at, reported: false, reports: 0, author_muted: false }; }) };
+      var cb = String(body.body || '').trim();
+      if (!cb || cb.length > 500) return { status: 200, body: { ok: false, error: 'invalid_data' } };
+      var digits = cb.replace(/[\u0660-\u0669]/g, function (d) { return String(d.charCodeAt(0) - 0x660); }).replace(/[\u06F0-\u06F9]/g, function (d) { return String(d.charCodeAt(0) - 0x6F0); }).replace(/[\s()+-]/g, '');
+      if (/[0-9]{7,}/.test(digits) || /[^\s@]+@[^\s@]+\.[a-z]{2,}/i.test(cb)) return { status: 200, body: { ok: false, error: 'contact_not_allowed' } };
+      var last = db.chat[db.chat.length - 1];
+      if (last && Date.now() - Date.parse(last.created_at) < 3000) return { status: 200, body: { ok: false, error: 'too_fast' } };
+      db.chat.push({ id: db.chat.length + 1, body: cb, created_at: new Date().toISOString() });
+      persist();
+      return { status: 200, body: { ok: true, id: db.chat.length } };
     }
     if (name === 'yb_claim_team') return { status: 200, body: { ok: false, error: 'not_found' } };   // nothing is sent from the form in the demo
     // roles (migration 0006): the demo leader picks the reciters, the chess player and the coordinator

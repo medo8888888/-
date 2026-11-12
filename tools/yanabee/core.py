@@ -513,3 +513,10 @@ def page(fn, title, body, desc, css=(), js=(), base=None, head=''):
     SITE.mkdir(parents=True, exist_ok=True)
     (SITE / fn).write_text(html, encoding='utf-8')
     return html
+
+
+def news_strip():
+    """«آخر الإعلانات»: the public announcements strip (js/yb-news.js fills it; hidden until there is something)."""
+    return (f'<section class="yb-news" data-yb-news hidden aria-labelledby="ybn-h"><div class="wrap">'
+            f'<h2 class="ybn-h" id="ybn-h">{ic("bell")}<span>آخر الإعلانات</span></h2>'
+            f'<ul class="ybn-l" data-yb-news-list></ul></div></section>')

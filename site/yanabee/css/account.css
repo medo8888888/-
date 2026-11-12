@@ -405,3 +405,27 @@
 .a-file{width:100%;min-height:48px;padding:10px;border-radius:12px;border:1.5px dashed var(--line-2);background:var(--surface-2);color:var(--ink);font:inherit}
 .a-file:disabled{opacity:.55}
 .a-pj-form .a-check[hidden],.a-pjs[hidden]{display:none}
+
+/* announcements and the leaders room (migration 0009) */
+.a-tabs-8{grid-template-columns:repeat(8,1fr)}
+@media (max-width:860px){.a-tabs-8{grid-template-columns:repeat(4,1fr)}.a-tabs-8 .a-tab span{font-size:.74rem}}
+.a-ann[hidden]{display:none}
+.a-ann-l{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.a-ann-i{display:grid;gap:6px;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface-2)}
+.a-ann-top{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.a-ann-top b{color:var(--ink);font-size:1.02rem;margin-inline-end:auto}
+.a-chat-h{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.a-chat-h h3{margin:0;margin-inline-end:auto}
+.a-chat-l{list-style:none;margin:0;padding:10px;display:grid;gap:8px;max-height:min(60vh,520px);overflow-y:auto;overscroll-behavior:contain;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface-2)}
+.a-chat-l:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+.a-chat-i{display:grid;gap:4px;padding:10px 12px;border-radius:14px;background:var(--surface);border:1px solid var(--line);max-width:92%;justify-self:start}
+.a-chat-i.mine{justify-self:end;background:color-mix(in oklab,var(--brand) 9%,var(--surface));border-color:color-mix(in oklab,var(--brand) 30%,var(--line))}
+.a-chat-i.hid{opacity:.72;border-style:dashed}
+.a-chat-top{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.a-chat-top b{color:var(--ink)}
+.a-chat-b{margin:0;line-height:1.85;white-space:pre-line;overflow-wrap:anywhere;color:var(--ink-2)}
+.a-chat-acts{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.a-chat-mute{width:auto;min-height:40px;padding:6px 10px}
+.a-chat-f textarea.a-note-in{min-height:64px}
+.a-chat-mutes{display:grid;gap:8px;padding-top:10px;border-top:1px dashed var(--line-2)}
+.a-chat-mutes[hidden]{display:none}

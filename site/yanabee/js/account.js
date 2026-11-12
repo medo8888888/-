@@ -109,7 +109,7 @@
 
   /* ------------------------------------------------------------------ app state */
   const S = { seq: 0, uid: null, role: null, expired: false, manualOut: false, recoveryDone: false, stopPoll: null, stopInbox: null, rendered: null, modeSet: null, confirmedShown: false };
-  const clearData = () => { A.teams = []; A.members = []; A.profiles = []; A.state = undefined; A.evm = null; A.res = null; A.proj = null; O.res = null; O.proj = null; O.evm = null; L.team = null; L.members = []; };
+  const clearData = () => { A.teams = []; A.members = []; A.profiles = []; A.state = undefined; A.evm = null; A.res = null; A.proj = null; A.ann = null; A.chat = null; O.res = null; O.proj = null; O.evm = null; O.chat = null; L.chat = null; L.team = null; L.members = []; };
 
   function mount(node, focus) {
     root.replaceChildren(node);
@@ -486,6 +486,9 @@
     if (n.kind === 'result_pending') return `نتيجة بانتظار اعتمادك: ${d.a_name || ''} ${d.sa ?? ''} – ${d.sb ?? ''} ${d.b_name || ''}`.replace(/\s+/g, ' ').trim();
     if (n.kind === 'result_approved') return `اعتُمدت نتيجة مباراة لفريقك (${d.comp === 'chess' ? 'الشطرنج' : `${d.sa} – ${d.sb}`}) وظهرت في لوحة البطولة.`;
     if (n.kind === 'result_returned') return `أعادت الإدارة نتيجة مباراة للمراجعة: ${d.note || ''}`;
+    if (n.kind === 'announcement') return `إعلان جديد: ${d.title || ''}`;
+    if (n.kind === 'chat_report') return 'بلاغ جديد عن رسالة في غرفة القادة. افتح «التواصل» للمراجعة.';
+    if (n.kind === 'chat_muted') return `أوقفت الإدارة مشاركتك في غرفة القادة ${d.hours ? (d.hours === 24 ? 'يومًا واحدًا' : d.hours === 168 ? 'أسبوعًا' : `${d.hours} ساعة`) : 'حتى إشعار آخر'}، ويمكنك القراءة.`;
     if (n.kind === 'submission_new') return `أرسل ${team} عملًا للمراجعة: «${d.title || ''}».`;
     if (n.kind === 'submission_reviewed') return d.status === 'accepted' ? `قُبل عمل فريقك «${d.title || ''}» في المشاريع والمبادرات.`
       : d.status === 'returned' ? `أُعيد عمل «${d.title || ''}» للتعديل: ${d.note || ''}` : `لم يُقبل عمل «${d.title || ''}»${d.note ? ': ' + d.note : '.'}`;
@@ -827,8 +830,8 @@
         h('b', { text: String(n) }), h('span', { text: label })))));
   }
   function adminTabs() {
-    const defs = [['teams', 'الفرق', 'users'], ['people', 'الأشخاص', 'user'], ['schedule', 'الجدول', 'calendar'], ['results', 'النتائج', 'flag'], ['projects', 'المشاريع', 'image'], ['tour', 'لوحة البطولة', 'trophy'], ['export', 'تصدير', 'file-text']];
-    const list = h('div', { role: 'tablist', 'aria-label': 'أقسام الإدارة', class: 'a-tabs a-tabs-4 a-tabs-5 a-tabs-6 a-tabs-7' });
+    const defs = [['teams', 'الفرق', 'users'], ['people', 'الأشخاص', 'user'], ['schedule', 'الجدول', 'calendar'], ['results', 'النتائج', 'flag'], ['projects', 'المشاريع', 'image'], ['comms', 'التواصل', 'bell'], ['tour', 'لوحة البطولة', 'trophy'], ['export', 'تصدير', 'file-text']];
+    const list = h('div', { role: 'tablist', 'aria-label': 'أقسام الإدارة', class: 'a-tabs a-tabs-4 a-tabs-5 a-tabs-6 a-tabs-7 a-tabs-8' });
     const els = defs.map(([k, label, ic], i) => {
       const on = A.tab === k;
       const b = h('button', { type: 'button', role: 'tab', id: 'at-' + k, 'aria-controls': 'ap-' + k, 'aria-selected': String(on), tabIndex: on ? 0 : -1, class: 'a-tab', 'data-fk': 'tab-' + k,
@@ -853,6 +856,11 @@
     else if (A.tab === 'results') {
       if (!A.res) { A.res = resultsDesk(['football', 'chess'], true, 'ares'); A.res.start(); }
       panel.append(A.res.el);
+    }
+    else if (A.tab === 'comms') {
+      if (!A.ann) { A.ann = announceDesk('aann'); A.ann.start(); }
+      if (!A.chat) { A.chat = chatRoom(true, 'achat'); A.chat.start(); }
+      panel.append(A.ann.el, A.chat.el);
     }
     else if (A.tab === 'projects') {
       if (!A.proj) { A.proj = projectsDesk(true, 'aprj'); A.proj.start(); }
@@ -1204,6 +1212,9 @@
     const nodes = [h('section', { class: 'a-card' }, h('h3', {}, icon('flag'), h('span', { text: 'مسابقاتك' })),
       O.comps.length ? h('ul', { class: 'a-chips' }, O.comps.map(k => h('li', {}, chip(COMPS[k] || k, 'brand'))))
         : h('p', { class: 'a-lead', text: 'لم تُسند إليك مسابقة بعد. يسندها المشرف العام من قسم «الأشخاص».' }))];
+    nodes.push(announceFeed());
+    if (!O.chat) { O.chat = chatRoom(false, 'ochat'); O.chat.start(); }
+    nodes.push(O.chat.el);
     if (O.comps.includes('registration')) nodes.push(reviewQueue());
     if (O.roles) nodes.push(roleListCard());
     const games = O.comps.filter(k => k === 'football' || k === 'chess');
@@ -1536,6 +1547,241 @@
       el.replaceChildren(...kids);
     }
     return { el, start: async () => { el.replaceChildren(skeleton()); await load(); paint(); } };
+  }
+
+  /* ------------------------------------------------------------------ ANNOUNCEMENTS AND THE LEADERS ROOM (migration 0009) */
+  // Announcements: the admin writes; every signed-in role reads its own feed (RLS picks the rows); «all» ones are also public.
+  // The leaders room: leaders, officers and the admin only; members and parents never see it (student chat stays off until
+  // the owner decides). The server refuses phone numbers and e-mails, one message per 3 seconds; anyone reports; the admin
+  // hides, mutes and purges. The room polls every 10 seconds only while it is open.
+  const AUD = { all: 'الجميع', leaders: 'قادة الفرق', members: 'الأعضاء', parents: 'أولياء الأمور' };
+  const CHAT_ROLE = { leader: 'قائد', officer: 'مسؤول', admin: 'الإدارة' };
+  const CHAT_MS = 10000;
+  const ANN_COLS = 'id,title,body,audience,published,created_at,updated_at,published_at';
+  const hm = iso => { try { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleString('ar-u-nu-latn', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } };
+  const muteText = hrs => (hrs === null || hrs === undefined ? 'حتى إشعار آخر' : hrs === 24 ? 'يومًا واحدًا' : hrs === 168 ? 'أسبوعًا' : `${hrs} ساعة`);
+
+  // every role: the announcements meant for it (hidden when there are none)
+  function announceFeed() {
+    const el = h('section', { class: 'a-card a-ann', hidden: true, 'data-ann-feed': '', 'aria-labelledby': 'ann-feed-h' });
+    (async () => {
+      const r = await read('yb_announcements', { select: ANN_COLS, filter: { published: 'eq.true' }, order: 'created_at.desc', limit: 10 });
+      const rows = r.ok && Array.isArray(r.data) ? r.data : [];
+      if (!rows.length) return;
+      el.replaceChildren(h('h3', { id: 'ann-feed-h' }, icon('bell'), h('span', { text: 'الإعلانات' })),
+        h('ul', { class: 'a-ann-l' }, rows.map(a => h('li', { class: 'a-ann-i' },
+          h('div', { class: 'a-ann-top' }, h('b', { text: a.title }), a.audience !== 'all' ? chip(`إلى ${AUD[a.audience] || a.audience}`, 'brand') : null),
+          h('p', { class: 'a-pj-txt', text: a.body }),
+          h('small', { class: 'a-hint', text: fmtDate(a.published_at || a.created_at) })))));
+      el.hidden = false;
+    })();
+    return el;
+  }
+
+  // the admin: write, publish, unpublish, delete
+  function announceDesk(fk) {
+    const D = { rows: [], editing: null, err: '' };
+    const el = h('section', { class: 'a-card a-ann', 'data-ann-desk': '', 'aria-labelledby': fk + '-h' });
+    const focusFk = k => { const f = el.querySelector(`[data-fk="${CSS.escape(k)}"]`); if (f) f.focus({ preventScroll: true }); };
+    async function load() {
+      const r = await read('yb_announcements', { select: ANN_COLS, order: 'created_at.desc', limit: 50 });
+      D.rows = r.ok && Array.isArray(r.data) ? r.data : [];
+      D.err = r.ok ? '' : YB.errorText(r.error);
+    }
+    async function refresh(msg, focus) { await load(); paint(); if (msg) say(msg); if (focus) focusFk(focus); }
+    // resolves true, or an error sentence
+    async function save(a, published) {
+      const r = await YB.rpc('yb_announce_save', { id: a.id || null, title: a.title, body: a.body, audience: a.audience, published });
+      if (!r.ok) { if (sessionLost(r)) return ''; return errMsg(r); }
+      return true;
+    }
+    function form(a) {
+      const title = field({ label: 'عنوان الإعلان', name: 'atitle', required: true, max: 80, value: a.title || '' });
+      title.input.dataset.fk = 'atitle';
+      const body = areaField('نص الإعلان', 'abody', a.body, 600, true, 'حتى 600 حرف. يصل إلى صندوق إشعارات الفئة المختارة عند نشره أول مرة.');
+      const aud = selectField('إلى من؟', 'aud', AUD, a.audience || 'all');
+      const pub = h('button', { type: 'submit', class: 'btn btn-primary', 'data-fk': 'apub' }, icon('send'), h('span', { text: a.published ? 'احفظ التعديل' : 'انشر الآن' }));
+      const f = h('form', { class: 'a-form', 'aria-label': a.id ? 'تعديل الإعلان' : 'إعلان جديد' }, title, body, aud,
+        h('p', { class: 'a-note', text: 'لا تذكر أسماء الأطفال أو أرقام الهواتف في الإعلانات. إعلانات «الجميع» تظهر لكل زوار الموقع.' }),
+        h('div', { class: 'a-actions' }, pub,
+          a.published ? null : btn('احفظ مسودة', 'file-text', 'btn-ghost', () => go(false), { 'data-fk': 'adraft' }),
+          btn('إلغاء', 'x', 'btn-ghost', () => { D.editing = null; paint(); focusFk(fk + '-new'); }, { 'data-fk': 'acancel' })));
+      async function go(published) {
+        const tv = nameKey(title.input.value), bv = String(body.input.value || '').trim();
+        if (tv.length < 2) return showErr(f, 'اكتب عنوانًا للإعلان.', title.input);
+        if (bv.length < 2) return showErr(f, 'اكتب نص الإعلان.', body.input);
+        showErr(f, '');
+        const out = await save({ id: a.id, title: tv, body: bv, audience: aud.input.value }, published);
+        if (out !== true) { if (out) showErr(f, out, title.input); return; }
+        D.editing = null;
+        await refresh(published ? 'نُشر الإعلان.' : 'حُفظت المسودة.', fk + '-new');
+      }
+      bind(f, () => go(true));
+      return f;
+    }
+    function item(a) {
+      const del = armed(btn('احذفه', 'trash', 'btn-ghost', null, { 'data-fk': 'adel-' + a.id }), 'اضغط مرة أخرى للحذف', async () => {
+        const r = await YB.rpc('yb_announce_delete', { id: a.id });
+        if (!r.ok) { if (sessionLost(r)) return; say(errMsg(r)); return; }
+        await refresh('حُذف الإعلان.', fk + '-new');
+      });
+      return h('li', { class: 'a-ann-i', 'data-ann': a.id },
+        h('div', { class: 'a-ann-top' }, h('b', { text: a.title }), a.published ? chip('منشور', 'ok') : chip('مسودة', 'muted'), chip(`إلى ${AUD[a.audience] || a.audience}`, 'brand')),
+        h('p', { class: 'a-pj-txt', text: a.body }),
+        h('small', { class: 'a-hint', text: fmtDate(a.published_at || a.created_at) }),
+        h('div', { class: 'a-actions' },
+          btn('عدّله', 'file-text', 'btn-ghost', () => { D.editing = Object.assign({}, a); paint(); focusFk('atitle'); }, { 'data-fk': 'aed-' + a.id }),
+          btn(a.published ? 'أوقف نشره' : 'انشره', a.published ? 'eye' : 'send', 'btn-ghost', async () => {
+            const out = await save(a, !a.published);
+            if (out !== true) { if (out) say(out); return; }
+            await refresh(a.published ? 'أُوقف نشر الإعلان.' : 'نُشر الإعلان.', 'atog-' + a.id);
+          }, { 'data-fk': 'atog-' + a.id }), del));
+    }
+    function paint() {
+      el.replaceChildren(h('h3', { id: fk + '-h' }, icon('bell'), h('span', { text: 'الإعلانات' })),
+        h('p', { class: 'a-lead', text: 'إعلان «الجميع» يظهر في الصفحة الرئيسية ولوحة البطولة، وإعلان القادة أو الأعضاء أو الأهل يظهر في حساباتهم فقط.' }),
+        D.err ? h('p', { class: 'a-live-msg', role: 'alert', text: D.err }) : null,
+        D.editing ? form(D.editing) : h('div', { class: 'a-actions' }, btn('إعلان جديد', 'send', 'btn-primary', () => { D.editing = { audience: 'all' }; paint(); focusFk('atitle'); }, { 'data-fk': fk + '-new' })),
+        D.rows.length ? h('ul', { class: 'a-ann-l' }, D.rows.map(item)) : h('p', { class: 'a-empty', text: 'لا إعلانات بعد.' }));
+    }
+    return { el, start: async () => { el.replaceChildren(skeleton()); await load(); paint(); } };
+  }
+
+  // the leaders room: leaders, officers and the admin (admin = moderation tools)
+  function chatRoom(admin, fk) {
+    const C = { rows: [], open: false, unread: 0, err: '', stop: null, mutes: [] };
+    const el = h('section', { class: 'a-card a-chat', 'data-chat': '', 'aria-labelledby': fk + '-h' });
+    const listEl = h('ol', { class: 'a-chat-l', 'aria-live': 'polite', 'aria-label': 'رسائل غرفة القادة', tabIndex: 0 });
+    const msgEl = h('p', { class: 'a-live-msg', role: 'alert', hidden: true });
+    const taId = uid('f');
+    const ta = h('textarea', { id: taId, class: 'a-note-in', rows: 2, maxlength: 500, 'data-fk': fk + '-ta', placeholder: 'اكتب رسالتك للقادة…' });
+    const focusFk = k => { const f = el.querySelector(`[data-fk="${CSS.escape(k)}"]`); if (f) f.focus({ preventScroll: true }); };
+    const showMsg = t => { msgEl.textContent = t || ''; msgEl.hidden = !t; if (t) say(t); };
+    async function loadUnread() {
+      const r = await YB.rpc('yb_chat_unread', {});
+      C.unread = r.ok && typeof r.data === 'number' ? r.data : 0;
+    }
+    async function loadList() {
+      const r = await YB.rpc('yb_chat_list', {});
+      if (!r.ok) { if (sessionLost(r)) return; showMsg(errMsg(r)); return; }
+      const atEnd = listEl.scrollHeight - listEl.scrollTop - listEl.clientHeight < 40;
+      C.rows = Array.isArray(r.data) ? r.data : [];
+      paintList();
+      if (atEnd || !listEl.dataset.ready) listEl.scrollTop = listEl.scrollHeight;
+      listEl.dataset.ready = '1';
+      const last = C.rows.length ? C.rows[C.rows.length - 1].id : 0;
+      if (C.unread) { C.unread = 0; paintHead(); }
+      if (last && last !== C.seen) { C.seen = last; YB.rpc('yb_chat_seen', { last_id: last }); }
+    }
+    async function loadMutes() {
+      if (!admin) return;
+      const r = await YB.rpc('yb_chat_mutes_list', {});
+      C.mutes = r.ok && Array.isArray(r.data) ? r.data : [];
+    }
+    function stopPolling() { if (C.stop) { C.stop(); C.stop = null; } if (S.stopChat === stopPolling) S.stopChat = null; }
+    function openRoom(on) {
+      C.open = on;
+      stopPolling();
+      paint();
+      if (on) {
+        if (S.stopChat) S.stopChat();
+        C.stop = YB.poll ? YB.poll(async () => { await loadList(); if (admin) { await loadMutes(); paintMutes(); } }, CHAT_MS) : null;
+        if (!C.stop) loadList();
+        S.stopChat = stopPolling;
+        focusFk(fk + '-ta');
+      } else focusFk(fk + '-open');
+    }
+    async function act(rpcName, args, done) {
+      const r = await YB.rpc(rpcName, args);
+      if (!r.ok) { if (sessionLost(r)) return false; showMsg(errMsg(r)); return false; }
+      showMsg('');
+      if (done) say(done);
+      await loadList();
+      return true;
+    }
+    function msgItem(m) {
+      const acts = [];
+      if (!m.mine && !m.hidden) {
+        if (m.reported) acts.push(chip('بلّغتَ عنها', 'muted'));
+        else acts.push(armed(btn('بلّغ', 'flag', 'btn-ghost', null, { 'data-fk': 'crep-' + m.id }), 'اضغط مرة أخرى للتبليغ',
+          () => act('yb_chat_report', { message_id: m.id, reason: null }, 'وصل البلاغ إلى الإدارة.')));
+      }
+      if (admin) {
+        if (m.reports) acts.push(chip(`${m.reports} بلاغ`, 'bad'));
+        acts.push(btn(m.hidden ? 'أظهرها' : 'أخفها', m.hidden ? 'eye' : 'x', 'btn-ghost',
+          () => act('yb_chat_hide', { message_id: m.id, hide: !m.hidden }, m.hidden ? 'أُظهرت الرسالة.' : 'أُخفيت الرسالة.'), { 'data-fk': 'chide-' + m.id }));
+        if (m.reports && !m.hidden) acts.push(btn('أغلق البلاغ', 'check', 'btn-ghost',
+          () => act('yb_chat_resolve', { message_id: m.id }, 'أُغلق البلاغ.'), { 'data-fk': 'cres-' + m.id }));
+        if (!m.mine && m.author_role !== 'admin') {
+          if (m.author_muted) acts.push(chip('موقوف', 'sun'));
+          else {
+            const sel = h('select', { class: 'a-select a-chat-mute', 'aria-label': `مدة إيقاف ${m.author_name}`, 'data-fk': 'cmsel-' + m.id },
+              [['24', 'يومًا'], ['168', 'أسبوعًا'], ['', 'حتى إشعار آخر']].map(([v, t]) => h('option', { value: v, text: t })));
+            acts.push(sel, btn('أوقف مشاركته', 'lock', 'btn-ghost', async () => {
+              const hrs = sel.value === '' ? null : Number(sel.value);
+              if (await act('yb_chat_mute', { message_id: m.id, hours: hrs, reason: null }, `أُوقفت مشاركة ${m.author_name} ${muteText(hrs)}.`)) { await loadMutes(); paintMutes(); }
+            }, { 'data-fk': 'cmute-' + m.id }));
+          }
+        }
+      }
+      return h('li', { class: 'a-chat-i' + (m.mine ? ' mine' : '') + (m.hidden ? ' hid' : ''), 'data-msg': m.id },
+        h('div', { class: 'a-chat-top' }, h('b', { text: m.mine ? 'أنت' : m.author_name }), chip(CHAT_ROLE[m.author_role] || '', m.author_role === 'admin' ? 'ok' : 'brand'),
+          h('small', { class: 'a-hint', text: hm(m.created_at) })),
+        m.hidden && !admin ? h('p', { class: 'a-hint', text: 'أخفت الإدارة هذه الرسالة.' })
+          : h('p', { class: 'a-chat-b', text: m.body || '' }),
+        m.hidden && admin ? h('small', { class: 'a-hint', text: 'مخفية عن الغرفة' }) : null,
+        acts.length ? h('div', { class: 'a-chat-acts' }, acts) : null);
+    }
+    function paintList() {
+      listEl.replaceChildren(...(C.rows.length ? C.rows.map(msgItem) : [h('li', { class: 'a-empty', text: 'لا رسائل بعد. ابدأ بالسلام.' })]));
+    }
+    const mutesBox = h('div', { class: 'a-chat-mutes', hidden: true });
+    function paintMutes() {
+      if (!admin) return;
+      mutesBox.replaceChildren(h('h4', { class: 'a-sub', text: 'الموقوفون عن المشاركة' }),
+        C.mutes.length ? h('ul', { class: 'a-roles' }, C.mutes.map(x => h('li', {}, h('b', { text: x.full_name || '—' }),
+          chip(x.until ? `حتى ${hm(x.until)}` : 'حتى إشعار آخر', 'sun'),
+          btn('أعد مشاركته', 'repeat', 'btn-ghost', async () => {
+            if (await act('yb_chat_unmute', { target: x.user_id }, `أُعيدت مشاركة ${x.full_name}.`)) { await loadMutes(); paintMutes(); }
+          }, { 'data-fk': 'cun-' + x.user_id })))) : h('p', { class: 'a-hint', text: 'لا أحد موقوف الآن.' }),
+        h('div', { class: 'a-actions' }, armed(btn('احذف الرسائل الأقدم من 180 يومًا', 'trash', 'btn-ghost', null, { 'data-fk': fk + '-purge' }), 'اضغط مرة أخرى للحذف', async () => {
+          const r = await YB.rpc('yb_chat_purge', {});
+          if (!r.ok) { if (sessionLost(r)) return; showMsg(errMsg(r)); return; }
+          say(`حُذفت ${Number(r.data) || 0} من الرسائل القديمة.`);
+          await loadList();
+        })));
+      mutesBox.hidden = false;
+    }
+    const head = h('div', { class: 'a-chat-h' });
+    function paintHead() {
+      head.replaceChildren(h('h3', { id: fk + '-h' }, icon('users'), h('span', { text: 'غرفة القادة' })),
+        C.unread && !C.open ? chip(`${C.unread} ${C.unread === 1 ? 'رسالة جديدة' : 'رسائل جديدة'}`, 'ok') : null,
+        btn(C.open ? 'أغلق الغرفة' : 'افتح الغرفة', C.open ? 'x' : 'arrow-left', C.open ? 'btn-ghost' : 'btn-primary', () => openRoom(!C.open),
+          { 'data-fk': fk + '-open', 'aria-expanded': String(C.open) }));
+    }
+    const sendForm = h('form', { class: 'a-form a-chat-f', 'aria-label': 'رسالة جديدة' },
+      h('label', { for: taId, class: 'a-l', text: 'رسالتك' }), ta,
+      h('small', { class: 'a-hint', text: 'لا تكتب أرقام هواتف أو بريدًا إلكترونيًا أو أسماء أطفال. الغرفة تحت إشراف الإدارة، ولكل من فيها أن يبلّغ عن أي رسالة.' }),
+      h('div', { class: 'a-actions' }, submitBtn('أرسل', 'send')));
+    bind(sendForm, async () => {
+      const b = String(ta.value || '').trim();
+      if (!b) return showErr(sendForm, 'اكتب رسالة أولًا.', ta);
+      showErr(sendForm, '');
+      const r = await YB.rpc('yb_chat_post', { body: b });
+      if (!r.ok) { if (sessionLost(r)) return; return showErr(sendForm, errMsg(r), ta); }
+      ta.value = '';
+      await loadList();
+      listEl.scrollTop = listEl.scrollHeight;
+      ta.focus();
+    });
+    ta.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); sendForm.requestSubmit(); } });
+    function paint() {
+      paintHead();
+      const kids = [head, h('p', { class: 'a-lead', text: 'للقادة ومسؤولي المسابقات والإدارة فقط؛ لا يراها الأعضاء ولا أولياء الأمور.' })];
+      if (C.open) kids.push(listEl, msgEl, sendForm, admin ? mutesBox : null);
+      el.replaceChildren(...kids.filter(Boolean));
+    }
+    return { el, start: async () => { paint(); await loadUnread(); paintHead(); if (admin) { await loadMutes(); paintMutes(); } } };
   }
 
   /* ------------------------------------------------------------------ PROJECTS AND INITIATIVES (migration 0008) */
@@ -1939,7 +2185,8 @@
     L.boxes.roles = h('section', { class: 'a-card', 'aria-labelledby': 'l-roles-h', 'data-roles': '' });
     L.boxes.marks = h('section', { class: 'a-card', 'aria-labelledby': 'l-marks-h', 'data-marks': '', hidden: true });
     L.subs = leaderSubs({ id: t.team_id, name: t.team_name, status: t.status }, 'lsub');
-    body.replaceChildren(L.boxes.top, L.boxes.check, L.dates, L.boxes.marks, L.subs.el, L.boxes.roster, L.boxes.roles, L.boxes.code, L.sched.node, L.printBox);
+    if (!L.chat) { L.chat = chatRoom(false, 'lchat'); L.chat.start(); }
+    body.replaceChildren(L.boxes.top, L.boxes.check, announceFeed(), L.dates, L.boxes.marks, L.subs.el, L.chat.el, L.boxes.roster, L.boxes.roles, L.boxes.code, L.sched.node, L.printBox);
     L.subs.start();
     paintLeader();
     startSchedule([L.sched]);
@@ -2298,6 +2545,7 @@
     const me = roster.find(x => x.is_me);
     const box = scheduleBox({ id: row.team_id, name: row.team_name });
     sh.body.replaceChildren(...[
+      announceFeed(),
       h('section', { class: 'a-card a-teamcard' }, h('div', { class: 'a-team-top' }, h('div', {}, h('h3', { text: row.team_name }), row.area ? h('small', { class: 'a-hint', text: row.area }) : null), statusChip(row.status)),
         h('p', { class: 'a-lead', text: 'أنت عضو في هذا الفريق.' })),
       h('section', { class: 'a-card' }, h('h3', {}, icon('users'), h('span', { text: 'أعضاء الفريق' })),
@@ -2320,7 +2568,7 @@
     if (seq !== S.seq) return;
     if (!r.ok) { if (sessionLost(r.error)) return; sh.body.replaceChildren(errorBlock(YB.errorText(r.error), () => { sh.body.replaceChildren(skeleton()); route(); })); return; }
     const kids = r.data || [];
-    const nodes = [];
+    const nodes = [announceFeed()];
     const boxes = [];
     if (!kids.length) nodes.push(h('p', { class: 'a-empty a-card', text: 'لم تربط أي ابن أو ابنة بعد. اكتب رمز الفريق واسم الطفل أدناه.' }));
     kids.forEach(k => {
@@ -2348,6 +2596,7 @@
     const seq = ++S.seq;
     stopPoll();
     if (S.stopInbox) { S.stopInbox(); S.stopInbox = null; }
+    if (S.stopChat) S.stopChat();
     S.modeSet = null;
     S.focusNext = !!opts.focus;
     if (!YB || !YB.configured) { S.rendered = 'unconfigured'; viewUnconfigured(); return; }

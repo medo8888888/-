@@ -53,6 +53,7 @@ class Fake {
     this.events = []; this.att = [];
     this.live = []; this.marks = []; this.markSeq = 0;   // migration 0007
     this.subs = []; this.objects = new Map(); this.uploads = [];   // migration 0008 (submissions, private photos)
+    this.ann = []; this.annSeq = 0; this.chat = []; this.chatSeq = 0; this.reports = []; this.mutes = new Map(); this.reads = new Map();   // migration 0009
     this.tokens = new Map(); this.refresh = new Map(); this.log = []; this.recovers = []; this.fail = []; this.delay = 0; this.tick = 0;
   }
   uid() { return crypto.randomUUID(); }
@@ -269,6 +270,12 @@ class Fake {
       return deny();
     }
     if (table === 'public_teams') return method === 'GET' ? finish(this.teams.filter(t => t.status === 'approved').map(t => ({ id: t.id, name: t.name, area: t.area }))) : deny();
+    if (table === 'yb_announcements') {   // migration 0009: anon reads published «all»; each role its own; the admin everything
+      if (method !== 'GET') return deny();
+      if ((q.get('select') || '').includes('created_by')) return err(401, '42501', 'permission denied for column created_by');
+      const role = c.role, aud = { leader: 'leaders', member: 'members', parent: 'parents' }[role];
+      return finish(this.ann.filter(a => role === 'admin' || (a.published && (a.audience === 'all' || (me && (a.audience === aud || role === 'officer'))))).map(a => ({ ...a })));
+    }
     if (!me) return deny(); // everything below needs a signed-in user (grants are for `authenticated` only)
     if (table === 'my_roster') {
       if (method !== 'GET') return deny();
@@ -431,7 +438,10 @@ class Fake {
       yb_results_queue: [], yb_live_set: ['comp', 'match_key', 'a', 'b', 'sa', 'sb', 'ca', 'cb', 'ra', 'rb', 'status', 'note', 'start', 'a_name', 'b_name'],
       yb_mark_add: ['comp', 'match_key', 'team_id', 'kind', 'member_id', 'minute'], yb_mark_del: ['id'], yb_match_roster: ['comp', 'team_id'],
       yb_match_marks_of: ['comp', 'match_key'], yb_result_approve: ['comp', 'match_key', 'state', 'prev'], yb_result_return: ['comp', 'match_key', 'note'], yb_my_marks: [],
-      yb_save_submission: ['id', 'team_id', 'p'], yb_delete_submission: ['id'], yb_review_submission: ['id', 'decision', 'note'], yb_submissions_queue: [] };
+      yb_save_submission: ['id', 'team_id', 'p'], yb_delete_submission: ['id'], yb_review_submission: ['id', 'decision', 'note'], yb_submissions_queue: [],
+      yb_announce_save: ['id', 'title', 'body', 'audience', 'published'], yb_announce_delete: ['id'], yb_chat_list: [], yb_chat_post: ['body'], yb_chat_report: ['message_id', 'reason'],
+      yb_chat_hide: ['message_id', 'hide'], yb_chat_resolve: ['message_id'], yb_chat_mute: ['message_id', 'hours', 'reason'], yb_chat_unmute: ['target'], yb_chat_mutes_list: [],
+      yb_chat_purge: [], yb_chat_seen: ['last_id'], yb_chat_unread: [] };
     if (!SIG[name]) return err(404, 'PGRST202', 'Could not find the function public.' + name);
     if (name === 'yb_mark_read') {
       const ids = body && Array.isArray(body.ids) ? body.ids : null;
@@ -507,6 +517,86 @@ class Fake {
         return { team_id: t.id, team_name: t.name, area: t.area, status: t.status, admin_note: t.admin_note, members: ms.length, consents: ms.filter(m => m.consent_status === 'received').length, updated_at: t.updated_at, reviewed_at: t.reviewed_at || null,
           fee_status: t.fee_status || 'unpaid', fee_receipt: t.fee_receipt || null, ref_code: t.ref_code || null, online: !!t.reg, claimed: !!t.leader_id };
       }) };
+    }
+    /* migration 0009: announcements and the leaders room */
+    if (name === 'yb_announce_save' || name === 'yb_announce_delete') {
+      if (!admin) return raise('permission_denied', '42501');
+      if (name === 'yb_announce_delete') {
+        const i = this.ann.findIndex(a => a.id === body.id);
+        if (i < 0) return { status: 200, body: { ok: false, error: 'not_found' } };
+        this.ann.splice(i, 1);
+        return { status: 200, body: { ok: true } };
+      }
+      const title = String(body.title || '').trim(), text = String(body.body || '').trim();
+      if (title.length < 2 || title.length > 80 || text.length < 2 || text.length > 600 || !['all', 'leaders', 'members', 'parents'].includes(body.audience)) return { status: 200, body: { ok: false, error: 'invalid_data' } };
+      let a = body.id ? this.ann.find(x => x.id === body.id) : null;
+      if (body.id && !a) return { status: 200, body: { ok: false, error: 'not_found' } };
+      if (!a) { a = { id: ++this.annSeq, created_at: this.now(), published_at: null, notified: false }; this.ann.push(a); }
+      Object.assign(a, { title, body: text, audience: body.audience, published: !!body.published, updated_at: this.now() });
+      if (a.published && !a.published_at) a.published_at = this.now();
+      if (a.published && !a.notified) {
+        const want = { leaders: 'leader', members: 'member', parents: 'parent' }[a.audience];
+        this.notify(this.profiles.filter(p => p.id !== me && (a.audience === 'all' || p.role === want || ['officer', 'admin'].includes(p.role))).map(p => p.id), 'announcement', { id: a.id, title: a.title, audience: a.audience });
+        a.notified = true;
+      }
+      return { status: 200, body: { ok: true, id: a.id } };
+    }
+    if (name.startsWith('yb_chat_')) {
+      const inRoom = ['leader', 'officer', 'admin'].includes(c.role);
+      if (name === 'yb_chat_unread') {
+        if (!inRoom) return { status: 200, body: 0 };
+        const seen = this.reads.get(me) || 0;
+        return { status: 200, body: this.chat.filter(m => m.id > seen && m.author !== me && !m.hidden).length };
+      }
+      if (!inRoom) return raise('permission_denied', '42501');
+      const muted = u => { const m = this.mutes.get(u); return !!m && (m.until === null || m.until > Date.now()); };
+      const msgOf = id => this.chat.find(m => m.id === id);
+      if (name === 'yb_chat_list') return { status: 200, body: this.chat.slice(-80).map(m => ({ id: m.id, author_name: m.author_name, author_role: m.author_role, mine: m.author === me,
+        body: m.hidden && !admin ? null : m.body, hidden: m.hidden, created_at: m.created_at, reported: this.reports.some(r => r.message_id === m.id && r.reporter === me),
+        reports: admin ? this.reports.filter(r => r.message_id === m.id && !r.resolved).length : 0, author_muted: admin ? muted(m.author) : false })) };
+      if (name === 'yb_chat_seen') { this.reads.set(me, Math.max(this.reads.get(me) || 0, body.last_id || 0)); return { status: 200, body: null }; }
+      if (name === 'yb_chat_post') {
+        const b = String(body.body || '').trim();
+        if (!b || b.length > 500) return { status: 200, body: { ok: false, error: 'invalid_data' } };
+        if (muted(me)) return { status: 200, body: { ok: false, error: 'chat_muted' } };
+        const dg = b.replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[۰-۹]/g, d => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).replace(/[\s()+-]/g, '');
+        if (/[0-9]{7,}/.test(dg) || /[^\s@]+@[^\s@]+\.[a-z]{2,}/i.test(b)) return { status: 200, body: { ok: false, error: 'contact_not_allowed' } };
+        const lastMine = [...this.chat].reverse().find(m => m.author === me);
+        if (lastMine && Date.now() - lastMine.t < 3000) return { status: 200, body: { ok: false, error: 'too_fast' } };
+        const p = this.profiles.find(x => x.id === me);
+        const m = { id: ++this.chatSeq, author: me, author_name: p.full_name || '-', author_role: p.role, body: b, created_at: this.now(), t: Date.now(), hidden: false };
+        this.chat.push(m);
+        this.reads.set(me, m.id);
+        return { status: 200, body: { ok: true, id: m.id } };
+      }
+      if (name === 'yb_chat_report') {
+        const m = msgOf(body.message_id);
+        if (!m) return { status: 200, body: { ok: false, error: 'not_found' } };
+        if (m.author === me) return { status: 200, body: { ok: false, error: 'invalid_argument' } };
+        const first = !this.reports.some(r => r.message_id === m.id && !r.resolved);
+        if (!this.reports.some(r => r.message_id === m.id && r.reporter === me)) this.reports.push({ message_id: m.id, reporter: me, resolved: false });
+        if (first) this.notify(this.profiles.filter(p => p.role === 'admin').map(p => p.id), 'chat_report', { message_id: m.id });
+        return { status: 200, body: { ok: true } };
+      }
+      if (!admin) return raise('permission_denied', '42501');
+      if (name === 'yb_chat_hide') {
+        const m = msgOf(body.message_id);
+        if (!m) return { status: 200, body: { ok: false, error: 'not_found' } };
+        m.hidden = !!body.hide; this.reports.filter(r => r.message_id === m.id).forEach(r => { r.resolved = true; });
+        return { status: 200, body: { ok: true } };
+      }
+      if (name === 'yb_chat_resolve') { this.reports.filter(r => r.message_id === body.message_id).forEach(r => { r.resolved = true; }); return { status: 200, body: { ok: true } }; }
+      if (name === 'yb_chat_mute') {
+        const m = msgOf(body.message_id);
+        if (!m) return { status: 200, body: { ok: false, error: 'not_found' } };
+        this.mutes.set(m.author, { until: body.hours === null ? null : Date.now() + body.hours * 36e5, untilIso: body.hours === null ? null : new Date(Date.now() + body.hours * 36e5).toISOString() });
+        this.notify([m.author], 'chat_muted', { hours: body.hours });
+        return { status: 200, body: { ok: true } };
+      }
+      if (name === 'yb_chat_unmute') { const had = this.mutes.delete(body.target); return { status: 200, body: had ? { ok: true } : { ok: false, error: 'not_found' } }; }
+      if (name === 'yb_chat_mutes_list') return { status: 200, body: [...this.mutes.entries()].filter(([, v]) => v.until === null || v.until > Date.now())
+        .map(([u, v]) => { const p = this.profiles.find(x => x.id === u) || {}; return { user_id: u, full_name: p.full_name, role: p.role, until: v.untilIso, reason: null }; }) };
+      if (name === 'yb_chat_purge') return { status: 200, body: 0 };
     }
     /* migration 0008: projects and initiatives */
     if (name === 'yb_save_submission') {
@@ -1203,7 +1293,7 @@ let teamId = '';
   await settle(AD);
   const stateBefore = world.count(/tournament_state/);
   await signInOk(AD, ADMIN.email);
-  check('admin screen: role badge الإدارة, seven tabs (with الجدول and النتائج and المشاريع)', (await AD.locator('.a-head .a-badge').innerText()) === 'الإدارة' && (await AD.locator('[role=tab]').allInnerTexts()).join('|').replace(/\s+/g, ' ').includes('الجدول') && (await AD.locator('[role=tab]').count()) === 7);
+  check('admin screen: role badge الإدارة, eight tabs (with الجدول and النتائج and المشاريع and التواصل)', (await AD.locator('.a-head .a-badge').innerText()) === 'الإدارة' && (await AD.locator('[role=tab]').allInnerTexts()).join('|').replace(/\s+/g, ' ').includes('الجدول') && (await AD.locator('[role=tab]').count()) === 8);
   check('admin load does NOT poll or read the tournament state', world.count(/tournament_state/) === stateBefore);
   const counts = await AD.locator('.a-counters .a-count').allInnerTexts();
   check('counters by status (1 قيد المراجعة, 0 مطلوب تعديل, total 1)', counts.some(c => /^1\s*كل الفرق/.test(c.replace(/\n/g, ' '))) && counts.some(c => /^1\s*قيد المراجعة/.test(c.replace(/\n/g, ' '))) && counts.some(c => /^0\s*مطلوب تعديل/.test(c.replace(/\n/g, ' '))) && counts.some(c => /^0\s*معتمد/.test(c.replace(/\n/g, ' '))));
@@ -1330,7 +1420,7 @@ let memberEmail = 'sara@t.test', parentEmail = 'parent@t.test';
   check('member sees own consent status (received: set by the admin)', /استُلمت موافقة ولي الأمر/.test(mt));
   check('no admin / leader controls on the member screen', !(await M.locator('input[role=switch], form.a-add, button[data-fk=submit], .a-tabs-4').count()));
   const reqs = world.log.filter(l => l.who === world.profileByEmail(memberEmail).id).map(l => l.path.replace('/rest/v1/', ''));
-  check('member screen reads only my_team, my_roster, tournament_state and the own profile (never teams, team_members, profiles list)', reqs.every(r => /^(rpc\/(my_team|join_team|yb_mark_read)|my_roster|tournament_state|profiles|yb_notifications|yb_events|yb_submissions)$/.test(r)), [...new Set(reqs)].join());
+  check('member screen reads only my_team, my_roster, tournament_state and the own profile (never teams, team_members, profiles list)', reqs.every(r => /^(rpc\/(my_team|join_team|yb_mark_read)|my_roster|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements)$/.test(r)), [...new Set(reqs)].join());
   const tour = await M.locator('.a-sched').innerText();
   check('schedule card shows the empty state before the tournament is published', /لم تُنشر بيانات البطولة بعد/.test(tour));
   // second account tries the same name
@@ -1385,7 +1475,7 @@ let memberEmail = 'sara@t.test', parentEmail = 'parent@t.test';
   const chips = await P.locator('.a-child .a-consent .a-chip').allInnerTexts();
   check('two children: one «استُلمت», one «لم تُستلم بعد»; ONE schedule card for the shared team', chips.some(c => /^استُلمت/.test(c)) && chips.some(c => /لم تُستلم/.test(c)) && (await P.locator('.a-sched').count()) === 1);
   const preqs = world.log.filter(l => l.who === world.profileByEmail(parentEmail).id).map(l => l.path.replace('/rest/v1/', ''));
-  check('parent screen reads only my_children, tournament_state and the own profile', preqs.every(r => /^(rpc\/(link_child|yb_mark_read)|my_children|tournament_state|profiles|yb_notifications|yb_events|yb_submissions)$/.test(r)), [...new Set(preqs)].join());
+  check('parent screen reads only my_children, tournament_state and the own profile', preqs.every(r => /^(rpc\/(link_child|yb_mark_read)|my_children|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements)$/.test(r)), [...new Set(preqs)].join());
   check('parent console clean', P.errs.length === 0, P.errs.join('|'));
   world.P = P;
 }
@@ -2008,7 +2098,7 @@ section('demo mode: why sign up + three demo users, no admin, no backend');
   await S1.goto(`${ORIGIN}/index.html`);
   check('…the cleanup runs on every page (home page too)', await ok(S1.waitForFunction(() => localStorage.getItem('yanabee-session-v1') === null, null, { timeout: 4000 })));
   await S1.waitForLoadState('load'); await sleep(300);   // the home page's status strip asks for the public count after load
-  check('…the home page asked the real backend only for the public team count, signed out', fake.log.every(l => /yb_registration_stats/.test(l.path) && l.who === 'anon'), JSON.stringify(fake.log.map(l => l.path + ':' + l.who)));
+  check('…the home page asked the real backend only for the public team count and the public announcements, signed out', fake.log.every(l => /yb_registration_stats|\/yb_announcements$/.test(l.path) && l.who === 'anon'), JSON.stringify(fake.log.map(l => l.path + ':' + l.who)));
   fake.log = [];   // the demo checks below count requests from here
   await S1.goto(`${ORIGIN}/account.html`); await settle(S1);
   check('with a real backend the page still offers sign-up AND the demo side by side', (await S1.locator('[data-demo]').count()) === 3 && (await S1.locator('#panel-login').isVisible()) && /ليش تنشئ حسابًا؟/.test(await text(S1)));
@@ -2607,6 +2697,166 @@ section('projects and initiatives (0008): the leader documents with private phot
     check(`the ${who} reads the team's accepted work (read only, no buttons)`, /سقيا عمّال المدرسة/.test(vt) && /مقبول/.test(vt) && !(await V.locator('[data-subs-view] button').count()));
     await close(V);
   }
+}
+
+section('announcements and the leaders room (0009): the admin announces, the public strip, the supervised room');
+{
+  const fake = new Fake();
+  fake.addUser({ email: 'boss@t.test', name: 'المشرف', role: 'member' }); fake.setAdmin('boss@t.test');
+  fake.addUser({ email: 'fo@t.test', name: 'مسؤول الكرة', role: 'member' }); fake.setRole('fo@t.test', 'officer');
+  fake.officers.push({ user_id: fake.profileByEmail('fo@t.test').id, competition: 'football' });
+  fake.addUser({ email: 'la@t.test', name: 'قائد النور', role: 'leader' });
+  fake.addUser({ email: 'lb@t.test', name: 'قائد الأمل', role: 'leader' });
+  fake.addUser({ email: 'ma@t.test', name: 'سالم أحمد', role: 'member' });
+  fake.addUser({ email: 'pa@t.test', name: 'ولي يوسف', role: 'parent' });
+  fake.seedTeam({ leaderEmail: 'la@t.test', name: 'النور', status: 'approved', members: [{ name: 'سالم أحمد', age: 12 }, { name: 'يوسف علي', age: 13 }, { name: 'عمر حسن', age: 14 }, { name: 'زيد محمود', age: 15 }] });
+  fake.seedTeam({ leaderEmail: 'lb@t.test', name: 'الأمل', status: 'approved', members: [{ name: 'أنس بكر', age: 12 }, { name: 'جابر دار', age: 13 }, { name: 'هاني وليد', age: 14 }, { name: 'كريم سعد', age: 15 }] });
+  fake.members.find(m => m.full_name === 'سالم أحمد').user_id = fake.profileByEmail('ma@t.test').id;
+  fake.links.push({ parent_id: fake.profileByEmail('pa@t.test').id, member_id: fake.members.find(m => m.full_name === 'يوسف علي').id, created_at: fake.now() });
+
+  /* the admin writes two announcements */
+  const A = await open(fake, { label: 'comms-admin' });
+  await settle(A); await signInOk(A, 'boss@t.test');
+  await A.locator('#at-comms').click();
+  await A.waitForSelector('[data-fk="aann-new"]', { timeout: 8000 });
+  check('the «التواصل» tab holds the announcements desk and the leaders room', (await A.locator('[data-ann-desk]').count()) === 1 && (await A.locator('[data-chat]').count()) === 1);
+  await A.locator('[data-fk="aann-new"]').click();
+  check('the form warns not to name children', /لا تذكر أسماء الأطفال/.test(await A.locator('[data-ann-desk]').innerText()));
+  await A.locator('[data-fk="apub"]').click();
+  check('an empty announcement asks for a title', /اكتب عنوانًا للإعلان/.test(await A.locator('[data-ann-desk]').innerText()) && fake.ann.length === 0);
+  await A.locator('[data-ann-desk] input[name=atitle]').fill('افتتاح المسابقة');
+  await A.locator('[data-ann-desk] textarea[name=abody]').fill('يبدأ حفل الافتتاح الساعة الخامسة مساءً في قاعة الجمعية. ' + 'نرجو حضور الفرق مع أوليائها قبل الموعد بربع ساعة. '.repeat(3));
+  await A.locator('[data-fk="apub"]').click();
+  await A.waitForFunction(() => document.querySelectorAll('[data-ann-desk] [data-ann]').length === 1);
+  check('«انشر الآن» publishes it to everybody', fake.ann.length === 1 && fake.ann[0].published && fake.ann[0].audience === 'all');
+  check('everybody but the admin is told in their inbox', ['fo@t.test', 'la@t.test', 'lb@t.test', 'ma@t.test', 'pa@t.test'].every(e => fake.notes.some(n => n.kind === 'announcement' && n.user_id === fake.profileByEmail(e).id)));
+  await A.locator('[data-fk="aann-new"]').click();
+  await A.locator('[data-ann-desk] input[name=atitle]').fill('اجتماع القادة');
+  await A.locator('[data-ann-desk] textarea[name=abody]').fill('اجتماع القادة يوم الخميس بعد العصر.');
+  await A.locator('[data-ann-desk] select[name=aud]').selectOption('leaders');
+  await A.locator('[data-fk="adraft"]').click();
+  await A.waitForFunction(() => document.querySelectorAll('[data-ann-desk] [data-ann]').length === 2);
+  const lead = fake.ann.find(a => a.title === 'اجتماع القادة');
+  check('«احفظ مسودة» keeps it unpublished and tells nobody', lead && !lead.published && !fake.notes.some(n => n.kind === 'announcement' && n.data.title === 'اجتماع القادة'));
+  await A.locator(`[data-fk="atog-${lead.id}"]`).click();
+  await A.waitForFunction(id => /منشور/.test(document.querySelector(`[data-ann="${id}"]`).innerText), lead.id);
+  check('«انشره» publishes the draft; the leaders and officers are told', lead.published && fake.notes.some(n => n.kind === 'announcement' && n.data.title === 'اجتماع القادة' && n.user_id === fake.profileByEmail('la@t.test').id)
+    && !fake.notes.some(n => n.kind === 'announcement' && n.data.title === 'اجتماع القادة' && n.user_id === fake.profileByEmail('ma@t.test').id));
+  check('admin console clean (announcements)', A.errs.length === 0, A.errs.join('|'));
+  await close(A);
+
+  /* the public strip */
+  for (const pth of ['index.html', 'tournament.html']) {
+    const before = fake.log.length;
+    const V = await open(fake, { path: pth, label: 'news-' + pth });
+    await V.waitForSelector('[data-yb-news]:not([hidden])', { timeout: 8000 });
+    const t = await V.locator('[data-yb-news]').innerText();
+    check(`${pth}: «آخر الإعلانات» shows the public announcement only`, /افتتاح المسابقة/.test(t) && !/اجتماع القادة/.test(t));
+    if (pth === 'index.html') {
+      await V.locator('.ybn-more').click();
+      check('a long announcement opens with «اقرأ الإعلان كاملًا»', (await V.locator('.ybn-more').getAttribute('aria-expanded')) === 'true');
+    }
+    check(`${pth}: the strip was read signed out, without the author column`, fake.log.slice(before).filter(l => l.path.endsWith('/yb_announcements')).every(l => l.who === 'anon' && !/created_by/.test(l.search)) && fake.log.slice(before).some(l => l.path.endsWith('/yb_announcements')));
+    await close(V);
+  }
+
+  /* leader A posts in the room */
+  const LA = await open(fake, { label: 'comms-la' });
+  await settle(LA); await signInOk(LA, 'la@t.test');
+  await LA.waitForSelector('[data-ann-feed]:not([hidden])', { timeout: 8000 });
+  check('the leader feed shows «all» and «leaders» announcements', /افتتاح المسابقة/.test(await LA.locator('[data-ann-feed]').innerText()) && /اجتماع القادة/.test(await LA.locator('[data-ann-feed]').innerText()));
+  check('the leader has the leaders room, closed', (await LA.locator('[data-chat]').count()) === 1 && (await LA.locator('[data-chat] .a-chat-l').count()) === 0);
+  await LA.locator('[data-fk="lchat-open"]').click();
+  await LA.waitForSelector('[data-chat] .a-chat-l');
+  await LA.locator('[data-fk="lchat-ta"]').fill('رقمي ٠٥٣٠ ٥١٧ ٥٤ ٣١ للتواصل');
+  await LA.locator('[data-chat] form button[type=submit]').click();
+  await LA.waitForFunction(() => /لا تُكتب أرقام الهواتف/.test(document.querySelector('[data-chat]').innerText));
+  check('a phone number (Arabic digits, spaces) is refused with a clear message', fake.chat.length === 0);
+  await LA.locator('[data-fk="lchat-ta"]').fill('السلام عليكم، متى تدريب الجمعة؟');
+  await LA.locator('[data-chat] form button[type=submit]').click();
+  await LA.waitForSelector('[data-chat] .a-chat-i.mine');
+  check('the message is posted and shown as «أنت»', fake.chat.length === 1 && /أنت/.test(await LA.locator('[data-chat] .a-chat-i.mine').innerText()));
+  await LA.locator('[data-fk="lchat-ta"]').fill('ونحتاج كرة إضافية');
+  await LA.locator('[data-chat] form button[type=submit]').click();
+  await LA.waitForFunction(() => /انتظر ثواني/.test(document.querySelector('[data-chat]').innerText));
+  check('a second message within 3 seconds waits', fake.chat.length === 1);
+  check('leader console clean (room)', LA.errs.length === 0, LA.errs.join('|'));
+  await close(LA);
+
+  /* leader B: unread, reads, reports */
+  const LB = await open(fake, { label: 'comms-lb', mobile: true });
+  await settle(LB); await signInOk(LB, 'lb@t.test');
+  await LB.waitForFunction(() => /1 رسالة جديدة/.test((document.querySelector('[data-chat]') || {}).innerText || ''), null, { timeout: 8000 });
+  check('another leader sees «1 رسالة جديدة» on the closed room', true);
+  await LB.locator('[data-fk="lchat-open"]').click();
+  await LB.waitForSelector('[data-chat] .a-chat-i');
+  check('they read the message with the name and the role', /قائد النور/.test(await LB.locator('[data-chat] .a-chat-i').first().innerText()) && /قائد/.test(await LB.locator('[data-chat] .a-chat-i').first().innerText()));
+  check('opening marks it seen', (fake.reads.get(fake.profileByEmail('lb@t.test').id) || 0) === fake.chat[0].id);
+  check('phone width: the open room does not overflow', (await overflow(LB)) <= 0);
+  const mid = fake.chat[0].id;
+  await LB.locator(`[data-fk="crep-${mid}"]`).click();
+  check('reporting needs a second press', fake.reports.length === 0);
+  await LB.locator(`[data-fk="crep-${mid}"]`).click();
+  await LB.waitForFunction(() => /بلّغتَ عنها/.test(document.querySelector('[data-chat]').innerText));
+  check('the report reaches the admin', fake.reports.length === 1 && fake.notes.some(n => n.kind === 'chat_report' && n.user_id === fake.profileByEmail('boss@t.test').id));
+  await close(LB);
+
+  /* members and parents: no room */
+  for (const [email, who] of [['ma@t.test', 'member'], ['pa@t.test', 'parent']]) {
+    const V = await open(fake, { label: 'comms-' + who });
+    await settle(V); await signInOk(V, email);
+    await V.waitForSelector('[data-ann-feed]:not([hidden])', { timeout: 8000 });
+    check(`the ${who} reads «all» announcements only and has no leaders room`, /افتتاح المسابقة/.test(await V.locator('[data-ann-feed]').innerText()) && !/اجتماع القادة/.test(await V.locator('[data-ann-feed]').innerText())
+      && (await V.locator('[data-chat]').count()) === 0 && !fake.log.some(l => /yb_chat_(list|post)/.test(l.path) && l.who === fake.profileByEmail(email).id));
+    await close(V);
+  }
+
+  /* the officer is in the room */
+  const FO = await open(fake, { label: 'comms-fo' });
+  await settle(FO); await signInOk(FO, 'fo@t.test');
+  await FO.waitForSelector('[data-chat]', { timeout: 8000 });
+  check('an officer has the leaders room too', (await FO.locator('[data-chat]').count()) === 1);
+  await close(FO);
+
+  /* the admin moderates */
+  const A2 = await open(fake, { label: 'comms-admin2' });
+  await settle(A2); await signInOk(A2, 'boss@t.test');
+  await A2.locator('#at-comms').click();
+  await A2.waitForSelector('[data-fk="achat-open"]', { timeout: 8000 });
+  await A2.locator('[data-fk="achat-open"]').click();
+  await A2.waitForSelector(`[data-msg="${mid}"]`);
+  check('the admin sees «1 بلاغ» on the reported message', /1 بلاغ/.test(await A2.locator(`[data-msg="${mid}"]`).innerText()));
+  await A2.locator(`[data-fk="chide-${mid}"]`).click();
+  await A2.waitForFunction(id => /مخفية عن الغرفة/.test(document.querySelector(`[data-msg="${id}"]`).innerText), mid);
+  check('«أخفها» hides it and closes the report', fake.chat[0].hidden && fake.reports.every(r => r.resolved));
+  await A2.locator(`[data-fk="cmsel-${mid}"]`).selectOption('24');
+  await A2.locator(`[data-fk="cmute-${mid}"]`).click();
+  await A2.waitForFunction(() => /قائد النور/.test(document.querySelector('.a-chat-mutes').innerText));
+  check('«أوقف مشاركته» mutes the author for a day; the list shows them; they are told', fake.mutes.has(fake.profileByEmail('la@t.test').id) && fake.notes.some(n => n.kind === 'chat_muted' && n.user_id === fake.profileByEmail('la@t.test').id));
+  const laId = fake.profileByEmail('la@t.test').id;
+  await close(A2);
+  const LA2 = await open(fake, { label: 'comms-la2' });
+  await settle(LA2); await signInOk(LA2, 'la@t.test');
+  await LA2.waitForSelector('[data-fk="lchat-open"]', { timeout: 8000 });
+  await LA2.locator('[data-fk="lchat-open"]').click();
+  await LA2.waitForSelector(`[data-msg="${mid}"]`);
+  check('the author sees their own message hidden by the admin', /أخفت الإدارة هذه الرسالة/.test(await LA2.locator(`[data-msg="${mid}"]`).innerText()));
+  await LA2.locator('[data-fk="lchat-ta"]').fill('هل وصلت رسالتي؟');
+  await LA2.locator('[data-chat] form button[type=submit]').click();
+  await LA2.waitForFunction(() => /أوقفت الإدارة مشاركتك/.test(document.querySelector('[data-chat]').innerText));
+  check('a muted leader cannot post (and is told why)', fake.chat.length === 1);
+  await close(LA2);
+  const A3 = await open(fake, { label: 'comms-admin3' });
+  await settle(A3); await signInOk(A3, 'boss@t.test');
+  await A3.locator('#at-comms').click();
+  await A3.waitForSelector('[data-fk="achat-open"]', { timeout: 8000 });
+  await A3.locator('[data-fk="achat-open"]').click();
+  await A3.waitForSelector(`[data-fk="cun-${laId}"]`, { timeout: 8000 });
+  await A3.locator(`[data-fk="cun-${laId}"]`).click();
+  await A3.waitForFunction(() => /لا أحد موقوف الآن/.test(document.querySelector('.a-chat-mutes').innerText));
+  check('«أعد مشاركته» unmutes', !fake.mutes.has(laId));
+  check('admin console clean (room)', A3.errs.length === 0, A3.errs.join('|'));
+  await close(A3);
 }
 
 section('network hosts and console');
