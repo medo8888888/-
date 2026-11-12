@@ -483,6 +483,9 @@
     if (n.kind === 'team_approved') return `اعتُمد ${team} في المسابقة.`;
     if (n.kind === 'team_fee') return d.fee === 'waived' ? `أعفت الإدارة ${team} من رسوم الاشتراك.` : `سُجّل سداد رسوم ${team}.`;
     if (n.kind === 'team_seated') return `خلا مكان في المسابقة، فانتقل ${team} من قائمة الاحتياط إلى الفرق المشاركة.`;
+    if (n.kind === 'result_pending') return `نتيجة بانتظار اعتمادك: ${d.a_name || ''} ${d.sa ?? ''} – ${d.sb ?? ''} ${d.b_name || ''}`.replace(/\s+/g, ' ').trim();
+    if (n.kind === 'result_approved') return `اعتُمدت نتيجة مباراة لفريقك (${d.comp === 'chess' ? 'الشطرنج' : `${d.sa} – ${d.sb}`}) وظهرت في لوحة البطولة.`;
+    if (n.kind === 'result_returned') return `أعادت الإدارة نتيجة مباراة للمراجعة: ${d.note || ''}`;
     if (n.kind === 'event_new') return `موعد جديد: ${d.title || ''} — ${fmtWhen(d.starts_at)}${d.place ? ' · ' + d.place : ''}`;
     if (n.kind === 'event_changed') return `تغيّر موعد: ${d.title || ''} — ${fmtWhen(d.starts_at)}${d.place ? ' · ' + d.place : ''}`;
     if (n.kind === 'event_cancelled') return `أُلغي موعد: ${d.title || ''}`;
@@ -821,8 +824,8 @@
         h('b', { text: String(n) }), h('span', { text: label })))));
   }
   function adminTabs() {
-    const defs = [['teams', 'الفرق', 'users'], ['people', 'الأشخاص', 'user'], ['schedule', 'الجدول', 'calendar'], ['tour', 'لوحة البطولة', 'trophy'], ['export', 'تصدير', 'file-text']];
-    const list = h('div', { role: 'tablist', 'aria-label': 'أقسام الإدارة', class: 'a-tabs a-tabs-4 a-tabs-5' });
+    const defs = [['teams', 'الفرق', 'users'], ['people', 'الأشخاص', 'user'], ['schedule', 'الجدول', 'calendar'], ['results', 'النتائج', 'flag'], ['tour', 'لوحة البطولة', 'trophy'], ['export', 'تصدير', 'file-text']];
+    const list = h('div', { role: 'tablist', 'aria-label': 'أقسام الإدارة', class: 'a-tabs a-tabs-4 a-tabs-5 a-tabs-6' });
     const els = defs.map(([k, label, ic], i) => {
       const on = A.tab === k;
       const b = h('button', { type: 'button', role: 'tab', id: 'at-' + k, 'aria-controls': 'ap-' + k, 'aria-selected': String(on), tabIndex: on ? 0 : -1, class: 'a-tab', 'data-fk': 'tab-' + k,
@@ -844,6 +847,10 @@
     if (A.tab === 'teams') drawAdminTeams(panel);
     else if (A.tab === 'people') drawAdminPeople(panel);
     else if (A.tab === 'tour') drawAdminTour(panel);
+    else if (A.tab === 'results') {
+      if (!A.res) { A.res = resultsDesk(['football', 'chess'], true, 'ares'); A.res.start(); }
+      panel.append(A.res.el);
+    }
     else if (A.tab === 'schedule') {
       if (!A.evm) A.evm = eventManager(Object.keys(COMPS), () => A.teams.map(t => ({ id: t.id, name: t.name })), 'adm');
       panel.append(A.evm.el);
@@ -1192,6 +1199,11 @@
         : h('p', { class: 'a-lead', text: 'لم تُسند إليك مسابقة بعد. يسندها المشرف العام من قسم «الأشخاص».' }))];
     if (O.comps.includes('registration')) nodes.push(reviewQueue());
     if (O.roles) nodes.push(roleListCard());
+    const games = O.comps.filter(k => k === 'football' || k === 'chess');
+    if (games.length) {
+      if (!O.res) { O.res = resultsDesk(games, false, 'ores'); O.res.start(); }
+      nodes.push(O.res.el);
+    }
     const others = O.comps.filter(k => k !== 'registration');
     if (others.length) {
       if (!O.evm) O.evm = eventManager(others, () => O.pub, 'off');
@@ -1260,6 +1272,259 @@
         btn('إرجاع للتعديل', 'repeat', 'btn-ghost', () => go('return', `أُرجع فريق ${t.team_name} لقائده للتعديل.`), { 'data-fk': 'ort-' + t.team_id }),
         armed(btn('رفض', 'x', 'btn-ghost btn-danger', () => {}, { 'data-fk': 'orj-' + t.team_id }), 'اضغط مرة أخرى لتأكيد الرفض', () => go('reject', `رُفض فريق ${t.team_name}.`))));
     return bar;
+  }
+
+  /* ------------------------------------------------------------------ RESULTS (migration 0007)
+     The officer enters the live score, cards, scorers and «روح الفريق», then finishes the match; the admin approves it
+     (the board is published with the result in the same step) or sends it back with a note. Only approved results
+     reach the board and its standings. comps: the games this desk handles; admin: shows the approval queue. */
+  const RES_W = { live: 'جارية الآن', final: 'بانتظار الاعتماد', returned: 'أعادتها الإدارة', approved: 'معتمدة' };
+  const resChip = s => chip(RES_W[s] || 'لم تبدأ', { live: 'bad', final: 'sun', returned: 'sun', approved: 'ok' }[s] || 'muted');
+  function resultsDesk(comps, admin, fk) {
+    const YT = window.YTour;   // the tournament engine (js/tournament-engine.js)
+    const R = { st: null, at: null, rows: [], open: null, roster: {}, marks: [], busy: false, err: '' };
+    const el = h('section', { class: 'a-card a-res', 'data-results': '', 'aria-labelledby': fk + '-res-h' });
+    const nmOf = id => { const t = R.st && (R.st.teams || []).find(x => x.id === id); return t ? t.name : '—'; };
+    const rowOf = (comp, key) => R.rows.find(x => x.comp === comp && x.match_key === key);
+    const minOf = x => { const t = Date.parse((x && x.started_at) || ''); return isNaN(t) ? null : Math.max(0, Math.floor((Date.now() - t) / 60000)); };
+    const focusFk = k => { const f = el.querySelector(`[data-fk="${CSS.escape(k)}"]`); if (f) f.focus({ preventScroll: true }); };
+    async function load() {
+      let g = null;
+      try { g = await YB.getState(); } catch (e) { g = null; }
+      R.st = g && g.state ? YT.normalize(g.state) : null;
+      R.at = g ? g.updated_at : null;
+      const q = await YB.rpc('yb_results_queue', {});
+      R.rows = q.ok && Array.isArray(q.data) ? q.data : [];
+      R.err = q.ok ? '' : errMsg(q);
+    }
+    async function loadMarks() {
+      R.marks = [];
+      if (!R.open) return;
+      const [comp, key] = [R.open.slice(0, R.open.indexOf('/')), R.open.slice(R.open.indexOf('/') + 1)];
+      if (!rowOf(comp, key)) return;
+      const r = await YB.rpc('yb_match_marks_of', { comp, match_key: key });
+      R.marks = r.ok && Array.isArray(r.data) ? r.data : [];
+    }
+    async function loadRoster(team) {
+      if (R.roster[team]) return;
+      const r = await YB.rpc('yb_match_roster', { comp: 'football', team_id: team });
+      R.roster[team] = r.ok && Array.isArray(r.data) ? r.data : [];
+    }
+    async function refresh(msg, focus) {
+      await load();
+      await loadMarks();
+      paint();
+      if (msg) say(msg);
+      if (focus) focusFk(focus);
+    }
+    function fbMatches() {
+      if (!R.st) return [];
+      let fb;
+      try { fb = YT.football(R.st); } catch (e) { return []; }
+      const out = [];
+      (fb.groups || []).forEach(g => g.rounds.forEach(rd => rd.matches.forEach(m => { if (m.a && m.b) out.push({ m, label: `المجموعة ${g.name} · الجولة ${rd.round}` }); })));
+      if (fb.final) fb.final.rounds.forEach(rd => rd.matches.forEach(m => { if (m.a && m.b) out.push({ m, label: `التصفيات · الجولة ${rd.round}` }); }));
+      return out;
+    }
+    function chMatches() {
+      if (!R.st) return [];
+      let ch;
+      try { ch = YT.chess(R.st); } catch (e) { return []; }
+      const out = [];
+      ['r1', 'r2'].forEach((st, si) => ((ch[st] && ch[st].matches) || []).forEach((m, i) => { if (m.a && m.b) out.push({ key: `w:${st}:${i}`, a: m.a, b: m.b, w: m.w, label: `الجولة ${si + 1}` }); }));
+      ((ch.rr && ch.rr.matches) || []).forEach(m => { if (m.a && m.b) out.push({ key: 'rr:' + YT.pairKey(m.a, m.b), a: m.a, b: m.b, w: m.w, label: 'دوري الثلاثة' }); });
+      if (ch.final && ch.final.a && ch.final.b) out.push({ key: 'final', a: ch.final.a, b: ch.final.b, w: ch.final.w, label: 'النهائي' });
+      return out;
+    }
+    const scoreOf = (x, a) => (x.a === a ? [x.sa, x.sb] : [x.sb, x.sa]);
+    function scoreText(x) {
+      return x.comp === 'chess' ? `${nmOf(x.a)} ضد ${nmOf(x.b)} · الفائز: ${nmOf(x.sa > x.sb ? x.a : x.b)}` : `${nmOf(x.a)} ${x.sa} – ${x.sb} ${nmOf(x.b)}`;
+    }
+
+    /* the admin's queue */
+    function queueBox() {
+      const wait = R.rows.filter(x => x.status === 'final');
+      return h('div', { class: 'a-res-q', 'data-res-queue': '' }, h('h4', { text: `بانتظار اعتمادك (${wait.length})` }),
+        wait.length ? h('ul', { class: 'a-res-l' }, wait.map(qItem)) : h('p', { class: 'a-hint', text: 'لا نتائج تنتظر الاعتماد.' }));
+    }
+    function qItem(x) {
+      const id = x.comp + '-' + x.match_key;
+      const note = h('textarea', { class: 'a-note-in', rows: 2, maxlength: 300, placeholder: 'ملاحظة عند الإعادة للمسؤول', 'aria-label': 'ملاحظة الإعادة' });
+      const msg = h('p', { class: 'a-live-msg', role: 'alert', hidden: true });
+      return h('li', { class: 'a-res-i', 'data-res': x.match_key },
+        h('div', { class: 'a-res-h' }, chip(x.comp === 'chess' ? 'الشطرنج' : 'كرة القدم', 'brand'), h('b', { text: scoreText(x) })),
+        x.comp === 'football' ? h('small', { class: 'a-hint', text: `البطاقات: ${x.ca} / ${x.cb} (الحمراء ${x.ra} / ${x.rb}) · أهداف بأسماء أصحابها: ${x.goals} · «روح الفريق»: ${x.spirit}` }) : null,
+        x.note ? h('p', { class: 'a-note' }, h('b', { text: 'ملاحظة المسؤول: ' }), x.note) : null,
+        note, msg,
+        h('div', { class: 'a-actions' },
+          btn('اعتمد وانشر في اللوحة', 'check', 'btn-primary', () => approve(x, msg), { 'data-fk': 'rap-' + id }),
+          btn('أعدها للمسؤول', 'repeat', 'btn-ghost', async () => {
+            const nv = note.value.trim();
+            if (!nv) { msg.textContent = 'اكتب في الملاحظة ما المطلوب مراجعته.'; msg.hidden = false; say(msg.textContent); note.focus(); return; }
+            const r = await YB.rpc('yb_result_return', { comp: x.comp, match_key: x.match_key, note: nv });
+            if (!r.ok) { if (!sessionLost(r)) { msg.textContent = errMsg(r); msg.hidden = false; } return; }
+            await refresh('أُعيدت النتيجة إلى المسؤول.');
+          }, { 'data-fk': 'rrt-' + id })));
+    }
+    async function approve(x, msg) {
+      if (R.busy) return;
+      R.busy = true;
+      const fail = t => { R.busy = false; msg.textContent = t; msg.hidden = false; say(t); };
+      let g;
+      try { g = await YB.getState(); } catch (e) { return fail(YB.errorText(e)); }
+      if (!g || !g.state) return fail('لم تُنشر لوحة البطولة بعد.');
+      let S;
+      try {
+        S = YT.normalize(g.state);
+        if (x.comp === 'football') S = YT.setResult(S, { a: x.a, b: x.b, sa: x.sa, sb: x.sb, ca: x.ca, cb: x.cb, ra: x.ra, rb: x.rb });
+        else {
+          const w = x.sa > x.sb ? x.a : x.b;
+          if (x.match_key === 'final') S = YT.setChessFinal(S, w);
+          else if (x.match_key.indexOf('rr:') === 0) S = YT.setChessRR(S, x.a, x.b, w);
+          else { const p = x.match_key.split(':'); S = YT.setChessWinner(S, p[1], +p[2], w); }
+        }
+      } catch (e) { return fail('تعذّر تطبيق النتيجة على لوحة البطولة (تغيّرت المباراة أو ترتيبها). راجع اللوحة ثم أعد المحاولة.'); }
+      const st = YT.stamp(S, new Date().toISOString());
+      (st.teams || []).forEach(t => { delete t.chess; });   // player labels are never published
+      const r = await YB.rpc('yb_result_approve', { comp: x.comp, match_key: x.match_key, state: st, prev: g.updated_at });
+      R.busy = false;
+      if (!r.ok) { if (!sessionLost(r)) fail(errMsg(r)); return; }
+      if (r.data && r.data.conflict) return fail('تغيّرت لوحة البطولة للتو. اضغط «اعتمد» مرة أخرى.');
+      await refresh('اعتُمدت النتيجة ونُشرت في لوحة البطولة.');
+    }
+
+    /* football: live entry */
+    function fbBox() {
+      const open = fbMatches().filter(o => !o.m.res);
+      return h('div', { class: 'a-res-fb', 'data-res-fb': '' }, h('h4', { text: 'مباريات كرة القدم' }),
+        open.length ? h('ul', { class: 'a-list a-res-l' }, open.map(fbItem))
+          : h('p', { class: 'a-hint', text: 'لا مباريات مفتوحة: تظهر هنا المباريات التي تحدد طرفاها ولم تُعتمد نتيجتها.' }));
+    }
+    function fbItem(o) {
+      const m = o.m, key = YT.pairKey(m.a, m.b), x = rowOf('football', key);
+      const isOpen = R.open === 'football/' + key;
+      const s = x ? scoreOf(x, m.a) : null;
+      const head = h('button', { type: 'button', class: 'a-team-h', 'aria-expanded': String(isOpen), 'data-fk': 'rfx-' + key,
+        onclick: async () => {
+          R.open = isOpen ? null : 'football/' + key;
+          if (!isOpen) { await Promise.all([loadRoster(m.a), loadRoster(m.b)]); await loadMarks(); }
+          paint(); focusFk('rfx-' + key);
+        } },
+        h('span', { class: 'a-team-t' }, h('b', { text: `${nmOf(m.a)} ضد ${nmOf(m.b)}` }), h('small', { text: o.label })),
+        h('span', { class: 'a-team-m' }, resChip(x && x.status), s ? h('small', { dir: 'rtl', text: `${s[0]} – ${s[1]}` }) : null), icon('chevron-down'));
+      return h('article', { class: 'a-team' + (isOpen ? ' open' : ''), 'data-fx': key }, head, isOpen ? livePanel(m, key, x) : null);
+    }
+    function livePanel(m, key, x) {
+      const v = x ? { sa: x.sa, sb: x.sb, ca: x.ca, cb: x.cb, ra: x.ra, rb: x.rb } : { sa: 0, sb: 0, ca: 0, cb: 0, ra: 0, rb: 0 };
+      if (x && x.a !== m.a) { [v.sa, v.sb, v.ca, v.cb, v.ra, v.rb] = [v.sb, v.sa, v.cb, v.ca, v.rb, v.ra]; }
+      const noteIn = h('textarea', { class: 'a-note-in', rows: 2, maxlength: 200, placeholder: 'ملاحظة للإدارة (اختيارية)', 'aria-label': 'ملاحظة للإدارة', value: (x && x.note) || '' });
+      const save = async (patch, status, extra, focus) => {
+        if (R.busy) return false;
+        R.busy = true;
+        const n = Object.assign({}, v, patch);
+        const r = await YB.rpc('yb_live_set', Object.assign({ comp: 'football', match_key: key, a: m.a, b: m.b, sa: n.sa, sb: n.sb, ca: n.ca, cb: n.cb, ra: n.ra, rb: n.rb,
+          status: status || 'live', note: noteIn.value.trim() || null, start: false, a_name: nmOf(m.a), b_name: nmOf(m.b) }, extra || {}));
+        R.busy = false;
+        if (!r.ok) { if (!sessionLost(r)) say(errMsg(r)); return false; }
+        await refresh(null, focus);
+        return true;
+      };
+      if (!x) {
+        return h('div', { class: 'a-lv' }, h('p', { class: 'a-lead', text: 'عند صافرة البداية اضغط «ابدأ المباراة»: يظهر للجميع أنها جارية مع عدّاد الدقائق.' }),
+          h('div', { class: 'a-actions' }, btn('ابدأ المباراة', 'flag', 'btn-primary', () => save({}, 'live', { start: true }, 'rsc-a-' + key), { 'data-fk': 'rstart-' + key })));
+      }
+      if (x.status === 'approved') return h('div', { class: 'a-lv' }, h('p', { class: 'a-hint', text: 'اعتمدت الإدارة هذه النتيجة. يعدّلها المشرف العام من لوحة البطولة، ويُسجَّل كل تعديل.' }));
+      const waiting = x.status === 'final';
+      const min = minOf(x);
+      const side = (t, sk, ck, rk, tag) => {
+        const sel = h('select', { 'aria-label': 'صاحب الهدف من ' + nmOf(t), 'data-fk': 'rsel-' + tag + '-' + key },
+          h('option', { value: '', text: 'هدف بلا اسم' }), (R.roster[t] || []).map(p => h('option', { value: p.member_id, text: p.full_name })));
+        const spSel = h('select', { 'aria-label': '«روح الفريق» من ' + nmOf(t), 'data-fk': 'rsp-' + tag + '-' + key },
+          h('option', { value: '', text: 'اختر لاعبًا' }), (R.roster[t] || []).map(p => h('option', { value: p.member_id, text: p.full_name })));
+        const step = (k, d, max, label, fkk) => btn(label, null, 'btn-ghost a-step', () => {
+          const nv = Math.max(0, Math.min(max, v[k] + d));
+          if (k === ck && nv < v[rk]) return;   // cards include the reds
+          if (k === rk && nv > v[ck]) return;
+          if (nv !== v[k]) save({ [k]: nv }, 'live', null, fkk);
+        }, { 'data-fk': fkk, disabled: waiting });
+        const goal = btn('هدف', 'check', 'btn-primary', async () => {
+          if (R.busy) return;
+          // the goal is recorded first (with its scorer when one is picked), then the score goes up by one
+          const r = await YB.rpc('yb_mark_add', { comp: 'football', match_key: key, team_id: t, kind: 'goal', member_id: sel.value || null, minute: minOf(x) });
+          if (!r.ok) { if (!sessionLost(r)) say(errMsg(r)); return; }
+          await save({ [sk]: Math.min(99, v[sk] + 1) }, 'live', null, 'rgoal-' + tag + '-' + key);
+          say(`هدف لـ ${nmOf(t)}.`);
+        }, { 'data-fk': 'rgoal-' + tag + '-' + key, disabled: waiting });
+        const spirit = btn('امنح «روح الفريق»', 'hand-heart', 'btn-ghost', async () => {
+          if (!spSel.value) { say('اختر لاعبًا أولًا.'); spSel.focus(); return; }
+          const r = await YB.rpc('yb_mark_add', { comp: 'football', match_key: key, team_id: t, kind: 'spirit', member_id: spSel.value, minute: null });
+          if (!r.ok) { if (!sessionLost(r)) say(errMsg(r)); return; }
+          await refresh(`مُنحت «روح الفريق» في ${nmOf(t)}.`, 'rspb-' + tag + '-' + key);
+        }, { 'data-fk': 'rspb-' + tag + '-' + key });
+        return h('div', { class: 'a-live-side', 'data-side': tag },
+          h('b', { class: 'a-live-t', text: nmOf(t) }),
+          h('div', { class: 'a-live-score' }, step(sk, -1, 99, '−', 'rsc-' + tag + '-' + key), h('output', { class: 'a-live-n', text: String(v[sk]), 'aria-label': 'أهداف ' + nmOf(t) }), step(sk, 1, 99, '+', 'rsc+' + tag + '-' + key)),
+          h('div', { class: 'a-live-goal' }, sel, goal),
+          h('div', { class: 'a-live-cards' }, h('span', { text: `البطاقات ${v[ck]}` }), step(ck, -1, 30, '−', 'rca-' + tag + '-' + key), step(ck, 1, 30, '+', 'rca+' + tag + '-' + key),
+            h('span', { text: `منها حمراء ${v[rk]}` }), step(rk, -1, 30, '−', 'rre-' + tag + '-' + key), step(rk, 1, 30, '+', 'rre+' + tag + '-' + key)),
+          h('div', { class: 'a-live-goal' }, spSel, spirit));
+      };
+      const marks = R.marks.filter(k => k.kind === 'goal' || k.kind === 'spirit');
+      const mList = marks.length ? h('ul', { class: 'a-roles a-live-marks' }, marks.map(k => h('li', {},
+        chip(k.kind === 'goal' ? 'هدف' : '«روح الفريق»', k.kind === 'goal' ? 'ok' : 'role'),
+        h('b', { text: (k.full_name || 'بلا اسم') }), h('small', { text: `${nmOf(k.team_id)}${k.minute !== null && k.minute !== undefined ? ' · الدقيقة ' + k.minute : ''}` }),
+        btn('حذف', 'x', 'btn-ghost btn-danger', async () => {
+          const r = await YB.rpc('yb_mark_del', { id: k.id });
+          if (!r.ok) { if (!sessionLost(r)) say(errMsg(r)); return; }
+          await refresh('حُذف.');
+        }, { 'aria-label': 'حذف ' + (k.kind === 'goal' ? 'الهدف' : '«روح الفريق»') })))) : null;
+      return h('div', { class: 'a-lv', 'data-live-panel': key },
+        h('div', { class: 'a-chips-row' }, resChip(x.status), min !== null && x.status === 'live' ? chip(`الدقيقة ${min}`, 'muted') : null),
+        x.return_note ? h('p', { class: 'a-note' }, h('b', { text: 'ملاحظة الإدارة: ' }), x.return_note) : null,
+        waiting ? h('p', { class: 'a-hint', text: 'أُرسلت النتيجة للاعتماد. تظهر للجميع «بانتظار الاعتماد» ولا تدخل الترتيب حتى تُعتمد.' }) : null,
+        h('div', { class: 'a-live-grid' }, side(m.a, 'sa', 'ca', 'ra', 'a'), side(m.b, 'sb', 'cb', 'rb', 'b')),
+        mList, noteIn,
+        h('div', { class: 'a-actions' },
+          waiting ? btn('عدّل النتيجة', 'repeat', 'btn-ghost', () => save({}, 'live', null, 'rfin-' + key), { 'data-fk': 'rfin-' + key })
+            : btn('أنهِ المباراة وأرسلها للاعتماد', 'send', 'btn-primary', async () => { if (await save({}, 'final', null, 'rfx-' + key)) say('أُرسلت النتيجة للاعتماد.'); }, { 'data-fk': 'rfin-' + key })));
+    }
+
+    /* chess: report the winner */
+    function chBox() {
+      const ms = chMatches().filter(c => !c.w);
+      return h('div', { class: 'a-res-ch', 'data-res-ch': '' }, h('h4', { text: 'مباريات الشطرنج' }),
+        ms.length ? h('ul', { class: 'a-res-l' }, ms.map(c => {
+          const x = rowOf('chess', c.key);
+          const can = !x || x.status === 'returned' || x.status === 'live';
+          return h('li', { class: 'a-res-i', 'data-ch': c.key },
+            h('div', { class: 'a-res-h' }, h('b', { text: `${nmOf(c.a)} ضد ${nmOf(c.b)}` }), h('small', { class: 'a-hint', text: c.label }), resChip(x && x.status)),
+            x && x.return_note ? h('p', { class: 'a-note' }, h('b', { text: 'ملاحظة الإدارة: ' }), x.return_note) : null,
+            can ? h('div', { class: 'a-actions' }, [c.a, c.b].map((t, i) => btn('فاز ' + nmOf(t), 'trophy', 'btn-ghost', async () => {
+              const r = await YB.rpc('yb_live_set', { comp: 'chess', match_key: c.key, a: c.a, b: c.b, sa: i === 0 ? 1 : 0, sb: i === 0 ? 0 : 1, status: 'final', a_name: nmOf(c.a), b_name: nmOf(c.b) });
+              if (!r.ok) { if (!sessionLost(r)) say(errMsg(r)); return; }
+              await refresh(`سُجّل فوز ${nmOf(t)} وأُرسل للاعتماد.`);
+            }, { 'data-fk': 'rch-' + c.key + '-' + i })))
+              : h('p', { class: 'a-hint', text: 'أُرسلت للاعتماد.' }));
+        })) : h('p', { class: 'a-hint', text: 'لا مباريات شطرنج مفتوحة.' }));
+    }
+
+    function paint() {
+      const kids = [h('h3', { id: fk + '-res-h' }, icon('flag'), h('span', { text: admin ? 'النتائج: الإدخال المباشر والاعتماد' : 'إدخال النتائج المباشرة' })),
+        h('p', { class: 'a-lead', text: 'النتيجة الجارية تظهر للجميع فورًا بعلامة «جارية الآن»، ولا تدخل الترتيب إلا بعد اعتماد الإدارة.' })];
+      if (R.err) kids.push(h('p', { class: 'a-live-msg', role: 'alert', text: R.err }));
+      if (!R.st) {
+        kids.push(h('p', { class: 'a-empty', text: 'لم تُنشر لوحة البطولة بعد. تظهر المباريات هنا بعد القرعة والنشر.' }));
+        if (admin && R.rows.some(x => x.status === 'final')) kids.push(queueBox());
+      } else {
+        if (admin) kids.push(queueBox());
+        if (comps.includes('football')) kids.push(fbBox());
+        if (comps.includes('chess')) kids.push(chBox());
+      }
+      kids.push(h('div', { class: 'a-actions' }, btn('تحديث', 'repeat', 'btn-ghost', () => refresh('تم التحديث.', fk + '-res-refresh'), { 'data-fk': fk + '-res-refresh' }),
+        h('a', { class: 'btn btn-ghost btn-sm', href: 'tournament.html?screen=1', target: '_blank', rel: 'noopener' }, h('span', { text: 'شاشة العرض' }))));
+      el.replaceChildren(...kids);
+    }
+    return { el, start: async () => { el.replaceChildren(skeleton()); await load(); paint(); } };
   }
 
   /* ------------------------------------------------------------------ LEADER */
@@ -1348,12 +1613,36 @@
     L.dates = teamDates(t.team_id, t.status, true);
     L.boxes.check = h('section', { class: 'a-card a-checkcard', 'aria-labelledby': 'l-check-h', hidden: true });
     L.boxes.roles = h('section', { class: 'a-card', 'aria-labelledby': 'l-roles-h', 'data-roles': '' });
-    body.replaceChildren(L.boxes.top, L.boxes.check, L.dates, L.boxes.roster, L.boxes.roles, L.boxes.code, L.sched.node, L.printBox);
+    L.boxes.marks = h('section', { class: 'a-card', 'aria-labelledby': 'l-marks-h', 'data-marks': '', hidden: true });
+    body.replaceChildren(L.boxes.top, L.boxes.check, L.dates, L.boxes.marks, L.boxes.roster, L.boxes.roles, L.boxes.code, L.sched.node, L.printBox);
     paintLeader();
     startSchedule([L.sched]);
     if (focus) { const f = L.boxes.top.querySelector('[data-focus]'); if (f) f.focus({ preventScroll: true }); }
   }
-  function paintLeader() { paintTop(); paintCheck(); paintRoster(); paintRoles(); paintCode(); paintPrint(); }
+  function paintLeader() { paintTop(); paintCheck(); paintMarks(); paintRoster(); paintRoles(); paintCode(); paintPrint(); }
+  // «هدّافو فريقنا» and «روح الفريق» (yb_my_marks, migration 0007): names only for the team's own people; approved
+  // matches count, waiting ones are shown apart
+  async function paintMarks() {
+    const box = L.boxes.marks, team = L.team;
+    if (!box || !team) return;
+    const r = await YB.rpc('yb_my_marks', {});
+    if (L.team !== team || L.boxes.marks !== box) return;
+    const rows = r.ok && Array.isArray(r.data) ? r.data.filter(x => x.team_id === team.team_id) : [];
+    if (!rows.length) { box.hidden = true; return; }
+    const tally = (kind, approved) => {
+      const m = new Map();
+      rows.filter(x => x.kind === kind && (x.status === 'approved') === approved).forEach(x => { const n = x.full_name || 'بلا اسم'; m.set(n, (m.get(n) || 0) + 1); });
+      return [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'ar'));
+    };
+    const goals = tally('goal', true), spirit = tally('spirit', true), waiting = rows.filter(x => x.status !== 'approved').length;
+    const list = (pairs, unit) => h('ul', { class: 'a-roles' }, pairs.map(([n, c]) => h('li', {}, h('b', { text: n }), chip(`${c} ${unit}`, unit === 'هدف' ? 'ok' : 'role'))));
+    box.replaceChildren(h('h3', { id: 'l-marks-h' }, icon('trophy'), h('span', { text: 'هدّافو فريقنا و«روح الفريق»' })),
+      goals.length ? list(goals, 'هدف') : h('p', { class: 'a-hint', text: 'لا أهداف معتمدة بأسماء أصحابها بعد.' }),
+      spirit.length ? [h('h4', { class: 'a-sub', text: '«روح الفريق»' }), list(spirit, 'مرة')] : null,
+      waiting ? h('p', { class: 'a-hint', text: `${waiting} من التسجيلات في مباريات لم تُعتمد نتيجتها بعد، وتُحتسب بعد الاعتماد.` }) : null,
+      h('p', { class: 'a-hint', text: 'تظهر الأسماء لفريقكم فقط؛ يرى العموم عدد الأهداف دون أسماء.' }));
+    box.hidden = false;
+  }
   // who represents the team (c-form f-nom): the two reciters, the chess player, the coordinator (migration 0006)
   function paintRoles() {
     const box = L.boxes.roles;

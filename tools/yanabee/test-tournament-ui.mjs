@@ -87,6 +87,7 @@ function makeBackend(init = {}) {
     if (p === '/rest/v1/rpc/my_team') return json(200, who && who.id === 'u-lead' ? B.mine : []);
     if (p === '/rest/v1/my_children') return json(200, who && who.id === 'u-par' ? B.children : []);
     if (p === '/rest/v1/yb_events') return B.events ? json(200, B.events) : json(404, { code: 'PGRST205', message: 'relation not found' });
+    if (p === '/rest/v1/yb_match_live') return B.live ? json(200, B.live) : json(404, { code: 'PGRST205', message: 'relation not found' });
     if (p === '/rest/v1/public_teams') return json(200, B.pubTeams || []);
     if (p.startsWith('/auth/v1/')) return json(401, { message: 'no' });
     return json(404, { message: 'unknown ' + p });
@@ -1038,6 +1039,39 @@ section('fixtures planned in advance: plan row, public view, upcoming list, resu
 }
 
 /* ================================================================== 14. the rest of the site is untouched */
+section('live results on top of the board (0007): chips, «الآن في الملعب», standings unchanged, the big screen');
+{
+  const st = base();
+  const g0 = Y.football(st).groups[0].rounds[0].matches;
+  const m1 = g0[0], m2 = g0[1];
+  const ago = new Date(Date.now() - 23 * 60000).toISOString();
+  const B = makeBackend({ state: st });
+  B.live = [
+    { comp: 'football', match_key: Y.pairKey(m1.a, m1.b), a: m1.a, b: m1.b, sa: 2, sb: 1, ca: 0, cb: 0, ra: 0, rb: 0, status: 'live', started_at: ago, updated_at: ago, approved_at: null },
+    { comp: 'football', match_key: Y.pairKey(m2.a, m2.b), a: m2.b, b: m2.a, sa: 0, sb: 3, ca: 1, cb: 0, ra: 0, rb: 0, status: 'final', started_at: ago, updated_at: ago, approved_at: null },
+  ];
+  const { ctx, p, errs } = await open({ backend: B });
+  await p.waitForSelector('.tn-now', { timeout: 8000 });
+  const nowT = await txt(p, '.tn-now');
+  check('«الآن في الملعب» lists the live and the waiting result with the minute', await count(p, '.tn-now-i') === 2 && /جارية الآن · الدقيقة 2[34]/.test(nowT) && /بانتظار الاعتماد/.test(nowT));
+  check('it says pending results do not count yet, and links the big screen', /لا تدخل الترتيب حتى تعتمدها الإدارة/.test(nowT) && (await p.locator('.tn-now a').getAttribute('href')) === '?screen=1');
+  await tab(p, 'football');
+  const liveRow = await txt(p, '.tn-fx[data-live=live]');
+  check('the live match row shows 2 – 1 with «جارية الآن»', /2 – 1/.test(liveRow) && /جارية الآن/.test(liveRow));
+  check('the waiting row shows the score from the board side (3 – 0) and «بانتظار الاعتماد»', /3 – 0/.test(await txt(p, '.tn-fx[data-live=final]')) && /بانتظار الاعتماد/.test(await txt(p, '.tn-fx[data-live=final]')));
+  check('the standings do not move: no match is counted as played', await count(p, '.tn-fx.ro.is-played') === 0 && !/\b3\b/.test(await p.locator('.tn-group').first().locator('tbody td.tn-pts, tbody td:last-child').allInnerTexts().then(a => a.join(' '))));
+  check('the toolbar links the big screen', (await p.locator('[data-act=screen]').getAttribute('href')) === '?screen=1');
+  check('no console errors (live)', !errs.length, errs.join(' | '));
+  await ctx.close();
+  const s = await open({ backend: B, hash: '?screen=1' });
+  await s.p.waitForSelector('[data-screen]', { timeout: 8000 });
+  check('the big screen: both football results large, a clock, a group table, the next matches, an exit link', await count(s.p, '.tns-m') === 2 && /\d/.test(await txt(s.p, '.tns-clock'))
+    && await count(s.p, '.tns-table table') === 1 && /المباريات القادمة/.test(await txt(s.p, '.tns-next')) && (await s.p.locator('.tns-x').count()) === 1);
+  check('the big screen hides the tabs and the editing tools', await count(s.p, '[role=tab]') === 0 && await count(s.p, '[data-act=publish]') === 0);
+  check('no console errors (screen)', !s.errs.length, s.errs.join(' | '));
+  await s.ctx.close();
+}
+
 section('shell');
 {
   const { ctx, p } = await open();

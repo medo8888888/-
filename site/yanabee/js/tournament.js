@@ -116,7 +116,8 @@
     plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
     shuffle: '<path d="m18 14 4 4-4 4"/><path d="m18 2 4 4-4 4"/><path d="M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22"/><path d="M2 6h1.972a4 4 0 0 1 3.6 2.2"/><path d="M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45"/>',
     trash: '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
-    cloud: '<path d="M12 13v8"/><path d="m8 17 4-4 4 4"/><path d="M20 17.5a4.5 4.5 0 0 0-1.5-8.74A6 6 0 1 0 5.6 16"/>'
+    cloud: '<path d="M12 13v8"/><path d="m8 17 4-4 4 4"/><path d="M20 17.5a4.5 4.5 0 0 0-1.5-8.74A6 6 0 1 0 5.6 16"/>',
+    screen: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>'
   };
 
   /* ------------------------------------------------------------------ small helpers */
@@ -193,7 +194,8 @@
     loading: true, error: '', pollErr: '', dirty: false, busy: false, conflict: null, remoteNewer: null, staleDraft: null,
     hist: [], tab: 'overview', openKeys: new Set(), shareV: '', shareErr: false, forcedLocal: false, storageOk: true,
     session: null, isAdmin: false, myIds: [], myTeam: '', approved: null, checked: new Set(), shareBox: false, stop: null,
-    events: [], evLoaded: false, evErr: '', pubNames: {}, sf: { team: '', comp: '', cat: '', mine: false }
+    events: [], evLoaded: false, evErr: '', pubNames: {}, sf: { team: '', comp: '', cat: '', mine: false },
+    live: [], liveSig: '', screen: /(^|[?&])screen=1(&|$)/.test(location.search), screenIdx: 0, screenTimer: null
   };
   const canEdit = () => A.mode === 'manager' || A.mode === 'local';
   let memo = { s: null, v: null };
@@ -406,6 +408,7 @@
     } else if (A.mode === 'manager') {
       if (r && r.updated_at && r.updated_at !== A.base) A.remoteNewer = r; else A.remoteNewer = null;
     }
+    if (await loadLive()) { if (A.tab === 'schedule') await loadEvents(); render(true); return; }
     if (A.tab === 'schedule') { await loadEvents(); render(true); return; }
     updateTop(); renderNotices();
   }
@@ -464,6 +467,11 @@
     finishBoot();
     startPoll();
     loadEvents().then(() => { if (gen === A.gen && A.tab === 'schedule') render(true); });   // in the background: the board never waits for the dates
+    loadLive().then(ch => { if (gen === A.gen && ch) render(true); });   // live results on top of the board (migration 0007)
+    if (A.screen && !A.screenTimer) {
+      A.screenTimer = setInterval(() => { A.screenIdx++; render(); }, 12000);   // the big screen turns the group tables and the clock
+      try { if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {}); } catch (e) { /* no wake lock */ }
+    }
   }
   function finishBoot() {
     pickMyTeam();
@@ -537,7 +545,8 @@
     els.bRefresh = btn('حدّث الآن', { icon: 'refresh', act: 'refresh', on: manualRefresh });
     els.bShare = btn('رابط المشاركة', { icon: 'link', act: 'share', on: toggleShare });
     els.bPrint = btn('اطبع', { icon: 'printer', act: 'print', on: doPrint });
-    els.actions = h('div', { class: 'tn-actions', role: 'toolbar', 'aria-label': 'إجراءات اللوحة' }, els.bUndo, els.bPublish, els.bRefresh, els.bShare, els.bPrint);
+    els.bScreen = h('a', { class: 'tn-btn', href: '?screen=1', target: '_blank', rel: 'noopener', 'data-act': 'screen' }, svg('screen'), h('span', null, 'شاشة العرض'));
+    els.actions = h('div', { class: 'tn-actions', role: 'toolbar', 'aria-label': 'إجراءات اللوحة' }, els.bUndo, els.bPublish, els.bRefresh, els.bShare, els.bPrint, els.bScreen);
     els.top = h('div', { class: 'tn-top' }, els.state, els.actions);
     els.notices = h('div', { class: 'tn-notices' });
     els.tabs = h('div', { class: 'tn-tabs', role: 'tablist', 'aria-label': 'أقسام لوحة البطولة', 'data-seg': 'own' });
@@ -730,6 +739,7 @@
   /* ------------------------------------------------------------------ render */
   function render(keepFocus) {
     if (!els.tabs) return;
+    if (A.screen && !A.loading && !A.error && (A.mode === 'public' || A.mode === 'manager')) { renderScreen(); return; }
     updateTop();
     renderNotices();
     const ids = allowedTabs();
@@ -996,10 +1006,79 @@
       steps(['القرعة', 'الجولة 1', 'الجولة 2', 'الجولة 3: دوري الثلاثة', 'النهائي', 'المراكز'], chIdx, chExtra),
       ov.chess.podium ? [h('h4', { class: 'tn-sub' }, svg('trophy'), 'مراكز الشطرنج'), podium(ov.chess.podium, 'مراكز الشطرنج')] : null);
     box.append(h('div', { class: 'tn-sports' }, fbCard, chCard));
+    const now = nowCard();
+    if (now) box.prepend(now);
     const nx = nextMatches();
     box.append(h('section', { class: 'tn-card', 'aria-labelledby': 'tn-next-h' }, h('h3', { id: 'tn-next-h' }, 'المباريات القادمة'),
       nx.length ? h('ul', { class: 'tn-next' }, nx.map(x => h('li', null, h('span', null, x.text), h('button', { type: 'button', class: 'tn-link-btn', onclick: () => setTab(x.tab) }, 'افتح'))))
         : h('p', { class: 'tn-fine' }, n < 12 ? 'تظهر المباريات بعد اكتمال الفرق والقرعة.' : 'لا توجد مباريات قادمة الآن.')));
+  }
+
+  /* ------------------------------------------------------------------ live results (migration 0007) */
+  // yb_match_live: anyone may read it (no notes, no user ids). The board itself holds APPROVED results only; live and
+  // pending rows are drawn on top with their own chips and never change the standings.
+  async function loadLive() {
+    if (!YB.configured || !YB.q || A.mode === 'share' || A.mode === 'local') return false;
+    let rows;
+    try { rows = await YB.q('yb_match_live', { select: 'comp,match_key,a,b,sa,sb,ca,cb,ra,rb,status,started_at,updated_at,approved_at' }); } catch (e) { return false; }
+    if (!Array.isArray(rows)) return false;   // not available yet: keep the board as it is
+    const sig = JSON.stringify(rows);
+    if (sig === A.liveSig) return false;
+    A.liveSig = sig; A.live = rows;
+    return true;
+  }
+  const liveRow = (comp, a, b) => A.live.find(x => x.comp === comp && ((x.a === a && x.b === b) || (x.a === b && x.b === a)));
+  const liveMin = r => { const t = Date.parse(r.started_at || ''); return isNaN(t) ? null : Math.max(0, Math.floor((Date.now() - t) / 60000)); };
+  const LIVE_W = { live: 'جارية الآن', final: 'انتهت · بانتظار الاعتماد', returned: 'قيد المراجعة', approved: 'نتيجة معتمدة' };
+  const liveScore = (r, a) => (r.a === a ? [r.sa, r.sb] : [r.sb, r.sa]);   // as seen from side a of the board match
+  function liveChip(r) {
+    const m = r.status === 'live' ? liveMin(r) : null;
+    return h('em', { class: 'tn-chip live-' + r.status }, r.status === 'live' ? h('i', { class: 'tn-dot', 'aria-hidden': 'true' }) : null,
+      LIVE_W[r.status] + (m !== null ? ` · الدقيقة ${m}` : ''));
+  }
+  function liveText(x) {
+    if (x.comp === 'chess') return x.sa === x.sb ? '—' : 'الفائز: ' + nm(x.sa > x.sb ? x.a : x.b);
+    return `${x.sa} – ${x.sb}`;
+  }
+  // «الآن في الملعب»: live and waiting results, then the last approved ones
+  function nowCard() {
+    const on = A.live.filter(x => x.status === 'live' || x.status === 'final' || x.status === 'returned');
+    const done = A.live.filter(x => x.status === 'approved' && x.approved_at)
+      .sort((x, y) => String(y.approved_at).localeCompare(String(x.approved_at))).slice(0, 3);
+    if (!on.length && !done.length) return null;
+    const line = x => h('li', { class: 'tn-now-i', 'data-live': x.status },
+      h('span', { class: 'tn-now-c' }, x.comp === 'chess' ? 'الشطرنج' : 'كرة القدم'),
+      h('span', { class: 'tn-now-t' }, `${nm(x.a)} ضد ${nm(x.b)}`),
+      h('b', { class: 'tn-now-s', dir: 'rtl' }, liveText(x)), liveChip(x));
+    return h('section', { class: 'tn-card tn-now', 'aria-labelledby': 'tn-now-h' },
+      h('div', { class: 'tn-chead' }, h('h3', { id: 'tn-now-h' }, 'الآن في الملعب'),
+        h('a', { class: 'tn-link-btn', href: '?screen=1', target: '_blank', rel: 'noopener' }, 'شاشة العرض')),
+      on.length ? h('ul', { class: 'tn-now-l' }, on.map(line)) : null,
+      done.length ? [h('h4', { class: 'tn-sub' }, 'آخر النتائج المعتمدة'), h('ul', { class: 'tn-now-l' }, done.map(line))] : null,
+      h('p', { class: 'tn-fine' }, 'النتيجة الجارية أو المنتظرة لا تدخل الترتيب حتى تعتمدها الإدارة.'));
+  }
+  // the big screen (?screen=1): live matches large, one group table at a time, the next matches, a clock
+  function renderScreen() {
+    const { fb } = view();
+    document.documentElement.classList.add('tn-screen-on');
+    const live = A.live.filter(x => x.comp === 'football' && (x.status === 'live' || x.status === 'final'));
+    const big = x => h('article', { class: 'tns-m is-' + x.status },
+      h('div', { class: 'tns-row' }, h('span', { class: 'tns-t' }, nm(x.a)), h('b', { class: 'tns-s', dir: 'rtl' }, `${x.sa} – ${x.sb}`), h('span', { class: 'tns-t' }, nm(x.b))),
+      liveChip(x));
+    const groups = fb.drawn ? fb.groups : [];
+    const g = groups.length ? groups[A.screenIdx % groups.length] : null;
+    const nx = nextMatches().slice(0, 4);
+    const clock = new Date().toLocaleTimeString('ar-u-nu-latn', { hour: 'numeric', minute: '2-digit' });
+    root.replaceChildren(h('div', { class: 'tns', 'data-screen': '' },
+      h('header', { class: 'tns-h' }, h('b', null, 'مشروع ينابيع · البطولة الآن'), h('span', { class: 'tns-clock' }, clock),
+        h('a', { class: 'tns-x', href: location.pathname }, 'خروج من شاشة العرض')),
+      h('section', { class: 'tns-live', 'aria-label': 'المباريات الآن' }, live.length ? live.map(big) : h('p', { class: 'tns-empty' }, 'لا مباريات جارية الآن.')),
+      h('div', { class: 'tns-grid' },
+        g ? h('section', { class: 'tns-table', 'aria-label': 'ترتيب المجموعة ' + g.name }, h('h3', null, 'المجموعة ' + g.name), standings(g.table, 'ترتيب المجموعة ' + g.name, { qualified: g.first }))
+          : h('section', { class: 'tns-table' }, h('p', { class: 'tns-empty' }, 'تظهر الجداول بعد القرعة.')),
+        h('section', { class: 'tns-next' }, h('h3', null, 'المباريات القادمة'),
+          nx.length ? h('ul', null, nx.map(x => h('li', null, x.text))) : h('p', { class: 'tns-empty' }, 'لا مباريات قادمة.')))));
+    root.setAttribute('aria-busy', 'false');
   }
 
   /* ------------------------------------------------------------------ football */
@@ -1087,6 +1166,13 @@
   }
   function fxRead(m) {
     const r = m.res;
+    const lv = liveRow('football', m.a, m.b);
+    if (!r && lv && lv.status !== 'approved') {   // a live or pending result: drawn on top, not in the standings
+      const s = liveScore(lv, m.a);
+      return h('li', { class: 'tn-fx ro is-live', 'data-key': m.key, 'data-live': lv.status },
+        h('div', { class: 'tn-fxrow' }, h('span', { class: 'tn-fxt' }, nm(m.a)), h('b', { class: 'tn-fxs live', dir: 'rtl' }, `${s[0]} – ${s[1]}`), h('span', { class: 'tn-fxt' }, nm(m.b))),
+        h('div', { class: 'tn-fxmeta' }, liveChip(lv)));
+    }
     return h('li', { class: 'tn-fx ro' + (r ? ' is-played' : ''), 'data-key': m.key },
       h('div', { class: 'tn-fxrow' },
         h('span', { class: 'tn-fxt' }, nm(m.a)),

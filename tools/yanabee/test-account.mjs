@@ -51,6 +51,7 @@ class Fake {
     this.autoConfirm = o.autoConfirm ?? true;
     this.users = []; this.profiles = []; this.teams = []; this.members = []; this.links = []; this.tour = null; this.notes = []; this.officers = []; this.noteSeq = 0;
     this.events = []; this.att = [];
+    this.live = []; this.marks = []; this.markSeq = 0;   // migration 0007
     this.tokens = new Map(); this.refresh = new Map(); this.log = []; this.recovers = []; this.fail = []; this.delay = 0; this.tick = 0;
   }
   uid() { return crypto.randomUUID(); }
@@ -372,7 +373,10 @@ class Fake {
       yb_review_team: ['team_id', 'decision', 'note'], yb_review_list: [], yb_review_roster: ['team_id'], yb_my_competitions: [], yb_set_officer: ['target', 'competition', 'assign'],
       yb_mark_read: [], yb_my_team_roster_status: [], yb_rsvp: ['event_id', 'team_id', 'answer'], yb_mark_attendance: ['event_id', 'team_id', 'presence', 'late_minutes'],
       yb_team_checklist: ['team_id'], yb_claim_team: ['ref', 'phone'], yb_set_fee: ['team_id', 'status', 'receipt'], yb_registration_detail: ['team_id'],
-      yb_set_roles: ['team_id', 'reciter', 'reserve', 'chess', 'coord'], yb_role_list: [], yb_set_waitlist: ['team_id', 'waiting'] };
+      yb_set_roles: ['team_id', 'reciter', 'reserve', 'chess', 'coord'], yb_role_list: [], yb_set_waitlist: ['team_id', 'waiting'],
+      yb_results_queue: [], yb_live_set: ['comp', 'match_key', 'a', 'b', 'sa', 'sb', 'ca', 'cb', 'ra', 'rb', 'status', 'note', 'start', 'a_name', 'b_name'],
+      yb_mark_add: ['comp', 'match_key', 'team_id', 'kind', 'member_id', 'minute'], yb_mark_del: ['id'], yb_match_roster: ['comp', 'team_id'],
+      yb_match_marks_of: ['comp', 'match_key'], yb_result_approve: ['comp', 'match_key', 'state', 'prev'], yb_result_return: ['comp', 'match_key', 'note'], yb_my_marks: [] };
     if (!SIG[name]) return err(404, 'PGRST202', 'Could not find the function public.' + name);
     if (name === 'yb_mark_read') {
       const ids = body && Array.isArray(body.ids) ? body.ids : null;
@@ -447,6 +451,78 @@ class Fake {
         return { team_id: t.id, team_name: t.name, area: t.area, status: t.status, admin_note: t.admin_note, members: ms.length, consents: ms.filter(m => m.consent_status === 'received').length, updated_at: t.updated_at, reviewed_at: t.reviewed_at || null,
           fee_status: t.fee_status || 'unpaid', fee_receipt: t.fee_receipt || null, ref_code: t.ref_code || null, online: !!t.reg, claimed: !!t.leader_id };
       }) };
+    }
+    /* migration 0007: live results, marks, approval */
+    const canManage = comp => admin || officerOf(comp);
+    const liveOf = (comp, key) => this.live.find(x => x.comp === comp && x.match_key === key);
+    if (name === 'yb_results_queue') {
+      if (!canManage('football') && !canManage('chess')) return raise('permission_denied', '42501');
+      const rank = { final: 0, live: 1, returned: 2 };
+      return { status: 200, body: this.live.filter(x => canManage(x.comp)).sort((a, b) => (rank[a.status] ?? 3) - (rank[b.status] ?? 3)).map(x => ({ ...x,
+        goals: this.marks.filter(k => k.comp === x.comp && k.match_key === x.match_key && k.kind === 'goal').length,
+        spirit: this.marks.filter(k => k.comp === x.comp && k.match_key === x.match_key && k.kind === 'spirit').length })) };
+    }
+    if (name === 'yb_live_set') {
+      if (!canManage(body.comp)) return raise('permission_denied', '42501');
+      if (!['live', 'final'].includes(body.status)) return raise('invalid_argument');
+      let x = liveOf(body.comp, body.match_key);
+      if (x && x.status === 'approved') return { status: 200, body: { ok: false, error: 'already_approved' } };
+      if (body.sa > 99 || body.sb > 99 || body.ra > body.ca || body.rb > body.cb) return { status: 200, body: { ok: false, error: 'bad_score' } };
+      if (!x) { x = { comp: body.comp, match_key: body.match_key, a: body.a, b: body.b, started_at: null, approved_at: null }; this.live.push(x); }
+      Object.assign(x, { sa: body.sa, sb: body.sb, ca: body.ca, cb: body.cb, ra: body.ra, rb: body.rb, status: body.status, note: body.note, return_note: null, updated_at: this.now() });
+      if (body.start && !x.started_at) x.started_at = new Date(Date.now() - 5 * 60000).toISOString();
+      if (body.status === 'final') this.profiles.filter(p => p.role === 'admin').forEach(p => this.notes.push({ id: ++this.noteSeq, user_id: p.id, kind: 'result_pending', data: { comp: body.comp, match_key: body.match_key, sa: body.sa, sb: body.sb, a_name: body.a_name, b_name: body.b_name }, read_at: null, created_at: this.now() }));
+      return { status: 200, body: { ok: true, status: x.status, started_at: x.started_at } };
+    }
+    if (name === 'yb_mark_add') {
+      if (!canManage(body.comp)) return raise('permission_denied', '42501');
+      const x = liveOf(body.comp, body.match_key);
+      if (!x) return { status: 200, body: { ok: false, error: 'match_not_started' } };
+      if (x.status === 'approved' && !admin) return { status: 200, body: { ok: false, error: 'already_approved' } };
+      if (body.team_id !== x.a && body.team_id !== x.b) return { status: 200, body: { ok: false, error: 'bad_team' } };
+      if (body.member_id && !this.members.some(m => m.id === body.member_id && m.team_id === body.team_id)) return { status: 200, body: { ok: false, error: 'member_not_found' } };
+      if (body.kind === 'spirit') this.marks = this.marks.filter(k => !(k.comp === body.comp && k.match_key === body.match_key && k.team_id === body.team_id && k.kind === 'spirit'));
+      const id = ++this.markSeq;
+      this.marks.push({ id, comp: body.comp, match_key: body.match_key, team_id: body.team_id, member_id: body.member_id || null, kind: body.kind, minute: body.minute });
+      return { status: 200, body: { ok: true, id } };
+    }
+    if (name === 'yb_mark_del') {
+      const k = this.marks.find(x => x.id === body.id);
+      if (!k) return { status: 200, body: { ok: false, error: 'not_found' } };
+      if (!canManage(k.comp)) return raise('permission_denied', '42501');
+      this.marks = this.marks.filter(x => x.id !== body.id);
+      return { status: 200, body: { ok: true } };
+    }
+    if (name === 'yb_match_roster') {
+      if (!canManage(body.comp)) return raise('permission_denied', '42501');
+      return { status: 200, body: this.members.filter(m => m.team_id === body.team_id).map(m => ({ member_id: m.id, full_name: m.full_name, roles: m.roles || [] })) };
+    }
+    if (name === 'yb_match_marks_of') {
+      if (!canManage(body.comp)) return raise('permission_denied', '42501');
+      return { status: 200, body: this.marks.filter(k => k.comp === body.comp && k.match_key === body.match_key).map(k => ({ ...k, full_name: (this.members.find(m => m.id === k.member_id) || {}).full_name || null })) };
+    }
+    if (name === 'yb_result_approve') {
+      if (!admin) return raise('permission_denied', '42501');
+      const x = liveOf(body.comp, body.match_key);
+      if (!x) return { status: 200, body: { ok: false, error: 'not_found' } };
+      if (x.status !== 'final') return { status: 200, body: { ok: false, error: x.status === 'approved' ? 'already_approved' : 'not_final' } };
+      if (this.tour && body.prev !== this.tour.updated_at) return { status: 200, body: { ok: false, conflict: true, updated_at: this.tour.updated_at } };
+      this.tour = { id: 1, state: body.state, updated_at: this.now() };
+      x.status = 'approved'; x.approved_at = this.now();
+      return { status: 200, body: { ok: true, conflict: false, updated_at: this.tour.updated_at, approved: true } };
+    }
+    if (name === 'yb_result_return') {
+      if (!admin) return raise('permission_denied', '42501');
+      if (!String(body.note || '').trim()) return raise('note_required');
+      const x = liveOf(body.comp, body.match_key);
+      if (!x || x.status !== 'final') return { status: 200, body: { ok: false, error: 'not_final' } };
+      x.status = 'returned'; x.return_note = body.note;
+      return { status: 200, body: { ok: true } };
+    }
+    if (name === 'yb_my_marks') {
+      const mine = new Set(this.teams.filter(t => t.leader_id === me || this.members.some(m => m.team_id === t.id && m.user_id === me)).map(t => t.id));
+      return { status: 200, body: this.marks.filter(k => mine.has(k.team_id)).map(k => ({ comp: k.comp, match_key: k.match_key, team_id: k.team_id, kind: k.kind, minute: k.minute,
+        full_name: (this.members.find(m => m.id === k.member_id) || {}).full_name || null, status: (liveOf(k.comp, k.match_key) || {}).status })) };
     }
     /* migration 0006: roles and the reserve list */
     if (name === 'yb_set_roles') {
@@ -1019,7 +1095,7 @@ let teamId = '';
   await settle(AD);
   const stateBefore = world.count(/tournament_state/);
   await signInOk(AD, ADMIN.email);
-  check('admin screen: role badge الإدارة, five tabs (with الجدول)', (await AD.locator('.a-head .a-badge').innerText()) === 'الإدارة' && (await AD.locator('[role=tab]').allInnerTexts()).join('|').replace(/\s+/g, ' ').includes('الجدول') && (await AD.locator('[role=tab]').count()) === 5);
+  check('admin screen: role badge الإدارة, six tabs (with الجدول and النتائج)', (await AD.locator('.a-head .a-badge').innerText()) === 'الإدارة' && (await AD.locator('[role=tab]').allInnerTexts()).join('|').replace(/\s+/g, ' ').includes('الجدول') && (await AD.locator('[role=tab]').count()) === 6);
   check('admin load does NOT poll or read the tournament state', world.count(/tournament_state/) === stateBefore);
   const counts = await AD.locator('.a-counters .a-count').allInnerTexts();
   check('counters by status (1 قيد المراجعة, 0 مطلوب تعديل, total 1)', counts.some(c => /^1\s*كل الفرق/.test(c.replace(/\n/g, ' '))) && counts.some(c => /^1\s*قيد المراجعة/.test(c.replace(/\n/g, ' '))) && counts.some(c => /^0\s*مطلوب تعديل/.test(c.replace(/\n/g, ' '))) && counts.some(c => /^0\s*معتمد/.test(c.replace(/\n/g, ' '))));
@@ -1463,7 +1539,8 @@ section('failure paths: network, server errors, expiry, recovery link');
   await p.locator('form.a-add button[type=submit]').click();
   await p.waitForFunction(() => document.querySelector('[data-counter]').textContent.startsWith('2 /'));
   check('expired access token is refreshed silently (refresh_token grant) and the action succeeds', fake.count(/token/) === 1 && fake.members.length === 2);
-  /* session lost for good */
+  /* session lost for good (after the leader screen's own background reads have finished) */
+  await p.waitForLoadState('networkidle').catch(() => {}); await sleep(200);
   fake.expireAccess(); fake.revokeRefresh();
   await p.locator('form.a-add input[name=name]').fill('عضو بعد الانتهاء');
   await p.locator('form.a-add input[name=age]').fill('14');
@@ -2188,6 +2265,83 @@ section('roles and the reserve list (0006): the leader picks, badges everywhere,
   check('«امنحه مكانًا الآن» gives the reserve team a place (yb_set_waitlist)', T2.waitlist === false);
   check('admin console clean (reserve)', A.errs.length === 0, A.errs.join('|'));
   await close(A);
+}
+
+section('live results (0007): the officer enters, the admin approves or returns, the leader sees the scorers');
+{
+  const fake = new Fake();
+  fake.addUser({ email: 'boss@t.test', name: 'المشرف', role: 'member' }); fake.setAdmin('boss@t.test');
+  fake.addUser({ email: 'fb@t.test', name: 'مسؤول الكرة', role: 'member' }); fake.setRole('fb@t.test', 'officer');
+  fake.officers.push({ user_id: fake.profileByEmail('fb@t.test').id, competition: 'football' });
+  fake.addUser({ email: 'la@t.test', name: 'قائد النور', role: 'leader' });
+  fake.addUser({ email: 'lb@t.test', name: 'قائد الأمل', role: 'leader' });
+  const TA = fake.seedTeam({ leaderEmail: 'la@t.test', name: 'النور', status: 'approved', members: [{ name: 'سالم أحمد', age: 12 }, { name: 'يوسف علي', age: 13 }, { name: 'عمر حسن', age: 14 }, { name: 'زيد محمود', age: 15 }] });
+  const TB = fake.seedTeam({ leaderEmail: 'lb@t.test', name: 'الأمل', status: 'approved', members: [{ name: 'أنس بكر', age: 12 }, { name: 'جابر دار', age: 13 }, { name: 'هاني وليد', age: 14 }, { name: 'كريم سعد', age: 15 }] });
+  const ids = [TA.id, TB.id, ...Array.from({ length: 10 }, (_, i) => 'x' + (i + 1))];
+  const st0 = YT.setGroups(YT.setTeams(YT.emptyState(), ids.map((id, i) => ({ id, name: i === 0 ? 'النور' : i === 1 ? 'الأمل' : 'فريق ' + (i + 1) }))),
+    [[TA.id, TB.id, 'x1', 'x2'], ['x3', 'x4', 'x5', 'x6'], ['x7', 'x8', 'x9', 'x10']]);
+  fake.setTournament(YT.stamp(st0, '2026-11-15T10:00:00.000Z'));
+  const firstAB = YT.football(st0).groups[0].rounds.flatMap(r => r.matches).find(m => [m.a, m.b].sort().join() === [TA.id, TB.id].sort().join());
+  const KEY = YT.pairKey(firstAB.a, firstAB.b);
+  /* the officer */
+  const O = await open(fake, { label: 'res-officer' });
+  await settle(O); await signInOk(O, 'fb@t.test');
+  await O.waitForSelector('[data-results] [data-res-fb] .a-team', { timeout: 8000 });
+  check('the football officer sees the results desk with the open group matches (18)', (await O.locator('[data-res-fb] .a-team').count()) === 18 && !(await O.locator('[data-res-queue]').count()));
+  await O.locator(`[data-fx="${KEY}"] .a-team-h`).click();
+  await O.waitForSelector(`[data-fx="${KEY}"] button[data-fk^="rstart-"]`);
+  await O.locator(`[data-fx="${KEY}"] button[data-fk^="rstart-"]`).click();
+  await O.waitForSelector(`[data-live-panel="${KEY}"]`);
+  check('«ابدأ المباراة» opens the live row (live, with a clock)', fake.live.length === 1 && fake.live[0].status === 'live' && !!fake.live[0].started_at && /جارية الآن/.test(await O.locator(`[data-fx="${KEY}"]`).innerText()));
+  const sideA = O.locator(`[data-live-panel="${KEY}"] [data-side=a]`);
+  const nameA = firstAB.a === TA.id ? 'سالم أحمد' : 'أنس بكر';
+  await sideA.locator('select').first().selectOption({ label: nameA });
+  await sideA.locator('button[data-fk^="rgoal-a"]').click();
+  await O.waitForFunction(k => (document.querySelector(`[data-live-panel="${k}"] [data-side=a] .a-live-n`) || {}).textContent === '1', KEY);
+  check('«هدف» records the scorer and raises the score to 1', fake.live[0].sa === 1 && fake.marks.length === 1 && fake.marks[0].kind === 'goal' && !!fake.marks[0].member_id);
+  check('the goal shows in the marks list with the name', new RegExp(nameA).test(await O.locator(`[data-live-panel="${KEY}"] .a-live-marks`).innerText()));
+  await sideA.locator('button[data-fk^="rre+a"]').click();
+  await O.waitForTimeout(300);
+  check('a red card without a card first is ignored (reds are part of the cards)', fake.live[0].ra === 0);
+  await sideA.locator('button[data-fk^="rca+a"]').click();
+  await O.waitForFunction(() => true);
+  await O.waitForTimeout(300);
+  check('a card is counted', fake.live[0].ca === 1);
+  await O.locator(`[data-live-panel="${KEY}"] button[data-fk^="rfin-"]`).click();
+  await O.waitForFunction(k => /بانتظار الاعتماد/.test((document.querySelector(`[data-fx="${k}"]`) || {}).innerText || ''), KEY);
+  check('«أنهِ المباراة» sends it to the admin (final) and the admin is told', fake.live[0].status === 'final' && fake.notes.some(n => n.kind === 'result_pending'));
+  check('officer console clean (results)', O.errs.length === 0, O.errs.join('|'));
+  await close(O);
+  /* the admin returns, the officer finishes again, the admin approves */
+  const A = await open(fake, { label: 'res-admin' });
+  await settle(A); await signInOk(A, 'boss@t.test');
+  await A.locator('#at-results').click();
+  await A.waitForSelector('[data-res-queue] .a-res-i', { timeout: 8000 });
+  check('the admin «النتائج» tab shows 1 result waiting, with the score and the cards', /بانتظار اعتمادك \(1\)/.test(await A.locator('[data-res-queue]').innerText()) && /البطاقات: 1 \/ 0/.test(await A.locator('[data-res-queue]').innerText()));
+  await A.locator('[data-res-queue] button[data-fk^="rrt-"]').click();
+  check('returning without a note asks for one', /اكتب في الملاحظة/.test(await A.locator('[data-res-queue]').innerText()) && fake.live[0].status === 'final');
+  await A.locator('[data-res-queue] textarea').fill('راجع عدد البطاقات');
+  await A.locator('[data-res-queue] button[data-fk^="rrt-"]').click();
+  await A.waitForFunction(() => /بانتظار اعتمادك \(0\)/.test(document.querySelector('[data-res-queue]').innerText));
+  check('the admin returns it with the note', fake.live[0].status === 'returned' && fake.live[0].return_note === 'راجع عدد البطاقات');
+  fake.live[0].status = 'final';   // the officer finished it again
+  await A.locator('[data-results] button[data-fk="ares-res-refresh"]').click();
+  await A.waitForSelector('[data-res-queue] button[data-fk^="rap-"]');
+  await A.locator('[data-res-queue] button[data-fk^="rap-"]').click();
+  await A.waitForFunction(() => /بانتظار اعتمادك \(0\)/.test(document.querySelector('[data-res-queue]').innerText));
+  const res = fake.tour.state.fb.res[KEY];
+  check('approving publishes the board with the result (yb_result_approve)', fake.live[0].status === 'approved' && res && res.sa === 1 && res.sb === 0 && res.ca === 1);
+  check('the published board has no chess player labels', fake.tour.state.teams.every(t => !('chess' in t)));
+  check('the approved match leaves the open list', !(await A.locator(`[data-fx="${KEY}"]`).count()));
+  check('admin console clean (results)', A.errs.length === 0, A.errs.join('|'));
+  await close(A);
+  /* the leader of the scoring team sees the scorer */
+  const scorer = firstAB.a === TA.id ? 'la@t.test' : 'lb@t.test';
+  const L = await open(fake, { label: 'res-leader' });
+  await settle(L); await signInOk(L, scorer);
+  await L.waitForSelector('[data-marks]:not([hidden])', { timeout: 8000 });
+  check('the leader sees «هدّافو فريقنا» with the scorer name and 1 goal', new RegExp(nameA).test(await L.locator('[data-marks]').innerText()) && /1 هدف/.test(await L.locator('[data-marks]').innerText()));
+  await close(L);
 }
 
 section('network hosts and console');
