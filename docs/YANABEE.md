@@ -211,3 +211,5 @@ standing into the 20 football points; إنذار vs yellow card; $ vs Turkish li
 shown as the documents state them, never resolved silently.
 
 See also: [YANABEE_APP.md](YANABEE_APP.md) — accounts (Supabase), roles and the tournament manager.
+
+Roadmap: [SPEC.md](../SPEC.md) (blueprint for the remaining build, incl. the PWA) and [PROGRESS.md](../PROGRESS.md) (checklist).
