@@ -29,7 +29,10 @@
   const POLL_MS = 15000;
   const HIST_MAX = 20;
   const GN = YT.GROUP_NAMES;
-  const TABS = [['overview', 'نظرة عامة'], ['football', 'كرة القدم'], ['chess', 'الشطرنج'], ['myteam', 'فريقي'], ['setup', 'الإعداد']];
+  const TABS = [['overview', 'نظرة عامة'], ['football', 'كرة القدم'], ['chess', 'الشطرنج'], ['myteam', 'فريقي'], ['schedule', 'الجدول'], ['setup', 'الإعداد']];
+  // unified schedule (yb_events, SPEC 4.10.3): chrome words only; the dates and titles come from the database
+  const COMPS = { football: 'دوري كرة القدم', chess: 'بطولة الشطرنج', projects: 'المشاريع والمبادرات', hifz: 'الحفظ', fahm: 'الفهم', workshops: 'الورش', registration: 'التسجيل' };
+  const KINDS = { match: 'مباراة', round: 'جولة', workshop: 'ورشة', recitation: 'موعد تسميع', other: 'موعد' };
 
   const ERR = {
     bad_state: 'بيانات البطولة غير صالحة.',
@@ -189,7 +192,8 @@
     gen: 0, mode: 'boot', S: YT.emptyState(), pub: null, base: null, remoteAt: '', unpublished: false,
     loading: true, error: '', pollErr: '', dirty: false, busy: false, conflict: null, remoteNewer: null, staleDraft: null,
     hist: [], tab: 'overview', openKeys: new Set(), shareV: '', shareErr: false, forcedLocal: false, storageOk: true,
-    session: null, isAdmin: false, myIds: [], myTeam: '', approved: null, checked: new Set(), shareBox: false, stop: null
+    session: null, isAdmin: false, myIds: [], myTeam: '', approved: null, checked: new Set(), shareBox: false, stop: null,
+    events: [], evLoaded: false, evErr: '', pubNames: {}, sf: { team: '', comp: '', cat: '', mine: false }
   };
   const canEdit = () => A.mode === 'manager' || A.mode === 'local';
   let memo = { s: null, v: null };
@@ -402,7 +406,20 @@
     } else if (A.mode === 'manager') {
       if (r && r.updated_at && r.updated_at !== A.base) A.remoteNewer = r; else A.remoteNewer = null;
     }
+    if (A.tab === 'schedule') { await loadEvents(); render(true); return; }
     updateTop(); renderNotices();
+  }
+
+  // the unified schedule: every date the database lets this visitor read (anon: dates between approved teams)
+  async function loadEvents() {
+    if (!YB.configured || !YB.q || A.mode === 'share' || A.mode === 'local') return;
+    try {
+      const rows = await YB.q('yb_events', { select: 'id,competition,kind,title,starts_at,place,team_ids,category,status,note', order: 'starts_at.asc' });
+      A.events = Array.isArray(rows) ? rows : [];
+      A.evErr = '';
+    } catch (e) { A.events = []; A.evErr = e && e.error === 'not_found' ? '' : YB.errorText(e); }
+    try { const t = await YB.q('public_teams', { select: 'id,name' }); (Array.isArray(t) ? t : []).forEach(x => { A.pubNames[x.id] = x.name; }); } catch (e) { /* names fall back to the board */ }
+    A.evLoaded = true;
   }
 
   async function loadMine() {
@@ -446,6 +463,7 @@
     if (gen !== A.gen) return;
     finishBoot();
     startPoll();
+    loadEvents().then(() => { if (gen === A.gen && A.tab === 'schedule') render(true); });   // in the background: the board never waits for the dates
   }
   function finishBoot() {
     pickMyTeam();
@@ -742,6 +760,12 @@
   function skeleton() { return h('div', { class: 'tn-skel', 'aria-hidden': 'true' }, h('i'), h('i'), h('i')); }
   function fillPanel(p, tab) {
     const box = [];
+    if (tab === 'schedule' && !A.loading) {
+      const box1 = h('div', { class: 'tn-in' });
+      renderSchedule(box1);
+      p.replaceChildren(box1);
+      return;
+    }
     if (A.loading) {
       box.push(h('p', { class: 'tn-fine', role: 'status' }, 'جارٍ تحميل البطولة…'), skeleton());
     } else if (A.error) {
@@ -754,7 +778,7 @@
         h('a', { class: 'tn-btn', href: '#c-format' }, h('span', null, 'نظام البطولة'))));
     } else {
       const box0 = h('div', { class: 'tn-in' });
-      ({ overview: renderOverview, football: renderFootball, chess: renderChess, myteam: renderMyTeam, setup: renderSetup })[tab](box0);
+      ({ overview: renderOverview, football: renderFootball, chess: renderChess, myteam: renderMyTeam, schedule: renderSchedule, setup: renderSetup })[tab](box0);
       box.push(box0);
     }
     p.replaceChildren(...box);
@@ -791,6 +815,121 @@
     return h('div', { class: 'tn-card tn-empty' }, h('h3', null, n ? 'عدد الفرق ' + n + ' من 12' : 'لا توجد فرق بعد'),
       h('p', null, 'يلزم 12 فريقًا لتبدأ البطولة.' + (canEdit() ? '' : ' ستظهر الفرق هنا بعد أن تضيفها الإدارة.')),
       canEdit() ? btn('اذهب إلى الإعداد', { cls: 'primary', act: 'go-setup', on: () => setTab('setup', { focus: false }) }) : null, more);
+  }
+
+
+  /* ------------------------------------------------------------------ unified schedule (الجدول) */
+  const teamName = id => { const t = A.S.teams.find(x => x.id === id); return t ? t.name : (A.pubNames[id] || 'فريق'); };
+  // football fixtures that have a planned date on the board (fb.sched) join the list as matches
+  function planItems() {
+    const out = [];
+    let fb;
+    try { fb = view().fb; } catch (e) { return out; }
+    const add = (m, label) => {
+      if (!m.sched || !m.sched.date || m.res) return;
+      const at = m.sched.date + 'T' + (m.sched.time || '00:00');
+      out.push({ id: 'fx:' + m.key, competition: 'football', kind: 'match', title: `${label}: ${nm(m.a)} ضد ${nm(m.b)}`, starts_at: at, local: true, noTime: !m.sched.time,
+        place: null, team_ids: [m.a, m.b], category: label.split(' · ')[0], status: 'scheduled', note: null, board: true });
+    };
+    (fb.groups || []).forEach(g => g.rounds.forEach(rd => rd.matches.forEach(m => add(m, `المجموعة ${g.name} · الجولة ${rd.round}`))));
+    if (fb.final) fb.final.rounds.forEach(rd => rd.matches.forEach(m => add(m, `التصفيات · الجولة ${rd.round}`)));
+    return out;
+  }
+  const evDate = e => (e.local ? new Date(e.starts_at) : new Date(e.starts_at));
+  const dayKey = e => { const d = evDate(e); return isNaN(d) ? '' : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  function allItems() {
+    const db = A.events.slice();
+    const have = new Set(db.filter(e => e.competition === 'football' && e.kind === 'match').map(e => (e.team_ids || []).slice().sort().join('|') + '@' + dayKey(e)));
+    const plans = planItems().filter(p => !have.has(p.team_ids.slice().sort().join('|') + '@' + dayKey(p)));
+    return db.concat(plans).sort((a, b) => evDate(a) - evDate(b));
+  }
+  function renderSchedule(box) {
+    const items = allItems();
+    const now = Date.now();
+    const f = A.sf;
+    const myIds = (A.myIds || []).concat(A.myTeam ? [A.myTeam] : []);
+    const teamIds = new Set();
+    items.forEach(e => (e.team_ids || []).forEach(id => teamIds.add(id)));
+    const cats = [...new Set(items.map(e => e.category).filter(Boolean))].sort();
+    const comps = [...new Set(items.map(e => e.competition))];
+    const fit = e => (!f.team || (e.team_ids || []).length === 0 || e.team_ids.indexOf(f.team) >= 0)
+      && (!f.comp || e.competition === f.comp) && (!f.cat || e.category === f.cat)
+      && (!f.mine || !myIds.length || (e.team_ids || []).length === 0 || e.team_ids.some(id => myIds.indexOf(id) >= 0));
+    const shown = items.filter(fit);
+    const upcoming = shown.filter(e => evDate(e).getTime() >= now - 3 * 36e5);
+    const past = shown.filter(e => evDate(e).getTime() < now - 3 * 36e5);
+    const sel = (id, label, val, opts, key) => h('label', { class: 'tn-lab', for: id }, h('span', null, label),
+      h('select', { id, 'data-fk': 'sf-' + key, onchange: ev => { A.sf[key] = ev.target.value; render(true); } },
+        h('option', { value: '' }, 'الكل'), opts.map(o => h('option', { value: o[0], selected: o[0] === val }, o[1]))));
+    box.append(h('div', { class: 'tn-head' }, h('h2', null, 'الجدول الموحّد'),
+      h('p', { class: 'tn-fine' }, 'كل المباريات والجولات والورش ومواعيد التسميع في مكان واحد. يصل تنبيه للفرق المعنية عند إضافة موعد أو تغييره أو إلغائه.')));
+    const filters = h('div', { class: 'tn-card tn-sfilters', role: 'group', 'aria-label': 'تصفية الجدول' },
+      sel('tn-sf-team', 'الفريق', f.team, [...teamIds].map(id => [id, teamName(id)]).sort((a, b) => a[1].localeCompare(b[1], 'ar')), 'team'),
+      sel('tn-sf-comp', 'المسابقة', f.comp, comps.map(c => [c, COMPS[c] || c]), 'comp'),
+      cats.length ? sel('tn-sf-cat', 'الفئة', f.cat, cats.map(c => [c, c]), 'cat') : null,
+      myIds.length ? h('label', { class: 'tn-check' }, h('input', { type: 'checkbox', checked: f.mine, 'data-fk': 'sf-mine', onchange: ev => { A.sf.mine = ev.target.checked; render(true); } }), h('span', null, 'مواعيد فريقي فقط')) : null,
+      shown.length ? btn('أضف إلى التقويم (ics)', { icon: 'calendar', act: 'ics', on: () => downloadIcs(upcoming.length ? upcoming : shown) }) : null);
+    box.append(filters);
+    if (A.evErr) box.append(h('p', { class: 'tn-fine', role: 'alert' }, 'تعذّر تحميل المواعيد: ' + A.evErr));
+    if (!items.length && YB.configured && !A.evLoaded && (A.mode === 'public' || A.mode === 'manager')) { box.append(h('p', { class: 'tn-fine', role: 'status' }, 'جارٍ تحميل المواعيد…'), skeleton()); return; }
+    if (!items.length) {
+      box.append(h('div', { class: 'tn-card tn-empty' }, h('h3', null, 'لا توجد مواعيد منشورة بعد'),
+        h('p', null, YB.configured ? 'ستظهر هنا المواعيد فور أن تضيفها الإدارة أو مسؤولو المسابقات.' : 'تُضاف المواعيد من حساب الإدارة بعد ربط الموقع بقاعدة البيانات. مواعيد مباريات الكرة المخطّطة في اللوحة تظهر هنا أيضًا.')));
+      return;
+    }
+    if (!shown.length) { box.append(h('p', { class: 'tn-fine', role: 'status' }, 'لا توجد مواعيد تطابق التصفية.')); return; }
+    const group = list => {
+      const days = [];
+      list.forEach(e => { const k = dayKey(e); let d = days.find(x => x.k === k); if (!d) { d = { k, items: [] }; days.push(d); } d.items.push(e); });
+      return days.map(d => h('section', { class: 'tn-day', 'aria-label': fmtDay(d.k) }, h('h3', { class: 'tn-day-h' }, svg('calendar'), fmtDayLong(d.k)),
+        h('ul', { class: 'tn-evs' }, d.items.map(evRow))));
+    };
+    box.append(h('p', { class: 'tn-fine', role: 'status' }, `${upcoming.length} من المواعيد القادمة`), ...group(upcoming));
+    if (past.length) box.append(h('details', { class: 'tn-past' }, h('summary', null, `مواعيد مضت (${past.length})`), ...group(past.slice().reverse())));
+  }
+  function fmtDayLong(k) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(k || '');
+    if (!m) return k || '';
+    try { return new Date(+m[1], +m[2] - 1, +m[3]).toLocaleDateString('ar-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'long' }); } catch (e) { return k; }
+  }
+  function evRow(e) {
+    const d = evDate(e);
+    const time = e.noTime ? '' : (isNaN(d) ? '' : d.toLocaleTimeString('ar-u-nu-latn', { hour: 'numeric', minute: '2-digit' }));
+    const teams = (e.team_ids || []).length ? e.team_ids.map(teamName).join(' · ') : 'كل الفرق';
+    const st = e.status === 'cancelled' ? h('em', { class: 'tn-chip bad' }, 'أُلغي') : e.status === 'changed' ? h('em', { class: 'tn-chip warn' }, 'تغيّر الموعد') : null;
+    return h('li', { class: 'tn-ev k-' + e.kind + (e.status === 'cancelled' ? ' is-cancelled' : '') },
+      h('span', { class: 'tn-ev-t' }, time || '—'),
+      h('div', { class: 'tn-ev-b' },
+        h('b', null, e.title), st,
+        h('span', { class: 'tn-ev-m' }, [KINDS[e.kind] || '', COMPS[e.competition] || '', e.category || ''].filter(Boolean).join(' · ')),
+        h('span', { class: 'tn-ev-m' }, teams + (e.place ? ' · ' + e.place : '')),
+        e.note ? h('span', { class: 'tn-ev-n' }, e.note) : null,
+        e.board ? h('span', { class: 'tn-ev-n' }, 'من خطة لوحة البطولة') : null));
+  }
+  // a small .ics file (RFC 5545) with the shown dates: works offline, nothing is sent anywhere
+  function downloadIcs(list) {
+    const pad = n => String(n).padStart(2, '0');
+    const utc = d => `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}00Z`;
+    const esc = t => String(t || '').replace(/[\;,]/g, m => '\\' + m).replace(/\r?\n/g, '\\n');
+    const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Yanabee//Schedule//AR', 'CALSCALE:GREGORIAN'];
+    const stamp = utc(new Date());
+    list.filter(e => e.status !== 'cancelled').forEach(e => {
+      const d = evDate(e);
+      if (isNaN(d)) return;
+      const end = new Date(d.getTime() + 90 * 60000);
+      lines.push('BEGIN:VEVENT', 'UID:' + String(e.id).replace(/[^\w:-]/g, '') + '@yanabee', 'DTSTAMP:' + stamp, 'DTSTART:' + utc(d), 'DTEND:' + utc(end),
+        'SUMMARY:' + esc(e.title), 'DESCRIPTION:' + esc([COMPS[e.competition], e.category, e.note].filter(Boolean).join(' - ')));
+      if (e.place) lines.push('LOCATION:' + esc(e.place));
+      lines.push('END:VEVENT');
+    });
+    lines.push('END:VCALENDAR');
+    try {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([lines.join('\r\n') + '\r\n'], { type: 'text/calendar;charset=utf-8' }));
+      a.download = 'yanabee-schedule.ics';
+      document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+      say('نُزّل ملف التقويم.');
+    } catch (e) { say('تعذّر تنزيل ملف التقويم.', true); }
   }
 
   /* ------------------------------------------------------------------ overview */

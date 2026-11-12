@@ -301,6 +301,31 @@ button.tn-side:hover{border-color:var(--brand)}
 .tn-ptbl td:nth-child(2){text-align:start}
 .tn-pfx{margin:4px 0 8px;padding-inline-start:18px;list-style:disc}
 .tn-printwrap ol{padding-inline-start:20px;list-style:decimal}
+
+/* ---- unified schedule (الجدول) */
+.tn-sfilters{display:flex;flex-wrap:wrap;gap:.6rem 1rem;align-items:end}
+.tn-sfilters .tn-lab{display:grid;gap:.25rem;min-width:min(100%,12rem)}
+.tn-sfilters select{min-height:44px}
+.tn-check{display:inline-flex;align-items:center;gap:.45rem;min-height:44px;cursor:pointer}
+.tn-check input{width:1.1rem;height:1.1rem;accent-color:var(--brand)}
+.tn-day{margin-block:1rem}
+.tn-day-h{display:flex;align-items:center;gap:.45rem;font-size:1rem;margin:0 0 .5rem}
+.tn-day-h svg{width:1.1em;height:1.1em}
+.tn-evs{list-style:none;margin:0;padding:0;display:grid;gap:.5rem}
+.tn-ev{display:grid;grid-template-columns:4.6rem 1fr;gap:.75rem;padding:.7rem .85rem;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+.tn-ev-t{font:700 .95rem/1.4 var(--font-h);color:var(--brand)}
+.tn-ev-b{display:grid;gap:.15rem;min-width:0}
+.tn-ev-b b{overflow-wrap:anywhere}
+.tn-ev-m{color:var(--ink-2);font-size:.88rem}
+.tn-ev-n{color:var(--muted);font-size:.85rem}
+.tn-ev.is-cancelled{opacity:.7}
+.tn-ev.is-cancelled b{text-decoration:line-through}
+.tn-ev.k-workshop{border-inline-start:4px solid var(--sun)}
+.tn-ev.k-recitation{border-inline-start:4px solid var(--leaf)}
+.tn-ev.k-match,.tn-ev.k-round{border-inline-start:4px solid var(--brand)}
+.tn-past{margin-top:1rem}
+.tn-past summary{cursor:pointer;min-height:44px;display:flex;align-items:center}
+
 @media print{
   .tn-top,.tn-tabs,.tn-notices,.tn-toast,.tn-skel,.tn-dlg{display:none!important}
   body.print-tournament>*:not(main){display:none!important}

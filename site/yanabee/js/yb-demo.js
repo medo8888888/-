@@ -120,6 +120,19 @@
     } catch (e) { db.tour = null; }
   }
   var EDITABLE = ['draft', 'submitted', 'returned'];
+  // sample dates of the unified schedule (relative to today, so they always lie ahead); added lazily for old demo tabs
+  function seedEvents() {
+    if (db.events) return;
+    var day = function (n, h) { var d = new Date(); d.setDate(d.getDate() + n); d.setHours(h, 0, 0, 0); return d.toISOString(); };
+    var mine = db.teams[0], other = db.teams[1];
+    db.events = [
+      { id: 'ev-1', competition: 'football', kind: 'match', title: 'الجولة الأولى: مباراة تجريبية', starts_at: day(2, 16), place: 'ملعب الحي الافتراضي', team_ids: [mine.id, other.id], category: 'المجموعة أ', status: 'scheduled', note: null },
+      { id: 'ev-2', competition: 'workshops', kind: 'workshop', title: 'ورشة القيادة للقادة', starts_at: day(4, 10), place: 'القاعة الافتراضية', team_ids: [], category: null, status: 'scheduled', note: 'للفرق المعتمدة' },
+      { id: 'ev-3', competition: 'hifz', kind: 'recitation', title: 'موعد التسميع الأول', starts_at: day(6, 17), place: 'المسجد الافتراضي', team_ids: [mine.id], category: null, status: 'changed', note: 'تغيّر الموعد ساعة واحدة' }
+    ];
+    db.att = [];
+    persist();
+  }
   function notify(uids, kind, data) {
     db.notes = db.notes || [];
     uids.forEach(function (u) { if (u) db.notes.push({ id: ++db.noteSeq || (db.noteSeq = 1), user_id: u, kind: kind, data: data, read_at: null, created_at: now() }); });
@@ -272,6 +285,13 @@
         return { member_id: m.id, team_id: m.team_id, full_name: m.full_name, is_leader: m.is_leader, joined: m.user_id !== null, is_me: m.user_id === me, consent_status: m.user_id === me ? m.consent_status : null };
       }));
     }
+    if (table === 'yb_events') { seedEvents(); return method === 'GET' ? finish(db.events.map(copy)) : deny(); }
+    if (table === 'yb_attendance') {
+      seedEvents();
+      if (method !== 'GET') return deny();
+      var lead = db.teams.filter(function (t) { return t.leader_id === me; }).map(function (t) { return t.id; });
+      return finish(db.att.filter(function (a) { return lead.indexOf(a.team_id) >= 0; }).map(copy));
+    }
     if (table === 'yb_notifications') {
       if (method !== 'GET') return deny();
       return finish((db.notes || []).filter(function (x) { return x.user_id === me; }).map(copy));
@@ -392,7 +412,7 @@
     if (name === 'approve_team' || name === 'set_user_role' || name === 'publish_state') return err(403, '42501', 'permission_denied');   // admin only: nobody in the demo is an admin
     if (/^yb_(review_|set_officer)/.test(name)) return err(403, '42501', 'permission_denied');   // reviewers and officers are not part of the demo
     var SIG = { my_team: [], join_team: ['code', 'member_name'], link_child: ['code', 'child_name'], mark_consent: ['member_id', 'received'], unlink_member: ['member_id'], regenerate_join_code: ['team_id'],
-      yb_mark_read: [], yb_my_team_roster_status: [], yb_my_competitions: [] };
+      yb_mark_read: [], yb_my_team_roster_status: [], yb_my_competitions: [], yb_rsvp: ['event_id', 'team_id', 'answer'] };
     if (!SIG[name]) return err(404, 'PGRST202', 'Could not find the function public.' + name);
     var keys = Object.keys(body || {});
     var optional = name === 'yb_mark_read' ? ['ids'] : [];
@@ -470,6 +490,20 @@
       }) };
     }
     if (name === 'yb_my_competitions') return { status: 200, body: [] };
+    if (name === 'yb_rsvp') {
+      seedEvents();
+      var tt = teamById(body.team_id);
+      if (!tt || tt.leader_id !== me) return raise('permission_denied', '42501');
+      if (body.answer !== null && body.answer !== 'yes' && body.answer !== 'no') return raise('invalid_argument');
+      var ev = db.events.filter(function (x) { return x.id === body.event_id; })[0];
+      if (!ev) return raise('event_not_found');
+      if (!(ev.team_ids.indexOf(tt.id) >= 0 || (!ev.team_ids.length && tt.status === 'approved'))) return raise('permission_denied', '42501');
+      if (ev.status === 'cancelled') return raise('event_cancelled');
+      db.att = db.att.filter(function (a) { return !(a.event_id === ev.id && a.team_id === tt.id); });
+      db.att.push({ event_id: ev.id, team_id: tt.id, rsvp: body.answer, presence: null, late_minutes: null });
+      persist();
+      return { status: 200, body: { ok: true, rsvp: body.answer } };
+    }
     if (name === 'regenerate_join_code') {
       var t3 = teamById(body.team_id);
       if (!t3) return raise('team_not_found');

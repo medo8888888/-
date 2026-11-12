@@ -50,6 +50,7 @@ class Fake {
   constructor(o = {}) {
     this.autoConfirm = o.autoConfirm ?? true;
     this.users = []; this.profiles = []; this.teams = []; this.members = []; this.links = []; this.tour = null; this.notes = []; this.officers = []; this.noteSeq = 0;
+    this.events = []; this.att = [];
     this.tokens = new Map(); this.refresh = new Map(); this.log = []; this.recovers = []; this.fail = []; this.delay = 0; this.tick = 0;
   }
   uid() { return crypto.randomUUID(); }
@@ -238,6 +239,37 @@ class Fake {
     }
     if (table === 'audit_log') return admin && method === 'GET' ? finish([]) : (method === 'GET' ? finish([]) : deny());
 
+    if (table === 'yb_events') {
+      const canManage = comp => admin || (c.role === 'officer' && this.officers.some(o => o.user_id === me && o.competition === comp));
+      const cols = ['competition', 'kind', 'title', 'starts_at', 'place', 'team_ids', 'category', 'note', 'status'];
+      if (method === 'GET') return finish(this.events.map(e => ({ ...e })));
+      if (method === 'POST') {
+        const b = Array.isArray(body) ? body[0] : body;
+        if (Object.keys(b || {}).some(k => !cols.includes(k))) return deny();
+        if (!canManage(b.competition)) return err(403, '42501', 'new row violates row-level security policy for table "yb_events"');
+        if ((b.team_ids || []).some(id => !this.teams.some(t => t.id === id))) return err(400, 'P0001', 'invalid_team');
+        const e = { id: this.uid(), competition: b.competition, kind: b.kind || 'other', title: String(b.title).trim(), starts_at: b.starts_at, place: b.place ?? null, team_ids: [...new Set(b.team_ids || [])],
+          category: b.category ?? null, note: b.note ?? null, status: 'scheduled', created_by: me };
+        this.events.push(e);
+        return rep ? { status: 201, body: [{ ...e }] } : { status: 201 };
+      }
+      if (method === 'PATCH') {
+        if (Object.keys(body || {}).some(k => !cols.includes(k))) return deny();
+        const targets = filterRows(this.events.filter(e => canManage(e.competition)), q);
+        targets.forEach(e => {
+          const moved = (body.starts_at !== undefined && body.starts_at !== e.starts_at) || (body.place !== undefined && body.place !== e.place);
+          Object.assign(e, body);
+          if (body.status === undefined && moved && e.status !== 'cancelled') e.status = 'changed';
+        });
+        return rep ? { status: 200, body: targets.map(e => ({ ...e })) } : { status: 204 };
+      }
+      return deny();
+    }
+    if (table === 'yb_attendance') {
+      if (method !== 'GET') return deny();
+      const lead = this.teams.filter(t => t.leader_id === me).map(t => t.id);
+      return finish(this.att.filter(a => { const e = this.events.find(x => x.id === a.event_id); return admin || lead.includes(a.team_id) || (e && c.role === 'officer' && this.officers.some(o => o.user_id === me && o.competition === e.competition)); }).map(a => ({ ...a })));
+    }
     if (table === 'yb_notifications') return method === 'GET' ? finish(this.notes.filter(n => n.user_id === me).map(n => ({ ...n }))) : deny();
     if (table === 'yb_officers') return method === 'GET' ? finish(this.officers.filter(o => admin || o.user_id === me).map(o => ({ ...o }))) : deny();
     if (table === 'teams') {
@@ -329,7 +361,7 @@ class Fake {
     const SIG = { my_team: [], join_team: ['code', 'member_name'], link_child: ['code', 'child_name'], approve_team: ['team_id', 'ok', 'note'], mark_consent: ['member_id', 'received'],
       unlink_member: ['member_id'], regenerate_join_code: ['team_id'], set_user_role: ['target', 'new_role'],
       yb_review_team: ['team_id', 'decision', 'note'], yb_review_list: [], yb_review_roster: ['team_id'], yb_my_competitions: [], yb_set_officer: ['target', 'competition', 'assign'],
-      yb_mark_read: [], yb_my_team_roster_status: [] };
+      yb_mark_read: [], yb_my_team_roster_status: [], yb_rsvp: ['event_id', 'team_id', 'answer'], yb_mark_attendance: ['event_id', 'team_id', 'presence', 'late_minutes'] };
     if (!SIG[name]) return err(404, 'PGRST202', 'Could not find the function public.' + name);
     if (name === 'yb_mark_read') {
       const ids = body && Array.isArray(body.ids) ? body.ids : null;
@@ -416,6 +448,24 @@ class Fake {
       if (body.assign && p.role !== 'officer') return raise('wrong_role', '42501');
       this.officers = this.officers.filter(o => !(o.user_id === p.id && o.competition === body.competition));
       if (body.assign) this.officers.push({ user_id: p.id, competition: body.competition });
+      return { status: 200, body: { ok: true } };
+    }
+    if (name === 'yb_rsvp' || name === 'yb_mark_attendance') {
+      const e = this.events.find(x => x.id === body.event_id);
+      if (!e) return raise('event_not_found');
+      const t = this.teams.find(x => x.id === body.team_id);
+      const concerns = t && (e.team_ids.includes(t.id) || (!e.team_ids.length && t.status === 'approved'));
+      const row = () => { let a = this.att.find(x => x.event_id === e.id && x.team_id === body.team_id); if (!a) { a = { event_id: e.id, team_id: body.team_id, rsvp: null, presence: null, late_minutes: null }; this.att.push(a); } return a; };
+      if (name === 'yb_rsvp') {
+        if (!t || t.leader_id !== me || !concerns) return raise('permission_denied', '42501');
+        if (e.status === 'cancelled') return raise('event_cancelled');
+        row().rsvp = body.answer;
+        return { status: 200, body: { ok: true, rsvp: body.answer } };
+      }
+      const canManage = admin || (c.role === 'officer' && this.officers.some(o => o.user_id === me && o.competition === e.competition));
+      if (!canManage) return raise('permission_denied', '42501');
+      if (!concerns) return raise('invalid_team');
+      const a = row(); a.presence = body.presence; a.late_minutes = body.presence === 'present' ? body.late_minutes : null;
       return { status: 200, body: { ok: true } };
     }
     if (name === 'yb_my_team_roster_status') {
@@ -878,7 +928,7 @@ let teamId = '';
   await settle(AD);
   const stateBefore = world.count(/tournament_state/);
   await signInOk(AD, ADMIN.email);
-  check('admin screen: role badge الإدارة, four tabs', (await AD.locator('.a-head .a-badge').innerText()) === 'الإدارة' && (await AD.locator('[role=tab]').allInnerTexts()).join('|').replace(/\s+/g, ' ').includes('الفرق') && (await AD.locator('[role=tab]').count()) === 4);
+  check('admin screen: role badge الإدارة, five tabs (with الجدول)', (await AD.locator('.a-head .a-badge').innerText()) === 'الإدارة' && (await AD.locator('[role=tab]').allInnerTexts()).join('|').replace(/\s+/g, ' ').includes('الجدول') && (await AD.locator('[role=tab]').count()) === 5);
   check('admin load does NOT poll or read the tournament state', world.count(/tournament_state/) === stateBefore);
   const counts = await AD.locator('.a-counters .a-count').allInnerTexts();
   check('counters by status (1 قيد المراجعة, 0 مطلوب تعديل, total 1)', counts.some(c => /^1\s*كل الفرق/.test(c.replace(/\n/g, ' '))) && counts.some(c => /^1\s*قيد المراجعة/.test(c.replace(/\n/g, ' '))) && counts.some(c => /^0\s*مطلوب تعديل/.test(c.replace(/\n/g, ' '))) && counts.some(c => /^0\s*معتمد/.test(c.replace(/\n/g, ' '))));
@@ -1005,7 +1055,7 @@ let memberEmail = 'sara@t.test', parentEmail = 'parent@t.test';
   check('member sees own consent status (received: set by the admin)', /استُلمت موافقة ولي الأمر/.test(mt));
   check('no admin / leader controls on the member screen', !(await M.locator('input[role=switch], form.a-add, button[data-fk=submit], .a-tabs-4').count()));
   const reqs = world.log.filter(l => l.who === world.profileByEmail(memberEmail).id).map(l => l.path.replace('/rest/v1/', ''));
-  check('member screen reads only my_team, my_roster, tournament_state and the own profile (never teams, team_members, profiles list)', reqs.every(r => /^(rpc\/(my_team|join_team|yb_mark_read)|my_roster|tournament_state|profiles|yb_notifications)$/.test(r)), [...new Set(reqs)].join());
+  check('member screen reads only my_team, my_roster, tournament_state and the own profile (never teams, team_members, profiles list)', reqs.every(r => /^(rpc\/(my_team|join_team|yb_mark_read)|my_roster|tournament_state|profiles|yb_notifications|yb_events)$/.test(r)), [...new Set(reqs)].join());
   const tour = await M.locator('.a-sched').innerText();
   check('schedule card shows the empty state before the tournament is published', /لم تُنشر بيانات البطولة بعد/.test(tour));
   // second account tries the same name
@@ -1060,7 +1110,7 @@ let memberEmail = 'sara@t.test', parentEmail = 'parent@t.test';
   const chips = await P.locator('.a-child .a-consent .a-chip').allInnerTexts();
   check('two children: one «استُلمت», one «لم تُستلم بعد»; ONE schedule card for the shared team', chips.some(c => /^استُلمت/.test(c)) && chips.some(c => /لم تُستلم/.test(c)) && (await P.locator('.a-sched').count()) === 1);
   const preqs = world.log.filter(l => l.who === world.profileByEmail(parentEmail).id).map(l => l.path.replace('/rest/v1/', ''));
-  check('parent screen reads only my_children, tournament_state and the own profile', preqs.every(r => /^(rpc\/(link_child|yb_mark_read)|my_children|tournament_state|profiles|yb_notifications)$/.test(r)), [...new Set(preqs)].join());
+  check('parent screen reads only my_children, tournament_state and the own profile', preqs.every(r => /^(rpc\/(link_child|yb_mark_read)|my_children|tournament_state|profiles|yb_notifications|yb_events)$/.test(r)), [...new Set(preqs)].join());
   check('parent console clean', P.errs.length === 0, P.errs.join('|'));
   world.P = P;
 }
@@ -1789,6 +1839,103 @@ section('competition officer: assigned by the admin, review queue, notifications
   await settle(O2); await signInOk(O2, 'off@t.test');
   check('an officer with no competition sees a clear message and no queue', /لم تُسند إليك مسابقة بعد/.test(await text(O2)) && !(await O2.locator('.a-team').count()));
   await close(O2);
+}
+
+/* ================================================================ 8c. unified schedule (الجدول) and attendance */
+section('unified schedule: dates by the admin and officers, leader RSVP, check-in next to the lg2 rules');
+{
+  const fake = new Fake();
+  fake.addUser({ email: 'boss@t.test', name: 'المشرف', role: 'member' }); fake.setAdmin('boss@t.test');
+  const off = fake.addUser({ email: 'ref@t.test', name: 'مسؤول الكرة', role: 'member' }); fake.setRole('ref@t.test', 'officer');
+  fake.officers.push({ user_id: off.id, competition: 'football' });
+  fake.addUser({ email: 'la@t.test', name: 'قائد النور', role: 'leader' });
+  fake.addUser({ email: 'lb@t.test', name: 'قائد الأمل', role: 'leader' });
+  const mem = n => Array.from({ length: n }, (_, i) => ({ name: `لاعب ${i + 1} المجتهد`, age: 13 }));
+  const TA = fake.seedTeam({ leaderEmail: 'la@t.test', name: 'النور', status: 'approved', members: mem(4) });
+  const TB = fake.seedTeam({ leaderEmail: 'lb@t.test', name: 'الأمل', status: 'approved', members: mem(4) });
+  /* the admin adds a match from the new tab */
+  const A = await open(fake, { label: 'sched-admin' });
+  await settle(A); await signInOk(A, 'boss@t.test');
+  await A.locator('#at-schedule').click();
+  await A.waitForSelector('.a-evm button[data-fk="evadd-adm"]');
+  check('admin: «الجدول» tab with the dates manager (empty at first)', /لا توجد مواعيد قادمة/.test(await A.locator('.a-evm').innerText()));
+  await A.locator('button[data-fk="evadd-adm"]').click();
+  const F = A.locator('form.a-evform');
+  await F.locator('select[name=competition]').selectOption('football');
+  await F.locator('input[name=title]').fill('الجولة الأولى: النور ضد الأمل');
+  const d = new Date(Date.now() + 3 * 864e5); const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  await F.locator('input[name=date]').fill(ds);
+  await F.locator('input[name=time]').fill('16:30');
+  await F.locator('input[name=place]').fill('ملعب الحي');
+  await F.locator('input[name=category]').fill('المجموعة أ');
+  await F.locator('.a-evteams label', { hasText: 'النور' }).locator('input').check();
+  await F.locator('.a-evteams label', { hasText: 'الأمل' }).locator('input').check();
+  await F.locator('button[type=submit]').click();
+  await A.waitForSelector('.a-evm .a-ev');
+  const ev = fake.events[0];
+  check('the date is saved with competition, time, place, category and the two teams', !!ev && ev.competition === 'football' && ev.place === 'ملعب الحي' && ev.category === 'المجموعة أ' && ev.team_ids.length === 2 && new Date(ev.starts_at).getHours() === 16);
+  check('the list shows it with its teams', /الجولة الأولى: النور ضد الأمل/.test(await A.locator('.a-evm .a-ev').innerText()) && /النور · الأمل|الأمل · النور/.test(await A.locator('.a-evm .a-ev').innerText()));
+  await F.isVisible().catch(() => {});
+  await A.locator(`button[data-fk="eve-${ev.id}"]`).click();
+  await A.locator('form.a-evform input[name=time]').fill('18:00');
+  await A.locator('form.a-evform button[type=submit]').click();
+  await A.waitForFunction(() => /تغيّر الموعد/.test(document.querySelector('.a-evm').innerText));
+  check('moving the time marks the date «تغيّر الموعد»', fake.events[0].status === 'changed' && new Date(fake.events[0].starts_at).getHours() === 18);
+  check('admin console clean (schedule)', A.errs.length === 0, A.errs.join('|'));
+  await close(A);
+  /* the leader sees the date and confirms */
+  const L = await open(fake, { label: 'sched-leader' });
+  await settle(L); await signInOk(L, 'la@t.test');
+  await L.waitForSelector('.a-dates:not([hidden]) .a-ev', { timeout: 8000 });
+  check('leader: «المواعيد القادمة» shows the match with its changed time', /الجولة الأولى: النور ضد الأمل/.test(await L.locator('.a-dates').innerText()) && /تغيّر الموعد/.test(await L.locator('.a-dates').innerText()));
+  await L.locator(`button[data-fk="rsvp-yes-${ev.id}"]`).click();
+  await L.waitForFunction(id => document.querySelector(`button[data-fk="rsvp-yes-${id}"]`)?.getAttribute('aria-pressed') === 'true', ev.id);
+  check('«سنحضر» records the answer (yb_rsvp) and shows it pressed', fake.att.some(a => a.event_id === ev.id && a.team_id === TA.id && a.rsvp === 'yes'));
+  check('leader console clean (schedule)', L.errs.length === 0, L.errs.join('|'));
+  await close(L);
+  /* the football officer marks attendance next to the lg2 rules */
+  const O = await open(fake, { label: 'sched-officer' });
+  await settle(O); await signInOk(O, 'ref@t.test');
+  await O.waitForSelector('.a-evm .a-ev', { timeout: 8000 });
+  check('officer: the dates manager is limited to its competition (no competition picker)', /المواعيد: دوري كرة القدم/.test(await O.locator('.a-evm h3').innerText()));
+  await O.locator(`button[data-fk="eva-${ev.id}"]`).click();
+  await O.waitForSelector('.a-att .a-attrow');
+  const attText = await O.locator('.a-att').innerText();
+  check('attendance panel: both teams, the leader answers (أكّد الحضور / لم يرد) and the lg2 rules verbatim', (await O.locator('.a-attrow').count()) === 2 && /أكّد الحضور/.test(attText) && /لم يرد/.test(attText) && /تأخر الفريق لأكثر من 10 دقائق/.test(await O.locator('.a-rules').textContent()) && (await O.locator('.a-rules tr').count()) === 7);
+  const row = O.locator(`.a-attrow[data-team="${TA.id}"]`);
+  check('minutes late are disabled until «حضر» is chosen', await row.locator('input.a-late').isDisabled());
+  await row.locator('select').selectOption('present');
+  await row.locator('input.a-late').fill('12');
+  await row.locator('button').click();
+  await O.waitForFunction(t => document.querySelector(`.a-attrow[data-team="${t}"] select`)?.value === 'present', TA.id);
+  check('the check-in is saved: present, 12 minutes late (yb_mark_attendance)', fake.att.some(a => a.team_id === TA.id && a.presence === 'present' && a.late_minutes === 12));
+  await O.locator(`button[data-fk="evc-${ev.id}"]`).click(); await O.locator(`button[data-fk="evc-${ev.id}"]`).click();
+  await O.waitForFunction(() => /أُلغي/.test(document.querySelector('.a-evm').innerText));
+  check('the officer cancels the date (two presses)', fake.events[0].status === 'cancelled');
+  const deny = await O.evaluate(async () => (await YB.insert('yb_events', { competition: 'chess', kind: 'round', title: 'دور', starts_at: new Date().toISOString(), team_ids: [] }, { returning: true })).error);
+  check('a football officer cannot add a chess date', deny === 'permission_denied');
+  check('officer console clean (schedule)', O.errs.length === 0, O.errs.join('|'));
+  await close(O);
+  /* a cancelled date: no RSVP buttons any more */
+  const L2 = await open(fake, { label: 'sched-leader2' });
+  await settle(L2); await signInOk(L2, 'lb@t.test');
+  await L2.waitForSelector('.a-dates:not([hidden]) .a-ev', { timeout: 8000 });
+  check('leader B: the cancelled date is marked «أُلغي» and has no RSVP buttons', /أُلغي/.test(await L2.locator('.a-dates').innerText()) && !(await L2.locator('.a-dates .a-rsvp').count()));
+  await close(L2);
+}
+
+/* ---- demo: sample dates and RSVP */
+{
+  const p = await open(null, { config: 'none', label: 'demo-dates' });
+  await settle(p);
+  await p.locator('[data-demo=leader]').click();
+  await p.waitForSelector('.a-dates:not([hidden]) .a-ev', { timeout: 8000 });
+  const t = await p.locator('.a-dates').innerText();
+  check('demo leader: sample dates of the team (match + recitation); the workshop for approved teams is not shown to a draft team', /مباراة تجريبية/.test(t) && /موعد التسميع الأول/.test(t) && !/ورشة القيادة/.test(t));
+  await p.locator('button[data-fk="rsvp-yes-ev-1"]').click();
+  await p.waitForFunction(() => document.querySelector('button[data-fk="rsvp-yes-ev-1"]')?.getAttribute('aria-pressed') === 'true');
+  check('demo: «سنحضر» works on the fake data', (await p.locator('button[data-fk="rsvp-yes-ev-1"]').getAttribute('aria-pressed')) === 'true');
+  await close(p);
 }
 
 /* ================================================================ 9. wrap up: hosts and console */

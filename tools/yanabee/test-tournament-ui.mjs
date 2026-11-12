@@ -86,6 +86,8 @@ function makeBackend(init = {}) {
     if (p === '/rest/v1/teams') return json(200, B.approved);
     if (p === '/rest/v1/rpc/my_team') return json(200, who && who.id === 'u-lead' ? B.mine : []);
     if (p === '/rest/v1/my_children') return json(200, who && who.id === 'u-par' ? B.children : []);
+    if (p === '/rest/v1/yb_events') return B.events ? json(200, B.events) : json(404, { code: 'PGRST205', message: 'relation not found' });
+    if (p === '/rest/v1/public_teams') return json(200, B.pubTeams || []);
     if (p.startsWith('/auth/v1/')) return json(401, { message: 'no' });
     return json(404, { message: 'unknown ' + p });
   };
@@ -171,7 +173,7 @@ let LOCAL_STATE = null;
   check('mode is local without a backend', (await MODE(p)) === 'local');
   check('badge and the exact local label', (await txt(p, '.tn-badge')) === 'وضع محلي' && (await txt(p, '.tn-stamp')) === 'وضع محلي: يُحفظ على هذا الجهاز فقط');
   const tabs = await p.evaluate(() => [...document.querySelectorAll('[role=tab]')].filter(t => !t.hidden).map(t => ({ id: t.id, sel: t.getAttribute('aria-selected'), ctl: t.getAttribute('aria-controls'), ti: t.tabIndex, txt: t.textContent })));
-  check('five tabs in order with names', tabs.map(t => t.txt).join() === 'نظرة عامة,كرة القدم,الشطرنج,فريقي,الإعداد', tabs.map(t => t.txt).join());
+  check('six tabs in order with names (الجدول before الإعداد)', tabs.map(t => t.txt).join() === 'نظرة عامة,كرة القدم,الشطرنج,فريقي,الجدول,الإعداد', tabs.map(t => t.txt).join());
   check('exactly one selected tab, roving tabindex, aria-controls point at tabpanels', tabs.filter(t => t.sel === 'true').length === 1 && tabs.filter(t => t.ti === 0).length === 1 && await p.evaluate(() => [...document.querySelectorAll('[role=tab]')].every(t => document.getElementById(t.getAttribute('aria-controls')).getAttribute('role') === 'tabpanel')));
   check('tablist has a label and opts out of the sliding indicator (data-seg=own)', await p.evaluate(() => { const l = document.querySelector('[role=tablist]'); return !!l.getAttribute('aria-label') && l.dataset.seg === 'own' && !l.querySelector('.seg-ind'); }));
   check('empty overview says 12 teams are needed and points to setup', /يلزم 12 فريقًا/.test(await txt(p, '#tn-p-overview')) && await vis(p, '[data-act=go-setup]'));
@@ -710,6 +712,50 @@ section('backend: public view, polling, not published, errors');
   await p.click('[data-act=retry-load]');
   await p.waitForTimeout(400);
   check('retry loads the board', await count(p, '.tn-errbox') === 0 && (await ST(p)).teams.length === 12);
+  await ctx.close();
+}
+
+/* ================================================================== 10b. unified schedule (الجدول) */
+section('unified schedule tab: dates from the database + planned fixtures, filters, cancelled dates, ics');
+{
+  const B = makeBackend({ state: base() });
+  const day = n => { const d = new Date(); d.setDate(d.getDate() + n); d.setHours(16, 30, 0, 0); return d.toISOString(); };
+  B.events = [
+    { id: 'e1', competition: 'football', kind: 'match', title: 'الجولة الأولى: مباراة الافتتاح', starts_at: day(2), place: 'الملعب', team_ids: ['t1', 't5'], category: 'المجموعة أ', status: 'scheduled', note: null },
+    { id: 'e2', competition: 'workshops', kind: 'workshop', title: 'ورشة القيادة', starts_at: day(3), place: 'القاعة', team_ids: [], category: null, status: 'changed', note: 'تغيّرت القاعة' },
+    { id: 'e3', competition: 'hifz', kind: 'recitation', title: 'موعد التسميع', starts_at: day(5), place: null, team_ids: ['t9'], category: 'الفئة الأولى', status: 'cancelled', note: null }
+  ];
+  const { ctx, p, errs } = await open({ backend: B });
+  await tab(p, 'schedule');
+  await p.waitForSelector('#tn-p-schedule .tn-ev', { timeout: 8000 });
+  const t = await txt(p, '#tn-p-schedule');
+  check('the tab lists the 3 dates with kind, competition, teams and place', await count(p, '#tn-p-schedule .tn-ev') === 3 && /مباراة الافتتاح/.test(t) && /ورشة القيادة/.test(t) && /كل الفرق/.test(t) && /الملعب/.test(t));
+  check('changed and cancelled dates are marked', /تغيّر الموعد/.test(t) && /أُلغي/.test(t) && await count(p, '.tn-ev.is-cancelled') === 1);
+  check('the schedule shows even though the board is not published', /لم تُنشر|الجدول الموحّد/.test(t) && /الجدول الموحّد/.test(t));
+  await p.selectOption('#tn-sf-comp', 'football');
+  check('filter by competition', await count(p, '#tn-p-schedule .tn-ev') === 1);
+  await p.selectOption('#tn-sf-comp', '');
+  await p.selectOption('#tn-sf-team', 't9');
+  check('filter by team keeps the team dates and the dates for every team', await count(p, '#tn-p-schedule .tn-ev') === 2);
+  await p.selectOption('#tn-sf-team', '');
+  await p.selectOption('#tn-sf-cat', 'الفئة الأولى');
+  check('filter by category', await count(p, '#tn-p-schedule .tn-ev') === 1);
+  await p.selectOption('#tn-sf-cat', '');
+  const [dl] = await Promise.all([p.waitForEvent('download'), p.click('[data-act=ics]')]);
+  const ics = fs.readFileSync(await dl.path(), 'utf8');
+  check('.ics download: a calendar with the active dates only (the cancelled one is left out)', dl.suggestedFilename() === 'yanabee-schedule.ics' && /BEGIN:VCALENDAR/.test(ics) && (ics.match(/BEGIN:VEVENT/g) || []).length === 2 && !/موعد التسميع/.test(ics));
+  check('no console error (schedule)', errs.length === 0, errs.join('|'));
+  await ctx.close();
+}
+{
+  // without a backend: the fixtures planned on the board (fb.sched) appear in the schedule
+  const st = (() => { const x = base(); const m = Y.football(x).groups[0].rounds[0].matches[0]; const d = new Date(); d.setDate(d.getDate() + 1);
+    return Y.setSchedule(x, m.a, m.b, { date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`, time: '17:00' }); })();
+  const { ctx, p, errs } = await open({ state: st });
+  await tab(p, 'schedule');
+  const t = await txt(p, '#tn-p-schedule');
+  check('local mode: a fixture planned on the board shows in the schedule', await count(p, '#tn-p-schedule .tn-ev') === 1 && /المجموعة أ · الجولة 1/.test(t) && /من خطة لوحة البطولة/.test(t));
+  check('no console error (planned fixtures)', errs.length === 0, errs.join('|'));
   await ctx.close();
 }
 

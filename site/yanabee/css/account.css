@@ -304,6 +304,30 @@
 .a-chips{list-style:none;margin:.3rem 0 0;padding:0;display:flex;flex-wrap:wrap;gap:.4rem}
 .a-roster-ro{margin:.6rem 0}
 
+
+/* ---- unified schedule: dates manager, attendance, team dates (SPEC 4.10.3) */
+.a-tabs-5{grid-template-columns:repeat(5,1fr)}
+.a-evlist{list-style:none;margin:.6rem 0 0;padding:0;display:grid;gap:.6rem}
+.a-ev{padding:.7rem .85rem;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+.a-ev-h{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem}
+.a-ev-m{margin:.15rem 0 0;color:var(--ink-2);font-size:.9rem}
+.a-ev.is-cancelled{opacity:.72}
+.a-ev.is-cancelled .a-ev-h b{text-decoration:line-through}
+.a-evform{margin-top:.6rem}
+.a-evteams{max-height:14rem;overflow:auto}
+.a-att{margin-top:.6rem;padding-top:.6rem;border-top:1px dashed var(--line)}
+.a-att h4{margin:0 0 .4rem}
+.a-attlist{list-style:none;margin:0;padding:0;display:grid;gap:.45rem}
+.a-attrow{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem .6rem}
+.a-attrow b{flex:1 1 9rem}
+.a-latew{display:inline-flex;align-items:center;gap:.35rem;font-size:.85rem}
+.a-late{width:5rem;min-height:44px}
+.a-rules{margin-top:.6rem}
+.a-rules summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weight:600}
+.a-rsvp{display:flex;gap:.5rem;margin-top:.45rem}
+.a-past summary{cursor:pointer;min-height:44px;display:flex;align-items:center}
+@media (max-width:640px){.a-tabs-5{grid-template-columns:repeat(5,1fr)}.a-tabs-5 .a-tab span{font-size:.72rem}}
+
 @media print{
   body.acct-printing main>*:not(#account){display:none!important}
   body.acct-printing .a-head,body.acct-printing .a-pwbox,body.acct-printing .a-flash,body.acct-printing .a-counters,body.acct-printing .a-tabs,body.acct-printing .a-panel>.a-card{display:none!important}

@@ -109,7 +109,7 @@
 
   /* ------------------------------------------------------------------ app state */
   const S = { seq: 0, uid: null, role: null, expired: false, manualOut: false, recoveryDone: false, stopPoll: null, stopInbox: null, rendered: null, modeSet: null, confirmedShown: false };
-  const clearData = () => { A.teams = []; A.members = []; A.profiles = []; A.state = undefined; L.team = null; L.members = []; };
+  const clearData = () => { A.teams = []; A.members = []; A.profiles = []; A.state = undefined; A.evm = null; L.team = null; L.members = []; };
 
   function mount(node, focus) {
     root.replaceChildren(node);
@@ -481,6 +481,9 @@
     if (n.kind === 'team_status') return `تغيّرت حالة ${team}: ${STATUS[d.to] || d.to || ''}.`;
     if (n.kind === 'team_submitted') return `أرسل ${team} طلب التسجيل، وهو بانتظار المراجعة.`;
     if (n.kind === 'team_approved') return `اعتُمد ${team} في المسابقة.`;
+    if (n.kind === 'event_new') return `موعد جديد: ${d.title || ''} — ${fmtWhen(d.starts_at)}${d.place ? ' · ' + d.place : ''}`;
+    if (n.kind === 'event_changed') return `تغيّر موعد: ${d.title || ''} — ${fmtWhen(d.starts_at)}${d.place ? ' · ' + d.place : ''}`;
+    if (n.kind === 'event_cancelled') return `أُلغي موعد: ${d.title || ''}`;
     return 'إشعار جديد.';
   }
   function inboxBox() {
@@ -526,6 +529,175 @@
       if (!S.stopInbox) load();
     }
     return { bell, panel, start };
+  }
+
+
+  /* ------------------------------------------------------------------ unified schedule: dates + attendance (SPEC 4.10.3, 4.11) */
+  const KINDS = { match: 'مباراة', round: 'جولة', workshop: 'ورشة', recitation: 'موعد تسميع', other: 'موعد' };
+  const EV_SELECT = 'id,competition,kind,title,starts_at,place,team_ids,category,status,note';
+  const pad2 = n => String(n).padStart(2, '0');
+  const localParts = iso => { const d = new Date(iso); return isNaN(d) ? { date: '', time: '' } : { date: `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`, time: `${pad2(d.getHours())}:${pad2(d.getMinutes())}` }; };
+  function fmtWhen(iso) { try { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleString('ar-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } }
+  const evChip = st => st === 'cancelled' ? chip('أُلغي', 'bad') : st === 'changed' ? chip('تغيّر الموعد', 'sun') : null;
+  const isPast = e => new Date(e.starts_at).getTime() < Date.now() - 3 * 36e5;
+  function lg2Box() {
+    if (!Array.isArray(W.lg2Rows) || !W.lg2Rows.length) return null;
+    return h('details', { class: 'a-rules' }, h('summary', { text: W.lg2Title || 'التأخر والغياب والانسحاب' }),
+      h('table', { class: 'a-ptable' }, h('tbody', {}, W.lg2Rows.map(r => h('tr', {}, h('th', { scope: 'row', text: r[0] }), h('td', { text: r[1] }))))),
+      h('p', { class: 'a-hint', text: 'تسجيل الحضور هنا لا يطبّق أي عقوبة تلقائيًا: القرار للجنة المسابقة وفق اللائحة.' }));
+  }
+
+  // admin / officer: create, edit and cancel the dates of the given competitions, and mark who came
+  function eventManager(comps, teamsFn, fk) {
+    const M = { events: [], att: [], editing: null, open: null, loaded: false, err: '' };
+    const el = h('section', { class: 'a-card a-evm', 'aria-labelledby': 'evm-h-' + fk });
+    const teams = () => (teamsFn() || []).slice().sort((a, b) => String(a.name).localeCompare(String(b.name), 'ar'));
+    const tname = id => { const t = (teamsFn() || []).find(x => x.id === id); return t ? t.name : 'فريق'; };
+    async function load() {
+      const filter = comps.length === 1 ? { competition: 'eq.' + comps[0] } : { competition: 'in.(' + comps.join(',') + ')' };
+      const [e, a] = await Promise.all([read('yb_events', { select: EV_SELECT, filter, order: 'starts_at.asc' }),
+        read('yb_attendance', { select: 'event_id,team_id,rsvp,presence,late_minutes' })]);
+      if (!e.ok) { M.err = YB.errorText(e.error); M.loaded = true; return; }
+      M.err = ''; M.events = e.data || []; M.att = a.ok ? (a.data || []) : []; M.loaded = true;
+    }
+    async function refresh(msg, focusKey) { await load(); paint(focusKey); if (msg) say(msg); }
+    function form(ev) {
+      const p = ev ? localParts(ev.starts_at) : { date: '', time: '16:00' };
+      const id = uid('evf');
+      const comp = h('select', { id: id + 'c', class: 'a-select', name: 'competition' }, comps.map(c => h('option', { value: c, selected: ev ? ev.competition === c : false, text: COMPS[c] || c })));
+      const kind = h('select', { id: id + 'k', class: 'a-select', name: 'kind' }, Object.keys(KINDS).map(k => h('option', { value: k, selected: ev ? ev.kind === k : k === 'match', text: KINDS[k] })));
+      const title = field({ label: 'العنوان', name: 'title', required: true, max: 80, value: ev ? ev.title : '', hint: 'مثل: الجولة الأولى، ورشة القيادة، تسميع الآيات 1–9. لا تكتب اسم طفل.' });
+      const date = field({ label: 'التاريخ', name: 'date', type: 'date', required: true, value: p.date, dir: 'ltr' });
+      const time = field({ label: 'الساعة', name: 'time', type: 'time', required: true, value: p.time, dir: 'ltr' });
+      const place = field({ label: 'المكان', name: 'place', max: 80, value: ev && ev.place ? ev.place : '' });
+      const cat = field({ label: 'الفئة (اختيارية)', name: 'category', max: 40, value: ev && ev.category ? ev.category : '', hint: 'مثل: المجموعة أ، الفئة العمرية، الدور الأول.' });
+      const note = field({ label: 'ملاحظة (اختيارية)', name: 'note', max: 300, value: ev && ev.note ? ev.note : '' });
+      const chosen = new Set(ev ? ev.team_ids || [] : []);
+      const tlist = teams();
+      const tbox = h('fieldset', { class: 'a-comps a-evteams' }, h('legend', { text: 'الفرق المعنية' }),
+        tlist.length ? tlist.map(t => h('label', { class: 'a-check' }, h('input', { type: 'checkbox', value: t.id, checked: chosen.has(t.id) }), h('span', { text: t.name })))
+          : h('small', { class: 'a-hint', text: 'لا توجد فرق معتمدة بعد.' }),
+        h('small', { class: 'a-hint', text: 'إن لم تختر فريقًا يشمل الموعد كل الفرق المعتمدة.' }));
+      const f = h('form', { class: 'a-form a-evform', 'aria-label': ev ? 'تعديل الموعد' : 'إضافة موعد' },
+        h('div', { class: 'a-grid2' },
+          comps.length > 1 ? h('label', { class: 'a-f', for: id + 'c' }, h('span', { class: 'a-l', text: 'المسابقة' }), comp) : null,
+          h('label', { class: 'a-f', for: id + 'k' }, h('span', { class: 'a-l', text: 'النوع' }), kind)),
+        title, h('div', { class: 'a-grid2' }, date, time), place, cat, tbox, note,
+        h('div', { class: 'a-actions' }, submitBtn(ev ? 'حفظ التعديل' : 'أضف الموعد', 'check'),
+          h('button', { type: 'button', class: 'a-link', text: 'إلغاء', onclick: () => { M.editing = null; paint(); } })));
+      bind(f, async () => {
+        const t = title.input.value.trim();
+        if (t.length < 2 || t.length > 80) return showErr(f, 'العنوان من حرفين إلى 80 حرفًا.', title.input);
+        if (!date.input.value || !time.input.value) return showErr(f, 'اختر التاريخ والساعة.', date.input);
+        const at = new Date(date.input.value + 'T' + time.input.value);
+        if (isNaN(at)) return showErr(f, 'التاريخ أو الساعة غير صحيحين.', date.input);
+        const row = { competition: comps.length > 1 ? comp.value : comps[0], kind: kind.value, title: t, starts_at: at.toISOString(),
+          place: place.input.value.trim() || null, category: cat.input.value.trim() || null, note: note.input.value.trim() || null,
+          team_ids: [...tbox.querySelectorAll('input:checked')].map(x => x.value) };
+        showErr(f, '');
+        const r = ev ? await YB.update('yb_events', { id: 'eq.' + ev.id }, row, { returning: true }) : await YB.insert('yb_events', row, { returning: true });
+        if (!wrote(r)) { if (sessionLost(r)) return; return showErr(f, errMsg(r), title.input); }
+        M.editing = null;
+        await refresh(ev ? 'حُفظ الموعد، ووصل تنبيه للفرق المعنية إن تغيّر الوقت أو المكان.' : 'أُضيف الموعد، ووصل تنبيه للفرق المعنية.', 'evadd-' + fk);
+      });
+      return f;
+    }
+    function attendance(ev) {
+      const ids = (ev.team_ids || []).length ? ev.team_ids : teams().map(t => t.id);
+      const rows = ids.map(tid => {
+        const a = M.att.find(x => x.event_id === ev.id && x.team_id === tid) || {};
+        const sel = h('select', { class: 'a-select', 'aria-label': 'حضور ' + tname(tid), 'data-fk': `pr-${ev.id}-${tid}` },
+          [['', '—'], ['present', 'حضر'], ['absent', 'غاب']].map(o => h('option', { value: o[0], selected: (a.presence || '') === o[0], text: o[1] })));
+        const late = h('input', { type: 'number', min: 0, max: 600, class: 'a-late', inputmode: 'numeric', 'aria-label': 'دقائق التأخر لـ ' + tname(tid), value: a.late_minutes === null || a.late_minutes === undefined ? '' : String(a.late_minutes), disabled: a.presence !== 'present' });
+        sel.addEventListener('change', () => { late.disabled = sel.value !== 'present'; if (late.disabled) late.value = ''; });
+        const save = btn('حفظ', 'check', 'btn-ghost', async () => {
+          if (save.dataset.busy) return;
+          save.dataset.busy = '1';
+          const lm = late.value === '' ? null : num(late.value);
+          const r = await YB.rpc('yb_mark_attendance', { event_id: ev.id, team_id: tid, presence: sel.value || null, late_minutes: sel.value === 'present' ? lm : null });
+          delete save.dataset.busy;
+          if (!r.ok) { if (!sessionLost(r)) say(errMsg(r)); return; }
+          await refresh(`سُجّل حضور ${tname(tid)}.`, `pr-${ev.id}-${tid}`);
+        }, { 'data-fk': `prs-${ev.id}-${tid}` });
+        const rsvp = a.rsvp === 'yes' ? chip('أكّد الحضور', 'ok') : a.rsvp === 'no' ? chip('اعتذر', 'bad') : chip('لم يرد', 'muted');
+        return h('li', { class: 'a-attrow', 'data-team': tid }, h('b', { text: tname(tid) }), rsvp, sel, h('label', { class: 'a-latew' }, h('span', { text: 'دقائق التأخر' }), late), save);
+      });
+      return h('div', { class: 'a-att' }, h('h4', { text: 'حضور الفرق' }), h('ul', { class: 'a-attlist' }, rows), lg2Box());
+    }
+    function evItem(ev) {
+      const open = M.open === ev.id;
+      const acts = [btn('تعديل', 'user', 'btn-ghost', () => { M.editing = ev.id; paint(); const f = el.querySelector('.a-evform input'); if (f) f.focus(); }, { 'data-fk': 'eve-' + ev.id }),
+        btn(open ? 'إخفاء الحضور' : 'حضور الفرق', 'user-check', 'btn-ghost', () => { M.open = open ? null : ev.id; paint('eva-' + ev.id); }, { 'data-fk': 'eva-' + ev.id, 'aria-expanded': String(open) })];
+      if (ev.status !== 'cancelled') acts.push(armed(btn('ألغِ الموعد', 'x', 'btn-ghost btn-danger', () => {}, { 'data-fk': 'evc-' + ev.id }), 'اضغط مرة أخرى لتأكيد الإلغاء', async () => {
+        const r = await YB.update('yb_events', { id: 'eq.' + ev.id }, { status: 'cancelled' }, { returning: true });
+        if (!wrote(r)) { if (!sessionLost(r)) say(errMsg(r)); return; }
+        await refresh('أُلغي الموعد، ووصل تنبيه للفرق المعنية.', 'eva-' + ev.id);
+      }));
+      const teamsTxt = (ev.team_ids || []).length ? ev.team_ids.map(tname).join(' · ') : 'كل الفرق المعتمدة';
+      return h('li', { class: 'a-ev' + (ev.status === 'cancelled' ? ' is-cancelled' : ''), 'data-event': ev.id },
+        h('div', { class: 'a-ev-h' }, h('b', { text: ev.title }), evChip(ev.status)),
+        h('p', { class: 'a-ev-m', text: [fmtWhen(ev.starts_at), ev.place].filter(Boolean).join(' · ') }),
+        h('p', { class: 'a-ev-m', text: [KINDS[ev.kind], COMPS[ev.competition], ev.category, teamsTxt].filter(Boolean).join(' · ') }),
+        ev.note ? h('p', { class: 'a-hint', text: ev.note }) : null,
+        M.editing === ev.id ? form(ev) : h('div', { class: 'a-actions' }, acts),
+        open ? attendance(ev) : null);
+    }
+    function paint(focusKey) {
+      const head = h('h3', { id: 'evm-h-' + fk }, icon('calendar'), h('span', { text: 'المواعيد: ' + comps.map(c => COMPS[c] || c).join('، ') }));
+      if (!M.loaded) { el.replaceChildren(head, skeleton()); return; }
+      if (M.err) { el.replaceChildren(head, errorBlock(M.err, () => refresh())); return; }
+      const up = M.events.filter(e => !isPast(e)), past = M.events.filter(isPast);
+      el.replaceChildren(head,
+        h('p', { class: 'a-lead', text: 'يصل تنبيه للفرق المعنية عند إضافة موعد أو تغيير وقته أو مكانه أو إلغائه. يظهر الموعد للجميع في «الجدول» بلوحة البطولة.' }),
+        M.editing === 'new' ? form(null) : h('div', { class: 'a-actions' }, btn('أضف موعدًا', 'calendar', 'btn-primary', () => { M.editing = 'new'; paint(); const f = el.querySelector('.a-evform input'); if (f) f.focus(); }, { 'data-fk': 'evadd-' + fk })),
+        up.length ? h('ul', { class: 'a-evlist' }, up.map(evItem)) : h('p', { class: 'a-empty', text: 'لا توجد مواعيد قادمة.' }),
+        past.length ? h('details', { class: 'a-past' }, h('summary', { text: `مواعيد مضت (${past.length})` }), h('ul', { class: 'a-evlist' }, past.slice().reverse().map(evItem))) : null);
+      if (focusKey) { const f2 = el.querySelector(`[data-fk="${CSS.escape(focusKey)}"]`); if (f2) f2.focus({ preventScroll: true }); }
+    }
+    paint();
+    load().then(() => paint());
+    return { el, refresh };
+  }
+
+  // leader / member / parent: the team's coming dates; the leader confirms or declines attendance
+  function teamDates(teamId, teamStatus, canRsvp) {
+    const el = h('section', { class: 'a-card a-dates', 'aria-label': 'المواعيد القادمة' });
+    async function paint(msg, focusKey) {
+      const [e, a] = await Promise.all([read('yb_events', { select: EV_SELECT, order: 'starts_at.asc' }),
+        canRsvp ? read('yb_attendance', { select: 'event_id,team_id,rsvp', filter: { team_id: 'eq.' + teamId } }) : Promise.resolve({ ok: true, data: [] })]);
+      if (!e.ok) { el.hidden = true; return; } // no schedule on this backend yet
+      el.hidden = false;
+      const mine = (e.data || []).filter(ev => !isPast(ev) && ((ev.team_ids || []).indexOf(teamId) >= 0 || ((ev.team_ids || []).length === 0 && teamStatus === 'approved')));
+      const att = a.ok ? (a.data || []) : [];
+      const rows = mine.map(ev => {
+        const my = att.find(x => x.event_id === ev.id) || {};
+        const acts = [];
+        if (canRsvp && ev.status !== 'cancelled') {
+          const answer = async v => {
+            const r = await YB.rpc('yb_rsvp', { event_id: ev.id, team_id: teamId, answer: v });
+            if (!r.ok) { if (!sessionLost(r)) say(errMsg(r)); return; }
+            paint(v === 'yes' ? 'سُجّل أن الفريق سيحضر.' : 'سُجّل اعتذار الفريق.', `rsvp-${v}-${ev.id}`);
+          };
+          acts.push(h('div', { class: 'a-rsvp', role: 'group', 'aria-label': 'هل سيحضر الفريق؟' },
+            btn('سنحضر', 'check', my.rsvp === 'yes' ? 'btn-primary' : 'btn-ghost', () => answer('yes'), { 'aria-pressed': String(my.rsvp === 'yes'), 'data-fk': 'rsvp-yes-' + ev.id }),
+            btn('نعتذر', 'x', my.rsvp === 'no' ? 'btn-primary' : 'btn-ghost', () => answer('no'), { 'aria-pressed': String(my.rsvp === 'no'), 'data-fk': 'rsvp-no-' + ev.id })));
+        }
+        return h('li', { class: 'a-ev' + (ev.status === 'cancelled' ? ' is-cancelled' : ''), 'data-event': ev.id },
+          h('div', { class: 'a-ev-h' }, h('b', { text: ev.title }), evChip(ev.status)),
+          h('p', { class: 'a-ev-m', text: [fmtWhen(ev.starts_at), ev.place].filter(Boolean).join(' · ') }),
+          h('p', { class: 'a-ev-m', text: [KINDS[ev.kind], COMPS[ev.competition], ev.category].filter(Boolean).join(' · ') }),
+          ev.note ? h('p', { class: 'a-hint', text: ev.note }) : null, acts);
+      });
+      el.replaceChildren(h('h3', {}, icon('calendar'), h('span', { text: 'المواعيد القادمة' })),
+        canRsvp && rows.length ? h('p', { class: 'a-lead', text: 'أكّد حضور فريقك قبل كل موعد. يصلك تنبيه هنا عند أي تغيير.' }) : null,
+        rows.length ? h('ul', { class: 'a-evlist' }, rows) : h('p', { class: 'a-empty', text: 'لا توجد مواعيد قادمة لفريقك الآن.' }),
+        h('p', { class: 'a-hint' }, h('a', { href: 'tournament.html#schedule', text: 'الجدول الكامل في لوحة البطولة' })));
+      if (focusKey) { const f = el.querySelector(`[data-fk="${CSS.escape(focusKey)}"]`); if (f) f.focus({ preventScroll: true }); }
+      if (msg) say(msg);
+    }
+    el.hidden = true;
+    paint();
+    return el;
   }
 
   /* ------------------------------------------------------------------ schedule / results (tournament state) */
@@ -647,8 +819,8 @@
         h('b', { text: String(n) }), h('span', { text: label })))));
   }
   function adminTabs() {
-    const defs = [['teams', 'الفرق', 'users'], ['people', 'الأشخاص', 'user'], ['tour', 'لوحة البطولة', 'trophy'], ['export', 'تصدير', 'file-text']];
-    const list = h('div', { role: 'tablist', 'aria-label': 'أقسام الإدارة', class: 'a-tabs a-tabs-4' });
+    const defs = [['teams', 'الفرق', 'users'], ['people', 'الأشخاص', 'user'], ['schedule', 'الجدول', 'calendar'], ['tour', 'لوحة البطولة', 'trophy'], ['export', 'تصدير', 'file-text']];
+    const list = h('div', { role: 'tablist', 'aria-label': 'أقسام الإدارة', class: 'a-tabs a-tabs-4 a-tabs-5' });
     const els = defs.map(([k, label, ic], i) => {
       const on = A.tab === k;
       const b = h('button', { type: 'button', role: 'tab', id: 'at-' + k, 'aria-controls': 'ap-' + k, 'aria-selected': String(on), tabIndex: on ? 0 : -1, class: 'a-tab', 'data-fk': 'tab-' + k,
@@ -670,6 +842,10 @@
     if (A.tab === 'teams') drawAdminTeams(panel);
     else if (A.tab === 'people') drawAdminPeople(panel);
     else if (A.tab === 'tour') drawAdminTour(panel);
+    else if (A.tab === 'schedule') {
+      if (!A.evm) A.evm = eventManager(Object.keys(COMPS), () => A.teams.map(t => ({ id: t.id, name: t.name })), 'adm');
+      panel.append(A.evm.el);
+    }
     else drawAdminExport(panel);
     A.body.replaceChildren(counters(), adminTabs(), panel);
     if (keep) { const f = A.body.querySelector(`[data-fk="${CSS.escape(keep)}"]`); if (f) f.focus({ preventScroll: true }); }
@@ -912,12 +1088,14 @@
   /* ------------------------------------------------------------------ OFFICER (مسؤول المسابقة) */
   // Sees only what the server gives an officer: the competitions assigned to them and, for 'registration', the review
   // queue (team names, counts, roster names and consent ticks: no ages, no guardian data).
-  const O = { comps: [], teams: [], open: {}, roster: {}, notes: {}, body: null };
+  const O = { comps: [], teams: [], pub: [], evm: null, open: {}, roster: {}, notes: {}, body: null };
   async function loadOfficer() {
     const c = await YB.rpc('yb_my_competitions', {});
     if (!c.ok) return c;
     O.comps = (Array.isArray(c.data) ? c.data : []).map(x => (typeof x === 'string' ? x : x && (x.yb_my_competitions || x.competition))).filter(Boolean);
     O.teams = [];
+    const pt = await read('public_teams', { select: 'id,name' });
+    O.pub = pt.ok ? (pt.data || []) : [];
     if (O.comps.includes('registration')) {
       const q = await YB.rpc('yb_review_list', {});
       if (!q.ok) return q;
@@ -944,9 +1122,11 @@
       O.comps.length ? h('ul', { class: 'a-chips' }, O.comps.map(k => h('li', {}, chip(COMPS[k] || k, 'brand'))))
         : h('p', { class: 'a-lead', text: 'لم تُسند إليك مسابقة بعد. يسندها المشرف العام من قسم «الأشخاص».' }))];
     if (O.comps.includes('registration')) nodes.push(reviewQueue());
-    O.comps.filter(k => k !== 'registration').forEach(k => nodes.push(h('section', { class: 'a-card' },
-      h('h3', {}, icon('calendar'), h('span', { text: COMPS[k] || k })),
-      h('p', { class: 'a-lead', text: 'ستظهر هنا مواعيد هذه المسابقة ونتائجها لتسجّلها، بعد تفعيل الجدول الموحّد والنتائج المباشرة.' }))));
+    const others = O.comps.filter(k => k !== 'registration');
+    if (others.length) {
+      if (!O.evm) O.evm = eventManager(others, () => O.pub, 'off');
+      nodes.push(O.evm.el);
+    }
     O.body.replaceChildren(...nodes);
     if (focusKey) { const f = O.body.querySelector(`[data-fk="${CSS.escape(focusKey)}"]`); if (f) f.focus({ preventScroll: true }); }
   }
@@ -1072,7 +1252,8 @@
       L.sched = scheduleBox({ id: t.team_id, name: t.team_name });
     }
     L.printBox = h('section', { class: 'a-card' });
-    body.replaceChildren(L.boxes.top, L.boxes.roster, L.boxes.code, L.sched.node, L.printBox);
+    L.dates = teamDates(t.team_id, t.status, true);
+    body.replaceChildren(L.boxes.top, L.dates, L.boxes.roster, L.boxes.code, L.sched.node, L.printBox);
     paintLeader();
     startSchedule([L.sched]);
     if (focus) { const f = L.boxes.top.querySelector('[data-focus]'); if (f) f.focus({ preventScroll: true }); }
@@ -1355,6 +1536,7 @@
           : h('p', { class: 'a-empty', text: 'تعذّر تحميل أسماء الفريق الآن.' })),
       h('section', { class: 'a-card' }, h('h3', {}, icon('user-check'), h('span', { text: 'موافقة ولي الأمر' })),
         me ? consentBlock(me.consent_status) : h('p', { class: 'a-empty', text: 'لا تتوفر حالة الموافقة الآن.' })),
+      teamDates(row.team_id, row.status, false),
       box.node);
     startSchedule([box]);
   }
@@ -1382,7 +1564,7 @@
       seen[k.team_id] = 1;
       const b = scheduleBox({ id: k.team_id, name: k.team_name });
       boxes.push(b);
-      nodes.push(b.node);
+      nodes.push(teamDates(k.team_id, k.team_status, false), b.node);
     });
     nodes.push(h('section', { class: 'a-card' }, h('h3', {}, icon('user-check'), h('span', { text: kids.length ? 'اربط ابنًا أو ابنة آخر' : 'اربط ابنك أو ابنتك' })),
       h('p', { class: 'a-lead', text: 'اطلب من قائد الفريق رمز الفريق، واكتب اسم الطفل كما كتبه في القائمة.' }), joinForm('parent')));

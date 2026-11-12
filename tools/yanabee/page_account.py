@@ -36,6 +36,9 @@ def words():
         'guardianName': txt(kd[3].text), 'guardianPhone': txt(kd[5].text),
         'consentTitle': txt(k.title), 'consentNote': txt(k.paras[0]),
         'football': txt(fmt['fm-football'].title), 'chess': txt(fmt['fm-chess'].title),
+        # lg2 (التأخر والغياب والانسحاب), shown verbatim next to the attendance check-in
+        'lg2Title': txt(C['c-league']['lg2'].title.partition(':')[2].strip() or C['c-league']['lg2'].title),
+        'lg2Rows': [[txt(c) for c in r] for r in C['c-league']['lg2'].table[1:]],
     }
 
 
