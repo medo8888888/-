@@ -350,3 +350,11 @@
 .a-regd[hidden]{display:none}
 .a-checkcard[hidden]{display:none}
 .a-checkcard .ybc-ring{background:radial-gradient(closest-side,var(--surface) 76%,transparent 78% 100%),conic-gradient(#16a36b calc(var(--p)*1%),var(--line) 0)}
+
+/* roles and the reserve list (migration 0006) */
+.a-chip.role{background:color-mix(in oklab,#7c3aed 12%,var(--surface));color:color-mix(in oklab,#7c3aed 75%,var(--ink));border-color:color-mix(in oklab,#7c3aed 35%,var(--line))}
+.a-grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.a-grid2 select{width:100%;min-height:44px;padding:8px 12px;border-radius:var(--r-sm);border:1px solid var(--line-2);background:var(--surface);color:var(--ink);font:inherit}
+.a-roles{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.a-roles li{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.a-rolecard{display:grid;gap:10px;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface-2)}

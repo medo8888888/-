@@ -47,7 +47,9 @@
     const d = r && r.ok && r.data;
     if (!d || typeof d.registered !== 'number' || !d.target) return;
     const n = d.registered, t = d.target;
-    const txt = n >= t ? `سُجّل ${n} فرق، واكتمل العدد المستهدف (${t} فريقًا)` : n === 0 ? `لم يُسجَّل أي فريق بعد · المستهدف ${t} فريقًا` : `سُجّل ${n} من ${t} فريقًا${d.approved ? ` · اعتُمد ${d.approved}` : ''}`;
+    const w = typeof d.waiting === 'number' ? d.waiting : 0;
+    const txt = n >= t ? `اكتمل العدد (${t} فريقًا)${w ? ` · ${w} في قائمة الاحتياط` : ''} · التسجيل الآن في قائمة الاحتياط`
+      : n === 0 ? `لم يُسجَّل أي فريق بعد · المستهدف ${t} فريقًا` : `سُجّل ${n} من ${t} فريقًا${d.approved ? ` · اعتُمد ${d.approved}` : ''} · بقي ${t - n}`;
     boxes.forEach(b => {
       b.querySelector('[data-cs-teams-t]').textContent = txt;
       b.querySelector('[data-cs-bar]').style.width = Math.min(100, Math.round(n / t * 100)) + '%';

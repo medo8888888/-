@@ -482,6 +482,7 @@
     if (n.kind === 'team_submitted') return `أرسل ${team} طلب التسجيل، وهو بانتظار المراجعة.`;
     if (n.kind === 'team_approved') return `اعتُمد ${team} في المسابقة.`;
     if (n.kind === 'team_fee') return d.fee === 'waived' ? `أعفت الإدارة ${team} من رسوم الاشتراك.` : `سُجّل سداد رسوم ${team}.`;
+    if (n.kind === 'team_seated') return `خلا مكان في المسابقة، فانتقل ${team} من قائمة الاحتياط إلى الفرق المشاركة.`;
     if (n.kind === 'event_new') return `موعد جديد: ${d.title || ''} — ${fmtWhen(d.starts_at)}${d.place ? ' · ' + d.place : ''}`;
     if (n.kind === 'event_changed') return `تغيّر موعد: ${d.title || ''} — ${fmtWhen(d.starts_at)}${d.place ? ' · ' + d.place : ''}`;
     if (n.kind === 'event_cancelled') return `أُلغي موعد: ${d.title || ''}`;
@@ -783,8 +784,8 @@
 
   async function loadAdmin() {
     const [t, m, p] = await Promise.all([
-      read('teams', { select: 'id,name,area,status,admin_note,leader_id,created_at,updated_at,fee_status,fee_receipt,ref_code', order: 'created_at.desc' }),
-      read('team_members', { select: 'id,team_id,full_name,age,guardian_name,guardian_phone,is_leader,user_id,consent_status,consent_at,created_at', order: 'created_at.asc' }),
+      read('teams', { select: 'id,name,area,status,admin_note,leader_id,created_at,updated_at,fee_status,fee_receipt,ref_code,waitlist,waitlist_at', order: 'created_at.desc' }),
+      read('team_members', { select: 'id,team_id,full_name,age,guardian_name,guardian_phone,is_leader,user_id,consent_status,consent_at,created_at,roles', order: 'created_at.asc' }),
       read('profiles', { select: 'id,email,full_name,role,phone,created_at', order: 'created_at.desc' })]);
     for (const r of [t, m, p]) if (!r.ok) return r;
     A.teams = t.data || []; A.members = m.data || []; A.profiles = p.data || [];
@@ -894,7 +895,8 @@
       if (pending) warn.push(`موافقات أولياء الأمور المستلمة ${minors.length - pending} من ${minors.length}.`);
       if (warn.length) body.append(h('ul', { class: 'a-warn' }, warn.map(w => h('li', {}, icon('alert'), h('span', { text: w })))));
       body.append(h('ul', { class: 'a-roster' }, ms.map(m => adminMember(m, t))));
-      body.append(regBar({ id: t.id, name: t.name, fee_status: t.fee_status, fee_receipt: t.fee_receipt, ref_code: t.ref_code, claimed: !!t.leader_id },
+      body.append(regBar({ id: t.id, name: t.name, fee_status: t.fee_status, fee_receipt: t.fee_receipt, ref_code: t.ref_code, claimed: !!t.leader_id,
+        waitlist: t.waitlist, wait_pos: waitPos(t), canMove: true },
         (msg, fk) => refreshAdmin(msg, fk)));
       body.append(decisionBar(t));
     }
@@ -909,7 +911,7 @@
       return true;
     }, 'sw-' + m.id);
     return h('li', { class: 'a-mem' },
-      h('div', { class: 'a-mem-h' }, h('b', { text: m.full_name }), m.is_leader ? chip('قائد', 'brand') : null, isMinor(m.age) ? chip('قاصر', 'muted') : null, m.user_id ? chip('حساب مرتبط', 'ok') : null),
+      h('div', { class: 'a-mem-h' }, h('b', { text: m.full_name }), m.is_leader ? chip('قائد', 'brand') : null, roleChips(m), isMinor(m.age) ? chip('قاصر', 'muted') : null, m.user_id ? chip('حساب مرتبط', 'ok') : null),
       h('dl', { class: 'a-dl' },
         h('div', {}, h('dt', { text: W.age || 'العمر' }), h('dd', { text: m.age === null || m.age === undefined ? '—' : String(m.age) })),
         h('div', {}, h('dt', { text: W.guardianName || 'اسم ولي الأمر' }), h('dd', { text: m.guardian_name || '—' })),
@@ -933,6 +935,17 @@
      after(message, focusKey) reloads the list it sits in */
   const FEE = { unpaid: 'لم تُسدَّد الرسوم', paid: 'سُدّدت الرسوم', waived: 'معفى من الرسوم' };
   const feeChip = f => chip(FEE[f || 'unpaid'], (f || 'unpaid') === 'unpaid' ? 'sun' : 'ok');
+  // member roles (c-form f-nom, migration 0006)
+  const ROLE_W = { reciter: 'المرشح الأساسي للتسميع', reserve: 'المرشح الاحتياطي للتسميع', chess: 'لاعب الشطرنج', coord: 'مسؤول التنسيق والتوثيق' };
+  const ROLE_ORDER = ['reciter', 'reserve', 'chess', 'coord'];
+  const roleChips = m => (Array.isArray(m.roles) ? ROLE_ORDER.filter(k => m.roles.includes(k)).map(k => chip(ROLE_W[k], 'role')) : []);
+  // place on the reserve list, in the order the teams joined it (as yb_wait_pos)
+  const waitPos = t => {
+    if (t.waitlist !== true) return null;
+    const line = A.teams.filter(x => x.waitlist === true && x.status !== 'rejected')
+      .sort((a, b) => String(a.waitlist_at || '').localeCompare(String(b.waitlist_at || '')) || String(a.created_at).localeCompare(String(b.created_at)));
+    return line.findIndex(x => x.id === t.id) + 1 || null;
+  };
   const fmtRef = r => (window.YBChecklist ? YBChecklist.fmtRef(r) : String(r || ''));
   function regBar(t, after) {
     const idS = uid('fee'), idR = uid('rc');
@@ -964,7 +977,15 @@
     return h('div', { class: 'a-reg', 'data-reg-bar': t.id },
       h('div', { class: 'a-chips-row' }, feeChip(t.fee_status),
         t.ref_code ? chip('سُجّل عبر الاستمارة · ' + fmtRef(t.ref_code), 'brand') : null,
-        t.ref_code && !t.claimed ? chip('لم يُربط بحساب قائد بعد', 'muted') : null),
+        t.ref_code && !t.claimed ? chip('لم يُربط بحساب قائد بعد', 'muted') : null,
+        t.waitlist === true ? chip(`قائمة الاحتياط${t.wait_pos ? ' · رقم ' + t.wait_pos : ''}`, 'sun') : null,
+        t.waitlist === false ? chip('له مكان بين الفرق الـ12', 'ok') : null),
+      t.canMove && (t.waitlist === true || t.waitlist === false) ? h('div', { class: 'a-actions' },
+        btn(t.waitlist ? 'امنحه مكانًا الآن' : 'انقله إلى قائمة الاحتياط', 'repeat', 'btn-ghost', async () => {
+          const r = await YB.rpc('yb_set_waitlist', { team_id: t.id, waiting: !t.waitlist });
+          if (!r.ok) { if (!sessionLost(r)) say(errMsg(r)); return; }
+          await after(t.waitlist ? `حصل ${t.name} على مكان.` : `نُقل ${t.name} إلى قائمة الاحتياط، وانتقل أول فريق في القائمة إلى مكانه.`, 'wl-' + t.id);
+        }, { 'data-fk': 'wl-' + t.id })) : null,
       h('label', { for: idS, class: 'a-l', text: 'رسوم الاشتراك' }),
       h('div', { class: 'a-fee-row' }, sel, h('label', { for: idR, class: 'sr-only', text: 'رقم الإيصال' }), rc, save), msg,
       t.ref_code ? h('div', { class: 'a-regw' }, more, out) : null);
@@ -1144,6 +1165,11 @@
       if (!q.ok) return q;
       O.teams = Array.isArray(q.data) ? q.data : [];
     }
+    O.roles = null;
+    if (O.comps.some(k => ['registration', 'hifz', 'fahm', 'chess'].includes(k))) {   // the nominees this officer may see (migration 0006)
+      const rl = await YB.rpc('yb_role_list', {});
+      O.roles = rl.ok && Array.isArray(rl.data) ? rl.data : null;
+    }
     return { ok: true };
   }
   async function viewOfficer(profile, seq) {
@@ -1165,6 +1191,7 @@
       O.comps.length ? h('ul', { class: 'a-chips' }, O.comps.map(k => h('li', {}, chip(COMPS[k] || k, 'brand'))))
         : h('p', { class: 'a-lead', text: 'لم تُسند إليك مسابقة بعد. يسندها المشرف العام من قسم «الأشخاص».' }))];
     if (O.comps.includes('registration')) nodes.push(reviewQueue());
+    if (O.roles) nodes.push(roleListCard());
     const others = O.comps.filter(k => k !== 'registration');
     if (others.length) {
       if (!O.evm) O.evm = eventManager(others, () => O.pub, 'off');
@@ -1201,7 +1228,8 @@
         h('div', { class: 'a-mem-h' }, h('b', { text: m.full_name }), m.is_leader ? chip('قائد', 'brand') : null,
           chip(m.consent_status === 'received' ? 'استُلمت الموافقة' : 'لم تُستلم الموافقة', m.consent_status === 'received' ? 'ok' : 'muted'))))));
       if (t.admin_note) card.append(h('p', { class: 'a-note' }, h('b', { text: 'آخر ملاحظة: ' }), t.admin_note));
-      card.append(regBar({ id: t.team_id, name: t.team_name, fee_status: t.fee_status, fee_receipt: t.fee_receipt, ref_code: t.ref_code, claimed: t.claimed },
+      card.append(regBar({ id: t.team_id, name: t.team_name, fee_status: t.fee_status, fee_receipt: t.fee_receipt, ref_code: t.ref_code, claimed: t.claimed,
+        waitlist: t.waitlist, wait_pos: t.wait_pos, canMove: false },
         async (msg, fk) => { const l = await loadOfficer(); if (!l.ok) { if (!sessionLost(l)) say(errMsg(l)); return; } drawOfficer(fk); say(msg); }));
       card.append(officerDecision(t));
     }
@@ -1243,7 +1271,7 @@
     if (!r.ok) return { ok: false, error: r };
     const row = (Array.isArray(r.data) ? r.data : []).find(x => x.my_role === 'leader');
     if (!row) { L.team = null; L.members = []; return { ok: true }; }
-    const m = await read('team_members', { select: 'id,team_id,full_name,age,guardian_name,guardian_phone,is_leader,user_id,consent_status,consent_at', filter: { team_id: 'eq.' + row.team_id }, order: 'created_at.asc' });
+    const m = await read('team_members', { select: 'id,team_id,full_name,age,guardian_name,guardian_phone,is_leader,user_id,consent_status,consent_at,roles', filter: { team_id: 'eq.' + row.team_id }, order: 'created_at.asc' });
     if (!m.ok) return { ok: false, error: m.error };
     L.team = row;
     L.members = (m.data || []).sort((a, b) => (b.is_leader ? 1 : 0) - (a.is_leader ? 1 : 0));
@@ -1319,12 +1347,62 @@
     L.printBox = h('section', { class: 'a-card' });
     L.dates = teamDates(t.team_id, t.status, true);
     L.boxes.check = h('section', { class: 'a-card a-checkcard', 'aria-labelledby': 'l-check-h', hidden: true });
-    body.replaceChildren(L.boxes.top, L.boxes.check, L.dates, L.boxes.roster, L.boxes.code, L.sched.node, L.printBox);
+    L.boxes.roles = h('section', { class: 'a-card', 'aria-labelledby': 'l-roles-h', 'data-roles': '' });
+    body.replaceChildren(L.boxes.top, L.boxes.check, L.dates, L.boxes.roster, L.boxes.roles, L.boxes.code, L.sched.node, L.printBox);
     paintLeader();
     startSchedule([L.sched]);
     if (focus) { const f = L.boxes.top.querySelector('[data-focus]'); if (f) f.focus({ preventScroll: true }); }
   }
-  function paintLeader() { paintTop(); paintCheck(); paintRoster(); paintCode(); paintPrint(); }
+  function paintLeader() { paintTop(); paintCheck(); paintRoster(); paintRoles(); paintCode(); paintPrint(); }
+  // who represents the team (c-form f-nom): the two reciters, the chess player, the coordinator (migration 0006)
+  function paintRoles() {
+    const box = L.boxes.roles;
+    if (!box) return;
+    const ms = L.members;
+    const holder = k => ms.find(m => Array.isArray(m.roles) && m.roles.includes(k));
+    const head = h('h3', { id: 'l-roles-h' }, icon('flag'), h('span', { text: 'المرشحون والأدوار' }));
+    if (!editable()) {
+      box.replaceChildren(head, h('ul', { class: 'a-roles' }, ROLE_ORDER.map(k => { const m = holder(k); return h('li', {}, h('b', { text: ROLE_W[k] + ': ' }), m ? m.full_name : '—'); })),
+        h('p', { class: 'a-hint', text: 'تُعدَّل الأدوار بعد الاعتماد عن طريق مسؤول التسجيل.' }));
+      return;
+    }
+    const sels = {};
+    const rows = ROLE_ORDER.map(k => {
+      const id = uid('role'), cur = holder(k);
+      sels[k] = h('select', { id, 'data-role': k }, h('option', { value: '', text: '— لم يُحدَّد —' }),
+        ms.map(m => h('option', { value: m.id, selected: !!cur && cur.id === m.id, text: m.full_name })));
+      return h('div', { class: 'a-f' }, h('label', { for: id, class: 'a-l', text: ROLE_W[k] }), sels[k]);
+    });
+    const msg = h('p', { class: 'a-live-msg', role: 'alert', hidden: true });
+    const save = btn('احفظ الأدوار', 'check', 'btn-primary', async () => {
+      const v = k => sels[k].value || null;
+      if (v('reciter') && v('reciter') === v('reserve')) { msg.textContent = 'المرشح الأساسي والاحتياطي للتسميع يجب أن يكونا عضوين مختلفين.'; msg.hidden = false; say(msg.textContent); return; }
+      if (save.disabled) return;
+      save.disabled = true;
+      const r = await YB.rpc('yb_set_roles', { team_id: L.team.team_id, reciter: v('reciter'), reserve: v('reserve'), chess: v('chess'), coord: v('coord') });
+      save.disabled = false;
+      if (!r.ok) { if (sessionLost(r)) return; msg.textContent = errMsg(r); msg.hidden = false; say(msg.textContent); return; }
+      await reloadLeader('حُفظت الأدوار.');
+    }, { 'data-fk': 'roles-save' });
+    box.replaceChildren(head,
+      h('p', { class: 'a-lead', text: 'اختر من أعضاء الفريق من يمثّله في تسميع سورة الصف وفي بطولة الشطرنج، ومن ينسّق ويوثّق. تراها إدارة المسابقة ومسؤولو المسابقات فقط.' }),
+      h('div', { class: 'a-grid2' }, rows), msg, h('div', { class: 'a-actions' }, save));
+  }
+  // the officers' nominee lists (yb_role_list): grouped by team, approved teams first
+  function roleListCard() {
+    const by = new Map();
+    O.roles.forEach(r => {
+      if (!by.has(r.team_id)) by.set(r.team_id, { name: r.team_name, status: r.team_status, rows: [] });
+      by.get(r.team_id).rows.push(r);
+    });
+    const line = r => h('li', {}, h('b', { text: r.full_name }), ' ', (r.roles || []).map(k => chip(ROLE_W[k] || k, 'role')));
+    const card = g => h('article', { class: 'a-rolecard' },
+      h('div', { class: 'a-team-top' }, h('b', { text: g.name }), statusChip(g.status)),
+      h('ul', { class: 'a-roles' }, g.rows.map(line)));
+    const body = by.size ? h('div', { class: 'a-list' }, [...by.values()].map(card))
+      : h('p', { class: 'a-empty', text: 'لم يُحدَّد المرشحون في الفرق المشاركة بعد.' });
+    return h('section', { class: 'a-card', 'data-role-list': '' }, h('h3', {}, icon('users'), h('span', { text: 'المرشحون من الفرق' })), body);
+  }
   // the team checklist (fee, consents, approval, draw, next date) from yb_team_checklist (migration 0005)
   async function paintCheck() {
     const box = L.boxes.check, team = L.team;
@@ -1448,7 +1526,7 @@
       }));
     }
     return h('li', { class: 'a-mem', 'data-member': m.id },
-      h('div', { class: 'a-mem-h' }, h('b', { text: m.full_name }), m.is_leader ? chip('قائد', 'brand') : (m.user_id ? chip('انضم بحسابه', 'ok') : chip('لم ينضم بعد', 'muted')),
+      h('div', { class: 'a-mem-h' }, h('b', { text: m.full_name }), m.is_leader ? chip('قائد', 'brand') : (m.user_id ? chip('انضم بحسابه', 'ok') : chip('لم ينضم بعد', 'muted')), roleChips(m),
         !m.is_leader && L.rs[m.id] ? (L.rs[m.id].parents > 0 ? chip('ولي الأمر مرتبط بحسابه', 'ok') : chip('لم يرتبط ولي الأمر بعد', 'muted')) : null),
       h('dl', { class: 'a-dl' },
         h('div', {}, h('dt', { text: W.age || 'العمر' }), h('dd', { text: m.age === null || m.age === undefined ? '—' : String(m.age) })),

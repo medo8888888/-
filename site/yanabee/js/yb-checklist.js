@@ -30,6 +30,13 @@
     o = o || {};
     var out = [];
     out.push(['sent', 'أُرسل الطلب', c.status === 'draft' ? 'wait' : 'done', c.status === 'draft' ? 'الطلب مسودة لم تُرسل بعد.' : (c.created_at ? 'في ' + when(c.created_at) : '')]);
+    // the place among the 12 teams (migration 0006): only when the server reports it
+    if (c.waitlist === true || c.waitlist === false || (c.waitlist === null && 'wait_pos' in c)) {
+      out.push(['place', 'مكان الفريق بين الفرق الـ12', c.waitlist === false ? 'done' : 'wait',
+        c.waitlist === false ? 'للفريق مكان بين الفرق المشاركة.'
+          : c.waitlist === true ? 'اكتمل العدد، ففريقكم في قائمة الاحتياط' + (c.wait_pos ? ' (رقم ' + c.wait_pos + ')' : '') + '. ينتقل تلقائيًا إلى المسابقة إذا خلا مكان، وتصلكم رسالة.'
+          : 'يُحجز المكان عند إرسال الطلب للمراجعة.']);
+    }
     var fee = c.fee === 'paid' ? ['done', 'سُجّل سداد رسوم الفريق.']
       : c.fee === 'waived' ? ['done', 'أعفت الإدارة الفريق من الرسوم.']
       : ['wait', 'لم يُسجَّل السداد بعد. تُسلَّم الرسوم لمسؤول التسجيل مقابل إيصال.'];
@@ -37,6 +44,13 @@
     var minors = +c.minors || 0, cons = +c.consents || 0;
     out.push(['consent', 'موافقات أولياء الأمور', minors === 0 || cons >= minors ? 'done' : 'wait',
       minors === 0 ? 'لا يوجد في الفريق من يحتاج إلى موافقة.' : 'استُلمت ' + cons + ' من ' + minors + (cons >= minors ? '.' : '. نموذج موقّع لكل عضو قاصر.')]);
+    // who represents the team (c-form f-nom, migration 0006): which roles are filled, never who
+    if (c.roles && typeof c.roles === 'object') {
+      var need = ['reciter', 'reserve', 'chess'].filter(function (k) { return !c.roles[k]; });
+      var W = { reciter: 'المرشح الأساسي للتسميع', reserve: 'المرشح الاحتياطي للتسميع', chess: 'لاعب الشطرنج' };
+      out.push(['roles', 'المرشحون للتسميع والشطرنج', need.length ? 'wait' : 'done',
+        need.length ? 'لم يُحدَّد بعد: ' + need.map(function (k) { return W[k]; }).join('، ') + '.' : 'حُدّد المرشحان للتسميع ولاعب الشطرنج.']);
+    }
     var st = c.status;
     var rev = st === 'approved' ? ['done', 'فريقكم معتمد في المسابقة.']
       : st === 'returned' ? ['bad', 'طلبت الإدارة تعديلًا على الطلب.']
@@ -59,7 +73,7 @@
   function render(c, o) {
     o = o || {};
     var list = steps(c, o);
-    var core = list.filter(function (s) { return ['sent', 'fee', 'consent', 'review', 'draw'].indexOf(s[0]) >= 0; });
+    var core = list.filter(function (s) { return ['sent', 'place', 'fee', 'consent', 'roles', 'review', 'draw'].indexOf(s[0]) >= 0; });
     var done = core.filter(function (s) { return s[2] === 'done'; }).length;
     var box = el('section', 'ybc');
     box.setAttribute('aria-label', 'قائمة متابعة الطلب');

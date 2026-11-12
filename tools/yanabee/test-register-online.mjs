@@ -56,7 +56,7 @@ class Fake {
     let out = { status: 404, body: { code: 'PGRST202', message: 'no function' } };
     if (u.pathname === '/rest/v1/rpc/yb_register_team') out = { status: 200, body: this.register(body.p || {}) };
     if (u.pathname === '/rest/v1/rpc/yb_track_request') out = { status: 200, body: this.track(body) };
-    if (u.pathname === '/rest/v1/rpc/yb_registration_stats') out = { status: 200, body: { target: 12, registered: this.teams.length + 2, approved: 1 } };
+    if (u.pathname === '/rest/v1/rpc/yb_registration_stats') out = { status: 200, body: this.stats || { target: 12, registered: this.teams.length + 2, approved: 1 } };
     return route.fulfill({ status: out.status, headers: { ...cors, 'content-type': 'application/json' }, body: JSON.stringify(out.body) });
   }
 }
@@ -112,7 +112,7 @@ const fake = new Fake();
   const { ctx, p } = await open(fake);
   check('online privacy text shown', await p.isVisible('[data-priv-online]') && !(await p.isVisible('[data-priv-local]')));
   await p.waitForSelector('[data-cs-teams]:not([hidden])');
-  check('the status strip counts registered teams: «سُجّل 2 من 12 فريقًا · اعتُمد 1»', (await p.locator('[data-cs-teams-t]').first().textContent()) === 'سُجّل 2 من 12 فريقًا · اعتُمد 1');
+  check('the status strip counts registered teams: «سُجّل 2 من 12 فريقًا · اعتُمد 1 · بقي 10»', (await p.locator('[data-cs-teams-t]').first().textContent()) === 'سُجّل 2 من 12 فريقًا · اعتُمد 1 · بقي 10');
   check('the bar is 17% wide (2 of 12)', (await p.locator('[data-cs-bar]').first().getAttribute('style')).includes('17%'));
   check('the tracker form is shown', await p.isVisible('[data-track-form]') && !(await p.isVisible('[data-track-off]')));
   check('no send button before the form is checked', !(await p.isVisible('[data-send-box]')));
@@ -231,6 +231,28 @@ section('«تابع طلبك» by hand');
 {
   const { ctx, p } = await open(fake, { draft: null, query: '?ref=K7M2QW10#track' });
   check('?ref= fills the request number', (await p.inputValue('[name=ref]')) === 'K7M2QW10');
+  await ctx.close();
+}
+
+section('the reserve list and the roles (migration 0006)');
+{
+  const t = fake.teams[0];
+  Object.assign(t, { status: 'submitted', note: null, claimed: false, group: null, next: null, waitlist: true, wait_pos: 2, roles: { reciter: true, reserve: false, chess: true, coord: false } });
+  fake.stats = { target: 12, registered: 12, approved: 5, waiting: 3 };
+  const { ctx, p } = await open(fake, { draft: null });
+  await p.waitForSelector('[data-cs-teams]:not([hidden])');
+  check('a full competition: «اكتمل العدد (12 فريقًا) · 3 في قائمة الاحتياط · التسجيل الآن في قائمة الاحتياط»', (await p.locator('[data-cs-teams-t]').first().textContent()) === 'اكتمل العدد (12 فريقًا) · 3 في قائمة الاحتياط · التسجيل الآن في قائمة الاحتياط');
+  await p.fill('[name=ref]', 'K7M2QW10'); await p.fill('[name=tphone]', '05305175431');
+  await p.click('[data-track-form] button[type=submit]');
+  await p.waitForSelector('[data-step=place]');
+  check('the place step: on the reserve list, number 2, moves up by itself', (await cls(p, 'place')).includes('is-wait') && /قائمة الاحتياط \(رقم 2\)/.test(await p.textContent('[data-step=place]')) && /ينتقل تلقائيًا/.test(await p.textContent('[data-step=place]')));
+  check('the roles step names the missing role, never a person', (await cls(p, 'roles')).includes('is-wait') && /لم يُحدَّد بعد: المرشح الاحتياطي للتسميع\./.test(await p.textContent('[data-step=roles]')) && !CHILDREN.test(await p.textContent('[data-track-out]')));
+  check('the ring counts 7 steps when places and roles are reported', /من7$/.test((await p.textContent('.ybc-ring')).replace(/\s/g, '')));
+  Object.assign(t, { waitlist: false, wait_pos: null, roles: { reciter: true, reserve: true, chess: true, coord: true } });
+  await p.click('[data-track-form] button[type=submit]');
+  await p.waitForFunction(() => (document.querySelector('[data-step=place]') || {}).className?.includes('is-done'));
+  check('with a place and all roles both steps are done', (await cls(p, 'roles')).includes('is-done') && /للفريق مكان/.test(await p.textContent('[data-step=place]')));
+  delete t.waitlist; delete t.wait_pos; delete t.roles; fake.stats = null;
   await ctx.close();
 }
 

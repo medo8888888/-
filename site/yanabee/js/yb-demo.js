@@ -413,7 +413,7 @@
     if (/^yb_(review_|set_officer)/.test(name)) return err(403, '42501', 'permission_denied');   // reviewers and officers are not part of the demo
     var SIG = { my_team: [], join_team: ['code', 'member_name'], link_child: ['code', 'child_name'], mark_consent: ['member_id', 'received'], unlink_member: ['member_id'], regenerate_join_code: ['team_id'],
       yb_mark_read: [], yb_my_team_roster_status: [], yb_my_competitions: [], yb_rsvp: ['event_id', 'team_id', 'answer'],
-      yb_team_checklist: ['team_id'], yb_claim_team: ['ref', 'phone'] };
+      yb_team_checklist: ['team_id'], yb_claim_team: ['ref', 'phone'], yb_set_roles: ['team_id', 'reciter', 'reserve', 'chess', 'coord'] };
     if (!SIG[name]) return err(404, 'PGRST202', 'Could not find the function public.' + name);
     var keys = Object.keys(body || {});
     var optional = name === 'yb_mark_read' ? ['ids'] : [];
@@ -528,6 +528,21 @@
         created_at: tc.created_at, reviewed_at: null } };
     }
     if (name === 'yb_claim_team') return { status: 200, body: { ok: false, error: 'not_found' } };   // nothing is sent from the form in the demo
+    // roles (migration 0006): the demo leader picks the reciters, the chess player and the coordinator
+    if (name === 'yb_set_roles') {
+      var tr = teamById(body.team_id);
+      if (!tr) return raise('team_not_found');
+      if (tr.leader_id !== me || EDITABLE.indexOf(tr.status) < 0) return raise('permission_denied', '42501');
+      var keys2 = ['reciter', 'reserve', 'chess', 'coord'];
+      var bad = keys2.some(function (k) { return body[k] && !db.members.some(function (m) { return m.id === body[k] && m.team_id === tr.id; }); });
+      if (bad) return { status: 200, body: { ok: false, error: 'member_not_found' } };
+      if (body.reciter && body.reciter === body.reserve) return { status: 200, body: { ok: false, error: 'same_reciters' } };
+      db.members.filter(function (m) { return m.team_id === tr.id; }).forEach(function (m) {
+        m.roles = keys2.filter(function (k) { return body[k] === m.id; });
+      });
+      persist();
+      return { status: 200, body: { ok: true } };
+    }
     if (name === 'regenerate_join_code') {
       var t3 = teamById(body.team_id);
       if (!t3) return raise('team_not_found');

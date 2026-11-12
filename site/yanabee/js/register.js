@@ -351,6 +351,7 @@
     writeSent(list);
     $('[data-send-box]', done).hidden = true;
     showSent(p.team, r.data.ref, p.phone, !!r.data.duplicate);
+    runTrack(r.data.ref, p.phone);   // the checklist right away: a full competition shows the reserve place here
     paintMine();
   });
 

@@ -371,7 +371,8 @@ class Fake {
       unlink_member: ['member_id'], regenerate_join_code: ['team_id'], set_user_role: ['target', 'new_role'],
       yb_review_team: ['team_id', 'decision', 'note'], yb_review_list: [], yb_review_roster: ['team_id'], yb_my_competitions: [], yb_set_officer: ['target', 'competition', 'assign'],
       yb_mark_read: [], yb_my_team_roster_status: [], yb_rsvp: ['event_id', 'team_id', 'answer'], yb_mark_attendance: ['event_id', 'team_id', 'presence', 'late_minutes'],
-      yb_team_checklist: ['team_id'], yb_claim_team: ['ref', 'phone'], yb_set_fee: ['team_id', 'status', 'receipt'], yb_registration_detail: ['team_id'] };
+      yb_team_checklist: ['team_id'], yb_claim_team: ['ref', 'phone'], yb_set_fee: ['team_id', 'status', 'receipt'], yb_registration_detail: ['team_id'],
+      yb_set_roles: ['team_id', 'reciter', 'reserve', 'chess', 'coord'], yb_role_list: [], yb_set_waitlist: ['team_id', 'waiting'] };
     if (!SIG[name]) return err(404, 'PGRST202', 'Could not find the function public.' + name);
     if (name === 'yb_mark_read') {
       const ids = body && Array.isArray(body.ids) ? body.ids : null;
@@ -446,6 +447,40 @@ class Fake {
         return { team_id: t.id, team_name: t.name, area: t.area, status: t.status, admin_note: t.admin_note, members: ms.length, consents: ms.filter(m => m.consent_status === 'received').length, updated_at: t.updated_at, reviewed_at: t.reviewed_at || null,
           fee_status: t.fee_status || 'unpaid', fee_receipt: t.fee_receipt || null, ref_code: t.ref_code || null, online: !!t.reg, claimed: !!t.leader_id };
       }) };
+    }
+    /* migration 0006: roles and the reserve list */
+    if (name === 'yb_set_roles') {
+      const t = this.teams.find(x => x.id === body.team_id);
+      const leaderEdit = t && t.leader_id === me && ['draft', 'submitted', 'returned'].includes(t.status);
+      if (!t || !(canReview || leaderEdit)) return raise('permission_denied', '42501');
+      const ids = ['reciter', 'reserve', 'chess', 'coord'].map(k => body[k]).filter(Boolean);
+      if (ids.some(id => !this.members.some(m => m.id === id && m.team_id === t.id))) return { status: 200, body: { ok: false, error: 'member_not_found' } };
+      if (body.reciter && body.reciter === body.reserve) return { status: 200, body: { ok: false, error: 'same_reciters' } };
+      this.members.filter(m => m.team_id === t.id).forEach(m => { m.roles = ['reciter', 'reserve', 'chess', 'coord'].filter(k => body[k] === m.id); });
+      return { status: 200, body: { ok: true } };
+    }
+    if (name === 'yb_role_list') {
+      let allowed = [];
+      if (canReview) allowed = ['reciter', 'reserve', 'chess', 'coord'];
+      else {
+        if (officerOf('hifz') || officerOf('fahm')) allowed.push('reciter', 'reserve');
+        if (officerOf('chess')) allowed.push('chess');
+      }
+      if (!allowed.length) return raise('permission_denied', '42501');
+      const rows = [];
+      this.teams.filter(t => t.status !== 'rejected' && t.waitlist === false).forEach(t => this.members.filter(m => m.team_id === t.id).forEach(m => {
+        const r = (m.roles || []).filter(k => allowed.includes(k));
+        if (r.length) rows.push({ team_id: t.id, team_name: t.name, team_status: t.status, member_id: m.id, full_name: m.full_name, roles: r });
+      }));
+      return { status: 200, body: rows };
+    }
+    if (name === 'yb_set_waitlist') {
+      if (!admin) return raise('permission_denied', '42501');
+      const t = this.teams.find(x => x.id === body.team_id);
+      if (!t) return raise('team_not_found');
+      if (t.waitlist !== true && t.waitlist !== false) return raise('invalid_status');
+      t.waitlist = !!body.waiting; t.waitlist_at = body.waiting ? this.now() : null;
+      return { status: 200, body: { ok: true, changed: true } };
     }
     /* migration 0005: checklist, claim, fee, registration details */
     if (name === 'yb_team_checklist') {
@@ -1787,6 +1822,9 @@ section('demo mode: why sign up + three demo users, no admin, no backend');
   await S1.evaluate(seedStale, 'demo-t-u-leader');
   await S1.goto(`${ORIGIN}/index.html`);
   check('…the cleanup runs on every page (home page too)', await ok(S1.waitForFunction(() => localStorage.getItem('yanabee-session-v1') === null, null, { timeout: 4000 })));
+  await S1.waitForLoadState('load'); await sleep(300);   // the home page's status strip asks for the public count after load
+  check('…the home page asked the real backend only for the public team count, signed out', fake.log.every(l => /yb_registration_stats/.test(l.path) && l.who === 'anon'), JSON.stringify(fake.log.map(l => l.path + ':' + l.who)));
+  fake.log = [];   // the demo checks below count requests from here
   await S1.goto(`${ORIGIN}/account.html`); await settle(S1);
   check('with a real backend the page still offers sign-up AND the demo side by side', (await S1.locator('[data-demo]').count()) === 3 && (await S1.locator('#panel-login').isVisible()) && /ليش تنشئ حسابًا؟/.test(await text(S1)));
   await S1.locator('[data-demo=parent]').click();
@@ -2083,6 +2121,73 @@ section('online registration (0005): claim a team from the form, the checklist, 
   check('an unclaimed online team shows «لم يُربط بحساب قائد بعد»', /لم يُربط بحساب قائد بعد/.test(await A2.locator('.a-team', { hasText: 'الغيث' }).locator('[data-reg-bar]').innerText()));
   check('the leader column falls back to the name typed in the form', /القائد: قائد الاستمارة/.test(await A2.locator('.a-team', { hasText: 'الغيث' }).locator('.a-team-h').innerText()));
   await close(A2);
+}
+
+section('roles and the reserve list (0006): the leader picks, badges everywhere, officers see their lists, the admin moves places');
+{
+  const fake = new Fake();
+  fake.addUser({ email: 'boss@t.test', name: 'المشرف', role: 'member' }); fake.setAdmin('boss@t.test');
+  fake.addUser({ email: 'hifz@t.test', name: 'مسؤول التسميع', role: 'member' }); fake.setRole('hifz@t.test', 'officer');
+  fake.officers.push({ user_id: fake.profileByEmail('hifz@t.test').id, competition: 'hifz' });
+  fake.addUser({ email: 'rl@t.test', name: 'قائد الأدوار', role: 'leader' });
+  fake.addUser({ email: 'rl2@t.test', name: 'قائد الاحتياط', role: 'leader' });
+  const T = fake.seedTeam({ leaderEmail: 'rl@t.test', name: 'الضياء', status: 'draft', members: [{ name: 'سالم أحمد', age: 12 }, { name: 'يوسف علي', age: 13 }, { name: 'عمر حسن', age: 14 }, { name: 'زيد محمود', age: 15 }] });
+  T.waitlist = false;
+  const T2 = fake.seedTeam({ leaderEmail: 'rl2@t.test', name: 'السنابل', status: 'submitted', members: [{ name: 'أنس بكر', age: 12 }] });
+  T2.waitlist = true; T2.waitlist_at = fake.now();
+  const mid = n => fake.members.find(m => m.team_id === T.id && m.full_name === n).id;
+  /* the leader picks the roles */
+  const P = await open(fake, { label: 'roles-leader' });
+  await settle(P); await signInOk(P, 'rl@t.test');
+  await P.waitForSelector('[data-roles] select[data-role=reciter]');
+  check('the leader sees a roles card with four choices from the roster', (await P.locator('[data-roles] select').count()) === 4 && (await P.locator('[data-roles] select[data-role=chess] option').count()) === 6);
+  await P.locator('[data-roles] select[data-role=reciter]').selectOption({ label: 'سالم أحمد' });
+  await P.locator('[data-roles] select[data-role=reserve]').selectOption({ label: 'سالم أحمد' });
+  await P.locator('[data-roles] button[data-fk=roles-save]').click();
+  check('the same member as reciter and reserve is caught on the page; nothing is sent', /عضوين مختلفين/.test(await P.locator('[data-roles]').innerText()) && !fake.members.some(m => (m.roles || []).length));
+  await P.locator('[data-roles] select[data-role=reserve]').selectOption({ label: 'يوسف علي' });
+  await P.locator('[data-roles] select[data-role=chess]').selectOption({ label: 'عمر حسن' });
+  await P.locator('[data-roles] button[data-fk=roles-save]').click();
+  await P.waitForFunction(() => /المرشح الأساسي للتسميع/.test((document.querySelector(`[data-member]`) && document.querySelector('.a-roster').innerText) || ''));
+  check('saving stores the roles (yb_set_roles)', JSON.stringify(fake.members.find(m => m.id === mid('سالم أحمد')).roles) === '["reciter"]' && JSON.stringify(fake.members.find(m => m.id === mid('عمر حسن')).roles) === '["chess"]');
+  const card = await P.locator(`[data-member="${mid('يوسف علي')}"]`).innerText();
+  check('the member card shows the role badge', /المرشح الاحتياطي للتسميع/.test(card));
+  check('the select keeps the saved choice', (await P.locator('[data-roles] select[data-role=chess] option:checked').innerText()) === 'عمر حسن');
+  check('leader console clean (roles)', P.errs.length === 0, P.errs.join('|'));
+  await close(P);
+  /* approved: read-only for the leader */
+  T.status = 'approved';
+  const P2 = await open(fake, { label: 'roles-leader2' });
+  await settle(P2); await signInOk(P2, 'rl@t.test');
+  await P2.waitForSelector('[data-roles] .a-roles');
+  const ro = await P2.locator('[data-roles]').innerText();
+  check('after approval the roles card is read-only and names the holders', !(await P2.locator('[data-roles] select').count()) && /المرشح الأساسي للتسميع:\s*سالم أحمد/.test(ro) && /مسؤول التنسيق والتوثيق:\s*—/.test(ro));
+  await close(P2);
+  /* the hifz officer's list */
+  const O = await open(fake, { label: 'roles-officer' });
+  await settle(O); await signInOk(O, 'hifz@t.test');
+  await O.waitForSelector('[data-role-list] .a-rolecard');
+  const ol = await O.locator('[data-role-list]').innerText();
+  check('the hifz officer sees the reciters of the team, not the chess player', /الضياء/.test(ol) && /سالم أحمد/.test(ol) && /يوسف علي/.test(ol) && !/عمر حسن/.test(ol));
+  check('teams on the reserve list are not in the officer list', !/السنابل/.test(ol));
+  check('officer console clean (roles)', O.errs.length === 0, O.errs.join('|'));
+  await close(O);
+  /* the admin: badges, reserve chip and the move button */
+  const A = await open(fake, { label: 'roles-admin' });
+  await settle(A); await signInOk(A, 'boss@t.test');
+  await A.locator('.a-team', { hasText: 'الضياء' }).locator('.a-team-h').click();
+  await A.waitForSelector('[data-reg-bar]');
+  check('admin roster shows the role badges', /لاعب الشطرنج/.test(await A.locator('.a-team', { hasText: 'الضياء' }).locator('.a-roster').innerText()));
+  check('a team with a place shows «له مكان بين الفرق الـ12»', /له مكان بين الفرق الـ12/.test(await A.locator('.a-team', { hasText: 'الضياء' }).locator('[data-reg-bar]').innerText()));
+  await A.locator('.a-team', { hasText: 'السنابل' }).locator('.a-team-h').click();
+  const bar2 = A.locator('.a-team', { hasText: 'السنابل' }).locator('[data-reg-bar]');
+  await bar2.waitFor();
+  check('a reserve team shows «قائمة الاحتياط · رقم 1»', /قائمة الاحتياط · رقم 1/.test(await bar2.innerText()));
+  await bar2.locator('button[data-fk^="wl-"]').click();
+  await A.waitForFunction(() => [...document.querySelectorAll('.a-team')].some(c => /السنابل/.test(c.innerText) && /له مكان بين الفرق الـ12/.test(c.innerText)));
+  check('«امنحه مكانًا الآن» gives the reserve team a place (yb_set_waitlist)', T2.waitlist === false);
+  check('admin console clean (reserve)', A.errs.length === 0, A.errs.join('|'));
+  await close(A);
 }
 
 section('network hosts and console');
