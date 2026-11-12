@@ -93,6 +93,15 @@ class Fake {
     return t;
   }
   newCode() { let c; do { c = Array.from({ length: 6 }, () => ALPHABET[crypto.randomInt(31)]).join(''); } while (this.teams.some(t => t.join_code === c)); return c; }
+  // a team sent from register.html without an account (migration 0005): no leader account, a request number, private details
+  seedOnline({ name, ref, phone, area = 'حي الأمل', status = 'submitted', leader = 'قائد الاستمارة', members = [] }) {
+    const t = { id: this.uid(), name, area, leader_id: null, join_code: this.newCode(), status, admin_note: null, created_at: this.now(), updated_at: this.now(),
+      ref_code: ref, fee_status: 'unpaid', fee_receipt: null, reg: { phone, email: null, reciter1: members[0] && members[0].name, reciter2: members[1] && members[1].name, chess: members[2] && members[2].name, coordinator: null, idea: 'حملة نظافة' } };
+    this.teams.push(t);
+    this.members.push({ id: this.uid(), team_id: t.id, full_name: leader, age: 16, guardian_name: null, guardian_phone: phone, is_leader: true, user_id: null, consent_status: 'pending', consent_at: null, created_at: this.now() });
+    members.forEach(m => this.members.push({ id: this.uid(), team_id: t.id, full_name: m.name, age: m.age ?? 13, guardian_name: null, guardian_phone: '05300000000', is_leader: false, user_id: null, consent_status: m.consent || 'pending', consent_at: null, created_at: this.now() }));
+    return t;
+  }
   setTournament(state) { this.tour = { id: 1, state, updated_at: this.now() }; }
   count(re) { return this.log.filter(l => re.test(l.method + ' ' + l.path)).length; }
 
@@ -361,7 +370,8 @@ class Fake {
     const SIG = { my_team: [], join_team: ['code', 'member_name'], link_child: ['code', 'child_name'], approve_team: ['team_id', 'ok', 'note'], mark_consent: ['member_id', 'received'],
       unlink_member: ['member_id'], regenerate_join_code: ['team_id'], set_user_role: ['target', 'new_role'],
       yb_review_team: ['team_id', 'decision', 'note'], yb_review_list: [], yb_review_roster: ['team_id'], yb_my_competitions: [], yb_set_officer: ['target', 'competition', 'assign'],
-      yb_mark_read: [], yb_my_team_roster_status: [], yb_rsvp: ['event_id', 'team_id', 'answer'], yb_mark_attendance: ['event_id', 'team_id', 'presence', 'late_minutes'] };
+      yb_mark_read: [], yb_my_team_roster_status: [], yb_rsvp: ['event_id', 'team_id', 'answer'], yb_mark_attendance: ['event_id', 'team_id', 'presence', 'late_minutes'],
+      yb_team_checklist: ['team_id'], yb_claim_team: ['ref', 'phone'], yb_set_fee: ['team_id', 'status', 'receipt'], yb_registration_detail: ['team_id'] };
     if (!SIG[name]) return err(404, 'PGRST202', 'Could not find the function public.' + name);
     if (name === 'yb_mark_read') {
       const ids = body && Array.isArray(body.ids) ? body.ids : null;
@@ -433,8 +443,54 @@ class Fake {
       const rank = { submitted: 0, returned: 1, draft: 2 };
       return { status: 200, body: this.teams.slice().sort((a, b) => (rank[a.status] ?? 3) - (rank[b.status] ?? 3)).map(t => {
         const ms = this.members.filter(m => m.team_id === t.id);
-        return { team_id: t.id, team_name: t.name, area: t.area, status: t.status, admin_note: t.admin_note, members: ms.length, consents: ms.filter(m => m.consent_status === 'received').length, updated_at: t.updated_at, reviewed_at: t.reviewed_at || null };
+        return { team_id: t.id, team_name: t.name, area: t.area, status: t.status, admin_note: t.admin_note, members: ms.length, consents: ms.filter(m => m.consent_status === 'received').length, updated_at: t.updated_at, reviewed_at: t.reviewed_at || null,
+          fee_status: t.fee_status || 'unpaid', fee_receipt: t.fee_receipt || null, ref_code: t.ref_code || null, online: !!t.reg, claimed: !!t.leader_id };
       }) };
+    }
+    /* migration 0005: checklist, claim, fee, registration details */
+    if (name === 'yb_team_checklist') {
+      const t = this.teams.find(x => x.id === body.team_id);
+      const mineT = t && (t.leader_id === me || this.members.some(m => m.team_id === t.id && m.user_id === me)
+        || this.links.some(l => l.parent_id === me && this.members.some(m => m.id === l.member_id && m.team_id === t.id)));
+      if (!t || !(mineT || canReview)) return raise('permission_denied', '42501');
+      const ms = this.members.filter(m => m.team_id === t.id), minors = ms.filter(m => m.age === null || m.age < 18);
+      const gs = this.tour && Array.isArray(this.tour.state.groups) ? this.tour.state.groups : [];
+      const gi = gs.findIndex(g => Array.isArray(g) && g.includes(t.id));
+      return { status: 200, body: { team_id: t.id, name: t.name, area: t.area, status: t.status, note: ['returned', 'rejected'].includes(t.status) ? t.admin_note : null, ref: t.ref_code || null,
+        fee: t.fee_status || 'unpaid', fee_at: null, members: ms.length, minors: minors.length, consents: minors.filter(m => m.consent_status === 'received').length,
+        claimed: !!t.leader_id, group: gi >= 0 ? gi : null, next: null, created_at: t.created_at, reviewed_at: t.reviewed_at || null } };
+    }
+    if (name === 'yb_claim_team') {
+      if (c.role !== 'leader') return { status: 200, body: { ok: false, error: 'not_leader' } };
+      const code = String(body.ref || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase().replace(/^YN(?=.{8}$)/, '');
+      const key = s => String(s || '').replace(/\D/g, '').slice(-9);
+      const t = this.teams.find(x => x.ref_code === code && x.reg && key(x.reg.phone) === key(body.phone) && key(body.phone).length >= 7);
+      if (!t) return { status: 200, body: { ok: false, error: 'not_found' } };
+      if (t.leader_id === me) return { status: 200, body: { ok: true, team_id: t.id, team_name: t.name, already: true } };
+      if (t.leader_id) return { status: 200, body: { ok: false, error: 'already_claimed' } };
+      if (this.teams.some(x => x.leader_id === me)) return { status: 200, body: { ok: false, error: 'already_leading' } };
+      t.leader_id = me;
+      const lm = this.members.find(m => m.team_id === t.id && m.is_leader);
+      if (lm && !lm.user_id) lm.user_id = me;
+      return { status: 200, body: { ok: true, team_id: t.id, team_name: t.name } };
+    }
+    if (name === 'yb_set_fee') {
+      if (!canReview) return raise('permission_denied', '42501');
+      if (!['unpaid', 'paid', 'waived'].includes(body.status)) return raise('invalid_argument');
+      const t = this.teams.find(x => x.id === body.team_id);
+      if (!t) return raise('team_not_found');
+      const changed = (t.fee_status || 'unpaid') !== body.status;
+      t.fee_status = body.status; t.fee_receipt = body.status === 'unpaid' ? null : (body.receipt || null);
+      if (changed && body.status !== 'unpaid') {
+        const people = new Set([t.leader_id, ...this.members.filter(m => m.team_id === t.id).map(m => m.user_id)].filter(Boolean));
+        people.forEach(u => this.notes.push({ id: ++this.noteSeq, user_id: u, kind: 'team_fee', data: { team_id: t.id, team_name: t.name, fee: body.status }, read_at: null, created_at: this.now() }));
+      }
+      return { status: 200, body: { ok: true, fee: body.status, changed } };
+    }
+    if (name === 'yb_registration_detail') {
+      const t = this.teams.find(x => x.id === body.team_id);
+      if (!t || !(canReview || t.leader_id === me)) return raise('permission_denied', '42501');
+      return { status: 200, body: t.reg || null };
     }
     if (name === 'yb_review_roster') {
       if (!canReview) return raise('permission_denied', '42501');
@@ -1939,6 +1995,96 @@ section('unified schedule: dates by the admin and officers, leader RSVP, check-i
 }
 
 /* ================================================================ 9. wrap up: hosts and console */
+section('online registration (0005): claim a team from the form, the checklist, the fee desk');
+{
+  const fake = new Fake();
+  fake.addUser({ email: 'boss@t.test', name: 'المشرف', role: 'member' }); fake.setAdmin('boss@t.test');
+  fake.addUser({ email: 'offr@t.test', name: 'مسؤول التسجيل', role: 'member' }); fake.setRole('offr@t.test', 'officer');
+  fake.officers.push({ user_id: fake.profileByEmail('offr@t.test').id, competition: 'registration' });
+  const claimer = fake.addUser({ email: 'claim@t.test', name: 'قائد الاستمارة', role: 'leader' });
+  fake.addUser({ email: 'mm@t.test', name: 'عضو', role: 'member' });
+  const T = fake.seedOnline({ name: 'النجوم', ref: 'K7M2QW10', phone: '0530 517 5431', members: [{ name: 'سالم أحمد', age: 12 }, { name: 'يوسف علي', age: 13 }, { name: 'عمر حسن', age: 14 }, { name: 'زيد محمود', age: 19 }] });
+  /* the leader claims it */
+  const P = await open(fake, { path: 'account.html?claim=K7M2QW10', label: 'claim' });
+  await settle(P); await signInOk(P, 'claim@t.test');
+  await P.waitForSelector('[data-claim]');
+    check('a leader without a team who came with ?claim= sees the claim card before «أنشئ فريقك», number filled', (await P.evaluate(() => { const c = [...document.querySelectorAll('[data-account-root] .a-card')]; const a = c.findIndex(x => x.hasAttribute('data-claim')), b = c.findIndex(x => /أنشئ فريقك/.test(x.textContent)); return a >= 0 && a < b; })) && (await P.locator('[data-claim] input[name=ref]').inputValue()) === 'YN-K7M2-QW10');
+  await P.locator('[data-claim] input[name=cphone]').fill('0530 000 0000');
+  await P.locator('[data-claim] button[type=submit]').click();
+  await P.waitForFunction(() => /لم نجد طلبًا/.test(document.querySelector('[data-claim]').innerText));
+  check('a wrong phone is refused with a clear message, the team stays unclaimed', !T.leader_id);
+  await P.locator('[data-claim] input[name=cphone]').fill('+90 530 517 54 31');
+  await P.locator('[data-claim] button[type=submit]').click();
+  await P.waitForSelector('#l-team-h');
+  check('the right phone links the team: the leader screen opens on «النجوم»', (await P.locator('#l-team-h').innerText()) === 'النجوم' && T.leader_id === claimer.id);
+  check('the leader roster row is linked to the account', fake.members.find(m => m.team_id === T.id && m.is_leader).user_id === claimer.id);
+  await P.waitForSelector('.a-checkcard:not([hidden]) .ybc');
+  const steps = await P.$$eval('.a-checkcard .ybc-s', ls => ls.map(l => l.dataset.step + ':' + l.className.replace('ybc-s ', '')));
+  check('the checklist card: sent done, fee waiting, consents waiting, review waiting, draw waiting', steps.join(',') === 'sent:is-done,fee:is-wait,consent:is-wait,review:is-wait,draw:is-wait', steps.join(','));
+  check('consents count the minors only: «استُلمت 0 من 4»', /استُلمت 0 من 4/.test(await P.locator('[data-step=consent]').innerText()));
+  check('the checklist sits right after the team card', await P.evaluate(() => document.querySelector('.a-teamcard').nextElementSibling.classList.contains('a-checkcard')));
+  check('leader console clean (claim)', P.errs.length === 0, P.errs.join('|'));
+  await close(P);
+  /* the admin's fee desk */
+  const A = await open(fake, { label: 'fee-admin' });
+  await settle(A); await signInOk(A, 'boss@t.test');
+  const card = A.locator('.a-team', { hasText: 'النجوم' });
+  await card.locator('.a-team-h').click();
+  await A.waitForSelector('[data-reg-bar]');
+  const bar = A.locator('[data-reg-bar]');
+  check('admin card: fee chip, request number chip', /لم تُسدَّد الرسوم/.test(await bar.innerText()) && /سُجّل عبر الاستمارة · YN-K7M2-QW10/.test(await bar.innerText()));
+  check('a claimed team has no «لم يُربط بحساب قائد» chip', !/لم يُربط بحساب قائد/.test(await bar.innerText()));
+  await bar.locator('select').selectOption('paid');
+  await bar.locator('input.a-in').fill('إيصال 9');
+  await bar.locator('button[data-fk^="fsave-"]').click();
+  await A.waitForFunction(() => /سُدّدت الرسوم/.test((document.querySelector('[data-reg-bar]') || {}).innerText || ''));
+  check('saving marks the fee paid with the receipt (yb_set_fee)', T.fee_status === 'paid' && T.fee_receipt === 'إيصال 9');
+  check('the leader is notified (team_fee)', fake.notes.some(n => n.kind === 'team_fee' && n.user_id === claimer.id));
+  await A.locator('[data-reg-bar] button[data-fk^="rd-"]').click();
+  await A.waitForSelector('.a-regd:not([hidden]) dl');
+  const det = await A.locator('.a-regd').innerText();
+  check('«تفاصيل الاستمارة» shows the leader phone and the nominees', /0530 517 5431/.test(det) && /سالم أحمد/.test(det) && /عمر حسن/.test(det) && /حملة نظافة/.test(det));
+  check('the leader phone is a tel: link', (await A.locator('.a-regd a[href^="tel:"]').getAttribute('href')) === 'tel:05305175431');
+  check('admin console clean (fee)', A.errs.length === 0, A.errs.join('|'));
+  await close(A);
+  /* the leader sees the fee done and the inbox line */
+  const P2 = await open(fake, { label: 'claim2' });
+  await settle(P2); await signInOk(P2, 'claim@t.test');
+  await P2.waitForSelector('.a-checkcard:not([hidden]) [data-step=fee].is-done');
+  check('after the fee desk the leader checklist shows the fee done', /سُجّل سداد رسوم الفريق/.test(await P2.locator('[data-step=fee]').innerText()));
+  const noteTxt = await P2.evaluate(() => [...document.querySelectorAll('.a-inbox p, [data-inbox] p')].map(p => p.textContent).join(' | '));
+  check('the inbox text for the fee reads «سُجّل سداد رسوم فريق النجوم.» (when the inbox is open)', noteTxt === '' || /سُجّل سداد رسوم فريق النجوم\./.test(noteTxt), noteTxt);
+  const api = await P2.evaluate(async () => [(await YB.rpc('yb_set_fee', { team_id: 'x', status: 'paid', receipt: null })).error]);
+  check('a leader cannot set the fee', api[0] === 'permission_denied', api.join());
+  await close(P2);
+  /* the officer's queue has the same fee control */
+  const O = await open(fake, { label: 'fee-officer' });
+  await settle(O); await signInOk(O, 'offr@t.test');
+  await O.waitForSelector('.a-team');
+  await O.locator('.a-team', { hasText: 'النجوم' }).locator('.a-team-h').click();
+  await O.waitForSelector('[data-reg-bar]');
+  await O.locator('[data-reg-bar] select').selectOption('waived');
+  await O.locator('[data-reg-bar] button[data-fk^="fsave-"]').click();
+  await O.waitForFunction(() => /معفى من الرسوم/.test((document.querySelector('[data-reg-bar]') || {}).innerText || ''));
+  check('the registration officer waives the fee from the review queue (the receipt field kept)', T.fee_status === 'waived' && T.fee_receipt === 'إيصال 9');
+  check('officer console clean (fee)', O.errs.length === 0, O.errs.join('|'));
+  await close(O);
+  /* a member account cannot claim; an unclaimed team shows the chip */
+  const T2 = fake.seedOnline({ name: 'الغيث', ref: 'ZZZZ2222', phone: '0590 000 1111', members: [{ name: 'أنس بكر' }] });
+  const M = await open(fake, { label: 'claim-member' });
+  await settle(M); await signInOk(M, 'mm@t.test');
+  const mr = await M.evaluate(async () => (await YB.rpc('yb_claim_team', { ref: 'ZZZZ2222', phone: '05900001111' })).error);
+  check('a member account cannot claim a team', mr === 'not_leader' && !T2.leader_id, mr);
+  await close(M);
+  const A2 = await open(fake, { label: 'fee-admin2' });
+  await settle(A2); await signInOk(A2, 'boss@t.test');
+  await A2.locator('.a-team', { hasText: 'الغيث' }).locator('.a-team-h').click();
+  await A2.waitForSelector('[data-reg-bar]');
+  check('an unclaimed online team shows «لم يُربط بحساب قائد بعد»', /لم يُربط بحساب قائد بعد/.test(await A2.locator('.a-team', { hasText: 'الغيث' }).locator('[data-reg-bar]').innerText()));
+  check('the leader column falls back to the name typed in the form', /القائد: قائد الاستمارة/.test(await A2.locator('.a-team', { hasText: 'الغيث' }).locator('.a-team-h').innerText()));
+  await close(A2);
+}
+
 section('network hosts and console');
 check('no request to any host other than the page itself, the fake Supabase and the shell fonts', badHosts.size === 0, [...badHosts].join());
 check('no console error and no uncaught exception in any page', consoleErrors.length === 0, consoleErrors.slice(0, 5).join(' || '));

@@ -412,7 +412,8 @@
     if (name === 'approve_team' || name === 'set_user_role' || name === 'publish_state') return err(403, '42501', 'permission_denied');   // admin only: nobody in the demo is an admin
     if (/^yb_(review_|set_officer)/.test(name)) return err(403, '42501', 'permission_denied');   // reviewers and officers are not part of the demo
     var SIG = { my_team: [], join_team: ['code', 'member_name'], link_child: ['code', 'child_name'], mark_consent: ['member_id', 'received'], unlink_member: ['member_id'], regenerate_join_code: ['team_id'],
-      yb_mark_read: [], yb_my_team_roster_status: [], yb_my_competitions: [], yb_rsvp: ['event_id', 'team_id', 'answer'] };
+      yb_mark_read: [], yb_my_team_roster_status: [], yb_my_competitions: [], yb_rsvp: ['event_id', 'team_id', 'answer'],
+      yb_team_checklist: ['team_id'], yb_claim_team: ['ref', 'phone'] };
     if (!SIG[name]) return err(404, 'PGRST202', 'Could not find the function public.' + name);
     var keys = Object.keys(body || {});
     var optional = name === 'yb_mark_read' ? ['ids'] : [];
@@ -504,6 +505,29 @@
       persist();
       return { status: 200, body: { ok: true, rsvp: body.answer } };
     }
+    // the team checklist (migration 0005): the demo has no fee desk, so the fee stays unpaid
+    if (name === 'yb_team_checklist') {
+      var tc = teamById(body.team_id);
+      if (!tc) return raise('team_not_found');
+      var mine = tc.leader_id === me || db.members.some(function (m) { return m.team_id === tc.id && m.user_id === me; })
+        || db.links.some(function (l) { var m = memberById(l.member_id); return l.parent_id === me && m && m.team_id === tc.id; });
+      if (!mine) return raise('permission_denied', '42501');
+      var ms = db.members.filter(function (m) { return m.team_id === tc.id; });
+      var minors = ms.filter(function (m) { return m.age === null || m.age === undefined || m.age < 18; });
+      var grp = null;
+      var gs = db.tour && db.tour.state && Array.isArray(db.tour.state.groups) ? db.tour.state.groups : [];
+      gs.forEach(function (g, i) { if (Array.isArray(g) && g.indexOf(tc.id) >= 0) grp = i; });
+      seedEvents();
+      var nowMs = Date.now();
+      var nx = db.events.filter(function (e) { return e.status !== 'cancelled' && Date.parse(e.starts_at) > nowMs && (e.team_ids.indexOf(tc.id) >= 0 || (!e.team_ids.length && tc.status === 'approved')); })
+        .sort(function (a, b) { return Date.parse(a.starts_at) - Date.parse(b.starts_at); })[0];
+      return { status: 200, body: { team_id: tc.id, name: tc.name, area: tc.area, status: tc.status, note: tc.status === 'returned' || tc.status === 'rejected' ? tc.admin_note : null,
+        ref: null, fee: 'unpaid', fee_at: null, members: ms.length, minors: minors.length,
+        consents: minors.filter(function (m) { return m.consent_status === 'received'; }).length,
+        claimed: true, group: grp, next: nx ? { title: nx.title, starts_at: nx.starts_at, place: nx.place, competition: nx.competition } : null,
+        created_at: tc.created_at, reviewed_at: null } };
+    }
+    if (name === 'yb_claim_team') return { status: 200, body: { ok: false, error: 'not_found' } };   // nothing is sent from the form in the demo
     if (name === 'regenerate_join_code') {
       var t3 = teamById(body.team_id);
       if (!t3) return raise('team_not_found');

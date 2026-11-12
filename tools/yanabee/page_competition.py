@@ -181,5 +181,5 @@ def build():
             + cta(t(C.meta['title']), t(C['c-about'].paras[1]), buttons))
     desc = C['c-plan'].paras[0] + ' ' + C['c-plan']['c-target'].paras[0]
     fcss, fjs = assets(PAGE)
-    page(PAGE, PAGE_LABEL[PAGE], body, desc, css=('css/comp.css',) + fcss, js=('js/comp.js',) + fjs)
+    page(PAGE, PAGE_LABEL[PAGE], body, desc, css=('css/comp.css',) + fcss, js=('js/comp.js', 'js/yb-config.js', 'js/yb-api.js') + fjs)
     return PAGE

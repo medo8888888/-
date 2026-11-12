@@ -338,3 +338,15 @@
   .a-ptable tr{break-inside:avoid}
   .a-ptable thead{display:table-header-group}
 }
+
+/* fee + online registration (migration 0005) */
+.a-reg{display:grid;gap:8px;margin:12px 0;padding:12px 14px;border-radius:var(--r-sm);background:var(--surface-2);border:1px solid var(--line)}
+.a-chips-row{display:flex;flex-wrap:wrap;gap:6px}
+.a-fee-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.a-fee-row select,.a-fee-row .a-in{min-height:44px;padding:8px 12px;border-radius:var(--r-sm);border:1px solid var(--line-2);background:var(--surface);color:var(--ink);font:inherit}
+.a-fee-row .a-in{flex:1 1 160px;min-width:0}
+.a-regw{display:grid;gap:8px}
+.a-regw>.btn{justify-self:start}
+.a-regd[hidden]{display:none}
+.a-checkcard[hidden]{display:none}
+.a-checkcard .ybc-ring{background:radial-gradient(closest-side,var(--surface) 76%,transparent 78% 100%),conic-gradient(#16a36b calc(var(--p)*1%),var(--line) 0)}

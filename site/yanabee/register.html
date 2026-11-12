@@ -36,6 +36,9 @@
 <script src="js/play.js" defer></script>
 <script src="js/wow.js" defer></script>
 <script src="js/comp.js" defer></script>
+<script src="js/yb-config.js" defer></script>
+<script src="js/yb-api.js" defer></script>
+<script src="js/yb-checklist.js" defer></script>
 <script src="js/register.js" defer></script>
 <script src="js/team-builder.js" defer></script>
 </head>
@@ -86,13 +89,14 @@
 </svg>المسابقة الأولى · سورة الصف</span>
       <h1 class="rv">سجّل فريقك</h1>
       <p class="hero-lead rv">فريق من 5 إلى 7 أعضاء شاملًا القائد، ورسوم 10 $ للفريق الواحد. املأ الاستمارة هنا، ثم اطبعها مع موافقات أولياء الأمور.</p>
-      <nav class="chips rv" aria-label="أقسام الصفحة"><a class="chip" href="#c-form">الاستمارة</a><a class="chip" href="#c-consent">موافقة ولي الأمر</a><a class="chip" href="competition.html#c-league">لائحة الدوري</a><a class="chip" href="competition.html#c-axes">المحاور والتقييم</a></nav>
+      <nav class="chips rv" aria-label="أقسام الصفحة"><a class="chip" href="#c-form">الاستمارة</a><a class="chip" href="#track">تابع طلبك</a><a class="chip" href="#c-consent">موافقة ولي الأمر</a><a class="chip" href="competition.html#c-league">لائحة الدوري</a><a class="chip" href="competition.html#c-axes">المحاور والتقييم</a></nav>
     </div>
     <div class="ch-visual rv"><div class="cstatus" data-comp-status aria-live="polite">
   <span class="cs-dot" aria-hidden="true"></span>
   <div class="cs-t"><b data-cs-title>المسابقة الأولى: سورة الصف</b><span data-cs-sub>التسجيل 1 نوفمبر 2026 · الانطلاق 15 نوفمبر 2026 · الختام 25 يناير 2027 · الحفل 31 يناير 2027</span></div>
   <div class="cs-count" data-cs-count hidden><b data-cs-n></b><small data-cs-unit></small></div>
-</div><ol class="hsteps"><li><span class="hs-n">1</span><span>اجمع فريقك (5 إلى 7 أعضاء) وعيّن قائدًا للفريق.</span></li><li><span class="hs-n">2</span><span>سارع بالتسجيل وسداد رسوم الاشتراك قبل اكتمال العدد المطلوب!</span></li><li><span class="hs-n">3</span><span>اطبع الاستمارة وموافقات أولياء الأمور، وسلّمها لمسؤول التسجيل.</span></li></ol></div>
+  <div class="cs-teams" data-cs-teams hidden><span data-cs-teams-t></span><i class="cs-bar" aria-hidden="true"><i data-cs-bar></i></i></div>
+</div><ol class="hsteps"><li><span class="hs-n">1</span><span>اجمع فريقك (5 إلى 7 أعضاء) وعيّن قائدًا للفريق.</span></li><li><span class="hs-n">2</span><span>سارع بالتسجيل وسداد رسوم الاشتراك قبل اكتمال العدد المطلوب!</span></li><li><span class="hs-n">3</span><span>أرسل الطلب واحفظ رقمه، ثم سلّم موافقات أولياء الأمور والرسوم لمسؤول التسجيل.</span></li></ol></div>
   </div>
 </section>
 <section class="sec dp-sec alt tb" id="team-builder" aria-labelledby="tb-title">
@@ -136,7 +140,7 @@
 <section class="sec dp-sec reg" id="c-form">
   <div class="wrap">
     <header class="sec-head rv"><div><span class="kicker"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>المسابقة الأولى · سورة الصف</span><h2>استمارة تسجيل فريق – المسابقة الأولى (سورة الصف)</h2><p class="sec-sub">المسابقة الأولى (سورة الصف) · 1 نوفمبر 2026 – 25 يناير 2027</p></div></header>
-    <p class="privacy rv"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span>تبقى البيانات على هذا الجهاز فقط: يحفظ المتصفح مسودتك لتكملها لاحقًا، ولا يُرسل الموقع شيئًا. سلّم الاستمارة المطبوعة لمسؤول التسجيل.</span></p>
+    <p class="privacy rv"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span data-priv-local>تبقى البيانات على هذا الجهاز فقط: يحفظ المتصفح مسودتك لتكملها لاحقًا، ولا يُرسل الموقع شيئًا. سلّم الاستمارة المطبوعة لمسؤول التسجيل.</span><span data-priv-online hidden>يحفظ المتصفح مسودتك على هذا الجهاز لتكملها لاحقًا. لا يصل شيء إلى إدارة المسابقة إلا حين تضغط «أرسل التسجيل»، وأسماء الأعضاء وأرقامهم لا تظهر للعموم أبدًا.</span></p>
     <form class="regform" data-reg novalidate autocomplete="on">
       <fieldset class="fpart rv" id="f-team"><legend><span class="fp-n">1</span><span><small>أولًا</small><b>بيانات الفريق</b></span></legend><div class="fgrid"><label class="f"><span class="f-l">اسم الفريق<i class="req" aria-hidden="true">*</i></span><input type="text" name="team" required></label><label class="f"><span class="f-l">اسم قائد الفريق<i class="req" aria-hidden="true">*</i></span><input type="text" name="leader" required autocomplete="name"><small class="f-hint">يُضاف تلقائيًا عضوًا أول في الجدول</small></label><label class="f"><span class="f-l">رقم الهاتف / واتساب<i class="req" aria-hidden="true">*</i></span><input type="tel" name="phone" required autocomplete="tel"></label><label class="f"><span class="f-l">البريد الإلكتروني</span><input type="email" name="email" autocomplete="email"></label><label class="f"><span class="f-l">الحي / المنطقة</span><input type="text" name="area"></label></div></fieldset><fieldset class="fpart rv" id="f-members"><legend><span class="fp-n">2</span><span><small>ثانيًا</small><b>أعضاء الفريق (5–7 أعضاء شاملًا القائد)</b></span></legend>
       <div class="mtable-wrap"><table class="mtable"><thead><tr><th scope="col">م</th><th scope="col">الاسم الثلاثي</th><th scope="col">العمر</th><th scope="col">رقم التواصل / ولي الأمر</th><th scope="col"><span class="sr-only">حذف</span></th></tr></thead><tbody data-members></tbody></table></div>
@@ -153,6 +157,12 @@
     <div class="done rv" data-done hidden tabindex="-1">
       <h3><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>الاستمارة مكتملة</h3>
       <p data-done-sum></p>
+      <div class="send" data-send-box hidden>
+        <button type="button" class="btn btn-primary" data-send><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg><span>أرسل التسجيل إلى إدارة المسابقة</span></button>
+        <small class="f-hint">تحصل فورًا على رقم طلب تتابع به حالة فريقك. يمكنك الإرسال مرة واحدة؛ تكرار الإرسال يعيد الرقم نفسه.</small>
+        <p class="ferr" data-send-err role="alert" hidden></p>
+      </div>
+      <div class="sent" data-sent hidden tabindex="-1"></div>
       <div class="btns">
         <button type="button" class="btn btn-primary" data-print-form><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/></svg><span>اطبع الاستمارة</span></button>
         <button type="button" class="btn btn-ghost" data-print-consent><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 11 2 2 4-4"/><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><span>اطبع موافقات أولياء الأمور</span></button>
@@ -160,6 +170,23 @@
         <a class="btn btn-ghost" data-wa hidden target="_blank" rel="noopener"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg><span>أرسل عبر واتساب</span></a>
       </div>
       <p class="f-hint" data-wa-note>رقم واتساب التسجيل تعلنه الجمعية أو المدرسة المنظِّمة؛ أرسل النص المنسوخ إليه أو سلّم الاستمارة المطبوعة.</p>
+    </div>
+  </div>
+</section>
+<section class="sec dp-sec" id="track">
+  <div class="wrap">
+    <header class="sec-head rv"><div><span class="kicker"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>بعد الإرسال</span><h2>تابع طلبك</h2>
+      <p class="sec-sub">اكتب رقم الطلب الذي ظهر لك بعد الإرسال ورقم هاتف القائد كما كتبته في الاستمارة.</p></div></header>
+    <div class="track rv" data-track>
+      <div class="track-mine" data-track-mine hidden></div>
+      <form class="track-f" data-track-form novalidate>
+        <label class="f"><span class="f-l">رقم الطلب</span><input name="ref" dir="ltr" autocomplete="off" placeholder="YN-XXXX-XXXX" maxlength="16" required></label>
+        <label class="f"><span class="f-l">هاتف قائد الفريق</span><input name="tphone" type="tel" dir="ltr" autocomplete="tel" required></label>
+        <button type="submit" class="btn btn-primary"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><span>اعرض حالة الطلب</span></button>
+      </form>
+      <p class="ferr" data-track-err role="alert" hidden></p>
+      <div class="track-out" data-track-out aria-live="polite"></div>
+      <p class="f-hint" data-track-off hidden>المتابعة الإلكترونية غير متاحة في هذه النسخة من الموقع. تواصل مع مسؤول التسجيل لمعرفة حالة طلبك.</p>
     </div>
   </div>
 </section>

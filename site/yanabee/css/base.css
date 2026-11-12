@@ -480,3 +480,32 @@ html:not(.js) .tabbar{grid-template-columns:repeat(3,1fr)}
 .acct-btn.on{color:var(--brand);background:color-mix(in oklab,var(--brand) 12%,transparent)}
 .acct-dot{position:absolute;top:8px;inset-inline-end:8px;width:9px;height:9px;border-radius:50%;background:#16a36b;border:2px solid var(--surface)}
 .acct-dot[hidden]{display:none}
+
+/* team checklist (js/yb-checklist.js): register.html tracker + account.html team card */
+.ybc{display:grid;gap:14px}
+.ybc-h{display:flex;align-items:center;gap:14px}
+.ybc-ring{--p:0;flex:none;width:64px;height:64px;border-radius:50%;display:grid;place-content:center;text-align:center;line-height:1.1;
+  background:radial-gradient(closest-side,var(--surface) 76%,transparent 78% 100%),conic-gradient(#16a36b calc(var(--p)*1%),var(--line) 0)}
+.ybc-ring b{font-size:1.25rem;font-family:var(--font-h)}
+.ybc-ring small{font-size:.72rem;color:var(--muted)}
+.ybc-t{display:grid;gap:2px;min-width:0}
+.ybc-t b{font-size:1.1rem}
+.ybc-t small{color:var(--muted);overflow-wrap:anywhere}
+.ybc-l{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.ybc-s{display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:start;padding:10px 0;border-top:1px solid var(--line)}
+.ybc-s:first-child{border-top:0}
+.ybc-m{width:26px;height:26px;border-radius:50%;display:grid;place-content:center;font-weight:700;font-size:.85rem;
+  background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+.ybc-s.is-done .ybc-m{background:#16a36b;border-color:#16a36b;color:#fff}
+.ybc-s.is-bad .ybc-m{background:#c2410c;border-color:#c2410c;color:#fff}
+.ybc-s.is-info .ybc-m{background:color-mix(in oklab,var(--brand) 14%,var(--surface));color:var(--brand);border-color:color-mix(in oklab,var(--brand) 40%,var(--line))}
+.ybc-x{display:grid;gap:3px;min-width:0}
+.ybc-x small{color:var(--ink-2);line-height:1.7}
+.ybc-note{display:block;padding:8px 12px;border-radius:var(--r-sm);background:color-mix(in oklab,#c2410c 8%,var(--surface));border-inline-start:3px solid #c2410c;quotes:none;line-height:1.7}
+.ybc-a{font-weight:600;color:var(--brand);text-underline-offset:3px}
+.cs-teams{display:grid;gap:5px;flex:1 1 100%;font-size:.9rem;color:var(--ink-2)}
+.cs-teams[hidden]{display:none}
+.cs-bar{display:block;height:6px;border-radius:99px;background:var(--line);overflow:hidden}
+.cs-bar>i{display:block;height:100%;width:0;border-radius:inherit;background:#16a36b;transition:width .6s var(--ease)}
+@media(prefers-reduced-motion:reduce){.cs-bar>i{transition:none}}
+.cstatus:has(.cs-teams:not([hidden])){flex-wrap:wrap}

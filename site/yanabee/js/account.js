@@ -481,6 +481,7 @@
     if (n.kind === 'team_status') return `تغيّرت حالة ${team}: ${STATUS[d.to] || d.to || ''}.`;
     if (n.kind === 'team_submitted') return `أرسل ${team} طلب التسجيل، وهو بانتظار المراجعة.`;
     if (n.kind === 'team_approved') return `اعتُمد ${team} في المسابقة.`;
+    if (n.kind === 'team_fee') return d.fee === 'waived' ? `أعفت الإدارة ${team} من رسوم الاشتراك.` : `سُجّل سداد رسوم ${team}.`;
     if (n.kind === 'event_new') return `موعد جديد: ${d.title || ''} — ${fmtWhen(d.starts_at)}${d.place ? ' · ' + d.place : ''}`;
     if (n.kind === 'event_changed') return `تغيّر موعد: ${d.title || ''} — ${fmtWhen(d.starts_at)}${d.place ? ' · ' + d.place : ''}`;
     if (n.kind === 'event_cancelled') return `أُلغي موعد: ${d.title || ''}`;
@@ -782,7 +783,7 @@
 
   async function loadAdmin() {
     const [t, m, p] = await Promise.all([
-      read('teams', { select: 'id,name,area,status,admin_note,leader_id,created_at,updated_at', order: 'created_at.desc' }),
+      read('teams', { select: 'id,name,area,status,admin_note,leader_id,created_at,updated_at,fee_status,fee_receipt,ref_code', order: 'created_at.desc' }),
       read('team_members', { select: 'id,team_id,full_name,age,guardian_name,guardian_phone,is_leader,user_id,consent_status,consent_at,created_at', order: 'created_at.asc' }),
       read('profiles', { select: 'id,email,full_name,role,phone,created_at', order: 'created_at.desc' })]);
     for (const r of [t, m, p]) if (!r.ok) return r;
@@ -893,6 +894,8 @@
       if (pending) warn.push(`موافقات أولياء الأمور المستلمة ${minors.length - pending} من ${minors.length}.`);
       if (warn.length) body.append(h('ul', { class: 'a-warn' }, warn.map(w => h('li', {}, icon('alert'), h('span', { text: w })))));
       body.append(h('ul', { class: 'a-roster' }, ms.map(m => adminMember(m, t))));
+      body.append(regBar({ id: t.id, name: t.name, fee_status: t.fee_status, fee_receipt: t.fee_receipt, ref_code: t.ref_code, claimed: !!t.leader_id },
+        (msg, fk) => refreshAdmin(msg, fk)));
       body.append(decisionBar(t));
     }
     card.append(body);
@@ -925,6 +928,46 @@
       if (again) again.focus({ preventScroll: true });
     });
     return h('label', { class: 'a-sw' }, cb, h('span', { class: 'a-sw-t', text: 'استُلمت موافقة ولي الأمر' }));
+  }
+  /* fee + online registration (migration 0005): t = {id, name, fee_status, fee_receipt, ref_code, claimed};
+     after(message, focusKey) reloads the list it sits in */
+  const FEE = { unpaid: 'لم تُسدَّد الرسوم', paid: 'سُدّدت الرسوم', waived: 'معفى من الرسوم' };
+  const feeChip = f => chip(FEE[f || 'unpaid'], (f || 'unpaid') === 'unpaid' ? 'sun' : 'ok');
+  const fmtRef = r => (window.YBChecklist ? YBChecklist.fmtRef(r) : String(r || ''));
+  function regBar(t, after) {
+    const idS = uid('fee'), idR = uid('rc');
+    const sel = h('select', { id: idS, 'data-fk': 'fee-' + t.id }, ['unpaid', 'paid', 'waived'].map(k => h('option', { value: k, selected: (t.fee_status || 'unpaid') === k, text: FEE[k] })));
+    const rc = h('input', { id: idR, class: 'a-in', maxlength: 40, value: t.fee_receipt || '', placeholder: 'رقم الإيصال (اختياري)', autocomplete: 'off', 'data-fk': 'frc-' + t.id });
+    const msg = h('p', { class: 'a-live-msg', role: 'alert', hidden: true });
+    const save = btn('احفظ حالة الرسوم', 'check', 'btn-ghost', async () => {
+      if (save.disabled) return;
+      save.disabled = true;
+      const r = await YB.rpc('yb_set_fee', { team_id: t.id, status: sel.value, receipt: rc.value.trim() || null });
+      save.disabled = false;
+      if (!r.ok) { if (sessionLost(r)) return; msg.textContent = errMsg(r); msg.hidden = false; say(msg.textContent); return; }
+      await after(sel.value === 'unpaid' ? `سُجّل أن رسوم ${t.name} لم تُسدَّد.` : `${FEE[sel.value]}: ${t.name}.`, 'fee-' + t.id);
+    }, { 'data-fk': 'fsave-' + t.id });
+    const out = h('div', { class: 'a-regd', hidden: true });
+    const more = btn('تفاصيل الاستمارة', 'file-text', 'btn-ghost', async () => {
+      if (!out.hidden) { out.hidden = true; more.setAttribute('aria-expanded', 'false'); return; }
+      const r = await YB.rpc('yb_registration_detail', { team_id: t.id });
+      if (!r.ok) { if (!sessionLost(r)) say(errMsg(r)); return; }
+      const d = r.data || {};
+      const row = (k, v) => h('div', {}, h('dt', { text: k }), h('dd', {}, v || '—'));
+      out.replaceChildren(h('dl', { class: 'a-dl' },
+        row('هاتف القائد', d.phone ? h('a', { href: telHref(d.phone), dir: 'ltr', text: d.phone }) : null),
+        row('البريد الإلكتروني', d.email ? h('span', { dir: 'ltr', text: d.email }) : null),
+        row('المرشح الأساسي للتسميع', d.reciter1), row('المرشح الاحتياطي للتسميع', d.reciter2),
+        row('المرشح لبطولة الشطرنج', d.chess), row('مسؤول التنسيق والتوثيق', d.coordinator), row('فكرة النشاط المجتمعي', d.idea)));
+      out.hidden = false; more.setAttribute('aria-expanded', 'true');
+    }, { 'aria-expanded': 'false', 'data-fk': 'rd-' + t.id });
+    return h('div', { class: 'a-reg', 'data-reg-bar': t.id },
+      h('div', { class: 'a-chips-row' }, feeChip(t.fee_status),
+        t.ref_code ? chip('سُجّل عبر الاستمارة · ' + fmtRef(t.ref_code), 'brand') : null,
+        t.ref_code && !t.claimed ? chip('لم يُربط بحساب قائد بعد', 'muted') : null),
+      h('label', { for: idS, class: 'a-l', text: 'رسوم الاشتراك' }),
+      h('div', { class: 'a-fee-row' }, sel, h('label', { for: idR, class: 'sr-only', text: 'رقم الإيصال' }), rc, save), msg,
+      t.ref_code ? h('div', { class: 'a-regw' }, more, out) : null);
   }
   function decisionBar(t) {
     const idn = uid('note');
@@ -1158,6 +1201,8 @@
         h('div', { class: 'a-mem-h' }, h('b', { text: m.full_name }), m.is_leader ? chip('قائد', 'brand') : null,
           chip(m.consent_status === 'received' ? 'استُلمت الموافقة' : 'لم تُستلم الموافقة', m.consent_status === 'received' ? 'ok' : 'muted'))))));
       if (t.admin_note) card.append(h('p', { class: 'a-note' }, h('b', { text: 'آخر ملاحظة: ' }), t.admin_note));
+      card.append(regBar({ id: t.team_id, name: t.team_name, fee_status: t.fee_status, fee_receipt: t.fee_receipt, ref_code: t.ref_code, claimed: t.claimed },
+        async (msg, fk) => { const l = await loadOfficer(); if (!l.ok) { if (!sessionLost(l)) say(errMsg(l)); return; } drawOfficer(fk); say(msg); }));
       card.append(officerDecision(t));
     }
     return card;
@@ -1238,8 +1283,28 @@
       say('أُنشئ الفريق. أضف أعضاءه ثم أرسله للاعتماد.');
       drawLeader(true);
     });
-    body.replaceChildren(h('section', { class: 'a-card' }, h('h3', {}, icon('users'), h('span', { text: 'أنشئ فريقك' })),
-      h('p', { class: 'a-lead', text: 'ليس لديك فريق بعد. اكتب اسم الفريق والحي، وبعدها تضيف الأعضاء وتحصل على رمز الانضمام.' }), form));
+    // a team sent from the register page's form (migration 0005): request number + the leader's phone link it here
+    const qref = (new URLSearchParams(location.search).get('claim') || '').slice(0, 16);
+    const ref = field({ label: 'رقم الطلب', name: 'ref', required: true, max: 16, dir: 'ltr', placeholder: 'YN-XXXX-XXXX', value: qref ? fmtRef(qref.replace(/[^A-Za-z0-9]/g, '').toUpperCase().replace(/^YN(?=.{8}$)/, '')) : '' });
+    const ph = field({ label: 'هاتف قائد الفريق كما كُتب في الاستمارة', name: 'cphone', type: 'tel', required: true, max: 30, dir: 'ltr', auto: 'tel' });
+    const cform = h('form', { class: 'a-form', 'aria-label': 'ربط فريق سُجّل من الاستمارة' }, ref, ph, h('div', { class: 'a-actions' }, submitBtn('اربط الفريق بحسابي', 'link')));
+    bind(cform, async () => {
+      const rv = ref.input.value.trim(), pv = ph.input.value.trim();
+      if (!rv) return showErr(cform, 'اكتب رقم الطلب كما ظهر بعد الإرسال.', ref.input);
+      if (pv.replace(/\D/g, '').length < 7) return showErr(cform, 'اكتب رقم هاتف القائد كما كتبته في الاستمارة.', ph.input);
+      showErr(cform, '');
+      const r = await YB.rpc('yb_claim_team', { ref: rv, phone: pv });
+      if (!r.ok) { if (sessionLost(r)) return; return showErr(cform, errMsg(r, { not_found: 'لم نجد طلبًا بهذا الرقم وهذا الهاتف. اكتبهما كما ظهرا عند الإرسال.' }), ref.input); }
+      const l = await loadLeader();
+      if (!l.ok) return showErr(cform, YB.errorText(l.error));
+      say(`رُبط ${(r.data && r.data.team_name) || 'الفريق'} بحسابك.`);
+      if (L.team) drawLeader(true);
+    });
+    const claimCard = h('section', { class: 'a-card', 'data-claim': '' }, h('h3', {}, icon('link'), h('span', { text: 'سجّلت فريقك من استمارة الموقع؟' })),
+      h('p', { class: 'a-lead', text: 'اكتب رقم الطلب ورقم هاتف القائد، فيصبح الفريق تحت حسابك: تدير الأعضاء وتصلك التنبيهات.' }), cform);
+    const createCard = h('section', { class: 'a-card' }, h('h3', {}, icon('users'), h('span', { text: 'أنشئ فريقك' })),
+      h('p', { class: 'a-lead', text: 'ليس لديك فريق بعد. اكتب اسم الفريق والحي، وبعدها تضيف الأعضاء وتحصل على رمز الانضمام.' }), form);
+    body.replaceChildren(...(qref ? [claimCard, createCard] : [createCard, claimCard]));
   }
 
   function drawLeader(focus) {
@@ -1253,12 +1318,23 @@
     }
     L.printBox = h('section', { class: 'a-card' });
     L.dates = teamDates(t.team_id, t.status, true);
-    body.replaceChildren(L.boxes.top, L.dates, L.boxes.roster, L.boxes.code, L.sched.node, L.printBox);
+    L.boxes.check = h('section', { class: 'a-card a-checkcard', 'aria-labelledby': 'l-check-h', hidden: true });
+    body.replaceChildren(L.boxes.top, L.boxes.check, L.dates, L.boxes.roster, L.boxes.code, L.sched.node, L.printBox);
     paintLeader();
     startSchedule([L.sched]);
     if (focus) { const f = L.boxes.top.querySelector('[data-focus]'); if (f) f.focus({ preventScroll: true }); }
   }
-  function paintLeader() { paintTop(); paintRoster(); paintCode(); paintPrint(); }
+  function paintLeader() { paintTop(); paintCheck(); paintRoster(); paintCode(); paintPrint(); }
+  // the team checklist (fee, consents, approval, draw, next date) from yb_team_checklist (migration 0005)
+  async function paintCheck() {
+    const box = L.boxes.check, team = L.team;
+    if (!box || !team || !window.YBChecklist) return;
+    const r = await YB.rpc('yb_team_checklist', { team_id: team.team_id });
+    if (L.team !== team || L.boxes.check !== box) return;
+    if (!r.ok || !r.data || typeof r.data !== 'object') { box.hidden = true; return; }
+    box.replaceChildren(h('h3', { id: 'l-check-h' }, icon('check'), h('span', { text: 'خطوات اعتماد فريقك' })), YBChecklist.render(r.data));
+    box.hidden = false;
+  }
 
   function statusText(t) {
     return ({

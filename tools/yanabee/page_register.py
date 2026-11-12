@@ -3,7 +3,8 @@
 Every label and note on the form is a content line (via t()); the inputs, buttons and hints are UI chrome.
 js/register.js runs the form: 5–7 member rows, nominee lists filled from the member names, checks, a local
 draft (this browser only), a printable copy of the filled form and one parent consent per minor.
-Nothing is sent anywhere by the page.
+When the backend is configured, «أرسل التسجيل» sends the form once (yb_register_team, migration 0005)
+and «تابع طلبك» shows the team checklist from a request number + the leader's phone. Nothing else leaves the page.
 """
 from core import COMP as C, PAGE_LABEL, btn, ic, page, page_hero, plain, strip_colon, t
 from features import assets
@@ -69,7 +70,7 @@ def form():
 <section class="sec dp-sec reg" id="c-form">
   <div class="wrap">
     {head(f, 'file-text', sub='المسابقة الأولى (سورة الصف) · 1 نوفمبر 2026 – 25 يناير 2027')}
-    <p class="privacy rv">{ic('lock')}<span>تبقى البيانات على هذا الجهاز فقط: يحفظ المتصفح مسودتك لتكملها لاحقًا، ولا يُرسل الموقع شيئًا. سلّم الاستمارة المطبوعة لمسؤول التسجيل.</span></p>
+    <p class="privacy rv">{ic('lock')}<span data-priv-local>تبقى البيانات على هذا الجهاز فقط: يحفظ المتصفح مسودتك لتكملها لاحقًا، ولا يُرسل الموقع شيئًا. سلّم الاستمارة المطبوعة لمسؤول التسجيل.</span><span data-priv-online hidden>يحفظ المتصفح مسودتك على هذا الجهاز لتكملها لاحقًا. لا يصل شيء إلى إدارة المسابقة إلا حين تضغط «أرسل التسجيل»، وأسماء الأعضاء وأرقامهم لا تظهر للعموم أبدًا.</span></p>
     <form class="regform" data-reg novalidate autocomplete="on">
       {p1}{p2}{p3}{p4}{p5}{p6}{p7}
       <div class="ferr" data-errors role="alert" hidden></div>
@@ -82,6 +83,12 @@ def form():
     <div class="done rv" data-done hidden tabindex="-1">
       <h3>{ic('check')}الاستمارة مكتملة</h3>
       <p data-done-sum></p>
+      <div class="send" data-send-box hidden>
+        <button type="button" class="btn btn-primary" data-send>{ic('send')}<span>أرسل التسجيل إلى إدارة المسابقة</span></button>
+        <small class="f-hint">تحصل فورًا على رقم طلب تتابع به حالة فريقك. يمكنك الإرسال مرة واحدة؛ تكرار الإرسال يعيد الرقم نفسه.</small>
+        <p class="ferr" data-send-err role="alert" hidden></p>
+      </div>
+      <div class="sent" data-sent hidden tabindex="-1"></div>
       <div class="btns">
         <button type="button" class="btn btn-primary" data-print-form>{ic('printer')}<span>اطبع الاستمارة</span></button>
         <button type="button" class="btn btn-ghost" data-print-consent>{ic('user-check')}<span>اطبع موافقات أولياء الأمور</span></button>
@@ -119,11 +126,33 @@ def consent():
 <div class="print-area" data-consent-print aria-hidden="true"></div>'''
 
 
+def track():
+    """«تابع طلبك»: request number + the leader's phone -> the team checklist (yb_track_request, migration 0005)."""
+    return f'''
+<section class="sec dp-sec" id="track">
+  <div class="wrap">
+    <header class="sec-head rv"><div><span class="kicker">{ic('search')}بعد الإرسال</span><h2>تابع طلبك</h2>
+      <p class="sec-sub">اكتب رقم الطلب الذي ظهر لك بعد الإرسال ورقم هاتف القائد كما كتبته في الاستمارة.</p></div></header>
+    <div class="track rv" data-track>
+      <div class="track-mine" data-track-mine hidden></div>
+      <form class="track-f" data-track-form novalidate>
+        <label class="f"><span class="f-l">رقم الطلب</span><input name="ref" dir="ltr" autocomplete="off" placeholder="YN-XXXX-XXXX" maxlength="16" required></label>
+        <label class="f"><span class="f-l">هاتف قائد الفريق</span><input name="tphone" type="tel" dir="ltr" autocomplete="tel" required></label>
+        <button type="submit" class="btn btn-primary">{ic('search')}<span>اعرض حالة الطلب</span></button>
+      </form>
+      <p class="ferr" data-track-err role="alert" hidden></p>
+      <div class="track-out" data-track-out aria-live="polite"></div>
+      <p class="f-hint" data-track-off hidden>المتابعة الإلكترونية غير متاحة في هذه النسخة من الموقع. تواصل مع مسؤول التسجيل لمعرفة حالة طلبك.</p>
+    </div>
+  </div>
+</section>'''
+
+
 def hero():
     how = C['c-ad']['c-ad-how']
     steps = ''.join(f'<li><span class="hs-n">{i + 1}</span><span>{t(it.text)}</span></li>' for i, it in enumerate(how.items[:2]))
-    visual = f'<div class="ch-visual rv">{STATUS}<ol class="hsteps">{steps}<li><span class="hs-n">3</span><span>اطبع الاستمارة وموافقات أولياء الأمور، وسلّمها لمسؤول التسجيل.</span></li></ol></div>'
-    chips = [('#c-form', 'الاستمارة'), ('#c-consent', 'موافقة ولي الأمر'), ('competition.html#c-league', 'لائحة الدوري'),
+    visual = f'<div class="ch-visual rv">{STATUS}<ol class="hsteps">{steps}<li><span class="hs-n">3</span><span>أرسل الطلب واحفظ رقمه، ثم سلّم موافقات أولياء الأمور والرسوم لمسؤول التسجيل.</span></li></ol></div>'
+    chips = [('#c-form', 'الاستمارة'), ('#track', 'تابع طلبك'), ('#c-consent', 'موافقة ولي الأمر'), ('competition.html#c-league', 'لائحة الدوري'),
              ('competition.html#c-axes', 'المحاور والتقييم')]
     return page_hero(PAGE, 'المسابقة الأولى · سورة الصف', 'سجّل فريقك',
                      'فريق من 5 إلى 7 أعضاء شاملًا القائد، ورسوم 10 $ للفريق الواحد. املأ الاستمارة هنا، ثم اطبعها مع موافقات أولياء الأمور.',
@@ -131,9 +160,10 @@ def hero():
 
 
 def build():
-    body = (hero() + form() + consent()
+    body = (hero() + form() + track() + consent()
             + f'<section class="sec"><div class="wrap"><p class="back rv">{btn("competition.html", "المسابقة الأولى: المحاور واللوائح والجوائز", "arrow-left", "btn-ghost")}</p></div></section>')
     desc = 'استمارة تسجيل فريق في المسابقة الأولى لمشروع ينابيع (سورة الصف) وموافقة ولي الأمر للمشارك القاصر.'
     fcss, fjs = assets(PAGE)
-    page(PAGE, PAGE_LABEL[PAGE], body, desc, css=('css/comp.css',) + fcss, js=('js/comp.js', 'js/register.js') + fjs)
+    page(PAGE, PAGE_LABEL[PAGE], body, desc, css=('css/comp.css',) + fcss,
+         js=('js/comp.js', 'js/yb-config.js', 'js/yb-api.js', 'js/yb-checklist.js', 'js/register.js') + fjs)
     return PAGE

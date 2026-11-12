@@ -1,6 +1,8 @@
 // register.html: team registration form (competition.txt c-form) + parent consent copies (c-consent).
-// Everything stays in this browser: a draft in localStorage, a printable form, consent copies, copyable text.
-// Nothing is sent over the network. A WhatsApp link appears only if WA below is set to the organisers' number.
+// A draft in localStorage, a printable form, consent copies, copyable text, a WhatsApp link to the organisers' number.
+// With the backend configured (yb-config.js) two more things: «أرسل التسجيل» sends the checked form once
+// (yb_register_team, supabase/migrations/0005_yb_register_fee.sql) and returns a request number; «تابع طلبك» shows
+// the team checklist from that number + the leader's phone (yb_track_request). Nothing else leaves the page.
 (() => {
   const WA = '905305175431'; // c-ad-how «للتسجيل والاستفسار: 05305175431» in international form without + (Turkey, 90)
   const KEY = 'yanabee-reg-draft';
@@ -17,6 +19,9 @@
   const done = $('[data-done]');
   const F = n => form.elements[n];
   const trashIcon = ($('[data-clear] svg') || {}).outerHTML || '×';
+  const YBX = window.YB;
+  const ONLINE = !!(YBX && YBX.configured);
+  const SENT_KEY = 'yanabee-reg-sent';
 
   /* ---------------- member rows ---------------- */
   const row = (m = {}) => {
@@ -203,6 +208,8 @@
     }
     errBox.hidden = true;
     $('[data-done-sum]', done).textContent = summary();
+    const sb = $('[data-send-box]', done);
+    if (sb) { sb.hidden = !ONLINE; $('[data-send-err]', done).hidden = true; }
     const wa = $('[data-wa]', done);
     if (WA) { wa.href = `https://wa.me/${WA}?text=${encodeURIComponent(text())}`; wa.hidden = false; $('[data-wa-note]', done).hidden = true; }
     done.hidden = false;
@@ -274,6 +281,132 @@
     span.textContent = ok ? 'نُسخ النص' : 'تعذّر النسخ';
     setTimeout(() => { span.textContent = old; }, 2200);
   });
+
+  /* ---------------- online: send once, get a request number ---------------- */
+  const readSent = () => { try { const v = JSON.parse(localStorage.getItem(SENT_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; } };
+  const writeSent = list => { try { localStorage.setItem(SENT_KEY, JSON.stringify(list.slice(0, 5))); } catch (e) { /* storage blocked */ } };
+  const fmtRef = ref => (window.YBChecklist ? YBChecklist.fmtRef(ref) : ref);
+  const payload = () => ({
+    team: F('team').value.trim(), leader: F('leader').value.trim(), phone: F('phone').value.trim(),
+    email: F('email').value.trim() || null, area: F('area').value.trim() || null,
+    members: named().map((m, i) => ({ name: i === 0 ? F('leader').value.trim() : m.n, age: Number(digits(m.a)) || null, contact: m.c })),
+    reciter1: F('rec1').value, reciter2: F('rec2').value, chess: F('chess').value,
+    coordinator: F('coord').value || null, idea: F('idea').value.trim() || null,
+    pledges: $$('input[type=checkbox][required]', form).every(c => c.checked)
+  });
+  const waSent = (team, ref) => `https://wa.me/${WA}?text=${encodeURIComponent(`السلام عليكم، سجّلنا فريق «${team}» في مسابقة ينابيع. رقم الطلب: ${fmtRef(ref)}`)}`;
+  const elx = (tag, attrs, ...kids) => {
+    const n = document.createElement(tag);
+    Object.entries(attrs || {}).forEach(([k, v]) => { if (v === null || v === undefined || v === false) return; if (k === 'text') n.textContent = v; else n.setAttribute(k, v === true ? '' : v); });
+    kids.forEach(k => { if (k !== null && k !== undefined) n.append(k); });
+    return n;
+  };
+  const sentBox = $('[data-sent]', done);
+  const showSent = (team, ref, phone, again) => {
+    const copyB = elx('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'data-copy-ref': true }, elx('span', { text: 'انسخ الرقم' }));
+    copyB.addEventListener('click', async () => {
+      let okc = false;
+      try { await navigator.clipboard.writeText(fmtRef(ref)); okc = true; } catch (e) { okc = false; }
+      copyB.firstChild.textContent = okc ? 'نُسخ الرقم' : 'تعذّر النسخ';
+      setTimeout(() => { copyB.firstChild.textContent = 'انسخ الرقم'; }, 2200);
+    });
+    const trackB = elx('button', { type: 'button', class: 'btn btn-primary btn-sm', 'data-go-track': true }, elx('span', { text: 'تابع حالة الطلب' }));
+    trackB.addEventListener('click', () => runTrack(ref, phone, true));
+    const wa = elx('a', { class: 'btn btn-ghost btn-sm', href: waSent(team, ref), target: '_blank', rel: 'noopener', 'data-wa-sent': true }, elx('span', { text: 'أبلغ الإدارة عبر واتساب' }));
+    const claim = elx('a', { class: 'btn btn-ghost btn-sm', href: `account.html?claim=${encodeURIComponent(ref)}`, 'data-claim-link': true }, elx('span', { text: 'أنشئ حساب قائد واربط الفريق' }));
+    sentBox.replaceChildren(
+      elx('h4', { text: again ? 'وصل طلبكم من قبل: هذا رقمه' : 'وصل تسجيل فريقكم إلى إدارة المسابقة' }),
+      elx('div', { class: 'sent-ref' }, elx('span', { text: 'رقم الطلب' }), elx('b', { 'data-ref': true, text: fmtRef(ref) }), copyB),
+      elx('p', { class: 'f-hint', text: 'احتفظ بالرقم: تتابع به حالة الفريق مع رقم هاتف القائد. حُفظ أيضًا على هذا الجهاز.' }),
+      elx('ol', { class: 'sent-next' },
+        elx('li', { text: 'سدّد رسوم الفريق لمسؤول التسجيل مقابل إيصال.' }),
+        elx('li', { text: 'اطبع موافقات أولياء الأمور، ووقّعها كل ولي أمر، ثم سلّمها.' }),
+        elx('li', { text: 'تابع حالة الطلب هنا، أو أنشئ حساب قائد واربط الفريق به لتصلك التنبيهات.' })),
+      elx('div', { class: 'btns' }, trackB, wa, claim));
+    sentBox.hidden = false;
+    sentBox.focus({ preventScroll: true });
+    sentBox.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  };
+  const sendBtn = $('[data-send]', done);
+  if (sendBtn) sendBtn.addEventListener('click', async () => {
+    if (!ONLINE || sendBtn.disabled) return;
+    const errs = validate();
+    const sendErr = $('[data-send-err]', done);
+    if (errs.length) { sendErr.textContent = 'تغيّرت الاستمارة: اضغط «تحقق من الاستمارة» أولًا.'; sendErr.hidden = false; return; }
+    sendErr.hidden = true;
+    const label = $('span', sendBtn), old = label.textContent;
+    sendBtn.disabled = true; label.textContent = 'جارٍ الإرسال…';
+    const p = payload();
+    const r = await YBX.rpc('yb_register_team', { p });
+    sendBtn.disabled = false; label.textContent = old;
+    if (!r.ok || !r.data || !r.data.ref) {
+      sendErr.textContent = r.error === 'network' || r.error === 'timeout'
+        ? 'لم يُرسل التسجيل: تحقق من الاتصال ثم اضغط «أرسل التسجيل» مرة أخرى. بياناتك محفوظة في هذا المتصفح.'
+        : YBX.errorText(r);
+      sendErr.hidden = false;
+      return;
+    }
+    const list = readSent().filter(x => x.ref !== r.data.ref);
+    list.unshift({ ref: r.data.ref, team: p.team, phone: p.phone, at: new Date().toISOString() });
+    writeSent(list);
+    $('[data-send-box]', done).hidden = true;
+    showSent(p.team, r.data.ref, p.phone, !!r.data.duplicate);
+    paintMine();
+  });
+
+  /* ---------------- «تابع طلبك» ---------------- */
+  const tBox = $('[data-track]');
+  const tForm = $('[data-track-form]');
+  const tOut = $('[data-track-out]');
+  const tErr = $('[data-track-err]');
+  const mine = $('[data-track-mine]');
+  async function runTrack(ref, phone, scroll) {
+    if (!tForm) return;
+    tForm.elements.ref.value = fmtRef(String(ref).replace(/[^A-Za-z0-9]/g, '').toUpperCase().replace(/^YN(?=.{8}$)/, ''));
+    tForm.elements.tphone.value = phone;
+    if (scroll) tBox.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    tErr.hidden = true;
+    tOut.replaceChildren(elx('p', { class: 'f-hint', text: 'جارٍ البحث عن الطلب…' }));
+    const r = await YBX.rpc('yb_track_request', { ref: String(ref), phone: String(phone) });
+    if (!r.ok || !r.data || !r.data.team) {
+      tOut.replaceChildren();
+      tErr.textContent = r.error === 'not_found'
+        ? 'لم نجد طلبًا بهذا الرقم وهذا الهاتف. اكتبهما كما ظهرا عند الإرسال.'
+        : YBX.errorText(r);
+      tErr.hidden = false;
+      return;
+    }
+    const c = r.data.team;
+    tOut.replaceChildren(YBChecklist.render(c, { claim: true, claimHref: `account.html?claim=${encodeURIComponent(c.ref || ref)}` }));
+  }
+  function paintMine() {
+    if (!mine) return;
+    const list = readSent();
+    mine.hidden = !list.length;
+    mine.replaceChildren(...(list.length ? [elx('small', { text: 'طلبات أُرسلت من هذا الجهاز:' })].concat(list.map(x => {
+      const b = elx('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'data-mine': x.ref }, elx('span', { text: `${x.team} · ${fmtRef(x.ref)}` }));
+      b.addEventListener('click', () => runTrack(x.ref, x.phone));
+      return b;
+    })) : []));
+  }
+  if (tBox) {
+    $$('[data-priv-local]').forEach(n => { n.hidden = ONLINE; });
+    $$('[data-priv-online]').forEach(n => { n.hidden = !ONLINE; });
+    if (!ONLINE) {
+      tForm.hidden = true;
+      $('[data-track-off]').hidden = false;
+    } else {
+      paintMine();
+      tForm.addEventListener('submit', e => {
+        e.preventDefault();
+        const ref = tForm.elements.ref.value.trim(), ph = tForm.elements.tphone.value.trim();
+        if (!ref || digits(ph).length < 7) { tErr.textContent = 'اكتب رقم الطلب ورقم هاتف القائد.'; tErr.hidden = false; return; }
+        runTrack(ref, ph);
+      });
+      const qref = new URLSearchParams(location.search).get('ref');
+      if (qref) tForm.elements.ref.value = qref.slice(0, 16);
+    }
+  }
 
   load();
 })();

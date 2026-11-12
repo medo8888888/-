@@ -35,6 +35,27 @@
     }
   });
 
+  // Registered teams (yb_registration_stats, migration 0005: counts only). Only when the backend is configured;
+  // yb-api.js loads after this file, so wait for the page to finish loading.
+  const teamsCount = async () => {
+    const boxes = $$('[data-cs-teams]');
+    const YB = window.YB;
+    if (!boxes.length || !YB || !YB.configured || !YB.rpc) return;
+    // registration news only while it matters (before and during registration), and never on the read-only board
+    if (!(phase.k === 'before' || phase.k === 'open') || document.getElementById('tn-app')) return;
+    const r = await YB.rpc('yb_registration_stats', {});
+    const d = r && r.ok && r.data;
+    if (!d || typeof d.registered !== 'number' || !d.target) return;
+    const n = d.registered, t = d.target;
+    const txt = n >= t ? `سُجّل ${n} فرق، واكتمل العدد المستهدف (${t} فريقًا)` : n === 0 ? `لم يُسجَّل أي فريق بعد · المستهدف ${t} فريقًا` : `سُجّل ${n} من ${t} فريقًا${d.approved ? ` · اعتُمد ${d.approved}` : ''}`;
+    boxes.forEach(b => {
+      b.querySelector('[data-cs-teams-t]').textContent = txt;
+      b.querySelector('[data-cs-bar]').style.width = Math.min(100, Math.round(n / t * 100)) + '%';
+      b.hidden = false;
+    });
+  };
+  if (document.readyState === 'complete') teamsCount(); else addEventListener('load', () => { teamsCount(); });
+
   // Timeline: mark finished and current steps.
   $$('[data-timeline] .tl-step').forEach(li => {
     const to = li.dataset.to && day(li.dataset.to);

@@ -304,6 +304,6 @@ def build():
     desc = 'منصة وطنية تجمع الأطفال والشباب في فرق صغيرة تتنافس في تحديات ميدانية تخدم المجتمع، في سبعة مجالات وتحت مظلة وطنية واحدة.'
     page('index.html', 'مشروع «ينابيع»', body, desc,
          css=('css/home.css', 'css/landing.css', 'css/gallery.css', 'css/intro.css'),
-         js=('js/gallery.js', 'js/intro.js', 'js/comp.js'),
+         js=('js/gallery.js', 'js/intro.js', 'js/comp.js', 'js/yb-config.js', 'js/yb-api.js'),
          head=INTRO_HEAD)
     return 'index.html'
