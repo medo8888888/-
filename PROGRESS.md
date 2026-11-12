@@ -58,10 +58,13 @@ offline with PGlite, then goes live in one apply (slice 20).
     - Build: `build_pwa.py` writes the manifest, the icons, `sw.js`, `offline.html` and `_headers`; plus `make_zip.sh`.
     - UI: `js/pwa.js` handles the install button and iOS sheet, the update toast, the offline indicator, and the offline cache of public data.
     - Tests: `test-pwa.mjs` plus a WebKit pass; Supabase, `/api` and Storage are never cached.
-20. [ ] 🔒 **Go-live of the backend** (SPEC 4.1). The owner approves the apply prompt.
-    - Apply migrations 0001–0008 to `dhjmdiqausbcyhrguinl` in one go; post-check SQL; review the advisors; add the Storage bucket.
-    - Put the URL and key in `yb-config.js`. The owner sets the redirect URL and runs `set_admin`.
-    - `smoke-live.mjs` covers every role, including an officer.
+20. [~] 🔒 **Go-live of the backend** (SPEC 4.1). **Done on 12 Nov 2026 for 0001–0003**; later migrations go live with their own slices.
+    - [x] Applied 0001 (ASCII copy without the auth.users backfill), 0002 and 0003 to `dhjmdiqausbcyhrguinl`. A name-clash check came first (no clashes). Verified after: 9 Yanabee tables, all with RLS forced; 0 Yanabee profiles for the Hour Bank users; `set_admin` closed to anon and authenticated; Hour Bank's 39 tables untouched.
+    - [x] Security advisors: only the expected findings (3 definer views, `yb_join_attempts` with no policy on purpose, the RPC API callable by authenticated users) plus the project-wide leaked-password setting, which is Hour Bank's to decide.
+    - [x] Live anon check: `public_teams` and `tournament_state` are readable (empty); `profiles`, `team_members` and `set_admin` are refused.
+    - [x] `tools/yanabee/make_zip.sh` writes the live URL and publishable key into the zip only; the repo keeps the empty config that the tests rely on.
+    - [ ] Owner: sign up on the live site, then in the SQL editor run `select public.set_admin('<your email>');`. Email confirmation is off in this project (Hour Bank's setting), so accounts sign in immediately.
+    - [ ] Live sign-up smoke test (blocked from this session: creating accounts on the shared project needs the owner's permission). The owner's first sign-up is the test.
 21. [ ] **Certificates** (SPEC 4.5) and **admin quality-of-life** (SPEC 4.8: the audit log, backup and restore, user search, password reset).
 22. [ ] 🔒 **Owner content decisions** (SPEC 4.7): the WhatsApp number, the lira amounts, the 4 contradictions in the documents, and whether students may join the chat.
 23. [ ] **Release hardening**: fix the flaky wow and gallery tests, remove `.lab-stub`, run the integration check at 390 and 1280px, build the final zip (the owner uploads it; never auto-deploy).

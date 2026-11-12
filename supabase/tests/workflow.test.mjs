@@ -11,7 +11,8 @@ const E = await makeEnv();
 const { U, owner, as, signUp, rpc, val } = E;
 const t0 = Date.now();
 
-const M1 = readMigration('0001_yanabee.sql');
+// YB_MIGRATION: run on top of another copy of 0001 (e.g. the ASCII copy that is applied live)
+const M1 = process.env.YB_MIGRATION ? (await import('node:fs')).readFileSync(process.env.YB_MIGRATION, 'utf8') : readMigration('0001_yanabee.sql');
 const M2 = readMigration('0002_yb_officer_role.sql');
 const M3 = readMigration('0003_yb_workflow.sql');
 await E.db.exec(M1);
