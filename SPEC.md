@@ -36,10 +36,21 @@ A phone-first Arabic (RTL) web app, installable as a PWA, that runs the first co
 Not in v1:
 - native app-store apps
 - payments
-- push notifications (optional slice 4.9)
-- chat between users
-- photo uploads. The documents forbid publishing children's photos without consent, so there are no photo features
-  at all.
+- Web Push (optional slice 4.9). v1 notifications are an in-app inbox with a badge.
+- private one-to-one chats, and chat for students (4.10.7)
+- public photos. Project photos (4.10.6) live in a **private** bucket and are never shown publicly.
+
+**Owner's requirements table (Nov 2026) → section 4.10.** It adds:
+- a 5th role, **مسؤول المسابقة** (the competition officer)
+- the registration statuses
+- in-app notifications
+- a unified schedule
+- live and approved results
+- project and initiative submissions
+- a supervised chat
+- Excel export
+
+Where it differs from the text above, section 4.10 wins.
 
 ---
 
@@ -331,6 +342,149 @@ reference only.
 - **Chess player labels for admin and leader only:** a private `yb_chess_players` table, never in the public state.
 - **Polish:** a custom domain, Arabic Supabase email templates, and cleanup of the unused `.lab-stub` in `lab.css`.
 
+### 4.10 Owner's requirements table (المطلوب في التطبيق, Nov 2026)
+This section supersedes the earlier sections where they overlap. Each item names its migration and slice in
+`PROGRESS.md`.
+
+**4.10.1 Registration tracking (متابعة التسجيل).**
+- **Statuses:**
+
+  | Status | Shown as |
+  |---|---|
+  | `draft` | مسودة |
+  | `submitted` | قيد المراجعة |
+  | `returned` | مطلوب تعديل (new) |
+  | `approved` | معتمد |
+  | `rejected` | مرفوض (kept for compatibility) |
+
+- **Who edits when:**
+  - The leader can edit and submit in `draft`, `submitted` and `returned`. A team that is `approved` or `rejected` is
+    locked for the leader.
+  - Policies and the RPCs `mark_consent` and `unlink_member` move from `('draft','submitted')` to the helper
+    `yb_leader_can_edit()`, which covers all three editable statuses.
+  - Only the leader's own submit action moves `returned` back to `submitted`.
+- **Review:** new RPC `yb_review_team(team_id, decision 'approve'|'return'|'reject', note)`, open to the admin, or
+  the officer of the registration competition. `approve_team` stays as it is for compatibility.
+- **UI:**
+  - The leader screen shows a status timeline (مسودة ← قيد المراجعة ← مطلوب تعديل/معتمد) and the reviewer's note.
+  - The admin review list gets three buttons: اعتماد، إرجاع للتعديل، رفض.
+- **Notification:** every status change sends one to the leader (4.10.9).
+
+**4.10.2 Accounts and permissions (حسابات وصلاحيات).**
+- **Roles:**
+  - **admin** = المشرف العام. Manages permissions and gives final approval to results.
+  - **officer** = مسؤول المسابقة. A new enum value: `alter type user_role add value 'officer'`.
+  - leader, member and parent stay as they are.
+  - **visitor** = the public pages, with no account.
+- **Officer assignments:** the admin assigns an officer to one or more competitions through
+  `yb_officers(user_id, competition)`.
+- **Competitions:** a fixed list that comes from the documents: `football`, `chess`, `projects`, `hifz`, `fahm`,
+  `registration`, plus `workshops`.
+- **What an officer can do:** manage their competition's events, record live and final results, review submissions,
+  and write notes. They cannot change roles, publish final rankings, or see guardian phone numbers.
+- **Helper:** `yb_is_officer_of(competition)`.
+- **Privacy:** member data and phone numbers stay private for every role except the admin. The leader can see their
+  own team's guardian phone numbers.
+
+**4.10.3 Unified schedule and alerts (جدول موحّد وتنبيهات).**
+- **Table:** `yb_events(id, competition, kind 'match'|'round'|'workshop'|'recitation'|'other', title ≤80,
+  starts_at timestamptz, place ≤80, team_ids uuid[] (empty means all teams), category text null,
+  status 'scheduled'|'changed'|'cancelled', note, updated_by, updated_at)`.
+- **RLS:**
+  - The public can read events with no `team_ids` and approved team names only. The view `yb_public_events` holds no
+    child data.
+  - Authenticated users read all events.
+  - The admin and the competition's officer write.
+- **Notifications:** an insert, a change of time or place, or a cancellation notifies the leader, members and parents
+  of every concerned team (all approved teams when `team_ids` is empty). A trigger writes the notifications.
+- **UI:**
+  - A new tab «الجدول» on `tournament.html` (public and signed in), filterable by team, competition and category, with
+    a "my team" quick filter and an `.ics` export (reusing `feat_calendar_ics`).
+  - Football fixtures that already have a planned time (`fb.sched`) appear in the same list.
+
+**4.10.4 Draw and team ranking (القرعة وترتيب الفرق).**
+- Already built: the engine's draw, groups, fixtures and tie-break rules.
+- **Added:**
+  - A per-stage approval flag, `state.approved.{groups,final,chess.r1,…}`. The admin approves a stage after the
+    qualification is checked.
+  - Approval is required before the leader's "my team" card shows **«خصمك القادم»**.
+  - Until approval, the card says «بانتظار اعتماد التأهل».
+- Ranking always follows the rules of each competition (football lg6; chess knockout).
+
+**4.10.5 Live result and approved result (نتيجة مباشرة ونتيجة معتمدة).**
+- **Table:** `yb_results(match_key text pk (an engine pairKey + scope), competition, home_score, away_score,
+  extra jsonb (cards, a forfeit code, the chess winner), status 'live'|'final'|'approved', entered_by, entered_at,
+  approved_by, approved_at)`.
+- **History table:** `yb_result_history(id, match_key, before jsonb, after jsonb, by uuid, by_name text, at)`. A
+  trigger writes it on every change made after `approved`, recording the editor's display name (an adult official)
+  and the time.
+- **Who does what:**
+  - The officer sets `live` (scores update during the match), then `final`.
+  - The admin sets `approved`. Only approved results feed the standings.
+  - Any edit after approval needs the admin, and it is logged.
+- **Board:**
+  - `tournament.js` overlays `yb_results` on top of the published state. The engine stays pure, and results become
+    `res` entries.
+  - A live match shows a pulsing «جارية» badge. A final result shows «نهائية — بانتظار الاعتماد». An approved result
+    is shown normally.
+  - The public board polls every 20s while any match is live, and every 60s otherwise.
+
+**4.10.6 Project and initiative submissions (تسليم المشاريع والمبادرات).**
+- **Table:** `yb_submissions(id, team_id, kind 'project'|'initiative', title ≤80, description ≤2000, link url null,
+  photo_paths text[] (max 6), status 'draft'|'submitted'|'returned'|'accepted', officer_note ≤500, grade numeric null
+  (≤ the التطبيق cap; feeds `yb_scores`), updated_at)`.
+- **Storage:** Supabase Storage bucket `yb-submissions`.
+  - **Private**: no public URLs; read through signed URLs that last 1 hour.
+  - File path: `team_id/submission_id/n.jpg`.
+  - Allowed types: jpeg, png, webp. Each file is at most 3 MB, and the client downsizes it to 1600px first.
+  - Storage RLS: the team leader writes; the team's leader and members, the admin, and the `projects` officer read.
+- **Photos rule:** photos never appear publicly.
+  - The upload screen warns the leader not to show children's faces without guardian consent.
+  - The submit step asks the leader to confirm that.
+- **Who does what:**
+  - The leader writes, then submits.
+  - The officer returns the submission with a note, or accepts it with a grade.
+  - The admin approves the grade into the judging totals (4.3).
+
+**4.10.7 Chat supervised by the admin (شات تحت إشراف الإدارة).** v1 has two parts.
+- **(a) Announcements channel:** read-only for everyone signed in. This is 4.4's `yb_announcements`.
+- **(b) Leaders room** `yb_chat_messages(id, room 'leaders', author uuid, body ≤500, created_at, hidden bool,
+  hidden_by)`.
+  - Who can read and post: leaders, officers and the admin.
+  - Members and parents have **no** access in v1. Student chat stays off until the owner decides.
+- **Moderation:**
+  - Anyone in the room can report a message (`yb_chat_reports`).
+  - The admin hides messages and can mute a user (`yb_chat_mutes`).
+  - There are no private chats.
+- **Contact data:** the server rejects any message that contains a phone number (regex for 7 or more digits,
+  including Arabic-Indic digits) or an email address, and returns the error `contact_not_allowed`.
+- **Delivery:** the room polls every 10s while open. Unread counts appear on the account tab.
+- **Rate limit:** 1 message per 3s per user. Rows older than 180 days are purged by the admin.
+
+**4.10.8 Data export (تصدير البيانات).**
+- The admin downloads a real `.xlsx` workbook, built in the browser by a new pure `js/xlsx-lite.js`. It writes
+  SpreadsheetML inside a stored zip with CRC32, has no dependencies, works offline, and puts RTL sheets in Arabic.
+- **Sheets:**
+  - الفرق
+  - الأعضاء (admin only: includes guardian data)
+  - الجدول
+  - النتائج
+  - الترتيب
+  - الدرجات
+  - التسليمات
+- Officers can export their own competition's sheets. The export never includes chat.
+- The existing CSV export stays.
+
+**4.10.9 Notifications (the "يوصله إشعار" in items 1 and 3).**
+- **Table:** `yb_notifications(id, user_id, kind, title ≤80, body ≤200, link text, read_at, created_at)`.
+  - Written only by security-definer triggers and RPCs.
+  - RLS: users read and mark only their own rows.
+- **UI:**
+  - A bell with an unread badge in the account nav button (`acct-nav.js`).
+  - A «الإشعارات» list on every role screen, with polling.
+- **Push:** when the PWA is installed and the user has opted in, the optional push slice (4.9) delivers the same rows
+  as push messages.
+
 ---
 
 ## 5. API surface after completion (client → Supabase)
@@ -344,6 +498,12 @@ reference only.
 | Admin | `approve_team`, `mark_consent`, `unlink_member`, `regenerate_join_code`, `set_user_role`, `publish_state`, `yb_set_score`*, `yb_set_rubric`*, `yb_publish_results`*, announcements CRUD*, `yb_awards` CRUD*, `audit_log` | admin |
 | Results | `yb_my_scores()`* | team roles |
 | Owner | `set_admin(email)` | SQL editor only |
+| Review (4.10) | `yb_review_team`*, `yb_officers` CRUD* (admin) | admin / officer |
+| Schedule | `yb_events` CRUD*, `yb_public_events`* | officer / admin write; everyone reads |
+| Results | `yb_results` (live/final/approved)*, `yb_result_history`* | officer / admin write; everyone reads approved + live |
+| Submissions | `yb_submissions`*, Storage `yb-submissions` (signed URLs)* | leader / officer / admin |
+| Chat | `yb_chat_messages`*, `yb_chat_reports`*, `yb_chat_mutes`* | leaders + officers + admin |
+| Inbox | `yb_notifications`*, `yb_mark_read()`* | own rows |
 
 (* = new in this SPEC)
 

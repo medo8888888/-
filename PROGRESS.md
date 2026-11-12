@@ -20,49 +20,51 @@ something from the owner first.
 
 ## Remaining vertical slices
 
-12. [ ] 🔒 **Go-live of the backend** (SPEC 4.1). The owner approves the apply prompt.
-    - DB: apply 0001 to `dhjmdiqausbcyhrguinl`, run the post-check SQL, review the security advisors.
-    - API: put the URL and publishable key in `yb-config.js`.
-    - UI: switch the board and account pages to "connected"; owner steps for the redirect URL and `set_admin`.
-    - Tests: `smoke-live.mjs` run by hand, plus the full offline suite still green.
-13. [ ] **PWA: install as a phone app** (SPEC 4.6).
-    - DB: none.
-    - Build: `build_pwa.py` writes the manifest, the icons (192, 512, maskable), `sw.js` (hash-versioned precache) and `offline.html`; head tags in `core.page`; the `_headers` file; `make_zip.sh`.
-    - UI: `js/pwa.js` handles registration, the update toast, the offline indicator, the Android install button and the iOS "add to home screen" sheet; `tournament.js` caches the last public state for offline reading.
-    - Tests: `test-pwa.mjs` (manifest, icons, service worker, offline reload, Supabase and `/api` never cached, update flow, install logic), plus a WebKit pass.
-14. [ ] **Migration 0002: app tag and hardening** (SPEC 4.2).
-    - DB: profiles only for `app:'yanabee'`; `yb_join_attempts` with a limit of 10 per 15 minutes; `yb_my_team_roster_status()`.
-    - API: send `app:'yanabee'` at sign-up; the `too_many_attempts` error key; the roster-status method.
-    - UI: "joined" and "guardian linked" ticks on the leader screen; the demo fake mirrors them.
-    - Tests: RLS for the new objects, `test-yb-api`, `test-account`.
-15. [ ] **Judging and final results** (SPEC 4.3).
-    - DB: migration 0003 with `yb_scores`, `yb_rubric`, `yb_settings`, `yb_axis_cap`, the set/publish RPCs, `yb_public_results`, `yb_my_scores`.
-    - API: the score and rubric methods, publish, the results reads.
-    - UI: the admin «التحكيم» grid (`judging.js` and `.css`), the public «النتائج» tab, and team score cards.
-    - Tests: RLS (unpublished results invisible, no child data), caps equal `competition.txt`, UI tests.
-16. [ ] **Announcements** (SPEC 4.4).
-    - DB: migration 0004 with `yb_announcements` and its RLS by audience.
-    - API: CRUD plus the public read.
-    - UI: the admin «الإعلانات» tab, the public strip on the home and tournament pages, the role feeds, the offline cache.
-    - Tests: RLS by audience, UI tests, a PWA offline read.
-17. [ ] **Certificates** (SPEC 4.5).
-    - DB: migration 0005 with `yb_awards` and its RLS.
-    - API: award CRUD and the own-team reads.
-    - UI: the admin «الشهادات» tab, the A4 print preview, batch print, reprint for leaders and parents (`certificates.js` and `.css`).
-    - Tests: RLS (awards never public), print-mode layout, no amounts printed.
-18. [ ] **Admin quality-of-life** (SPEC 4.8).
-    - DB: none (reads `audit_log`).
-    - API: paged audit reads; the GoTrue recover call.
-    - UI: the «السجل» tab, tournament JSON backup and restore, user search, role change, password-reset email.
-    - Tests: `test-account` admin tabs and the restore conflict check.
-19. [ ] 🔒 **Owner content decisions** (SPEC 4.7).
-    - Content: the WhatsApp number (`register.js` `WA` and the `competition.txt` placeholders), the lira amounts for the fee and prizes, and the 4 contradictions in the documents.
-    - Tests: `check_content.py` at 100%, and the UI tests updated.
-20. [ ] **Release hardening**.
-    - Fix the flaky `wow` ViewTransition test and the `gallery` timing under load.
-    - Remove the unused `.lab-stub`.
-    - Run the full integration check (duplicate ids, overflow, errors) at 390px and 1280px.
-    - Build the final zip, which the owner uploads. Never auto-deploy.
-21. [ ] *(Optional)* **Web Push** for announcements and match reminders, with guardian consent; private chess player labels; Arabic email templates; a custom domain (SPEC 4.9).
+Order changed after the owner's requirements table (SPEC 4.10). All the database work comes first and is tested
+offline with PGlite, then goes live in one apply (slice 20).
 
-Suggested build order: 12 → 13 → 14 → 15 → 16 → 17 → 18 → 20. Item 19 happens whenever the owner answers; item 13 doesn't depend on 12 and can go first.
+12. [ ] **Roles, registration workflow, inbox** (SPEC 4.10.1, 4.10.2, 4.10.9, 4.2).
+    - DB: migration 0002 adds the `officer` role, `yb_officers`, the `returned` status, the `yb_leader_can_edit` rewrite, `yb_review_team`, `yb_notifications` with status-change triggers, the `app:'yanabee'` tag, `yb_join_attempts`, and `yb_my_team_roster_status`.
+    - API: `yb-api` methods for each; error keys.
+    - UI: the leader status timeline and note; the admin review buttons (اعتماد / إرجاع / رفض); the officer screen and the admin "assign officer" control; the notification bell and list; the demo fake mirrors all of it.
+    - Tests: RLS (officer limits, the leader editing in `returned`, no cross-team reads), `test-yb-api`, `test-account`.
+13. [ ] **Unified schedule and alerts** (SPEC 4.10.3).
+    - DB: migration 0003 with `yb_events`, `yb_public_events`, and a notify trigger.
+    - API: event CRUD and reads.
+    - UI: the «الجدول» tab with filters (team, competition, category), "my team", `.ics` export; event editing for officers and the admin.
+    - Tests: RLS (the public sees no team-private events), notifications fan out to the right users only, UI filters.
+14. [ ] **Live and approved results, plus stage approval** (SPEC 4.10.4, 4.10.5).
+    - DB: migration 0004 with `yb_results` and `yb_result_history`, and the approval rules.
+    - API: result methods and polling.
+    - UI: the officer's live score entry, the «جارية» and «نهائية» badges, the admin approve queue, the correction log, the "next opponent" card shown only after stage approval.
+    - Tests: engine overlay, history written on every post-approval edit, only approved results feed standings.
+15. [ ] **Project and initiative submissions** (SPEC 4.10.6).
+    - DB: migration 0005 with `yb_submissions`, the private Storage bucket, and Storage RLS.
+    - API: upload (client resize), signed URLs.
+    - UI: the leader's submit form with the photos warning and confirmation; the officer's review (return with a note, or accept with a grade).
+    - Tests: RLS and Storage (never public, cross-team denied), size and type limits.
+16. [ ] **Judging and final results** (SPEC 4.3; submission grades feed التطبيق).
+    - DB: migration 0006 with `yb_scores`, `yb_rubric`, `yb_settings`, `yb_public_results`.
+    - UI: the «التحكيم» grid, the public «النتائج» tab, the team score cards.
+    - Tests: caps equal `competition.txt`; nothing is visible before publication.
+17. [ ] **Announcements and the supervised chat** (SPEC 4.4, 4.10.7).
+    - DB: migration 0007 with `yb_announcements` (by audience) and the `yb_chat_*` tables (leaders room, reports, mutes, the contact-data filter, the rate limit).
+    - UI: the announcements channel and public strip; the leaders room; the admin moderation queue.
+    - Tests: RLS (members and parents have no chat access), phone numbers and emails rejected, the rate limit.
+18. [ ] **Excel export** (SPEC 4.10.8).
+    - `js/xlsx-lite.js` (pure); sheets for teams, members, schedule, results, ranking, grades and submissions; per-role scope.
+    - Tests: the file opens (the zip and XML validate), Arabic and RTL, members' data only in the admin export.
+19. [ ] **PWA: install as a phone app** (SPEC 4.6). Independent of the backend, so it can be built at any point.
+    - Build: `build_pwa.py` writes the manifest, the icons, `sw.js`, `offline.html` and `_headers`; plus `make_zip.sh`.
+    - UI: `js/pwa.js` handles the install button and iOS sheet, the update toast, the offline indicator, and the offline cache of public data.
+    - Tests: `test-pwa.mjs` plus a WebKit pass; Supabase, `/api` and Storage are never cached.
+20. [ ] 🔒 **Go-live of the backend** (SPEC 4.1). The owner approves the apply prompt.
+    - Apply migrations 0001–0007 to `dhjmdiqausbcyhrguinl` in one go; post-check SQL; review the advisors; add the Storage bucket.
+    - Put the URL and key in `yb-config.js`. The owner sets the redirect URL and runs `set_admin`.
+    - `smoke-live.mjs` covers every role, including an officer.
+21. [ ] **Certificates** (SPEC 4.5) and **admin quality-of-life** (SPEC 4.8: the audit log, backup and restore, user search, password reset).
+22. [ ] 🔒 **Owner content decisions** (SPEC 4.7): the WhatsApp number, the lira amounts, the 4 contradictions in the documents, and whether students may join the chat.
+23. [ ] **Release hardening**: fix the flaky wow and gallery tests, remove `.lab-stub`, run the integration check at 390 and 1280px, build the final zip (the owner uploads it; never auto-deploy).
+24. [ ] *(Optional)* **Web Push** for the inbox, private chess labels, Arabic email templates, a custom domain (SPEC 4.9).
+
+Build order: 12 → 13 → 14 → 15 → 16 → 17 → 18 → 19 → 20 → 21 → 23. Item 22 happens whenever the owner answers.
