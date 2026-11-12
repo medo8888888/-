@@ -499,6 +499,37 @@ so the app stays custom and takes only what fills a gap:
   fahm; the documents describe those as judged tests. Slice 24.
 - **eTalenter's flow** (registration → judging panels → results) is already covered by 4.10.1, 4.3 and 4.10.6.
 
+### 4.12 Player recommendations for leaders (owner request, Nov 2026)
+A leader looking for players sees **recommended players** and filters them by:
+- age group
+- wins
+- team player (the «روح الفريق» badge)
+- goals scored
+- Quran competition wins
+
+**Who is listed**
+- Only players who opt in with «أبحث عن فريق». A minor needs guardian consent first; the parent link, or the leader's paper consent, records it.
+- A player already on a team in the current competition is listed only when the owner opens transfers, or for the next competition.
+
+**What a leader sees**
+- First name, age group, area, and achievement chips: goals, wins, «روح الفريق» badges, Quran awards.
+- Never the full name, email, phone, guardian or exact age.
+- Approved leaders only; never public.
+
+**Where the data comes from**
+- Goals and «روح الفريق»: `yb_match_scorers(match_key, member_id, goals)` and `yb_badges(member_id, kind 'team_spirit', match_key, given_by)`, recorded by the competition officer. Recording is part of slice 14.
+- Wins: a team's approved results, credited to its roster members.
+- Quran awards: `yb_awards` (slice 17), for the hifz and fahm honors.
+
+**Flow**
+1. Filters plus a "best match" sort (simple weighted score, shown with its reasons).
+2. The leader sends an invite (`yb_invites`), which the player and, for a minor, the parent accept.
+3. On acceptance the player joins the roster, subject to the team's 5–7 limit and registration status.
+
+**Privacy and tests**
+- RLS keeps the pool readable by approved leaders only, and only the opted-in projection.
+- The emails of all accounts stay visible to the admin only.
+
 ---
 
 ## 5. API surface after completion (client → Supabase)

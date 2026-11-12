@@ -33,7 +33,7 @@ offline with PGlite, then goes live in one apply (slice 20).
     - API: event CRUD and reads.
     - UI: the «الجدول» tab with filters (team, competition, category), "my team", `.ics` export; event editing for officers and the admin; **attendance** (leader confirms, officer checks teams in; lg2 rows shown word for word; SPEC 4.11).
     - Tests: RLS (the public sees no team-private events), notifications fan out to the right users only, UI filters.
-14. [ ] **Live and approved results, plus stage approval** (SPEC 4.10.4, 4.10.5).
+14. [ ] **Live and approved results, plus stage approval** (also records **goal scorers** and the **«روح الفريق»** badge per match, which feed SPEC 4.12) (SPEC 4.10.4, 4.10.5).
     - DB: migration 0005 with `yb_results` and `yb_result_history`, and the approval rules.
     - API: result methods and polling.
     - UI: the officer's live score entry, the «جارية» and «نهائية» badges, the admin approve queue, the correction log, the "next opponent" card shown only after stage approval; the **big-screen display** `?screen=1` (SPEC 4.11).
@@ -65,6 +65,10 @@ offline with PGlite, then goes live in one apply (slice 20).
     - [x] `tools/yanabee/make_zip.sh` writes the live URL and publishable key into the zip only; the repo keeps the empty config that the tests rely on.
     - [ ] Owner: sign up on the live site, then in the SQL editor run `select public.set_admin('<your email>');`. Email confirmation is off in this project (Hour Bank's setting), so accounts sign in immediately.
     - [ ] Live sign-up smoke test (blocked from this session: creating accounts on the shared project needs the owner's permission). The owner's first sign-up is the test.
+20b. [ ] **Player recommendations for leaders** (SPEC 4.12, owner request). Needs slices 14 and 17.
+    - DB: opt-in «أبحث عن فريق» with guardian consent; `yb_player_stats` view for approved leaders (age group, wins, goals, «روح الفريق», Quran awards); `yb_invites` with accept and decline.
+    - UI: a leader filter panel (age group, minimum goals, wins, team player, Quran winner) with a "best match" sort; an invite inbox for players and parents.
+    - Tests: RLS (only opted-in players, first name and age group only, no email, phone or guardian data; approved leaders only).
 21. [ ] **Certificates** (SPEC 4.5) and **admin quality-of-life** (SPEC 4.8: the audit log, backup and restore, user search, password reset).
 22. [ ] 🔒 **Owner content decisions** (SPEC 4.7): the WhatsApp number, the lira amounts, the 4 contradictions in the documents, and whether students may join the chat.
 23. [ ] **Release hardening**: fix the flaky wow and gallery tests, remove `.lab-stub`, run the integration check at 390 and 1280px, build the final zip (the owner uploads it; never auto-deploy).
