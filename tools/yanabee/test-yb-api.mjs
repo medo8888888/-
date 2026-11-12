@@ -64,7 +64,7 @@ function makeEnv({ config = { url: URL_BASE, anonKey: ANON }, stored, storageThr
   const calls = [];
   const handlers = [];
   const fetch = (url, init = {}) => {
-    const call = { url: String(url), method: init.method || 'GET', headers: init.headers || {}, body: init.body === undefined ? undefined : JSON.parse(init.body), signal: init.signal };
+    const call = { url: String(url), method: init.method || 'GET', headers: init.headers || {}, body: init.body === undefined ? undefined : (typeof init.body === 'string' ? JSON.parse(init.body) : init.body), signal: init.signal };
     calls.push(call);
     for (let i = handlers.length - 1; i >= 0; i--) {
       const h = handlers[i];
@@ -863,6 +863,42 @@ test('poll: visibility-aware polling with fake timers', async () => {
   eq(rej, 2, 'a rejecting function does not stop the polling');
   s7(); s8();
   eq(env.consoleCalls.length + e7.consoleCalls.length, 0, 'poll never logs');
+});
+
+test('file storage (migration 0008): private bucket, raw upload, signed links, remove', async () => {
+  const off = makeEnv({ config: {} });
+  eq((await off.YB.upload('yanabee-submissions', 't/s/a.jpg', 'x')).error, 'not_configured', 'not configured: upload is refused without a request');
+  eq(off.calls.length, 0, 'not configured: nothing is sent');
+  const env = makeEnv({ stored: storedSession(makeEnv()) });
+  env.on('POST', '/storage/v1/object/yanabee-submissions/', { body: { Key: 'yanabee-submissions/t/s/a.jpg', Id: 'i1' } });
+  const blob = { type: 'image/jpeg', size: 3 };
+  const up = await env.YB.upload('yanabee-submissions', 't1/s1/a b.jpg', blob, 'image/jpeg');
+  const c = env.calls[env.calls.length - 1];
+  eq([up.ok, up.data && up.data.path], [true, 't1/s1/a b.jpg'], 'upload resolves ok with the path');
+  eq([c.method, c.url.replace(/^https?:\/\/[^/]+/, '')], ['POST', '/storage/v1/object/yanabee-submissions/t1/s1/a%20b.jpg'], 'each path part is encoded, the slashes kept');
+  eq([c.headers['Content-Type'], c.headers['x-upsert'], c.headers.Authorization, c.body === blob], ['image/jpeg', 'false', 'Bearer acc0', true], 'raw body, its type, no overwrite, the user token');
+  const n0 = env.calls.length;
+  for (const bad of ['../x.jpg', 't1//a.jpg', '', '/t1/a.jpg', 't1/./a.jpg']) eq((await env.YB.upload('yanabee-submissions', bad, blob)).error, 'bad_request', 'a bad path is refused: ' + JSON.stringify(bad));
+  eq((await env.YB.upload('Bad Bucket', 't/s/a.jpg', blob)).error, 'bad_request', 'a bad bucket name is refused');
+  eq(env.calls.length, n0, 'refused paths send nothing');
+  env.on('POST', '/storage/v1/object/yanabee-submissions/t1/s1/x.jpg', { status: 400, body: { statusCode: '403', error: 'Unauthorized', message: 'new row violates row-level security policy' } });
+  eq((await env.YB.upload('yanabee-submissions', 't1/s1/x.jpg', blob)).error, 'permission_denied', 'Storage RLS text maps to permission_denied');
+  env.on('POST', '/storage/v1/object/yanabee-submissions/t1/s1/big.jpg', { status: 413, body: { statusCode: '413', error: 'Payload too large', message: 'The object exceeded the maximum allowed size' } });
+  eq((await env.YB.upload('yanabee-submissions', 't1/s1/big.jpg', blob)).error, 'file_too_large', 'too large maps to file_too_large');
+  ok(/5 ميغابايت/.test(env.YB.errorText('file_too_large')) && /JPG/.test(env.YB.errorText('bad_file_type')), 'Arabic texts for the photo errors');
+  env.on('POST', '/storage/v1/object/sign/yanabee-submissions', (k) => ({ body: k.body.paths.map((p) => p === 'no/x/y.jpg' ? { path: p, signedURL: null, error: 'not found' } : { path: p, signedURL: `/object/sign/yanabee-submissions/${p}?token=T`, error: null }) }));
+  const sg = await env.YB.signedUrls('yanabee-submissions', ['t1/s1/a.jpg', 'no/x/y.jpg', '../bad'], 5);
+  const sc = env.calls[env.calls.length - 1];
+  eq(sc.body, { expiresIn: 60, paths: ['t1/s1/a.jpg', 'no/x/y.jpg'] }, 'sign: bad paths dropped, at least 60 seconds');
+  ok(sg.ok && /^https?:\/\/[^/]+\/storage\/v1\/object\/sign\/yanabee-submissions\/t1\/s1\/a\.jpg\?token=T$/.test(sg.data['t1/s1/a.jpg']) && !('no/x/y.jpg' in sg.data), 'sign: full links only for the readable files');
+  const nE = env.calls.length;
+  eq((await env.YB.signedUrls('yanabee-submissions', [])).data, {}, 'sign: nothing to sign sends nothing');
+  eq(env.calls.length, nE, 'no request for an empty list');
+  env.on('DELETE', '/storage/v1/object/yanabee-submissions', (k) => ({ body: k.body.prefixes.map((name) => ({ name })) }));
+  const rm = await env.YB.removeFiles('yanabee-submissions', ['t1/s1/a.jpg']);
+  const rc = env.calls[env.calls.length - 1];
+  eq([rm.ok, rc.method, rc.body], [true, 'DELETE', { prefixes: ['t1/s1/a.jpg'] }], 'remove: DELETE with the list of paths');
+  eq(env.consoleCalls.length, 0, 'storage never logs');
 });
 
 test('never logs, never leaks tokens', async () => {

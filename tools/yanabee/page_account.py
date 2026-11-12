@@ -16,7 +16,7 @@ PAGE = 'account.html'
 # icons the script draws (names from core.ICONS only)
 ICON_NAMES = ['user', 'users', 'user-check', 'shield', 'lock', 'check', 'x', 'trash', 'printer', 'file-text', 'alert', 'chart',
               'calendar', 'clock', 'trophy', 'search', 'chevron-down', 'arrow-left', 'eye', 'flag', 'repeat', 'send', 'award',
-              'hand-heart', 'star', 'landmark', 'bell', 'route']
+              'hand-heart', 'star', 'landmark', 'bell', 'route', 'image']
 
 
 def txt(s):
@@ -39,6 +39,10 @@ def words():
         # lg2 (التأخر والغياب والانسحاب), shown verbatim next to the attendance check-in
         'lg2Title': txt(C['c-league']['lg2'].title.partition(':')[2].strip() or C['c-league']['lg2'].title),
         'lg2Rows': [[txt(c) for c in r] for r in C['c-league']['lg2'].table[1:]],
+        # the projects and initiatives (f-apply, c-card cd4 / cd5), shown next to the submission form
+        'applyLine': txt(C['c-form']['f-apply'].paras[0]),
+        'photoWarn': txt(C['c-card']['cd4'].paras[0]),
+        'lessons': txt(C['c-card']['cd5'].items[1].text),
     }
 
 

@@ -109,7 +109,7 @@
 
   /* ------------------------------------------------------------------ app state */
   const S = { seq: 0, uid: null, role: null, expired: false, manualOut: false, recoveryDone: false, stopPoll: null, stopInbox: null, rendered: null, modeSet: null, confirmedShown: false };
-  const clearData = () => { A.teams = []; A.members = []; A.profiles = []; A.state = undefined; A.evm = null; L.team = null; L.members = []; };
+  const clearData = () => { A.teams = []; A.members = []; A.profiles = []; A.state = undefined; A.evm = null; A.res = null; A.proj = null; O.res = null; O.proj = null; O.evm = null; L.team = null; L.members = []; };
 
   function mount(node, focus) {
     root.replaceChildren(node);
@@ -486,6 +486,9 @@
     if (n.kind === 'result_pending') return `نتيجة بانتظار اعتمادك: ${d.a_name || ''} ${d.sa ?? ''} – ${d.sb ?? ''} ${d.b_name || ''}`.replace(/\s+/g, ' ').trim();
     if (n.kind === 'result_approved') return `اعتُمدت نتيجة مباراة لفريقك (${d.comp === 'chess' ? 'الشطرنج' : `${d.sa} – ${d.sb}`}) وظهرت في لوحة البطولة.`;
     if (n.kind === 'result_returned') return `أعادت الإدارة نتيجة مباراة للمراجعة: ${d.note || ''}`;
+    if (n.kind === 'submission_new') return `أرسل ${team} عملًا للمراجعة: «${d.title || ''}».`;
+    if (n.kind === 'submission_reviewed') return d.status === 'accepted' ? `قُبل عمل فريقك «${d.title || ''}» في المشاريع والمبادرات.`
+      : d.status === 'returned' ? `أُعيد عمل «${d.title || ''}» للتعديل: ${d.note || ''}` : `لم يُقبل عمل «${d.title || ''}»${d.note ? ': ' + d.note : '.'}`;
     if (n.kind === 'event_new') return `موعد جديد: ${d.title || ''} — ${fmtWhen(d.starts_at)}${d.place ? ' · ' + d.place : ''}`;
     if (n.kind === 'event_changed') return `تغيّر موعد: ${d.title || ''} — ${fmtWhen(d.starts_at)}${d.place ? ' · ' + d.place : ''}`;
     if (n.kind === 'event_cancelled') return `أُلغي موعد: ${d.title || ''}`;
@@ -824,8 +827,8 @@
         h('b', { text: String(n) }), h('span', { text: label })))));
   }
   function adminTabs() {
-    const defs = [['teams', 'الفرق', 'users'], ['people', 'الأشخاص', 'user'], ['schedule', 'الجدول', 'calendar'], ['results', 'النتائج', 'flag'], ['tour', 'لوحة البطولة', 'trophy'], ['export', 'تصدير', 'file-text']];
-    const list = h('div', { role: 'tablist', 'aria-label': 'أقسام الإدارة', class: 'a-tabs a-tabs-4 a-tabs-5 a-tabs-6' });
+    const defs = [['teams', 'الفرق', 'users'], ['people', 'الأشخاص', 'user'], ['schedule', 'الجدول', 'calendar'], ['results', 'النتائج', 'flag'], ['projects', 'المشاريع', 'image'], ['tour', 'لوحة البطولة', 'trophy'], ['export', 'تصدير', 'file-text']];
+    const list = h('div', { role: 'tablist', 'aria-label': 'أقسام الإدارة', class: 'a-tabs a-tabs-4 a-tabs-5 a-tabs-6 a-tabs-7' });
     const els = defs.map(([k, label, ic], i) => {
       const on = A.tab === k;
       const b = h('button', { type: 'button', role: 'tab', id: 'at-' + k, 'aria-controls': 'ap-' + k, 'aria-selected': String(on), tabIndex: on ? 0 : -1, class: 'a-tab', 'data-fk': 'tab-' + k,
@@ -850,6 +853,10 @@
     else if (A.tab === 'results') {
       if (!A.res) { A.res = resultsDesk(['football', 'chess'], true, 'ares'); A.res.start(); }
       panel.append(A.res.el);
+    }
+    else if (A.tab === 'projects') {
+      if (!A.proj) { A.proj = projectsDesk(true, 'aprj'); A.proj.start(); }
+      panel.append(A.proj.el);
     }
     else if (A.tab === 'schedule') {
       if (!A.evm) A.evm = eventManager(Object.keys(COMPS), () => A.teams.map(t => ({ id: t.id, name: t.name })), 'adm');
@@ -1204,6 +1211,10 @@
       if (!O.res) { O.res = resultsDesk(games, false, 'ores'); O.res.start(); }
       nodes.push(O.res.el);
     }
+    if (O.comps.includes('projects')) {
+      if (!O.proj) { O.proj = projectsDesk(false, 'oprj'); O.proj.start(); }
+      nodes.push(O.proj.el);
+    }
     const others = O.comps.filter(k => k !== 'registration');
     if (others.length) {
       if (!O.evm) O.evm = eventManager(others, () => O.pub, 'off');
@@ -1527,6 +1538,319 @@
     return { el, start: async () => { el.replaceChildren(skeleton()); await load(); paint(); } };
   }
 
+  /* ------------------------------------------------------------------ PROJECTS AND INITIATIVES (migration 0008) */
+  // f-apply: each team applies the values of the surah in the family, the neighbourhood or the school, and documents it.
+  // The leader sends a short card (c-card cd1 / cd5) with up to 6 photos; the projects officer accepts it, returns it with a note,
+  // or does not accept it. Photos sit in a PRIVATE bucket and are shown through short signed links to the team and the
+  // projects staff only. Every photo is drawn again on a canvas before upload: smaller, JPEG, without its EXIF block
+  // (no camera location, no device name).
+  const SUB_BUCKET = 'yanabee-submissions', SUB_MAX = 12, PHOTO_MAX = 6, PHOTO_EDGE = 1600;
+  const SUB_ST = { submitted: 'بانتظار المراجعة', returned: 'مطلوب تعديل', accepted: 'مقبول', rejected: 'غير مقبول' };
+  const SUB_TONE = { submitted: 'brand', returned: 'sun', accepted: 'ok', rejected: 'bad' };
+  const SUB_KIND = { project: 'مشروع', activity: 'مبادرة أو نشاط' };
+  const SUB_PLACE = { family: 'الأسرة', neighborhood: 'السكن والحي', school: 'المدرسة أو الجامعة' };
+  const SUB_COLS = 'id,team_id,kind,title,value_text,place,done_on,summary,results,members_n,beneficiaries,photos,status,review_note,created_at,updated_at';
+  function newId() {
+    try { if (crypto.randomUUID) return crypto.randomUUID(); } catch (e) { /* not a secure page: build one below */ }
+    const b = crypto.getRandomValues(new Uint8Array(16));
+    b[6] = (b[6] & 15) | 64; b[8] = (b[8] & 63) | 128;
+    const x = Array.from(b, v => v.toString(16).padStart(2, '0')).join('');
+    return `${x.slice(0, 8)}-${x.slice(8, 12)}-${x.slice(12, 16)}-${x.slice(16, 20)}-${x.slice(20)}`;
+  }
+  const isoDay = d => { const p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; };
+  const dayText = s => (s ? fmtDate(String(s).slice(0, 10) + 'T12:00:00') : '');
+
+  async function shrinkPhoto(file) {
+    if (!file || !/^image\//.test(file.type || '')) throw { error: 'bad_file_type' };
+    let src = null, w = 0, ht = 0, url = '';
+    try { src = await createImageBitmap(file, { imageOrientation: 'from-image' }); w = src.width; ht = src.height; } catch (e) {
+      url = URL.createObjectURL(file);
+      src = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = url; }).catch(() => null);
+      if (src) { w = src.naturalWidth; ht = src.naturalHeight; }
+    }
+    if (!src || !w || !ht) { if (url) URL.revokeObjectURL(url); throw { error: 'bad_file_type' }; }
+    const k = Math.min(1, PHOTO_EDGE / Math.max(w, ht));
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(w * k)); c.height = Math.max(1, Math.round(ht * k));
+    const g = c.getContext('2d');
+    g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+    g.drawImage(src, 0, 0, c.width, c.height);
+    if (src.close) src.close();
+    if (url) URL.revokeObjectURL(url);
+    const blob = await new Promise(res => c.toBlob(res, 'image/jpeg', 0.82));
+    if (!blob) throw { error: 'bad_file_type' };
+    if (blob.size > 5 * 1024 * 1024) throw { error: 'file_too_large' };
+    return blob;
+  }
+
+  // signed links live 15 minutes; they are asked again a little before that
+  const PHOTO_URL = new Map();
+  async function photoUrls(paths) {
+    const now = Date.now(), out = {}, miss = [];
+    paths.forEach(p => { const c = PHOTO_URL.get(p); if (c && c.until > now) out[p] = c.url; else miss.push(p); });
+    if (miss.length && YB.signedUrls) {
+      const r = await YB.signedUrls(SUB_BUCKET, miss, 900);
+      if (r.ok && r.data) Object.keys(r.data).forEach(p => { PHOTO_URL.set(p, { url: r.data[p], until: now + 780000 }); out[p] = r.data[p]; });
+    }
+    return out;
+  }
+  // items: [{ path } | { url }]; onRemove(i) draws a remove button on each
+  function photoStrip(items, onRemove, title) {
+    const ul = h('ul', { class: 'a-photos', 'aria-label': title ? `صور «${title}»` : 'صور التوثيق' });
+    items.forEach((it, i) => {
+      const li = h('li', { class: 'a-photo' });
+      if (it.url) li.append(h('img', { src: it.url, alt: `صورة ${i + 1} (لم تُرفع بعد)` }));
+      else { li.dataset.path = it.path; li.append(h('span', { class: 'a-photo-ph', 'aria-hidden': 'true' }, icon('image'))); }
+      if (onRemove) li.append(h('button', { type: 'button', class: 'a-photo-x', 'aria-label': `احذف الصورة ${i + 1}`, 'data-fk': 'sphx-' + i, onclick: () => onRemove(i) }, icon('x')));
+      ul.append(li);
+    });
+    fillPhotos(ul, title);
+    return ul;
+  }
+  async function fillPhotos(ul, title) {
+    const lis = Array.from(ul.querySelectorAll('li[data-path]'));
+    if (!lis.length) return;
+    const urls = await photoUrls(lis.map(li => li.dataset.path));
+    lis.forEach((li, i) => {
+      const u = urls[li.dataset.path];
+      const ph = li.querySelector('.a-photo-ph');
+      if (!u || !ph) return;
+      ph.replaceWith(h('a', { href: u, target: '_blank', rel: 'noopener noreferrer', 'aria-label': `افتح الصورة ${i + 1}${title ? ` من «${title}»` : ''} بحجمها الكامل` },
+        h('img', { src: u, alt: '', loading: 'lazy', decoding: 'async' })));
+    });
+  }
+  function subItem(x, o) {
+    o = o || {};
+    const meta = [SUB_PLACE[x.place] || '', dayText(x.done_on), x.members_n !== null && x.members_n !== undefined ? `شارك ${x.members_n} من الأعضاء` : '',
+      x.beneficiaries !== null && x.beneficiaries !== undefined ? `المستفيدون: ${x.beneficiaries}` : ''].filter(Boolean).join(' · ');
+    return h('article', { class: 'a-pj', 'data-sub': x.id },
+      h('div', { class: 'a-pj-top' }, h('div', {}, h('h4', { text: x.title }), h('small', { class: 'a-hint', text: [o.teamName, SUB_KIND[x.kind] || x.kind].filter(Boolean).join(' · ') })),
+        chip(SUB_ST[x.status] || x.status, SUB_TONE[x.status])),
+      x.value_text ? h('p', { class: 'a-pj-txt' }, h('b', { text: 'القيمة المستهدفة: ' }), x.value_text) : null,
+      meta ? h('p', { class: 'a-hint', text: meta }) : null,
+      h('p', { class: 'a-pj-txt', text: x.summary }),
+      x.results ? h('p', { class: 'a-pj-txt' }, h('b', { text: 'النتائج والدروس: ' }), x.results) : null,
+      (x.photos || []).length ? photoStrip(x.photos.map(path => ({ path })), null, x.title) : null,
+      x.review_note && x.status !== 'submitted' ? h('p', { class: 'a-pj-note', role: 'note' }, icon('alert'), h('span', { text: `ملاحظة المراجعة: ${x.review_note}` })) : null,
+      o.actions && o.actions.length ? h('div', { class: 'a-actions' }, o.actions) : null,
+      o.after || null);
+  }
+  function selectField(label, name, opts, value) {
+    const id = uid('f');
+    const s = h('select', { id, name, class: 'a-select' }, Object.keys(opts).map(k => h('option', { value: k, selected: k === value, text: opts[k] })));
+    const wrap = h('div', { class: 'a-f' }, h('label', { for: id, class: 'a-l', text: label }), s);
+    wrap.input = s;
+    return wrap;
+  }
+  function areaField(label, name, value, max, required, hint) {
+    const id = uid('f'), hid = hint ? uid('h') : '';
+    const ta = h('textarea', { id, name, class: 'a-note-in', rows: 4, maxlength: max, required: !!required, 'aria-describedby': hid || null });
+    ta.value = value || '';
+    const wrap = h('div', { class: 'a-f' }, h('label', { for: id, class: 'a-l' }, label, required ? h('i', { class: 'req', 'aria-hidden': 'true', text: '*' }) : null),
+      ta, hint ? h('small', { id: hid, class: 'a-hint', text: hint }) : null);
+    wrap.input = ta;
+    return wrap;
+  }
+
+  // the team leader: send, fix and withdraw; team = { id, name, status }
+  function leaderSubs(team, fk) {
+    const T = { rows: [], editing: null, err: '' };
+    const el = h('section', { class: 'a-card a-pjs', 'aria-labelledby': fk + '-h', 'data-subs': '' });
+    const focusFk = k => { const f = el.querySelector(`[data-fk="${CSS.escape(k)}"]`); if (f) f.focus({ preventScroll: true }); };
+    const head = () => [h('h3', { id: fk + '-h' }, icon('image'), h('span', { text: 'المشاريع والمبادرات' })), W.applyLine ? h('p', { class: 'a-lead', text: W.applyLine }) : null];
+    async function load() {
+      const r = await read('yb_submissions', { select: SUB_COLS, filter: { team_id: 'eq.' + team.id }, order: 'created_at.desc' });
+      T.rows = r.ok && Array.isArray(r.data) ? r.data : [];
+      T.err = r.ok ? '' : YB.errorText(r.error);
+      if (!r.ok) sessionLost(r.error);
+    }
+    async function refresh(msg, focus) { await load(); paint(); if (msg) say(msg); if (focus) focusFk(focus); }
+    function paint() {
+      if (team.status !== 'approved') {
+        el.replaceChildren(...head(), h('p', { class: 'a-empty', text: 'يُفتح توثيق المشاريع والمبادرات بعد اعتماد الفريق.' }));
+        return;
+      }
+      const kids = head();
+      if (T.err) kids.push(h('p', { class: 'a-live-msg', role: 'alert', text: T.err }));
+      if (T.editing) kids.push(subForm(T.editing));
+      else if (T.rows.length < SUB_MAX) kids.push(h('div', { class: 'a-actions' }, btn('أضف مشروعًا أو مبادرة', 'image', 'btn-primary', () => {
+        T.editing = { id: newId(), isNew: true, photos: [], adds: [] }; paint(); focusFk('stitle');
+      }, { 'data-fk': fk + '-add' })));
+      else kids.push(h('p', { class: 'a-hint', text: 'بلغ الفريق الحد الأقصى: 12 مشروعًا ومبادرة.' }));
+      kids.push(T.rows.length ? h('div', { class: 'a-list' }, T.rows.map(x => subItem(x, { actions: T.editing ? [] : actions(x) })))
+        : h('p', { class: 'a-empty', text: 'لم يرسل الفريق مشروعًا أو مبادرة بعد. وثّقوا كل عمل بعد تنفيذه: ماذا فعلتم، وأين، ومن استفاد، وما الذي تعلّمتموه.' }));
+      el.replaceChildren(...kids);
+    }
+    function actions(x) {
+      if (x.status !== 'submitted' && x.status !== 'returned') return [];
+      const del = armed(btn('اسحبه', 'trash', 'btn-ghost', null, { 'data-fk': 'sdel-' + x.id }), 'اضغط مرة أخرى للسحب', async () => {
+        const r = await YB.rpc('yb_delete_submission', { id: x.id });
+        if (!r.ok) { if (sessionLost(r)) return; say(errMsg(r)); return; }
+        if ((x.photos || []).length) await YB.removeFiles(SUB_BUCKET, x.photos);
+        await refresh('سُحب العمل وحُذفت صوره.', fk + '-add');
+      });
+      return [btn(x.status === 'returned' ? 'عدّله وأرسله من جديد' : 'عدّله', 'file-text', 'btn-ghost', () => {
+        T.editing = Object.assign({}, x, { photos: (x.photos || []).slice(), adds: [] }); paint(); focusFk('stitle');
+      }, { 'data-fk': 'sed-' + x.id }), del];
+    }
+    function subForm(ed) {
+      const orig = ((T.rows.find(x => x.id === ed.id) || {}).photos || []).slice();
+      const kind = selectField('نوع العمل', 'kind', SUB_KIND, ed.kind || 'project');
+      const title = field({ label: 'عنوان العمل', name: 'stitle', required: true, max: 120, value: ed.title || '', hint: 'مثل: سقيا عمّال الحي، أو درس أسبوعي في المسجد.' });
+      title.input.dataset.fk = 'stitle';
+      const value = field({ label: 'القيمة المستهدفة من سورة الصف', name: 'svalue', max: 120, value: ed.value_text || '', hint: 'مثل: الصدق، التعاون، الوفاء بالعهد.' });
+      const place = selectField('مكان التطبيق', 'place', SUB_PLACE, ed.place || 'neighborhood');
+      const date = field({ label: 'تاريخ التنفيذ', name: 'sdate', type: 'date', value: ed.done_on ? String(ed.done_on).slice(0, 10) : '' });
+      date.input.min = '2026-11-01'; date.input.max = isoDay(new Date());
+      const summary = areaField('ماذا فعلتم؟', 'ssum', ed.summary, 2000, true, 'الفكرة والخطوات ومن شارك. لا تكتبوا أسماء الأطفال.');
+      const results = areaField(W.lessons || 'النتائج والدروس المستفادة', 'sres', ed.results, 2000, false);
+      const mem = field({ label: 'عدد أعضاء الفريق المشاركين', name: 'smem', type: 'number', nmin: 0, nmax: 7, mode: 'numeric', value: ed.members_n ?? '' });
+      const ben = field({ label: 'عدد المستفيدين (تقريبًا)', name: 'sben', type: 'number', nmin: 0, nmax: 100000, mode: 'numeric', value: ed.beneficiaries ?? '' });
+      const pickId = uid('f');
+      const pick = h('input', { type: 'file', id: pickId, accept: 'image/jpeg,image/png,image/webp,image/*', multiple: true, class: 'a-file', 'data-fk': 'sfile' });
+      const strip = h('div', { class: 'a-photos-w' });
+      const count = h('small', { class: 'a-hint', 'aria-live': 'polite' });
+      const ok = h('input', { type: 'checkbox', id: uid('f'), name: 'sok' });
+      const okRow = h('label', { class: 'a-check', for: ok.id }, ok, h('span', { text: 'أؤكد أن الصور لا تُظهر وجوه الأطفال، أو أن ظهورهم فيها بموافقة أولياء أمورهم.' }));
+      const progress = h('p', { class: 'a-hint', 'aria-live': 'polite' });
+      const n = () => ed.photos.length + ed.adds.length;
+      function paintStrip() {
+        const items = ed.photos.map(path => ({ path })).concat(ed.adds.map(a => ({ url: a.url })));
+        strip.replaceChildren(items.length ? photoStrip(items, i => {
+          if (i < ed.photos.length) ed.photos.splice(i, 1);
+          else { const a = ed.adds.splice(i - ed.photos.length, 1)[0]; if (a && a.url) URL.revokeObjectURL(a.url); }
+          paintStrip(); say('حُذفت الصورة من القائمة.'); pick.focus();
+        }) : h('p', { class: 'a-hint', text: 'لم تُضف صور بعد.' }));
+        count.textContent = `${n()} من ${PHOTO_MAX} صور`;
+        pick.disabled = n() >= PHOTO_MAX;
+        okRow.hidden = !n();
+      }
+      pick.addEventListener('change', () => {
+        const files = Array.from(pick.files || []);
+        const room = PHOTO_MAX - n();
+        files.slice(0, room).forEach(f => ed.adds.push({ file: f, url: URL.createObjectURL(f) }));
+        if (files.length > room) say(`أُضيفت ${room} فقط؛ ست صور على الأكثر.`);
+        pick.value = '';
+        paintStrip();
+      });
+      const cancel = btn('إلغاء', 'x', 'btn-ghost', async () => {
+        const orphan = ed.adds.filter(a => a.path).map(a => a.path);
+        ed.adds.forEach(a => { if (a.url) URL.revokeObjectURL(a.url); });
+        if (orphan.length) await YB.removeFiles(SUB_BUCKET, orphan);
+        T.editing = null; paint(); focusFk(fk + '-add');
+      }, { 'data-fk': 'scancel' });
+      const form = h('form', { class: 'a-form a-pj-form', 'aria-label': ed.isNew ? 'مشروع أو مبادرة جديدة' : 'تعديل المشروع أو المبادرة' },
+        h('div', { class: 'a-grid2' }, kind, place), title, value, h('div', { class: 'a-grid2' }, date, mem), ben, summary, results,
+        h('div', { class: 'a-f' }, h('label', { for: pickId, class: 'a-l', text: 'صور التوثيق (حتى 6 صور)' }), pick, count,
+          h('small', { class: 'a-hint', text: 'تُصغَّر كل صورة على جهازك قبل رفعها، ويُحذف منها موقع التصوير. لا يراها إلا فريقكم ومسؤول المشاريع.' })),
+        strip, W.photoWarn ? h('p', { class: 'a-pj-note', role: 'note' }, icon('shield'), h('span', { text: W.photoWarn })) : null, okRow, progress,
+        h('div', { class: 'a-actions' }, submitBtn(ed.status === 'returned' ? 'أرسله من جديد' : 'أرسل للمراجعة', 'send'), cancel));
+      paintStrip();
+      bind(form, async () => {
+        const tv = nameKey(title.input.value), sv = String(summary.input.value || '').trim();
+        if (tv.length < 3) return showErr(form, 'اكتب عنوانًا للعمل (3 أحرف على الأقل).', title.input);
+        if (sv.length < 10) return showErr(form, 'صف ما فعلتم في سطر أو سطرين على الأقل.', summary.input);
+        const mv = mem.input.value === '' ? null : num(mem.input.value), bv = ben.input.value === '' ? null : num(ben.input.value);
+        if (mv !== null && (mv < 0 || mv > 7)) return showErr(form, 'عدد الأعضاء المشاركين من 0 إلى 7.', mem.input);
+        if (bv !== null && (bv < 0 || bv > 100000)) return showErr(form, 'عدد المستفيدين غير صالح.', ben.input);
+        const dv = date.input.value;
+        if (dv && (dv < '2026-11-01' || dv > isoDay(new Date()))) return showErr(form, YB.errorText('bad_date'), date.input);
+        if (n() && !ok.checked) return showErr(form, 'أكّد شرط الصور قبل الإرسال، أو احذف الصور.', ok);
+        showErr(form, '');
+        const todo = ed.adds.filter(a => !a.path);
+        for (let i = 0; i < todo.length; i++) {
+          progress.textContent = `جارٍ رفع الصورة ${i + 1} من ${todo.length}…`;
+          let blob;
+          try { blob = await shrinkPhoto(todo[i].file); } catch (e) { progress.textContent = ''; return showErr(form, YB.errorText(e), pick); }
+          const path = `${team.id}/${ed.id}/${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}.jpg`;
+          const u = await YB.upload(SUB_BUCKET, path, blob, 'image/jpeg');
+          if (!u.ok) { progress.textContent = ''; if (sessionLost(u)) return; return showErr(form, errMsg(u), pick); }
+          todo[i].path = path;
+        }
+        progress.textContent = '';
+        const photos = ed.photos.concat(ed.adds.map(a => a.path));
+        const r = await YB.rpc('yb_save_submission', { id: ed.id, team_id: team.id, p: {
+          kind: kind.input.value, title: tv, value_text: nameKey(value.input.value), place: place.input.value, done_on: dv || null,
+          summary: sv, results: String(results.input.value || '').trim(), members_n: mv, beneficiaries: bv, photos } });
+        if (!r.ok) { if (sessionLost(r)) return; return showErr(form, errMsg(r), title.input); }
+        const dropped = orig.filter(p => !photos.includes(p));
+        if (dropped.length) await YB.removeFiles(SUB_BUCKET, dropped);
+        ed.adds.forEach(a => { if (a.url) URL.revokeObjectURL(a.url); });
+        T.editing = null;
+        await refresh('أُرسل العمل إلى مسؤول المشاريع للمراجعة.', fk + '-add');
+      });
+      return form;
+    }
+    return { el, start: async () => { el.replaceChildren(...head(), skeleton()); if (team.status === 'approved') await load(); paint(); } };
+  }
+
+  // a member or a parent: the team's work, read only (only the team's own people can read it)
+  function teamSubsView(teamId, teamName) {
+    const el = h('section', { class: 'a-card a-pjs', hidden: true, 'data-subs-view': '' });
+    (async () => {
+      const r = await read('yb_submissions', { select: SUB_COLS, filter: { team_id: 'eq.' + teamId }, order: 'created_at.desc' });
+      const rows = r.ok && Array.isArray(r.data) ? r.data : [];
+      if (!rows.length) return;
+      const acc = rows.filter(x => x.status === 'accepted').length;
+      const tn = /^فريق\s/.test(teamName || '') ? teamName : 'فريق ' + (teamName || '');
+      el.replaceChildren(h('h3', {}, icon('image'), h('span', { text: `مشاريع ${tn} ومبادراته` })),
+        h('p', { class: 'a-lead', text: `${rows.length} من الأعمال الموثقة${acc ? `، قُبل منها ${acc}` : ''}. يرسلها قائد الفريق، ولا يراها إلا الفريق ومسؤول المشاريع.` }),
+        h('div', { class: 'a-list' }, rows.map(x => subItem(x))));
+      el.hidden = false;
+    })();
+    return el;
+  }
+
+  // the projects officer and the admin: the review desk
+  function projectsDesk(admin, fk) {
+    const R = { rows: [], err: '', filter: 'submitted' };
+    const el = h('section', { class: 'a-card a-pjs', 'data-projects': '', 'aria-labelledby': fk + '-h' });
+    const focusFk = k => { const f = el.querySelector(`[data-fk="${CSS.escape(k)}"]`); if (f) f.focus({ preventScroll: true }); };
+    async function load() {
+      const r = await YB.rpc('yb_submissions_queue', {});
+      R.rows = r.ok && Array.isArray(r.data) ? r.data : [];
+      R.err = r.ok ? '' : errMsg(r);
+      if (!r.ok) sessionLost(r);
+    }
+    async function refresh(msg, focus) { await load(); paint(); if (msg) say(msg); if (focus) focusFk(focus); }
+    function review(x) {
+      if (x.status !== 'submitted' && !admin) return null;
+      const id = uid('f');
+      const note = h('textarea', { id, class: 'a-note-in', rows: 2, maxlength: 500, 'data-fk': 'snote-' + x.id, placeholder: 'مثل: أضيفوا صورة للعمل نفسه، أو وضّحوا عدد المستفيدين.' });
+      const msg = h('p', { class: 'a-live-msg', role: 'alert', hidden: true });
+      const go = async (decision, done) => {
+        const nv = String(note.value || '').trim();
+        if (decision === 'return' && !nv) { msg.textContent = 'اكتب ملاحظة توضّح للفريق المطلوب تعديله.'; msg.hidden = false; note.focus(); return; }
+        const r = await YB.rpc('yb_review_submission', nv ? { id: x.id, decision, note: nv } : { id: x.id, decision });
+        if (!r.ok) { if (sessionLost(r)) return; msg.textContent = errMsg(r); msg.hidden = false; return; }
+        await refresh(done, fk + '-refresh');
+      };
+      const rej = armed(btn('لا يُقبل', 'x', 'btn-ghost', null, { 'data-fk': 'srej-' + x.id }), 'اضغط مرة أخرى للتأكيد', () => go('reject', `لم يُقبل عمل ${x.team_name}، وأُبلغ الفريق.`));
+      return h('div', { class: 'a-pj-review' }, h('label', { for: id, class: 'a-l', text: 'ملاحظة للفريق (مطلوبة عند الإعادة)' }), note, msg,
+        h('div', { class: 'a-actions' },
+          btn('اقبله', 'check', 'btn-primary', () => go('accept', `قُبل عمل ${x.team_name}، وأُبلغ الفريق.`), { 'data-fk': 'sacc-' + x.id }),
+          btn('أعده للتعديل', 'repeat', 'btn-ghost', () => go('return', `أُعيد عمل ${x.team_name} للتعديل مع ملاحظتك.`), { 'data-fk': 'sret-' + x.id }), rej));
+    }
+    function paint() {
+      const waiting = R.rows.filter(x => x.status === 'submitted').length;
+      const accepted = R.rows.filter(x => x.status === 'accepted');
+      const shown = R.filter === 'all' ? R.rows : R.rows.filter(x => x.status === 'submitted');
+      const tab = (k, label) => h('button', { type: 'button', class: 'btn btn-sm ' + (R.filter === k ? 'btn-primary' : 'btn-ghost'), 'aria-pressed': String(R.filter === k), 'data-fk': fk + '-f-' + k,
+        onclick: () => { R.filter = k; paint(); focusFk(fk + '-f-' + k); } }, h('span', { text: label }));
+      const teams = new Set(accepted.map(x => x.team_id)).size;
+      el.replaceChildren(h('h3', { id: fk + '-h' }, icon('image'), h('span', { text: 'مراجعة المشاريع والمبادرات' })),
+        h('p', { class: 'a-lead', text: waiting ? `${waiting} من الأعمال بانتظار مراجعتك.` : 'لا أعمال بانتظار المراجعة الآن.' }),
+        R.rows.length ? h('p', { class: 'a-hint', text: `كل الأعمال: ${R.rows.length} · المقبولة: ${accepted.length}${teams ? ` من ${teams} ${teams === 1 ? 'فريق' : 'فرق'}` : ''}` }) : null,
+        R.err ? h('p', { class: 'a-live-msg', role: 'alert', text: R.err }) : null,
+        h('div', { class: 'a-actions', role: 'group', 'aria-label': 'عرض' }, tab('submitted', `بانتظار المراجعة (${waiting})`), tab('all', 'كل الأعمال'),
+          btn('تحديث', 'repeat', 'btn-ghost', () => refresh('تم التحديث.', fk + '-refresh'), { 'data-fk': fk + '-refresh' })),
+        shown.length ? h('div', { class: 'a-list' }, shown.map(x => subItem(x, { teamName: x.team_name, after: review(x) })))
+          : h('p', { class: 'a-empty', text: R.rows.length ? 'لا شيء هنا. اختر «كل الأعمال» لرؤية ما رُوجع.' : 'لم ترسل الفرق مشاريع أو مبادرات بعد.' }),
+        h('p', { class: 'a-hint', text: 'الصور خاصة: تُفتح بروابط مؤقتة لك وللفريق صاحب العمل فقط. لا تُنشر صورة فيها قاصر قبل التأكد من موافقة وليّ أمره.' }));
+    }
+    return { el, start: async () => { el.replaceChildren(skeleton()); await load(); paint(); } };
+  }
+
   /* ------------------------------------------------------------------ LEADER */
   const L = { team: null, members: [], rs: {}, editing: null, boxes: {}, sched: null, profile: null, adding: false, addForm: null, editTeam: false };
   const editable = () => L.team && (L.team.status === 'draft' || L.team.status === 'submitted' || L.team.status === 'returned');
@@ -1614,7 +1938,9 @@
     L.boxes.check = h('section', { class: 'a-card a-checkcard', 'aria-labelledby': 'l-check-h', hidden: true });
     L.boxes.roles = h('section', { class: 'a-card', 'aria-labelledby': 'l-roles-h', 'data-roles': '' });
     L.boxes.marks = h('section', { class: 'a-card', 'aria-labelledby': 'l-marks-h', 'data-marks': '', hidden: true });
-    body.replaceChildren(L.boxes.top, L.boxes.check, L.dates, L.boxes.marks, L.boxes.roster, L.boxes.roles, L.boxes.code, L.sched.node, L.printBox);
+    L.subs = leaderSubs({ id: t.team_id, name: t.team_name, status: t.status }, 'lsub');
+    body.replaceChildren(L.boxes.top, L.boxes.check, L.dates, L.boxes.marks, L.subs.el, L.boxes.roster, L.boxes.roles, L.boxes.code, L.sched.node, L.printBox);
+    L.subs.start();
     paintLeader();
     startSchedule([L.sched]);
     if (focus) { const f = L.boxes.top.querySelector('[data-focus]'); if (f) f.focus({ preventScroll: true }); }
@@ -1971,7 +2297,7 @@
     const roster = ro.ok ? (ro.data || []) : [];
     const me = roster.find(x => x.is_me);
     const box = scheduleBox({ id: row.team_id, name: row.team_name });
-    sh.body.replaceChildren(
+    sh.body.replaceChildren(...[
       h('section', { class: 'a-card a-teamcard' }, h('div', { class: 'a-team-top' }, h('div', {}, h('h3', { text: row.team_name }), row.area ? h('small', { class: 'a-hint', text: row.area }) : null), statusChip(row.status)),
         h('p', { class: 'a-lead', text: 'أنت عضو في هذا الفريق.' })),
       h('section', { class: 'a-card' }, h('h3', {}, icon('users'), h('span', { text: 'أعضاء الفريق' })),
@@ -1980,7 +2306,8 @@
       h('section', { class: 'a-card' }, h('h3', {}, icon('user-check'), h('span', { text: 'موافقة ولي الأمر' })),
         me ? consentBlock(me.consent_status) : h('p', { class: 'a-empty', text: 'لا تتوفر حالة الموافقة الآن.' })),
       teamDates(row.team_id, row.status, false),
-      box.node);
+      row.status === 'approved' ? teamSubsView(row.team_id, row.team_name) : null,
+      box.node].filter(Boolean));
     startSchedule([box]);
   }
 
@@ -2007,11 +2334,11 @@
       seen[k.team_id] = 1;
       const b = scheduleBox({ id: k.team_id, name: k.team_name });
       boxes.push(b);
-      nodes.push(teamDates(k.team_id, k.team_status, false), b.node);
+      nodes.push(teamDates(k.team_id, k.team_status, false), k.team_status === 'approved' ? teamSubsView(k.team_id, k.team_name) : null, b.node);
     });
     nodes.push(h('section', { class: 'a-card' }, h('h3', {}, icon('user-check'), h('span', { text: kids.length ? 'اربط ابنًا أو ابنة آخر' : 'اربط ابنك أو ابنتك' })),
       h('p', { class: 'a-lead', text: 'اطلب من قائد الفريق رمز الفريق، واكتب اسم الطفل كما كتبه في القائمة.' }), joinForm('parent')));
-    sh.body.replaceChildren(...nodes);
+    sh.body.replaceChildren(...nodes.filter(Boolean));
     startSchedule(boxes);
   }
 

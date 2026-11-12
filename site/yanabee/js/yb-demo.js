@@ -316,6 +316,7 @@
     }
     if (table === 'parent_links') return method === 'GET' ? finish(db.links.filter(function (l) { return l.parent_id === me; })) : deny();
     if (table === 'audit_log') return method === 'GET' ? finish([]) : deny();
+    if (table === 'yb_submissions') return method === 'GET' ? finish([]) : deny();   // the demo team is never approved, so it has no projects yet
 
     if (table === 'teams') {
       function mine(t) { return t.leader_id === me; }

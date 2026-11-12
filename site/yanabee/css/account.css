@@ -380,3 +380,28 @@
 .a-live-marks li{gap:8px}
 .a-sub{margin:4px 0 0}
 [data-marks][hidden]{display:none}
+
+/* projects and initiatives (migration 0008) */
+.a-tabs-7{grid-template-columns:repeat(7,1fr)}
+@media (max-width:760px){.a-tabs-7{grid-template-columns:repeat(4,1fr)}.a-tabs-7 .a-tab span{font-size:.74rem}}
+.a-pj{display:grid;gap:8px;padding:14px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface-2)}
+.a-pj-top{display:flex;gap:10px;align-items:flex-start;justify-content:space-between}
+.a-pj-top h4{margin:0;font-size:1.02rem;color:var(--ink)}
+.a-pj-txt{margin:0;line-height:1.85;color:var(--ink-2);white-space:pre-line;overflow-wrap:anywhere}
+.a-pj-txt b{color:var(--ink)}
+.a-pj-note{display:flex;gap:8px;align-items:flex-start;margin:0;padding:10px 12px;border-radius:var(--r-sm);line-height:1.8;background:color-mix(in oklab,var(--sun,#e3a008) 12%,var(--surface));border:1px solid color-mix(in oklab,var(--sun,#e3a008) 38%,var(--line));color:var(--ink)}
+.a-pj-note .i{flex:none;margin-top:4px}
+.a-pj-review{display:grid;gap:6px;padding-top:10px;border-top:1px dashed var(--line-2)}
+.a-pj-form textarea.a-note-in{min-height:110px}
+.a-photos{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px}
+.a-photo{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;background:var(--surface);border:1px solid var(--line);display:grid;place-items:center}
+.a-photo img{width:100%;height:100%;object-fit:cover;display:block}
+.a-photo a{display:block;width:100%;height:100%}
+.a-photo a:focus-visible{outline:3px solid var(--brand);outline-offset:-3px}
+.a-photo-ph{color:var(--ink-3,var(--ink-2));opacity:.6}
+.a-photo-x{position:absolute;top:4px;inset-inline-end:4px;width:32px;height:32px;border-radius:999px;border:0;display:grid;place-items:center;background:rgba(0,0,0,.62);color:#fff;cursor:pointer}
+.a-photo-x .i{width:16px;height:16px}
+.a-photo-x:focus-visible{outline:3px solid #fff;outline-offset:1px}
+.a-file{width:100%;min-height:48px;padding:10px;border-radius:12px;border:1.5px dashed var(--line-2);background:var(--surface-2);color:var(--ink);font:inherit}
+.a-file:disabled{opacity:.55}
+.a-pj-form .a-check[hidden],.a-pjs[hidden]{display:none}

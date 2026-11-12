@@ -129,7 +129,11 @@
     [/unable to validate email|invalid email|email address.*invalid/i, 'email_address_invalid'],
     [/token has expired or is invalid|otp.*expired/i, 'otp_expired'],
     [/jwt expired|invalid jwt/i, 'jwt_expired'],
-    [/refresh token/i, 'refresh_token_not_found']
+    [/refresh token/i, 'refresh_token_not_found'],
+    [/row-level security|row level security/i, 'permission_denied'],          // Storage answers 400 + text
+    [/payload too large|maximum allowed size|entity too large/i, 'file_too_large'],
+    [/mime type|invalid_mime_type/i, 'bad_file_type'],
+    [/resource already exists/i, 'duplicate']
   ];
   function keyFromBody(status, b) {
     b = isObj(b) ? b : {};
@@ -242,6 +246,13 @@
     filter_required: 'طلب غير آمن: يجب تحديد السجل المقصود.',
     server_error: 'الخادم غير متاح مؤقتًا. أعد المحاولة بعد قليل.',
     bad_request: 'تعذّر تنفيذ الطلب.',
+    team_not_approved: 'تُرسَل المشاريع والمبادرات بعد اعتماد الفريق.',
+    too_many: 'بلغ الفريق الحد الأقصى (12 مشروعًا ومبادرة).',
+    too_many_photos: 'ست صور على الأكثر لكل مشروع أو مبادرة.',
+    bad_photo: 'إحدى الصور لم تُرفع كما يجب. احذفها وارفعها من جديد.',
+    bad_date: 'تاريخ التنفيذ يجب أن يكون بين بداية المسابقة واليوم.',
+    file_too_large: 'الصورة كبيرة أكثر من اللازم (5 ميغابايت على الأكثر).',
+    bad_file_type: 'نوع الملف غير مقبول. اختر صورة (JPG أو PNG أو WEBP).',
     unknown: 'حدث خطأ غير متوقع. أعد المحاولة.'
   };
   function errorText(err) {
@@ -268,6 +279,8 @@
     if (bearer) headers.Authorization = 'Bearer ' + bearer;
     var init = { method: method, headers: headers };
     if (o.body !== undefined) { headers['Content-Type'] = 'application/json'; init.body = JSON.stringify(o.body); }
+    if (o.raw !== undefined) { headers['Content-Type'] = o.contentType || 'application/octet-stream'; init.body = o.raw; }
+    if (o.upsert === false) headers['x-upsert'] = 'false';
     if (o.prefer) headers.Prefer = o.prefer;
     var ctl = null, timer = null;
     try { if (typeof AbortController === 'function') { ctl = new AbortController(); init.signal = ctl.signal; } } catch (e) { ctl = null; }
@@ -512,6 +525,53 @@
     });
   }
 
+  /* --------------------------------------------------------- file storage */
+  // Private buckets only: files are read through short signed links, never public URLs.
+  var BUCKET_RE = /^[a-z0-9][a-z0-9_-]{1,62}$/;
+  function okPath(p) {
+    var parts = String(p || '').split('/');
+    if (!p || String(p).length > 200) return false;
+    for (var i = 0; i < parts.length; i++) { if (!parts[i] || parts[i] === '.' || parts[i] === '..') return false; }
+    return true;
+  }
+  function objPath(p) { return String(p).split('/').map(enc).join('/'); }
+  // blob: a Blob/File (already re-encoded by the caller). Resolves {ok:true,data:{path}} | failure.
+  function upload(bucket, path, blob, contentType) {
+    if (!configured) return notConfigured();
+    if (!BUCKET_RE.test(String(bucket)) || !okPath(path)) return Promise.resolve(badRequest('bad_path'));
+    return api('POST', '/storage/v1/object/' + bucket + '/' + objPath(path), {
+      raw: blob, contentType: contentType || (blob && blob.type) || 'application/octet-stream', upsert: false
+    }).then(function (r) {
+      var out = writeResult(r);
+      return out.ok ? { ok: true, data: { path: path }, status: out.status } : out;
+    });
+  }
+  // Resolves {ok:true,data:{path:url}} (only the paths the caller may read get a link).
+  function signedUrls(bucket, paths, seconds) {
+    if (!configured) return notConfigured();
+    var list = (Array.isArray(paths) ? paths : []).filter(okPath);
+    if (!BUCKET_RE.test(String(bucket))) return Promise.resolve(badRequest('bad_path'));
+    if (!list.length) return Promise.resolve({ ok: true, data: {}, status: 200 });
+    var ttl = Math.max(60, Math.min(3600, Number(seconds) || 600));
+    return api('POST', '/storage/v1/object/sign/' + bucket, { body: { expiresIn: ttl, paths: list } }).then(function (r) {
+      var out = writeResult(r);
+      if (!out.ok) return out;
+      var map = {};
+      (Array.isArray(out.data) ? out.data : []).forEach(function (x) {
+        var u = isObj(x) && !x.error && (x.signedURL || x.signedUrl);
+        if (u && typeof x.path === 'string') map[x.path] = /^https?:/i.test(u) ? u : BASE + '/storage/v1' + (u.charAt(0) === '/' ? '' : '/') + u;
+      });
+      return { ok: true, data: map, status: out.status };
+    });
+  }
+  function removeFiles(bucket, paths) {
+    if (!configured) return notConfigured();
+    var list = (Array.isArray(paths) ? paths : []).filter(okPath);
+    if (!BUCKET_RE.test(String(bucket))) return Promise.resolve(badRequest('bad_path'));
+    if (!list.length) return Promise.resolve({ ok: true, data: [], status: 200 });
+    return api('DELETE', '/storage/v1/object/' + bucket, { body: { prefixes: list } }).then(writeResult);
+  }
+
   function getState() {
     // an array with limit=1 (not a single object): an empty table is then a plain 200 [], not a 406 the browser logs on every poll
     return Promise.resolve(q('tournament_state', { select: 'state,updated_at', filter: { id: 'eq.1' }, limit: 1 })).then(function (rows) {
@@ -587,6 +647,7 @@
     signUp: signUp, signIn: signIn, signOut: signOut,
     resetPassword: resetPassword, updatePassword: updatePassword, loadProfile: loadProfile,
     q: q, insert: insert, update: update, remove: remove, rpc: rpc,
+    upload: upload, signedUrls: signedUrls, removeFiles: removeFiles,
     getState: getState, publishState: publishState,
     poll: poll, errorText: errorText
   };

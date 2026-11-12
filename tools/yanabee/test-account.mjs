@@ -52,6 +52,7 @@ class Fake {
     this.users = []; this.profiles = []; this.teams = []; this.members = []; this.links = []; this.tour = null; this.notes = []; this.officers = []; this.noteSeq = 0;
     this.events = []; this.att = [];
     this.live = []; this.marks = []; this.markSeq = 0;   // migration 0007
+    this.subs = []; this.objects = new Map(); this.uploads = [];   // migration 0008 (submissions, private photos)
     this.tokens = new Map(); this.refresh = new Map(); this.log = []; this.recovers = []; this.fail = []; this.delay = 0; this.tick = 0;
   }
   uid() { return crypto.randomUUID(); }
@@ -124,6 +125,13 @@ class Fake {
       return route.fulfill({ status: f.status, headers: { ...cors, 'content-type': 'application/json' }, body: JSON.stringify(f.body || {}) });
     }
     if (this.delay) await sleep(this.delay);
+    if (req.method() === 'GET' && u.pathname.startsWith('/storage/v1/object/sign/')) {   // a signed photo link: a 1x1 PNG
+      return route.fulfill({ status: 200, headers: { ...cors, 'content-type': 'image/png' }, body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64') });
+    }
+    if (req.method() === 'POST' && /^\/storage\/v1\/object\/(?!sign\/)/.test(u.pathname)) {
+      const buf = req.postDataBuffer() || Buffer.alloc(0);
+      this.uploads.push({ path: u.pathname, type: headers['content-type'], size: buf.length, upsert: headers['x-upsert'], jpeg: buf[0] === 0xff && buf[1] === 0xd8, exif: buf.includes(Buffer.from('Exif')) });
+    }
     let body = null;
     try { body = req.postDataJSON(); } catch (e) { body = null; }
     const out = this.dispatch(req.method(), u, headers, body, bearer);
@@ -138,6 +146,7 @@ class Fake {
     const p = u.pathname;
     if (p.startsWith('/auth/v1/')) return this.auth(method, p.slice(9), u, body, bearer);
     if (p.startsWith('/rest/v1/rpc/')) return this.rpc(p.slice(13), method, body, this.ctx(bearer));
+    if (p.startsWith('/storage/v1/')) return this.storage(method, decodeURIComponent(p.slice(12)), body, this.ctx(bearer));
     if (p.startsWith('/rest/v1/')) {
       const c = this.ctx(bearer);
       if (c.bad) return c.bad;
@@ -197,6 +206,47 @@ class Fake {
     return { status: 404, body: { msg: 'no auth route' } };
   }
 
+  /* ---- Storage (migration 0008: private bucket yanabee-submissions) ---- */
+  subPerson(uid, teamId) {
+    const t = this.teams.find(x => x.id === teamId);
+    return !!t && (t.leader_id === uid || this.members.some(m => m.team_id === teamId && m.user_id === uid)
+      || this.links.some(l => l.parent_id === uid && (this.members.find(m => m.id === l.member_id) || {}).team_id === teamId));
+  }
+  subStaff(c) { return c.role === 'admin' || (c.role === 'officer' && this.officers.some(o => o.user_id === c.uid && o.competition === 'projects')); }
+  subCanWrite(uid, path, adding) {
+    const [tid, sid, f, extra] = String(path).split('/');
+    if (!tid || !sid || !f || extra !== undefined) return false;
+    const t = this.teams.find(x => x.id === tid);
+    if (!t || t.leader_id !== uid || t.status !== 'approved') return false;
+    const s = this.subs.find(x => x.id === sid);
+    if (s && (s.team_id !== tid || !['submitted', 'returned'].includes(s.status))) return false;
+    if (adding && [...this.objects.keys()].filter(k => k.startsWith(`${tid}/${sid}/`)).length >= 6) return false;
+    return true;
+  }
+  storage(method, p, body, c) {
+    const B = 'yanabee-submissions';
+    if (c.bad) return c.bad;
+    if (!c.uid) return { status: 400, body: { statusCode: '403', error: 'Unauthorized', message: 'new row violates row-level security policy' } };
+    if (method === 'POST' && p.startsWith(`object/sign/${B}`)) {
+      const paths = (body && Array.isArray(body.paths)) ? body.paths : [];
+      return { status: 200, body: paths.map(x => (this.objects.has(x) && (this.subStaff(c) || this.subPerson(c.uid, x.split('/')[0])))
+        ? { path: x, signedURL: `/object/sign/${B}/${x}?token=t-${this.tick}`, error: null } : { path: x, signedURL: null, error: 'Either the object does not exist or you do not have access to it' }) };
+    }
+    if (method === 'POST' && p.startsWith(`object/${B}/`)) {
+      const path = p.slice(`object/${B}/`.length);
+      if (!this.subCanWrite(c.uid, path, true)) return { status: 400, body: { statusCode: '403', error: 'Unauthorized', message: 'new row violates row-level security policy' } };
+      if (this.objects.has(path)) return { status: 400, body: { statusCode: '409', error: 'Duplicate', message: 'The resource already exists' } };
+      this.objects.set(path, c.uid);
+      return { status: 200, body: { Key: `${B}/${path}`, Id: this.uid() } };
+    }
+    if (method === 'DELETE' && p === `object/${B}`) {
+      const gone = ((body && body.prefixes) || []).filter(x => this.objects.has(x) && this.subCanWrite(c.uid, x, false));
+      gone.forEach(x => this.objects.delete(x));
+      return { status: 200, body: gone.map(name => ({ name, bucket_id: B })) };
+    }
+    return { status: 400, body: { statusCode: '404', error: 'not_found', message: 'Object not found' } };
+  }
+
   /* ---- PostgREST ---- */
   rest(method, table, q, body, headers, c) {
     const wantObj = /vnd\.pgrst\.object/.test(headers.accept || '');
@@ -242,6 +292,10 @@ class Fake {
         return rep ? { status: 200, body: rows } : { status: 204 };
       }
       return deny();
+    }
+    if (table === 'yb_submissions') {
+      if (method !== 'GET') return deny();
+      return finish(this.subs.filter(x => this.subStaff(c) || this.subPerson(me, x.team_id)).map(x => ({ ...x, photos: [...x.photos] })));
     }
     if (table === 'parent_links') {
       if (method === 'GET') return finish(this.links.filter(l => admin || l.parent_id === me));
@@ -376,7 +430,8 @@ class Fake {
       yb_set_roles: ['team_id', 'reciter', 'reserve', 'chess', 'coord'], yb_role_list: [], yb_set_waitlist: ['team_id', 'waiting'],
       yb_results_queue: [], yb_live_set: ['comp', 'match_key', 'a', 'b', 'sa', 'sb', 'ca', 'cb', 'ra', 'rb', 'status', 'note', 'start', 'a_name', 'b_name'],
       yb_mark_add: ['comp', 'match_key', 'team_id', 'kind', 'member_id', 'minute'], yb_mark_del: ['id'], yb_match_roster: ['comp', 'team_id'],
-      yb_match_marks_of: ['comp', 'match_key'], yb_result_approve: ['comp', 'match_key', 'state', 'prev'], yb_result_return: ['comp', 'match_key', 'note'], yb_my_marks: [] };
+      yb_match_marks_of: ['comp', 'match_key'], yb_result_approve: ['comp', 'match_key', 'state', 'prev'], yb_result_return: ['comp', 'match_key', 'note'], yb_my_marks: [],
+      yb_save_submission: ['id', 'team_id', 'p'], yb_delete_submission: ['id'], yb_review_submission: ['id', 'decision', 'note'], yb_submissions_queue: [] };
     if (!SIG[name]) return err(404, 'PGRST202', 'Could not find the function public.' + name);
     if (name === 'yb_mark_read') {
       const ids = body && Array.isArray(body.ids) ? body.ids : null;
@@ -384,6 +439,7 @@ class Fake {
       this.notes.forEach(x => { if (x.user_id === me && !x.read_at && (!ids || ids.includes(x.id))) { x.read_at = this.now(); n++; } });
       return { status: 200, body: n };
     }
+    if (name === 'yb_review_submission' && body && !('note' in body)) body = { ...body, note: null };   // the note is optional (default null)
     if (name === 'approve_team' ? !(body && 'team_id' in body && 'ok' in body && Object.keys(body).every(k => SIG[name].includes(k))) : !need(...SIG[name])) return err(404, 'PGRST202', 'Could not find the function public.' + name + ' in the schema cache');
     const cleanCode = s => String(s || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
 
@@ -451,6 +507,58 @@ class Fake {
         return { team_id: t.id, team_name: t.name, area: t.area, status: t.status, admin_note: t.admin_note, members: ms.length, consents: ms.filter(m => m.consent_status === 'received').length, updated_at: t.updated_at, reviewed_at: t.reviewed_at || null,
           fee_status: t.fee_status || 'unpaid', fee_receipt: t.fee_receipt || null, ref_code: t.ref_code || null, online: !!t.reg, claimed: !!t.leader_id };
       }) };
+    }
+    /* migration 0008: projects and initiatives */
+    if (name === 'yb_save_submission') {
+      const t = this.teams.find(x => x.id === body.team_id);
+      if (!t || t.leader_id !== me) return raise('permission_denied', '42501');
+      if (t.status !== 'approved') return { status: 200, body: { ok: false, error: 'team_not_approved' } };
+      const p = body.p || {};
+      let x = this.subs.find(s => s.id === body.id);
+      if (x && x.team_id !== t.id) return raise('permission_denied', '42501');
+      if (x && !['submitted', 'returned'].includes(x.status)) return { status: 200, body: { ok: false, error: 'invalid_status' } };
+      if (!x && this.subs.filter(s => s.team_id === t.id).length >= 12) return { status: 200, body: { ok: false, error: 'too_many' } };
+      const photos = Array.isArray(p.photos) ? p.photos : [];
+      if (photos.length > 6) return { status: 200, body: { ok: false, error: 'too_many_photos' } };
+      if (photos.some(ph => !ph.startsWith(`${t.id}/${body.id}/`) || !this.objects.has(ph))) return { status: 200, body: { ok: false, error: 'bad_photo' } };
+      if (p.done_on && (p.done_on < '2026-11-01' || p.done_on > new Date(Date.now() + 864e5).toISOString().slice(0, 10))) return { status: 200, body: { ok: false, error: 'bad_date' } };
+      const title = String(p.title || '').trim(), summary = String(p.summary || '').trim();
+      if (!['project', 'activity'].includes(p.kind) || !['family', 'neighborhood', 'school'].includes(p.place) || title.length < 3 || title.length > 120 || summary.length < 10
+        || (p.members_n !== null && p.members_n !== undefined && (p.members_n < 0 || p.members_n > 7))) return { status: 200, body: { ok: false, error: 'invalid_data' } };
+      const row = { id: body.id, team_id: t.id, kind: p.kind, title, value_text: p.value_text || null, place: p.place, done_on: p.done_on || null, summary, results: p.results || null,
+        members_n: p.members_n ?? null, beneficiaries: p.beneficiaries ?? null, photos: [...photos], status: 'submitted', review_note: x ? x.review_note : null, submitted_by: me, created_at: x ? x.created_at : this.now(), updated_at: this.now() };
+      if (x) Object.assign(x, row); else this.subs.push(row);
+      this.notify([...this.profiles.filter(q => q.role === 'admin').map(q => q.id), ...this.officers.filter(o => o.competition === 'projects').map(o => o.user_id)], 'submission_new', { team_id: t.id, team_name: t.name, title: title.slice(0, 80) });
+      return { status: 200, body: { ok: true, id: body.id, status: 'submitted' } };
+    }
+    if (name === 'yb_delete_submission') {
+      const x = this.subs.find(s => s.id === body.id);
+      if (!x) return { status: 200, body: { ok: false, error: 'not_found' } };
+      const t = this.teams.find(q => q.id === x.team_id);
+      if (!admin && (!t || t.leader_id !== me)) return raise('permission_denied', '42501');
+      if (!admin && !['submitted', 'returned'].includes(x.status)) return { status: 200, body: { ok: false, error: 'invalid_status' } };
+      this.subs.splice(this.subs.indexOf(x), 1);
+      return { status: 200, body: { ok: true } };
+    }
+    if (name === 'yb_submissions_queue') {
+      if (!this.subStaff(c)) return raise('permission_denied', '42501');
+      const rank = { submitted: 0, returned: 1 };
+      return { status: 200, body: this.subs.map(x => ({ ...x, team_name: (this.teams.find(t => t.id === x.team_id) || {}).name })).sort((a, b) => (rank[a.status] ?? 2) - (rank[b.status] ?? 2)) };
+    }
+    if (name === 'yb_review_submission') {
+      if (!this.subStaff(c)) return raise('permission_denied', '42501');
+      const st = { accept: 'accepted', return: 'returned', reject: 'rejected' }[body.decision];
+      if (!st) return raise('invalid_argument');
+      const nt = body.note ? String(body.note).trim() : '';
+      if (st === 'returned' && !nt) return raise('note_required');
+      const x = this.subs.find(s => s.id === body.id);
+      if (!x) return { status: 200, body: { ok: false, error: 'not_found' } };
+      if (x.status !== 'submitted' && !admin) return { status: 200, body: { ok: false, error: 'invalid_status' } };
+      Object.assign(x, { status: st, review_note: nt || null, reviewed_by: me, updated_at: this.now() });
+      const t = this.teams.find(q => q.id === x.team_id);
+      this.notify([t.leader_id, ...this.members.filter(m => m.team_id === t.id).map(m => m.user_id), ...this.links.filter(l => (this.members.find(m => m.id === l.member_id) || {}).team_id === t.id).map(l => l.parent_id)],
+        'submission_reviewed', { team_id: t.id, title: x.title.slice(0, 80), status: st, note: nt || null });
+      return { status: 200, body: { ok: true, status: st } };
     }
     /* migration 0007: live results, marks, approval */
     const canManage = comp => admin || officerOf(comp);
@@ -1095,7 +1203,7 @@ let teamId = '';
   await settle(AD);
   const stateBefore = world.count(/tournament_state/);
   await signInOk(AD, ADMIN.email);
-  check('admin screen: role badge الإدارة, six tabs (with الجدول and النتائج)', (await AD.locator('.a-head .a-badge').innerText()) === 'الإدارة' && (await AD.locator('[role=tab]').allInnerTexts()).join('|').replace(/\s+/g, ' ').includes('الجدول') && (await AD.locator('[role=tab]').count()) === 6);
+  check('admin screen: role badge الإدارة, seven tabs (with الجدول and النتائج and المشاريع)', (await AD.locator('.a-head .a-badge').innerText()) === 'الإدارة' && (await AD.locator('[role=tab]').allInnerTexts()).join('|').replace(/\s+/g, ' ').includes('الجدول') && (await AD.locator('[role=tab]').count()) === 7);
   check('admin load does NOT poll or read the tournament state', world.count(/tournament_state/) === stateBefore);
   const counts = await AD.locator('.a-counters .a-count').allInnerTexts();
   check('counters by status (1 قيد المراجعة, 0 مطلوب تعديل, total 1)', counts.some(c => /^1\s*كل الفرق/.test(c.replace(/\n/g, ' '))) && counts.some(c => /^1\s*قيد المراجعة/.test(c.replace(/\n/g, ' '))) && counts.some(c => /^0\s*مطلوب تعديل/.test(c.replace(/\n/g, ' '))) && counts.some(c => /^0\s*معتمد/.test(c.replace(/\n/g, ' '))));
@@ -1222,7 +1330,7 @@ let memberEmail = 'sara@t.test', parentEmail = 'parent@t.test';
   check('member sees own consent status (received: set by the admin)', /استُلمت موافقة ولي الأمر/.test(mt));
   check('no admin / leader controls on the member screen', !(await M.locator('input[role=switch], form.a-add, button[data-fk=submit], .a-tabs-4').count()));
   const reqs = world.log.filter(l => l.who === world.profileByEmail(memberEmail).id).map(l => l.path.replace('/rest/v1/', ''));
-  check('member screen reads only my_team, my_roster, tournament_state and the own profile (never teams, team_members, profiles list)', reqs.every(r => /^(rpc\/(my_team|join_team|yb_mark_read)|my_roster|tournament_state|profiles|yb_notifications|yb_events)$/.test(r)), [...new Set(reqs)].join());
+  check('member screen reads only my_team, my_roster, tournament_state and the own profile (never teams, team_members, profiles list)', reqs.every(r => /^(rpc\/(my_team|join_team|yb_mark_read)|my_roster|tournament_state|profiles|yb_notifications|yb_events|yb_submissions)$/.test(r)), [...new Set(reqs)].join());
   const tour = await M.locator('.a-sched').innerText();
   check('schedule card shows the empty state before the tournament is published', /لم تُنشر بيانات البطولة بعد/.test(tour));
   // second account tries the same name
@@ -1277,7 +1385,7 @@ let memberEmail = 'sara@t.test', parentEmail = 'parent@t.test';
   const chips = await P.locator('.a-child .a-consent .a-chip').allInnerTexts();
   check('two children: one «استُلمت», one «لم تُستلم بعد»; ONE schedule card for the shared team', chips.some(c => /^استُلمت/.test(c)) && chips.some(c => /لم تُستلم/.test(c)) && (await P.locator('.a-sched').count()) === 1);
   const preqs = world.log.filter(l => l.who === world.profileByEmail(parentEmail).id).map(l => l.path.replace('/rest/v1/', ''));
-  check('parent screen reads only my_children, tournament_state and the own profile', preqs.every(r => /^(rpc\/(link_child|yb_mark_read)|my_children|tournament_state|profiles|yb_notifications|yb_events)$/.test(r)), [...new Set(preqs)].join());
+  check('parent screen reads only my_children, tournament_state and the own profile', preqs.every(r => /^(rpc\/(link_child|yb_mark_read)|my_children|tournament_state|profiles|yb_notifications|yb_events|yb_submissions)$/.test(r)), [...new Set(preqs)].join());
   check('parent console clean', P.errs.length === 0, P.errs.join('|'));
   world.P = P;
 }
@@ -2342,6 +2450,163 @@ section('live results (0007): the officer enters, the admin approves or returns,
   await L.waitForSelector('[data-marks]:not([hidden])', { timeout: 8000 });
   check('the leader sees «هدّافو فريقنا» with the scorer name and 1 goal', new RegExp(nameA).test(await L.locator('[data-marks]').innerText()) && /1 هدف/.test(await L.locator('[data-marks]').innerText()));
   await close(L);
+}
+
+section('projects and initiatives (0008): the leader documents with private photos, the projects officer reviews, the team sees');
+{
+  const fake = new Fake();
+  fake.addUser({ email: 'boss@t.test', name: 'المشرف', role: 'member' }); fake.setAdmin('boss@t.test');
+  fake.addUser({ email: 'pj@t.test', name: 'مسؤول المشاريع', role: 'member' }); fake.setRole('pj@t.test', 'officer');
+  fake.officers.push({ user_id: fake.profileByEmail('pj@t.test').id, competition: 'projects' });
+  fake.addUser({ email: 'fo@t.test', name: 'مسؤول الكرة', role: 'member' }); fake.setRole('fo@t.test', 'officer');
+  fake.officers.push({ user_id: fake.profileByEmail('fo@t.test').id, competition: 'football' });
+  fake.addUser({ email: 'la@t.test', name: 'قائد النور', role: 'leader' });
+  fake.addUser({ email: 'lp@t.test', name: 'قائد الغد', role: 'leader' });
+  fake.addUser({ email: 'ma@t.test', name: 'سالم أحمد', role: 'member' });
+  fake.addUser({ email: 'pa@t.test', name: 'ولي يوسف', role: 'parent' });
+  const TA = fake.seedTeam({ leaderEmail: 'la@t.test', name: 'النور', status: 'approved', members: [{ name: 'سالم أحمد', age: 12 }, { name: 'يوسف علي', age: 13 }, { name: 'عمر حسن', age: 14 }, { name: 'زيد محمود', age: 15 }] });
+  fake.seedTeam({ leaderEmail: 'lp@t.test', name: 'الغد', status: 'draft', members: [] });
+  fake.members.find(m => m.full_name === 'سالم أحمد').user_id = fake.profileByEmail('ma@t.test').id;
+  fake.links.push({ parent_id: fake.profileByEmail('pa@t.test').id, member_id: fake.members.find(m => m.full_name === 'يوسف علي').id, created_at: fake.now() });
+  /* a big camera photo with an EXIF block (camera name + a location marker) */
+  const P0 = await open(new Fake(), { label: 'pj-photo' });
+  const b64 = await P0.evaluate(() => { const c = document.createElement('canvas'); c.width = 2400; c.height = 1600; const g = c.getContext('2d'); g.fillStyle = '#2a7'; g.fillRect(0, 0, 2400, 1600); g.fillStyle = '#fc3'; for (let x = 0; x < 2400; x += 160) g.fillRect(x, 0, 60, 1600); return c.toDataURL('image/jpeg', 0.95).split(',')[1]; });
+  await close(P0);
+  const raw = Buffer.from(b64, 'base64');
+  const exifBody = Buffer.concat([Buffer.from('Exif\0\0MM\0*\0\0\0\x08\0\0\0\0\0\0', 'binary'), Buffer.from('TestCam GPS 41.0N 28.9E')]);
+  const app1 = Buffer.concat([Buffer.from([0xff, 0xe1, (exifBody.length + 2) >> 8, (exifBody.length + 2) & 255]), exifBody]);
+  const camera = Buffer.concat([raw.subarray(0, 2), app1, raw.subarray(2)]);
+  const photo = n => ({ name: `IMG_${n}.jpg`, mimeType: 'image/jpeg', buffer: camera });
+
+  /* a leader whose team is not approved yet */
+  const LP = await open(fake, { label: 'pj-draft' });
+  await settle(LP); await signInOk(LP, 'lp@t.test');
+  await LP.waitForSelector('[data-subs]', { timeout: 8000 });
+  check('a team not approved yet: the card says documenting opens after approval, and nothing is read', /بعد اعتماد الفريق/.test(await LP.locator('[data-subs]').innerText()) && !fake.log.some(e => e.path.endsWith('/yb_submissions')));
+  await close(LP);
+
+  /* the leader of the approved team sends a project with two photos */
+  const L = await open(fake, { label: 'pj-leader' });
+  await settle(L); await signInOk(L, 'la@t.test');
+  await L.waitForSelector('[data-subs] [data-fk="lsub-add"]', { timeout: 8000 });
+  const card = L.locator('[data-subs]');
+  check('the card shows the f-apply line from the regulations', /في الأسرة أو السكن والحي أو المدرسة\/الجامعة/.test(await card.innerText()));
+  await L.locator('[data-fk="lsub-add"]').click();
+  await L.waitForSelector('.a-pj-form');
+  check('«أضف مشروعًا أو مبادرة» opens the form with the cd4 photo warning', /لا تُنشر صور أو بيانات المشاركين القاصرين/.test(await card.innerText()));
+  await L.locator('.a-pj-form button[type=submit]').click();
+  check('an empty form asks for a title', /اكتب عنوانًا للعمل/.test(await card.innerText()) && fake.subs.length === 0);
+  const F = L.locator('.a-pj-form');
+  await F.locator('select[name=kind]').selectOption('activity');
+  await F.locator('select[name=place]').selectOption('school');
+  await F.locator('input[name=stitle]').fill('سقيا عمّال المدرسة');
+  await F.locator('input[name=svalue]').fill('التعاون');
+  await F.locator('input[name=sdate]').fill('2026-11-10');
+  await F.locator('input[name=smem]').fill('5');
+  await F.locator('input[name=sben]').fill('40');
+  await F.locator('textarea[name=ssum]').fill('وزّعنا الماء البارد على عمّال المدرسة بعد الدوام.');
+  await F.locator('textarea[name=sres]').fill('تعلّمنا أن العمل الصغير المنظم يصل أكثر.');
+  await F.locator('[data-fk="sfile"]').setInputFiles([photo(1), photo(2)]);
+  await L.waitForFunction(() => document.querySelectorAll('.a-pj-form .a-photo img').length === 2);
+  check('two photos are previewed on the device before upload (2 من 6 صور)', /2 من 6 صور/.test(await F.innerText()));
+  await F.locator('button[type=submit]').click();
+  check('with photos, the parent-consent confirmation is required first', /أكّد شرط الصور/.test(await F.innerText()) && fake.uploads.length === 0);
+  await F.locator('input[name=sok]').check();
+  await F.locator('button[type=submit]').click();
+  await L.waitForSelector('[data-subs] .a-pj', { timeout: 10000 });
+  const s0 = fake.subs[0];
+  check('the submission is saved (submitted) with its two photos inside its own folder', fake.subs.length === 1 && s0.status === 'submitted' && s0.kind === 'activity' && s0.place === 'school' && s0.photos.length === 2 && s0.photos.every(p => p.startsWith(`${TA.id}/${s0.id}/`)));
+  check('each photo was re-encoded on the device: JPEG, smaller than the original, no EXIF (no camera, no location), no overwrite', fake.uploads.length === 2 && fake.uploads.every(u => u.type === 'image/jpeg' && u.jpeg && !u.exif && u.size < camera.length && u.upsert === 'false'), JSON.stringify(fake.uploads));
+  check('the admin and the projects officer are told; the football officer is not', ['boss@t.test', 'pj@t.test'].every(e => fake.notes.some(n => n.kind === 'submission_new' && n.user_id === fake.profileByEmail(e).id)) && !fake.notes.some(n => n.kind === 'submission_new' && n.user_id === fake.profileByEmail('fo@t.test').id));
+  await L.waitForFunction(() => Array.from(document.querySelectorAll('[data-subs] .a-pj .a-photo img')).filter(i => /\/storage\/v1\/object\/sign\//.test(i.src)).length === 2, null, { timeout: 8000 });
+  check('the photos are shown through signed links only (never a public URL)', !fake.log.some(e => /\/object\/public\//.test(e.path)) && (await L.locator('[data-subs] .a-pj').innerText()).includes('بانتظار المراجعة'));
+  /* the leader removes one photo */
+  await L.locator(`[data-fk="sed-${s0.id}"]`).click();
+  await L.waitForSelector('.a-pj-form .a-photo-x');
+  await L.locator('.a-pj-form .a-photo-x').first().click();
+  await L.locator('.a-pj-form input[name=sok]').check();
+  await L.locator('.a-pj-form button[type=submit]').click();
+  await L.waitForFunction(() => !document.querySelector('.a-pj-form'));
+  check('editing: a dropped photo leaves the submission and is deleted from the private bucket', fake.subs[0].photos.length === 1 && fake.objects.size === 1 && fake.log.some(e => e.method === 'DELETE' && e.path.endsWith('/object/yanabee-submissions')));
+  check('leader console clean (projects)', L.errs.length === 0, L.errs.join('|'));
+  await close(L);
+
+  /* the football officer has no projects desk; the projects officer returns it with a note */
+  const FO = await open(fake, { label: 'pj-fo' });
+  await settle(FO); await signInOk(FO, 'fo@t.test');
+  await FO.waitForSelector('[data-results]', { timeout: 8000 });
+  check('the football officer has no projects desk', !(await FO.locator('[data-projects]').count()));
+  await close(FO);
+  const O = await open(fake, { label: 'pj-officer' });
+  await settle(O); await signInOk(O, 'pj@t.test');
+  await O.waitForSelector('[data-projects] .a-pj', { timeout: 8000 });
+  check('the projects officer sees 1 waiting, with the team name, the text and the photo', /1 من الأعمال بانتظار مراجعتك/.test(await O.locator('[data-projects]').innerText()) && /النور/.test(await O.locator('[data-projects] .a-pj').innerText()));
+  await O.waitForFunction(() => document.querySelectorAll('[data-projects] .a-photo img').length === 1, null, { timeout: 8000 });
+  await O.locator(`[data-fk="sret-${s0.id}"]`).click();
+  check('returning without a note asks for one', /اكتب ملاحظة توضّح/.test(await O.locator('[data-projects]').innerText()) && fake.subs[0].status === 'submitted');
+  await O.locator(`[data-fk="snote-${s0.id}"]`).fill('أضيفوا صورة للعمل نفسه دون وجوه');
+  await O.locator(`[data-fk="sret-${s0.id}"]`).click();
+  await O.waitForFunction(() => /لا أعمال بانتظار المراجعة/.test(document.querySelector('[data-projects]').innerText));
+  const told = ['la@t.test', 'ma@t.test', 'pa@t.test'].every(e => fake.notes.some(n => n.kind === 'submission_reviewed' && n.user_id === fake.profileByEmail(e).id));
+  check('returned with the note; the leader, the member and the parent are told', fake.subs[0].status === 'returned' && fake.subs[0].review_note === 'أضيفوا صورة للعمل نفسه دون وجوه' && told);
+  await O.locator('[data-fk="oprj-f-all"]').click();
+  check('«كل الأعمال» shows the reviewed one without decision buttons for the officer', /مطلوب تعديل/.test(await O.locator('[data-projects]').innerText()) && !(await O.locator(`[data-fk="sacc-${s0.id}"]`).count()));
+  check('officer console clean (projects)', O.errs.length === 0, O.errs.join('|'));
+  await close(O);
+
+  /* the leader sees the note and sends it again */
+  const L2 = await open(fake, { label: 'pj-leader2' });
+  await settle(L2); await signInOk(L2, 'la@t.test');
+  await L2.waitForSelector('[data-subs] .a-pj', { timeout: 8000 });
+  check('the leader sees «مطلوب تعديل» and the reviewer note', /مطلوب تعديل/.test(await L2.locator('[data-subs]').innerText()) && /أضيفوا صورة للعمل نفسه/.test(await L2.locator('[data-subs]').innerText()));
+  await L2.locator(`[data-fk="sed-${s0.id}"]`).click();
+  await L2.locator('.a-pj-form input[name=sok]').check();
+  await L2.locator('.a-pj-form button[type=submit]').click();
+  await L2.waitForFunction(() => !document.querySelector('.a-pj-form'));
+  check('sent again: back to «بانتظار المراجعة»', fake.subs[0].status === 'submitted');
+  /* a second, photo-less activity is withdrawn */
+  await L2.locator('[data-fk="lsub-add"]').click();
+  await L2.locator('.a-pj-form input[name=stitle]').fill('درس أسبوعي في المسجد');
+  await L2.locator('.a-pj-form textarea[name=ssum]').fill('درس عن الصدق مع أطفال الحي بعد صلاة العصر.');
+  check('without photos, no consent confirmation is shown', await L2.locator('.a-pj-form input[name=sok]').isHidden());
+  await L2.locator('.a-pj-form button[type=submit]').click();
+  await L2.waitForFunction(() => document.querySelectorAll('[data-subs] .a-pj').length === 2);
+  const s1 = fake.subs.find(x => x.title === 'درس أسبوعي في المسجد');
+  await L2.locator(`[data-fk="sdel-${s1.id}"]`).click();
+  check('withdrawing needs a second press', fake.subs.length === 2);
+  await L2.locator(`[data-fk="sdel-${s1.id}"]`).click();
+  await L2.waitForFunction(() => document.querySelectorAll('[data-subs] .a-pj').length === 1);
+  check('the second press withdraws it', fake.subs.length === 1);
+  await close(L2);
+
+  /* the admin accepts it from the «المشاريع» tab */
+  const A = await open(fake, { label: 'pj-admin' });
+  await settle(A); await signInOk(A, 'boss@t.test');
+  await A.locator('#at-projects').click();
+  await A.waitForSelector(`[data-fk="sacc-${s0.id}"]`, { timeout: 8000 });
+  await A.locator(`[data-fk="sacc-${s0.id}"]`).click();
+  await A.waitForFunction(() => /لا أعمال بانتظار المراجعة/.test(document.querySelector('[data-projects]').innerText));
+  check('the admin accepts it from the «المشاريع» tab', fake.subs[0].status === 'accepted');
+  await A.locator('[data-fk="aprj-f-all"]').click();
+  check('the admin can still change a decision (buttons on decided work)', (await A.locator(`[data-fk="sret-${s0.id}"]`).count()) === 1);
+  check('admin console clean (projects)', A.errs.length === 0, A.errs.join('|'));
+  await close(A);
+
+  /* the team: the leader cannot edit an accepted one; the member and the parent read it */
+  const L3 = await open(fake, { label: 'pj-leader3', mobile: true });
+  await settle(L3); await signInOk(L3, 'la@t.test');
+  await L3.waitForSelector('[data-subs] .a-pj', { timeout: 8000 });
+  check('accepted: «مقبول» and no edit or withdraw button', /مقبول/.test(await L3.locator('[data-subs] .a-pj').innerText()) && !(await L3.locator(`[data-fk="sed-${s0.id}"]`).count()) && !(await L3.locator(`[data-fk="sdel-${s0.id}"]`).count()));
+  check('phone width: the projects card does not overflow', (await overflow(L3)) <= 0);
+  await close(L3);
+  for (const [email, who] of [['ma@t.test', 'member'], ['pa@t.test', 'parent']]) {
+    const V = await open(fake, { label: 'pj-' + who });
+    await settle(V); await signInOk(V, email);
+    await V.waitForSelector('[data-subs-view]:not([hidden])', { timeout: 8000 });
+    const vt = await V.locator('[data-subs-view]').innerText();
+    check(`the ${who} reads the team's accepted work (read only, no buttons)`, /سقيا عمّال المدرسة/.test(vt) && /مقبول/.test(vt) && !(await V.locator('[data-subs-view] button').count()));
+    await close(V);
+  }
 }
 
 section('network hosts and console');
