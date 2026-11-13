@@ -522,6 +522,15 @@ def news_strip():
             f'<ul class="ybn-l" data-yb-news-list></ul></div></section>')
 
 
+def projects_strip():
+    """«من مشاريع الفرق»: accepted work the admin chose to show (js/yb-projects.js fills it; hidden until there is some).
+    The lead sentence is the document's own f-apply line."""
+    return (f'<section class="yb-news yb-projects" data-yb-projects hidden aria-labelledby="ybp-h"><div class="wrap">'
+            f'<h2 class="ybn-h" id="ybp-h">{ic("image")}<span>من مشاريع الفرق</span></h2>'
+            f'<p class="ybp-lead">{t(COMP["c-form"]["f-apply"].paras[0])}</p>'
+            f'<ul class="ybp-l" data-yb-projects-list></ul></div></section>')
+
+
 def results_strip():
     """«النتائج النهائية»: the public ranking (js/yb-results.js fills it after the admin publishes; hidden until then).
     The axes and their points are read from c-score, the document's own sentence."""

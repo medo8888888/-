@@ -20,3 +20,18 @@
 .ybr-t tbody th{text-align:start;font-weight:700}
 .ybr-t td:last-child{font-weight:800}
 .ybr-t tr.ybr-top{background:color-mix(in oklab,var(--brand) 9%,var(--surface))}
+/* «من مشاريع الفرق» (js/yb-projects.js): accepted work the admin put on the home page */
+.ybp-lead{margin:0 0 14px;color:var(--ink-2);line-height:1.8}
+.ybp-l{list-style:none;margin:0;padding:0;display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr))}
+.ybp-i{display:grid;align-content:start;overflow:hidden;border-radius:var(--r-sm,14px);background:var(--surface);border:1px solid var(--line)}
+.ybp-pics{display:grid;gap:2px;background:var(--line)}
+.ybp-pics.many{grid-template-columns:2fr 1fr;grid-template-rows:1fr 1fr}
+.ybp-pics img{display:block;width:100%;height:100%;aspect-ratio:3/2;object-fit:cover;background:var(--surface-2,var(--surface))}
+.ybp-pics.many img:first-child{grid-row:span 2;aspect-ratio:auto;min-height:180px}
+.ybp-pics.many img:not(:first-child){aspect-ratio:auto;min-height:89px}
+.ybp-b{display:grid;gap:6px;padding:14px 16px}
+.ybp-team{margin:0;font-size:.85rem;font-weight:700;color:var(--brand)}
+.ybp-t{margin:0;font-size:1.08rem;line-height:1.6;color:var(--ink)}
+.ybp-meta{margin:0;font-size:.85rem;color:var(--ink-2)}
+.ybp-s,.ybp-r{margin:0;line-height:1.85;color:var(--ink-2);overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.ybp-r{-webkit-line-clamp:2;color:var(--ink);font-weight:600}

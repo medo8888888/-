@@ -102,7 +102,7 @@ eq(b?.public, false, 'the bucket is private');
 eq(Number(b?.file_size_limit), 5242880, 'files up to 5 MB');
 eq(b?.allowed_mime_types, ['image/jpeg', 'image/png', 'image/webp'], 'images only');
 const pols = (await owner("select policyname from pg_policies where schemaname = 'storage' order by 1")).rows.map((r) => r.policyname);
-eq(pols, ['yb_sub_obj_delete', 'yb_sub_obj_insert', 'yb_sub_obj_select'], 'three storage policies, no update policy');
+eq(pols, ['yb_sub_obj_delete', 'yb_sub_obj_insert', 'yb_sub_obj_select', 'yb_sub_obj_select_public'], 'four storage policies (one for the home page), no update policy');
 
 // ================================================================ 2. uploading
 section('2. uploading photos');
@@ -218,4 +218,45 @@ await owner('insert into storage.objects (bucket_id, name) select $1, $2 || gen_
 const S3 = await uuid();
 denied(await up('la', P(S3, TA, 'a.jpg')), 'a team with 72 files cannot upload more');
 
-finish(t0, 90);
+// ================================================================ 7. the home page (the admin picks)
+section('7. the public showcase');
+const pub = async (who) => (await as(who, 'select * from public.yb_public_projects()')).rows;
+const photos1 = (await owner('select photos from public.yb_submissions where id = $1', [S1])).rows[0].photos;
+eq(photos1, [P(S1, TA, 'a.jpg'), P(S1, TA, 'c.jpg')], 'the accepted work has two photos');
+eq((await pub('anon')).length, 0, 'nothing is public before the admin picks');
+ok((await see('anon', photos1[0])) <= 0, 'a visitor cannot read the photo yet');
+const feat = (who, id, show) => rpc(who, 'yb_feature_submission', { id, show });
+denied(await feat('anon', S1, true), 'a visitor cannot feature');
+denied(await feat('la', S1, true), 'the leader cannot feature their own work');
+denied(await feat('offP', S1, true), 'the projects officer cannot feature (the admin picks)');
+const open1 = (await owner("select id from public.yb_submissions where team_id = $1 and status = 'submitted' limit 1", [TA.id])).rows[0].id;
+eq(val(await feat('admin', open1, true))?.error, 'invalid_status', 'work that is not accepted cannot go public');
+denied(await as('la', 'update public.yb_submissions set featured = true where id = $1', [S1]), 'the leader cannot set it directly');
+ok(await owner('update public.yb_submissions set featured = true where id = $1', [open1]).then(() => false, (e) => /yb_sub_featured_chk/.test(e.message)), 'the table refuses featured work that is not accepted');
+await owner('delete from public.yb_notifications');
+eq(val(await feat('admin', S1, true)), { ok: true, featured: true }, 'the admin puts the accepted work on the home page');
+const fn = (await owner("select user_id from public.yb_notifications where kind = 'submission_featured'")).rows.map((r) => r.user_id).sort();
+eq(fn, [U.la.id, U.ma.id, U.pa.id].sort(), 'the team (leader, member, parent) is told');
+eq((await owner("select count(*)::int n from public.audit_log where action = 'submission_feature'")).rows[0].n, 1, 'it is in the audit log');
+const p1 = await pub('anon');
+eq(p1.length, 1, 'a visitor now sees one project');
+eq([p1[0].team_name, p1[0].title, p1[0].place, p1[0].photos.length], ['فريق النور', 'سقيا الحي', 'neighborhood', 2], 'with the team name, title, place and photos');
+eq(Object.keys(p1[0]).sort(), ['beneficiaries', 'done_on', 'featured_at', 'id', 'kind', 'photos', 'place', 'results', 'summary', 'team_name', 'title', 'value_text'], 'and nothing else (no review note, no people, no team id)');
+eq(await see('anon', photos1[0]), 1, 'a visitor reads its photo');
+eq(await see('out', photos1[1]), 1, 'so does a stranger who is signed in');
+await up('la', P(S3, TA, 'z.jpg'));
+eq(await see('anon', `${TB.id}/${S1}/zz.jpg`), 0, 'a visitor still cannot read other files');
+denied(await as('anon', 'select * from public.yb_submissions'), 'and still cannot read the table itself');
+denied(await up('la', P(S1, TA, 'n.jpg')), 'featured work takes no new photos');
+eq((await rm('la', photos1[0])).n ?? 0, 0, 'and its photos cannot be removed by the leader');
+eq(val(await feat('admin', S1, true))?.featured, true, 'featuring twice is harmless');
+eq(val(await rev('admin', S1, 'return', 'صحّحوا التاريخ'))?.status, 'returned', 'the admin returns it later');
+eq((await owner('select featured from public.yb_submissions where id = $1', [S1])).rows[0].featured, false, 'returning takes it off the home page');
+eq((await pub('anon')).length, 0, 'the visitor no longer sees it');
+ok((await see('anon', photos1[0])) <= 0, 'nor its photo');
+await owner("update public.yb_submissions set status = 'accepted' where id = $1", [S1]);
+eq(val(await feat('admin', S1, true))?.featured, true, 'accepted again, the admin can show it again');
+eq(val(await feat('admin', S1, false)), { ok: true, featured: false }, 'and hide it');
+eq((await pub('anon')).length, 0, 'hidden: off the home page');
+
+finish(t0, 120);

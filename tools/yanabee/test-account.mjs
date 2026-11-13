@@ -245,10 +245,11 @@ class Fake {
   storage(method, p, body, c) {
     const B = 'yanabee-submissions';
     if (c.bad) return c.bad;
-    if (!c.uid) return { status: 400, body: { statusCode: '403', error: 'Unauthorized', message: 'new row violates row-level security policy' } };
+    const isPublic = x => this.subs.some(s => s.featured && s.status === 'accepted' && s.photos.includes(x));   // 0008: photos of featured work
+    if (!c.uid && !(method === 'POST' && p.startsWith(`object/sign/${B}`))) return { status: 400, body: { statusCode: '403', error: 'Unauthorized', message: 'new row violates row-level security policy' } };
     if (method === 'POST' && p.startsWith(`object/sign/${B}`)) {
       const paths = (body && Array.isArray(body.paths)) ? body.paths : [];
-      return { status: 200, body: paths.map(x => (this.objects.has(x) && (this.subStaff(c) || this.subPerson(c.uid, x.split('/')[0])))
+      return { status: 200, body: paths.map(x => (this.objects.has(x) && (isPublic(x) || (c.uid && (this.subStaff(c) || this.subPerson(c.uid, x.split('/')[0])))))
         ? { path: x, signedURL: `/object/sign/${B}/${x}?token=t-${this.tick}`, error: null } : { path: x, signedURL: null, error: 'Either the object does not exist or you do not have access to it' }) };
     }
     if (method === 'POST' && p.startsWith(`object/${B}/`)) {
@@ -445,6 +446,8 @@ class Fake {
     const need = (...keys) => keys.every(k => body && Object.prototype.hasOwnProperty.call(body, k)) && Object.keys(body).every(k => keys.includes(k));
     const me = c.uid;
     if (name === 'yb_public_results') return { status: 200, body: this.published ? this.totals().map(r => ({ team_name: r.team_name, hifz: r.hifz, fahm: r.fahm, tatbiq: r.tatbiq, football: r.football, chess: r.chess, total: r.total, rank: r.rank })) : [] };   // anon too (0010)
+    if (name === 'yb_public_projects') return { status: 200, body: this.subs.filter(x => x.featured && x.status === 'accepted').map(x => ({ id: x.id, team_name: (this.teams.find(t => t.id === x.team_id) || {}).name,
+      kind: x.kind, title: x.title, value_text: x.value_text, place: x.place, done_on: x.done_on, summary: x.summary, results: x.results, beneficiaries: x.beneficiaries, photos: [...x.photos], featured_at: x.featured_at })) };   // anon too (0008)
     if (!me) return err(401, '42501', `permission denied for function ${name}`);
     const raise = (key, code = 'P0001') => err(code === '42501' ? 403 : 400, code, key);
     const admin = c.role === 'admin';
@@ -457,7 +460,7 @@ class Fake {
       yb_results_queue: [], yb_live_set: ['comp', 'match_key', 'a', 'b', 'sa', 'sb', 'ca', 'cb', 'ra', 'rb', 'status', 'note', 'start', 'a_name', 'b_name'],
       yb_mark_add: ['comp', 'match_key', 'team_id', 'kind', 'member_id', 'minute'], yb_mark_del: ['id'], yb_match_roster: ['comp', 'team_id'],
       yb_match_marks_of: ['comp', 'match_key'], yb_result_approve: ['comp', 'match_key', 'state', 'prev'], yb_result_return: ['comp', 'match_key', 'note'], yb_my_marks: [],
-      yb_save_submission: ['id', 'team_id', 'p'], yb_delete_submission: ['id'], yb_review_submission: ['id', 'decision', 'note'], yb_submissions_queue: [],
+      yb_save_submission: ['id', 'team_id', 'p'], yb_delete_submission: ['id'], yb_review_submission: ['id', 'decision', 'note'], yb_submissions_queue: [], yb_feature_submission: ['id', 'show'], yb_public_projects: [],
       yb_announce_save: ['id', 'title', 'body', 'audience', 'published'], yb_announce_delete: ['id'], yb_chat_list: [], yb_chat_post: ['body'], yb_chat_report: ['message_id', 'reason'],
       yb_chat_hide: ['message_id', 'hide'], yb_chat_resolve: ['message_id'], yb_chat_mute: ['message_id', 'hours', 'reason'], yb_chat_unmute: ['target'], yb_chat_mutes_list: [],
       yb_chat_purge: [], yb_chat_seen: ['last_id'], yb_chat_unread: [],
@@ -710,7 +713,7 @@ class Fake {
       if (!['project', 'activity'].includes(p.kind) || !['family', 'neighborhood', 'school'].includes(p.place) || title.length < 3 || title.length > 120 || summary.length < 10
         || (p.members_n !== null && p.members_n !== undefined && (p.members_n < 0 || p.members_n > 7))) return { status: 200, body: { ok: false, error: 'invalid_data' } };
       const row = { id: body.id, team_id: t.id, kind: p.kind, title, value_text: p.value_text || null, place: p.place, done_on: p.done_on || null, summary, results: p.results || null,
-        members_n: p.members_n ?? null, beneficiaries: p.beneficiaries ?? null, photos: [...photos], status: 'submitted', review_note: x ? x.review_note : null, submitted_by: me, created_at: x ? x.created_at : this.now(), updated_at: this.now() };
+        members_n: p.members_n ?? null, beneficiaries: p.beneficiaries ?? null, photos: [...photos], status: 'submitted', review_note: x ? x.review_note : null, submitted_by: me, created_at: x ? x.created_at : this.now(), updated_at: this.now(), featured: false, featured_at: null };
       if (x) Object.assign(x, row); else this.subs.push(row);
       this.notify([...this.profiles.filter(q => q.role === 'admin').map(q => q.id), ...this.officers.filter(o => o.competition === 'projects').map(o => o.user_id)], 'submission_new', { team_id: t.id, team_name: t.name, title: title.slice(0, 80) });
       return { status: 200, body: { ok: true, id: body.id, status: 'submitted' } };
@@ -729,6 +732,19 @@ class Fake {
       const rank = { submitted: 0, returned: 1 };
       return { status: 200, body: this.subs.map(x => ({ ...x, team_name: (this.teams.find(t => t.id === x.team_id) || {}).name })).sort((a, b) => (rank[a.status] ?? 2) - (rank[b.status] ?? 2)) };
     }
+    if (name === 'yb_feature_submission') {   // the admin picks accepted work for the home page
+      if (!admin) return raise('permission_denied', '42501');
+      const x = this.subs.find(s => s.id === body.id);
+      if (!x) return { status: 200, body: { ok: false, error: 'not_found' } };
+      if (body.show && x.status !== 'accepted') return { status: 200, body: { ok: false, error: 'invalid_status' } };
+      if (!!x.featured !== !!body.show) {
+        Object.assign(x, { featured: !!body.show, featured_at: body.show ? this.now() : null });
+        const t = this.teams.find(q => q.id === x.team_id);
+        this.notify([t.leader_id, ...this.members.filter(m => m.team_id === t.id).map(m => m.user_id), ...this.links.filter(l => (this.members.find(m => m.id === l.member_id) || {}).team_id === t.id).map(l => l.parent_id)],
+          'submission_featured', { team_id: t.id, title: x.title.slice(0, 80), show: !!body.show });
+      }
+      return { status: 200, body: { ok: true, featured: !!x.featured } };
+    }
     if (name === 'yb_review_submission') {
       if (!this.subStaff(c)) return raise('permission_denied', '42501');
       const st = { accept: 'accepted', return: 'returned', reject: 'rejected' }[body.decision];
@@ -738,7 +754,7 @@ class Fake {
       const x = this.subs.find(s => s.id === body.id);
       if (!x) return { status: 200, body: { ok: false, error: 'not_found' } };
       if (x.status !== 'submitted' && !admin) return { status: 200, body: { ok: false, error: 'invalid_status' } };
-      Object.assign(x, { status: st, review_note: nt || null, reviewed_by: me, updated_at: this.now() });
+      Object.assign(x, { status: st, review_note: nt || null, reviewed_by: me, updated_at: this.now(), featured: !!x.featured && st === 'accepted' });
       const t = this.teams.find(q => q.id === x.team_id);
       this.notify([t.leader_id, ...this.members.filter(m => m.team_id === t.id).map(m => m.user_id), ...this.links.filter(l => (this.members.find(m => m.id === l.member_id) || {}).team_id === t.id).map(l => l.parent_id)],
         'submission_reviewed', { team_id: t.id, title: x.title.slice(0, 80), status: st, note: nt || null });
@@ -2192,7 +2208,7 @@ section('demo mode: why sign up + three demo users, no admin, no backend');
   await S1.goto(`${ORIGIN}/index.html`);
   check('…the cleanup runs on every page (home page too)', await ok(S1.waitForFunction(() => localStorage.getItem('yanabee-session-v1') === null, null, { timeout: 4000 })));
   await S1.waitForLoadState('load'); await sleep(300);   // the home page's status strip asks for the public count after load
-  check('…the home page asked the real backend only for the public team count and the public announcements, signed out', fake.log.every(l => /yb_registration_stats|\/yb_announcements$/.test(l.path) && l.who === 'anon'), JSON.stringify(fake.log.map(l => l.path + ':' + l.who)));
+  check('…the home page asked the real backend only for the public team count, the public announcements and the picked projects, signed out', fake.log.every(l => /yb_registration_stats|\/yb_announcements$|\/rpc\/yb_public_projects$/.test(l.path) && l.who === 'anon'), JSON.stringify(fake.log.map(l => l.path + ':' + l.who)));
   fake.log = [];   // the demo checks below count requests from here
   await S1.goto(`${ORIGIN}/account.html`); await settle(S1);
   check('with a real backend the page still offers sign-up AND the demo side by side', (await S1.locator('[data-demo]').count()) === 3 && (await S1.locator('#panel-login').isVisible()) && /ليش تنشئ حسابًا؟/.test(await text(S1)));
@@ -2773,6 +2789,14 @@ section('projects and initiatives (0008): the leader documents with private phot
   check('the admin accepts it from the «المشاريع» tab', fake.subs[0].status === 'accepted');
   await A.locator('[data-fk="aprj-f-all"]').click();
   check('the admin can still change a decision (buttons on decided work)', (await A.locator(`[data-fk="sret-${s0.id}"]`).count()) === 1);
+  /* the admin picks it for the home page (the owner's rule), after a consent reminder */
+  check('accepted work is not on the home page until the admin picks it', !fake.subs[0].featured && (await A.locator(`[data-sub="${s0.id}"] [data-featured]`).count()) === 0);
+  await A.locator(`[data-fk="sfeat-${s0.id}"]`).click();
+  check('«اعرضه في الصفحة الرئيسية» first asks about the parents\' consent (nothing sent yet)', /موافقة الأهل/.test(await A.locator(`[data-fk="sfeat-${s0.id}"]`).innerText()) && !fake.subs[0].featured);
+  await A.locator(`[data-fk="sfeat-${s0.id}"]`).click();
+  await A.waitForSelector(`[data-sub="${s0.id}"] [data-featured]`, { timeout: 8000 });
+  check('the second press shows it on the home page; the card says so', fake.subs[0].featured === true && /أخفِه من الصفحة الرئيسية/.test(await A.locator(`[data-fk="sfeat-${s0.id}"]`).innerText()));
+  check('the team is told it is on the home page', fake.notes.some(n => n.kind === 'submission_featured' && n.data.show && n.user_id === fake.profileByEmail('la@t.test').id));
   check('admin console clean (projects)', A.errs.length === 0, A.errs.join('|'));
   await close(A);
 
@@ -2789,6 +2813,22 @@ section('projects and initiatives (0008): the leader documents with private phot
     await V.waitForSelector('[data-subs-view]:not([hidden])', { timeout: 8000 });
     const vt = await V.locator('[data-subs-view]').innerText();
     check(`the ${who} reads the team's accepted work (read only, no buttons)`, /سقيا عمّال المدرسة/.test(vt) && /مقبول/.test(vt) && !(await V.locator('[data-subs-view] button').count()));
+    check(`the ${who} sees that it is on the home page`, /معروض في الصفحة الرئيسية/.test(vt));
+    await close(V);
+  }
+  /* the home page: visitors see the picked work and its photo, nothing else */
+  {
+    const before = fake.log.length;
+    const V = await open(fake, { path: 'index.html', label: 'pj-home' });
+    await V.waitForSelector('[data-yb-projects]:not([hidden])', { timeout: 8000 });
+    const ht = await V.locator('[data-yb-projects]').innerText();
+    check('home page: «من مشاريع الفرق» shows the picked work with its team', /سقيا عمّال المدرسة/.test(ht) && /فريق/.test(ht));
+    check('home page: no member names and no review note in the strip', !NAMES.some(n => ht.includes(n)) && !/أضيفوا صورة/.test(ht));
+    await V.waitForFunction(() => [...document.querySelectorAll('[data-yb-projects] img')].some(i => i.complete && i.naturalWidth > 0), null, { timeout: 8000 });
+    check('home page: its photo loads through a signed link', (await V.locator('[data-yb-projects] img').count()) >= 1 && /صورة من عمل/.test(await V.locator('[data-yb-projects] img').first().getAttribute('alt')));
+    check('home page: read signed out (the public function and the signed links only)', fake.log.slice(before).filter(l => /yb_public_projects|object\/sign/.test(l.path)).every(l => l.who === 'anon')
+      && fake.log.slice(before).some(l => l.path.endsWith('/rpc/yb_public_projects')));
+    check('home page: console clean', V.errs.length === 0, V.errs.join('|'));
     await close(V);
   }
 }

@@ -652,6 +652,7 @@
     if (n.kind === 'submission_new') return `أرسل ${team} عملًا للمراجعة: «${d.title || ''}».`;
     if (n.kind === 'submission_reviewed') return d.status === 'accepted' ? `قُبل عمل فريقك «${d.title || ''}» في المشاريع والمبادرات.`
       : d.status === 'returned' ? `أُعيد عمل «${d.title || ''}» للتعديل: ${d.note || ''}` : `لم يُقبل عمل «${d.title || ''}»${d.note ? ': ' + d.note : '.'}`;
+    if (n.kind === 'submission_featured') return d.show ? `صار عمل فريقك «${d.title || ''}» معروضًا في الصفحة الرئيسية للموقع.` : `أُخفي عمل فريقك «${d.title || ''}» من الصفحة الرئيسية.`;
     if (n.kind === 'event_new') return `موعد جديد: ${d.title || ''} — ${fmtWhen(d.starts_at)}${d.place ? ' · ' + d.place : ''}`;
     if (n.kind === 'event_changed') return `تغيّر موعد: ${d.title || ''} — ${fmtWhen(d.starts_at)}${d.place ? ' · ' + d.place : ''}`;
     if (n.kind === 'event_cancelled') return `أُلغي موعد: ${d.title || ''}`;
@@ -1954,7 +1955,7 @@
   const SUB_TONE = { submitted: 'brand', returned: 'sun', accepted: 'ok', rejected: 'bad' };
   const SUB_KIND = { project: 'مشروع', activity: 'مبادرة أو نشاط' };
   const SUB_PLACE = { family: 'الأسرة', neighborhood: 'السكن والحي', school: 'المدرسة أو الجامعة' };
-  const SUB_COLS = 'id,team_id,kind,title,value_text,place,done_on,summary,results,members_n,beneficiaries,photos,status,review_note,created_at,updated_at';
+  const SUB_COLS = 'id,team_id,kind,title,value_text,place,done_on,summary,results,members_n,beneficiaries,photos,status,review_note,created_at,updated_at,featured';
   function newId() {
     try { if (crypto.randomUUID) return crypto.randomUUID(); } catch (e) { /* not a secure page: build one below */ }
     const b = crypto.getRandomValues(new Uint8Array(16));
@@ -2030,7 +2031,8 @@
       x.beneficiaries !== null && x.beneficiaries !== undefined ? `المستفيدون: ${x.beneficiaries}` : ''].filter(Boolean).join(' · ');
     return h('article', { class: 'a-pj', 'data-sub': x.id },
       h('div', { class: 'a-pj-top' }, h('div', {}, h('h4', { text: x.title }), h('small', { class: 'a-hint', text: [o.teamName, SUB_KIND[x.kind] || x.kind].filter(Boolean).join(' · ') })),
-        chip(SUB_ST[x.status] || x.status, SUB_TONE[x.status])),
+        h('div', { class: 'a-pj-chips' }, chip(SUB_ST[x.status] || x.status, SUB_TONE[x.status]),
+          x.featured && x.status === 'accepted' ? h('span', { 'data-featured': '' }, chip('معروض في الصفحة الرئيسية', 'ok')) : null)),
       x.value_text ? h('p', { class: 'a-pj-txt' }, h('b', { text: 'القيمة المستهدفة: ' }), x.value_text) : null,
       meta ? h('p', { class: 'a-hint', text: meta }) : null,
       h('p', { class: 'a-pj-txt', text: x.summary }),
@@ -2236,6 +2238,23 @@
           btn('اقبله', 'check', 'btn-primary', () => go('accept', `قُبل عمل ${x.team_name}، وأُبلغ الفريق.`), { 'data-fk': 'sacc-' + x.id }),
           btn('أعده للتعديل', 'repeat', 'btn-ghost', () => go('return', `أُعيد عمل ${x.team_name} للتعديل مع ملاحظتك.`), { 'data-fk': 'sret-' + x.id }), rej));
     }
+    // the admin picks accepted work for the home page (after checking the parents' consent for its photos)
+    function feature(x) {
+      if (!admin || x.status !== 'accepted') return null;
+      const msg = h('p', { class: 'a-live-msg', role: 'alert', hidden: true });
+      const go = async show => {
+        const r = await YB.rpc('yb_feature_submission', { id: x.id, show });
+        if (!r.ok) { if (sessionLost(r)) return; msg.textContent = errMsg(r); msg.hidden = false; return; }
+        await refresh(show ? `صار عمل ${x.team_name} معروضًا في الصفحة الرئيسية، وأُبلغ الفريق.` : `أُخفي عمل ${x.team_name} من الصفحة الرئيسية.`, 'sfeat-' + x.id);
+      };
+      const b = x.featured
+        ? btn('أخفِه من الصفحة الرئيسية', 'eye', 'btn-ghost', () => go(false), { 'data-fk': 'sfeat-' + x.id })
+        : armed(btn('اعرضه في الصفحة الرئيسية', 'eye', 'btn-ghost', null, { 'data-fk': 'sfeat-' + x.id }),
+          'تأكدت من موافقة الأهل على الصور؟ اضغط للعرض', () => go(true));
+      return h('div', { class: 'a-pj-feature' },
+        h('p', { class: 'a-hint', text: x.featured ? 'يراه زوار الموقع الآن مع صوره (اسم الفريق والعمل فقط، بلا أسماء الأعضاء).'
+          : 'يبقى خاصًا حتى تختار عرضه. قبل العرض تأكد أن أولياء أمور من يظهر في الصور موافقون.' }), msg, b);
+    }
     function paint() {
       const waiting = R.rows.filter(x => x.status === 'submitted').length;
       const accepted = R.rows.filter(x => x.status === 'accepted');
@@ -2249,9 +2268,10 @@
         R.err ? h('p', { class: 'a-live-msg', role: 'alert', text: R.err }) : null,
         h('div', { class: 'a-actions', role: 'group', 'aria-label': 'عرض' }, tab('submitted', `بانتظار المراجعة (${waiting})`), tab('all', 'كل الأعمال'),
           btn('تحديث', 'repeat', 'btn-ghost', () => refresh('تم التحديث.', fk + '-refresh'), { 'data-fk': fk + '-refresh' })),
-        shown.length ? h('div', { class: 'a-list' }, shown.map(x => subItem(x, { teamName: x.team_name, after: review(x) })))
+        shown.length ? h('div', { class: 'a-list' }, shown.map(x => subItem(x, { teamName: x.team_name, after: [review(x), feature(x)].filter(Boolean) })))
           : h('p', { class: 'a-empty', text: R.rows.length ? 'لا شيء هنا. اختر «كل الأعمال» لرؤية ما رُوجع.' : 'لم ترسل الفرق مشاريع أو مبادرات بعد.' }),
-        h('p', { class: 'a-hint', text: 'الصور خاصة: تُفتح بروابط مؤقتة لك وللفريق صاحب العمل فقط. لا تُنشر صورة فيها قاصر قبل التأكد من موافقة وليّ أمره.' }));
+        h('p', { class: 'a-hint', text: admin ? 'الصور خاصة: تُفتح بروابط مؤقتة للفريق صاحب العمل ولمسؤولي المشاريع فقط، إلا ما تختار عرضه في الصفحة الرئيسية. لا تعرض صورة فيها قاصر قبل التأكد من موافقة وليّ أمره.'
+          : 'الصور خاصة: تُفتح بروابط مؤقتة لك وللفريق صاحب العمل فقط. لا تُنشر صورة فيها قاصر قبل التأكد من موافقة وليّ أمره. العرض في الصفحة الرئيسية يقرره المشرف العام.' }));
     }
     return { el, start: async () => { put(el, skeleton()); await load(); paint(); } };
   }

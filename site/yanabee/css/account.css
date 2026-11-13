@@ -392,6 +392,9 @@
 .a-pj-note{display:flex;gap:8px;align-items:flex-start;margin:0;padding:10px 12px;border-radius:var(--r-sm);line-height:1.8;background:color-mix(in oklab,var(--sun,#e3a008) 12%,var(--surface));border:1px solid color-mix(in oklab,var(--sun,#e3a008) 38%,var(--line));color:var(--ink)}
 .a-pj-note .i{flex:none;margin-top:4px}
 .a-pj-review{display:grid;gap:6px;padding-top:10px;border-top:1px dashed var(--line-2)}
+.a-pj-chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
+.a-pj-feature{display:grid;gap:6px;justify-items:start;padding-top:10px;border-top:1px dashed var(--line-2)}
+.a-pj-feature .a-hint{margin:0}
 .a-pj-form textarea.a-note-in{min-height:110px}
 .a-photos{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px}
 .a-photo{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;background:var(--surface);border:1px solid var(--line);display:grid;place-items:center}

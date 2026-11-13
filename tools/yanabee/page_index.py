@@ -8,7 +8,7 @@ goal, growth phases and impact index exactly as written (so nothing in the docum
 """
 import art
 import wow_gallery
-from core import PLATFORM as P, btn, cta, ic, logo, news_strip, page, strip_colon, t
+from core import PLATFORM as P, btn, cta, ic, logo, news_strip, page, projects_strip, strip_colon, t
 from docpage import STATUS
 
 
@@ -297,13 +297,13 @@ INTRO = f'''<div class="intro" id="intro" aria-hidden="true"><canvas class="intr
 
 
 def build():
-    body = (INTRO + hero() + comp_band() + news_strip() + how() + teams() + behind() + road() + quran() + try_it() + document()
+    body = (INTRO + hero() + comp_band() + news_strip() + projects_strip() + how() + teams() + behind() + road() + quran() + try_it() + document()
             + cta(t(P.meta['title']), 'اسأل المساعد عن أي تفصيل، أو ابحث في الفرق والمحاور والمؤشرات.',
                   f'<button type="button" class="btn btn-primary" data-open-chat>{ic("sparkles")}<span>اسأل مساعد ينابيع</span></button>'
                   f'<button type="button" class="btn btn-ghost" data-open-search>{ic("search")}<span>ابحث في الموقع</span></button>'))
     desc = 'منصة وطنية تجمع الأطفال والشباب في فرق صغيرة تتنافس في تحديات ميدانية تخدم المجتمع، في سبعة مجالات وتحت مظلة وطنية واحدة.'
     page('index.html', 'مشروع «ينابيع»', body, desc,
          css=('css/home.css', 'css/landing.css', 'css/gallery.css', 'css/intro.css', 'css/news.css'),
-         js=('js/gallery.js', 'js/intro.js', 'js/comp.js', 'js/yb-config.js', 'js/yb-api.js', 'js/yb-news.js'),
+         js=('js/gallery.js', 'js/intro.js', 'js/comp.js', 'js/yb-config.js', 'js/yb-api.js', 'js/yb-news.js', 'js/yb-projects.js'),
          head=INTRO_HEAD)
     return 'index.html'

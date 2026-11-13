@@ -16,6 +16,14 @@
 -- signed links by the same people who may read the submission. Only the team's
 -- leader uploads (approved team, at most 6 files per submission, images up to
 -- 5 MB); the client re-encodes every photo (smaller, no camera location).
+--
+-- The public showcase (owner's choice, 13 Nov 2026: "the admin picks"): the
+-- admin may mark an ACCEPTED submission 'featured' (yb_feature_submission),
+-- after checking the parents' consent for its photos (cd4). Only then do
+-- visitors see it on the home page (yb_public_projects: team name, title,
+-- place, summary, results, photos; never member names or review notes) and
+-- its photos (storage policy yb_sub_obj_select_public). Returning or
+-- rejecting it later takes it off the home page.
 -- ASCII only.
 
 -- ---------------------------------------------------------------------------
@@ -41,6 +49,9 @@ create table if not exists public.yb_submissions (
   updated_at    timestamptz not null default now(),
   reviewed_by   uuid references public.profiles (id) on delete set null,
   reviewed_at   timestamptz,
+  featured      boolean not null default false,
+  featured_at   timestamptz,
+  constraint yb_sub_featured_chk check (not featured or status = 'accepted'),
   constraint yb_sub_kind_chk    check (kind in ('project', 'activity')),
   constraint yb_sub_place_chk   check (place in ('family', 'neighborhood', 'school')),
   constraint yb_sub_status_chk  check (status in ('submitted', 'returned', 'accepted', 'rejected')),
@@ -152,7 +163,7 @@ begin
        set kind = excluded.kind, title = excluded.title, value_text = excluded.value_text, place = excluded.place,
            done_on = excluded.done_on, summary = excluded.summary, results = excluded.results, members_n = excluded.members_n,
            beneficiaries = excluded.beneficiaries, photos = excluded.photos, status = 'submitted', submitted_by = auth.uid(),
-           updated_at = now();
+           featured = false, featured_at = null, updated_at = now();
   exception when check_violation or not_null_violation or invalid_text_representation or numeric_value_out_of_range then
     return jsonb_build_object('ok', false, 'error', 'invalid_data');
   end;
@@ -208,7 +219,9 @@ begin
   select * into cur from public.yb_submissions s where s.id = yb_review_submission.id for update;
   if not found then return jsonb_build_object('ok', false, 'error', 'not_found'); end if;
   if cur.status <> 'submitted' and not public.is_admin() then return jsonb_build_object('ok', false, 'error', 'invalid_status'); end if;
-  update public.yb_submissions s set status = st, review_note = nt, reviewed_by = auth.uid(), reviewed_at = now(), updated_at = now()
+  -- only accepted work may stay on the home page
+  update public.yb_submissions s set status = st, review_note = nt, reviewed_by = auth.uid(), reviewed_at = now(), updated_at = now(),
+         featured = s.featured and st = 'accepted', featured_at = case when st = 'accepted' then s.featured_at end
    where s.id = cur.id;
   insert into public.audit_log (user_id, action, detail)
   values (auth.uid(), 'submission_review', jsonb_build_object('submission_id', cur.id, 'team_id', cur.team_id, 'to', st));
@@ -221,7 +234,7 @@ end $$;
 create or replace function public.yb_submissions_queue()
 returns table (id uuid, team_id uuid, team_name text, kind text, title text, value_text text, place text, done_on date,
                summary text, results text, members_n int, beneficiaries int, photos text[], status text, review_note text,
-               created_at timestamptz, updated_at timestamptz)
+               created_at timestamptz, updated_at timestamptz, featured boolean)
 language plpgsql stable security definer
 set search_path = public, pg_temp
 as $$
@@ -230,10 +243,53 @@ begin
   if not public.yb_can_manage('projects') then raise exception 'permission_denied' using errcode = '42501'; end if;
   return query
     select s.id, s.team_id, t.name, s.kind, s.title, s.value_text, s.place, s.done_on, s.summary, s.results, s.members_n,
-           s.beneficiaries, s.photos, s.status, s.review_note, s.created_at, s.updated_at
+           s.beneficiaries, s.photos, s.status, s.review_note, s.created_at, s.updated_at, s.featured
       from public.yb_submissions s join public.teams t on t.id = s.team_id
      order by case s.status when 'submitted' then 0 when 'returned' then 1 else 2 end, s.updated_at desc;
 end $$;
+
+-- ---------------------------------------------------------------------------
+-- 3b. The public showcase (the admin picks)
+-- ---------------------------------------------------------------------------
+-- show = true: accepted work goes on the home page; false: it comes off
+create or replace function public.yb_feature_submission(id uuid, show boolean)
+returns jsonb
+language plpgsql volatile security definer
+set search_path = public, pg_temp
+as $$
+declare cur public.yb_submissions%rowtype;
+begin
+  if auth.uid() is null then raise exception 'not_authenticated' using errcode = '42501'; end if;
+  if not public.is_admin() then raise exception 'permission_denied' using errcode = '42501'; end if;
+  if yb_feature_submission.show is null then raise exception 'invalid_argument'; end if;
+  select * into cur from public.yb_submissions s where s.id = yb_feature_submission.id for update;
+  if not found then return jsonb_build_object('ok', false, 'error', 'not_found'); end if;
+  if yb_feature_submission.show and cur.status <> 'accepted' then return jsonb_build_object('ok', false, 'error', 'invalid_status'); end if;
+  if cur.featured = yb_feature_submission.show then return jsonb_build_object('ok', true, 'featured', cur.featured); end if;
+  update public.yb_submissions s
+     set featured = yb_feature_submission.show,
+         featured_at = case when yb_feature_submission.show then now() end
+   where s.id = cur.id;
+  insert into public.audit_log (user_id, action, detail)
+  values (auth.uid(), 'submission_feature', jsonb_build_object('submission_id', cur.id, 'team_id', cur.team_id, 'show', yb_feature_submission.show));
+  perform public.yb_notify(public.yb_team_people(array[cur.team_id]), 'submission_featured',
+    jsonb_build_object('team_id', cur.team_id, 'title', left(cur.title, 80), 'show', yb_feature_submission.show));
+  return jsonb_build_object('ok', true, 'featured', yb_feature_submission.show);
+end $$;
+
+-- the home page: featured work only, newest first; no member names, no review notes, no people ids
+create or replace function public.yb_public_projects()
+returns table (id uuid, team_name text, kind text, title text, value_text text, place text, done_on date,
+               summary text, results text, beneficiaries int, photos text[], featured_at timestamptz)
+language sql stable security definer
+set search_path = public, pg_temp
+as $$
+  select s.id, t.name, s.kind, s.title, s.value_text, s.place, s.done_on, s.summary, s.results, s.beneficiaries, s.photos, s.featured_at
+    from public.yb_submissions s join public.teams t on t.id = s.team_id
+   where s.featured and s.status = 'accepted'
+   order by s.featured_at desc nulls last
+   limit 24
+$$;
 
 -- ---------------------------------------------------------------------------
 -- 4. The private bucket and its rules
@@ -281,12 +337,26 @@ as $$
       or coalesce(public.yb_is_team_person(public.yb_try_uuid(split_part(coalesce(path, ''), '/', 1))), false)
 $$;
 
+-- is this file a photo of featured work (shown on the home page)?
+create or replace function public.yb_sub_is_public(path text)
+returns boolean
+language sql stable security definer
+set search_path = public, pg_temp
+as $$
+  select exists (select 1 from public.yb_submissions s
+                  where s.featured and s.status = 'accepted' and coalesce(path, '') = any (s.photos))
+$$;
+
 drop policy if exists yb_sub_obj_insert on storage.objects;
 create policy yb_sub_obj_insert on storage.objects for insert to authenticated
   with check (bucket_id = 'yanabee-submissions' and (select public.yb_sub_can_write(name, true)));
 drop policy if exists yb_sub_obj_select on storage.objects;
 create policy yb_sub_obj_select on storage.objects for select to authenticated
   using (bucket_id = 'yanabee-submissions' and (select public.yb_sub_can_read(name)));
+-- visitors: only the photos of work the admin put on the home page
+drop policy if exists yb_sub_obj_select_public on storage.objects;
+create policy yb_sub_obj_select_public on storage.objects for select to anon, authenticated
+  using (bucket_id = 'yanabee-submissions' and (select public.yb_sub_is_public(name)));
 drop policy if exists yb_sub_obj_delete on storage.objects;
 create policy yb_sub_obj_delete on storage.objects for delete to authenticated
   using (bucket_id = 'yanabee-submissions' and (select public.yb_sub_can_write(name, false)));
@@ -299,15 +369,19 @@ revoke all on function
   public.yb_is_team_person(uuid), public.yb_try_uuid(text),
   public.yb_save_submission(uuid, uuid, jsonb), public.yb_delete_submission(uuid),
   public.yb_review_submission(uuid, text, text), public.yb_submissions_queue(),
-  public.yb_sub_can_write(text, boolean), public.yb_sub_can_read(text)
+  public.yb_sub_can_write(text, boolean), public.yb_sub_can_read(text),
+  public.yb_feature_submission(uuid, boolean), public.yb_public_projects(), public.yb_sub_is_public(text)
   from public, anon, authenticated;
 
 grant select on public.yb_submissions to authenticated;
 -- used inside policies (run as the caller)
 grant execute on function public.yb_is_team_person(uuid), public.yb_sub_can_write(text, boolean), public.yb_sub_can_read(text) to authenticated;
+grant execute on function public.yb_sub_is_public(text) to anon, authenticated;
+grant execute on function public.yb_public_projects() to anon, authenticated;
 grant execute on function
   public.yb_save_submission(uuid, uuid, jsonb), public.yb_delete_submission(uuid),
-  public.yb_review_submission(uuid, text, text), public.yb_submissions_queue()
+  public.yb_review_submission(uuid, text, text), public.yb_submissions_queue(),
+  public.yb_feature_submission(uuid, boolean)
   to authenticated;
 
-comment on table public.yb_submissions is 'Projects and activities of the teams. The team and the projects staff only; photos in the private bucket yanabee-submissions.';
+comment on table public.yb_submissions is 'Projects and activities of the teams. The team and the projects staff only; photos in the private bucket yanabee-submissions. Featured work (the admin picks) is public through yb_public_projects.';
