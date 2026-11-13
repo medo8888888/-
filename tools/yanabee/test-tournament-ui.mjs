@@ -675,7 +675,7 @@ section('backend: public view, polling, not published, errors');
   await p.click('[data-act=retry]');
   await p.waitForTimeout(250);
   check('retry clears the warning', (await count(p, '.tn-notices .warn')) === 0);
-  check('no request carried a write (public is read-only)', B.log.every(l => l.method === 'GET' || l.method === 'OPTIONS' || l.path === '/rest/v1/rpc/my_team'));
+  check('no request carried a write (public is read-only; yb_public_results is a read-only function)', B.log.every(l => l.method === 'GET' || l.method === 'OPTIONS' || l.path === '/rest/v1/rpc/my_team' || l.path === '/rest/v1/rpc/yb_public_results'));
   check('no console errors', errs.length === 0, errs.join(' | '));
   await ctx.close();
 }
@@ -825,7 +825,7 @@ section('backend: admin manager, publish, conflict');
   await p.waitForTimeout(400);
   check('overwrite re-reads the newest stamp, then publishes with it', B.publishes[B.publishes.length - 1].prev === latestAt && B.state.fb && Object.keys(B.state.fb.res).length === Object.keys(mine.fb.res).length && await count(p, '.tn-note.warn') === 0);
   // newer version appears while editing (poll)
-  check('every write request was an admin publish_state call', B.log.filter(l => l.method === 'POST').every(l => l.path === '/rest/v1/rpc/publish_state' || l.path === '/rest/v1/rpc/my_team'));
+  check('every write request was an admin publish_state call', B.log.filter(l => l.method === 'POST').every(l => l.path === '/rest/v1/rpc/publish_state' || l.path === '/rest/v1/rpc/my_team' || l.path === '/rest/v1/rpc/yb_public_results'));
   check('no console errors', errs.length === 0, errs.join(' | '));
   check('hosts: only the fake backend and fonts', [...hosts].every(h => h === 'fake.supabase.test' || /fonts\.g/.test(h)));
   // payload privacy: labels from an imported JSON never leave

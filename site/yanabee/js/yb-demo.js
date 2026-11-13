@@ -416,7 +416,8 @@
     var SIG = { my_team: [], join_team: ['code', 'member_name'], link_child: ['code', 'child_name'], mark_consent: ['member_id', 'received'], unlink_member: ['member_id'], regenerate_join_code: ['team_id'],
       yb_mark_read: [], yb_my_team_roster_status: [], yb_my_competitions: [], yb_rsvp: ['event_id', 'team_id', 'answer'],
       yb_team_checklist: ['team_id'], yb_claim_team: ['ref', 'phone'], yb_set_roles: ['team_id', 'reciter', 'reserve', 'chess', 'coord'],
-      yb_chat_unread: [], yb_chat_list: [], yb_chat_seen: ['last_id'], yb_chat_post: ['body'], yb_chat_report: ['message_id', 'reason'] };
+      yb_chat_unread: [], yb_chat_list: [], yb_chat_seen: ['last_id'], yb_chat_post: ['body'], yb_chat_report: ['message_id', 'reason'],
+      yb_my_judging: [], yb_my_scores: [], yb_public_results: [] };
     if (!SIG[name]) return err(404, 'PGRST202', 'Could not find the function public.' + name);
     var keys = Object.keys(body || {});
     var optional = name === 'yb_mark_read' ? ['ids'] : [];
@@ -530,6 +531,10 @@
         claimed: true, group: grp, next: nx ? { title: nx.title, starts_at: nx.starts_at, place: nx.place, competition: nx.competition } : null,
         created_at: tc.created_at, reviewed_at: null } };
     }
+    // judging (migration 0010): no judges and nothing published in the demo
+    if (name === 'yb_my_judging') return { status: 200, body: { axes: [] } };
+    if (name === 'yb_my_scores') return { status: 200, body: { published: false, teams: [] } };
+    if (name === 'yb_public_results') return { status: 200, body: [] };
     // the leaders room (migration 0009): only the demo leader is in it; messages stay in this tab
     if (/^yb_chat_/.test(name)) {
       var cme = db.profiles.filter(function (x) { return x.id === me; })[0];

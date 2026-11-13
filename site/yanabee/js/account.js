@@ -109,7 +109,7 @@
 
   /* ------------------------------------------------------------------ app state */
   const S = { seq: 0, uid: null, role: null, expired: false, manualOut: false, recoveryDone: false, stopPoll: null, stopInbox: null, rendered: null, modeSet: null, confirmedShown: false };
-  const clearData = () => { A.teams = []; A.members = []; A.profiles = []; A.state = undefined; A.evm = null; A.res = null; A.proj = null; A.ann = null; A.chat = null; O.res = null; O.proj = null; O.evm = null; O.chat = null; L.chat = null; L.team = null; L.members = []; };
+  const clearData = () => { A.teams = []; A.members = []; A.profiles = []; A.state = undefined; A.evm = null; A.res = null; A.proj = null; A.ann = null; A.chat = null; A.judge = null; O.res = null; O.proj = null; O.evm = null; O.chat = null; L.chat = null; L.team = null; L.members = []; };
 
   function mount(node, focus) {
     root.replaceChildren(node);
@@ -486,6 +486,8 @@
     if (n.kind === 'result_pending') return `نتيجة بانتظار اعتمادك: ${d.a_name || ''} ${d.sa ?? ''} – ${d.sb ?? ''} ${d.b_name || ''}`.replace(/\s+/g, ' ').trim();
     if (n.kind === 'result_approved') return `اعتُمدت نتيجة مباراة لفريقك (${d.comp === 'chess' ? 'الشطرنج' : `${d.sa} – ${d.sb}`}) وظهرت في لوحة البطولة.`;
     if (n.kind === 'result_returned') return `أعادت الإدارة نتيجة مباراة للمراجعة: ${d.note || ''}`;
+    if (n.kind === 'judge_assigned') return `اختارتك الإدارة حكمًا في: ${(Array.isArray(d.axes) ? d.axes : []).map(a => ({ hifz: 'الحفظ', fahm: 'الفهم', tatbiq: 'التطبيق' })[a] || a).join('، ')}. افتح «التحكيم» في حسابك.`;
+    if (n.kind === 'results_published') return 'أُعلنت النتائج النهائية للمسابقة. افتح حسابك لترى نتيجة فريقك وأسباب الدرجات.';
     if (n.kind === 'announcement') return `إعلان جديد: ${d.title || ''}`;
     if (n.kind === 'chat_report') return 'بلاغ جديد عن رسالة في غرفة القادة. افتح «التواصل» للمراجعة.';
     if (n.kind === 'chat_muted') return `أوقفت الإدارة مشاركتك في غرفة القادة ${d.hours ? (d.hours === 24 ? 'يومًا واحدًا' : d.hours === 168 ? 'أسبوعًا' : `${d.hours} ساعة`) : 'حتى إشعار آخر'}، ويمكنك القراءة.`;
@@ -830,8 +832,8 @@
         h('b', { text: String(n) }), h('span', { text: label })))));
   }
   function adminTabs() {
-    const defs = [['teams', 'الفرق', 'users'], ['people', 'الأشخاص', 'user'], ['schedule', 'الجدول', 'calendar'], ['results', 'النتائج', 'flag'], ['projects', 'المشاريع', 'image'], ['comms', 'التواصل', 'bell'], ['tour', 'لوحة البطولة', 'trophy'], ['export', 'تصدير', 'file-text']];
-    const list = h('div', { role: 'tablist', 'aria-label': 'أقسام الإدارة', class: 'a-tabs a-tabs-4 a-tabs-5 a-tabs-6 a-tabs-7 a-tabs-8' });
+    const defs = [['teams', 'الفرق', 'users'], ['people', 'الأشخاص', 'user'], ['schedule', 'الجدول', 'calendar'], ['results', 'النتائج', 'flag'], ['projects', 'المشاريع', 'image'], ['comms', 'التواصل', 'bell'], ['judging', 'التحكيم', 'scale'], ['tour', 'لوحة البطولة', 'trophy'], ['export', 'تصدير', 'file-text']];
+    const list = h('div', { role: 'tablist', 'aria-label': 'أقسام الإدارة', class: 'a-tabs a-tabs-4 a-tabs-5 a-tabs-6 a-tabs-7 a-tabs-8 a-tabs-9' });
     const els = defs.map(([k, label, ic], i) => {
       const on = A.tab === k;
       const b = h('button', { type: 'button', role: 'tab', id: 'at-' + k, 'aria-controls': 'ap-' + k, 'aria-selected': String(on), tabIndex: on ? 0 : -1, class: 'a-tab', 'data-fk': 'tab-' + k,
@@ -856,6 +858,10 @@
     else if (A.tab === 'results') {
       if (!A.res) { A.res = resultsDesk(['football', 'chess'], true, 'ares'); A.res.start(); }
       panel.append(A.res.el);
+    }
+    else if (A.tab === 'judging') {
+      if (!A.judge) { A.judge = judgingAdmin('ajdg'); A.judge.start(); }
+      panel.append(A.judge.el);
     }
     else if (A.tab === 'comms') {
       if (!A.ann) { A.ann = announceDesk('aann'); A.ann.start(); }
@@ -2097,6 +2103,244 @@
     return { el, start: async () => { el.replaceChildren(skeleton()); await load(); paint(); } };
   }
 
+  /* ------------------------------------------------------------------ JUDGING AND FINAL RESULTS (migration 0010) */
+  // c-score: hifz, fahm, tatbiq (c-rubric: roles, execution, documentation), football, chess = 100. Judges are parents or
+  // the admin, chosen by the admin; they give points and write WHY for every score. Nothing is public until the admin
+  // publishes; then the team's people read their breakdown with the reasons (never the judges' names). The server holds
+  // every cap and rule; the numbers here only label the inputs.
+  const RUB = Array.isArray(W.rubric) ? W.rubric : [];
+  const capIn = (word, dflt) => { const m = String(W.scoreLine || '').match(new RegExp(word + '\\s+(\\d+)')); return m ? Number(m[1]) : dflt; };
+  const AXIS = { hifz: 'الحفظ', fahm: 'الفهم', tatbiq: 'التطبيق', football: 'كرة القدم', chess: 'الشطرنج' };
+  const AXIS_CAP = { hifz: capIn('الحفظ', 10), fahm: capIn('الفهم', 15), tatbiq: capIn('التطبيق', 45), football: capIn('كرة القدم', 20), chess: capIn('الشطرنج', 10) };
+  const rubAt = (i, label, cap) => ({ label: (RUB[i] && RUB[i][0]) || label, cap: (RUB[i] && Number(RUB[i][1])) || cap });
+  const CRIT = [
+    { k: 'hifz', axis: 'hifz', label: 'الحفظ والتسميع', cap: AXIS_CAP.hifz },
+    { k: 'fahm', axis: 'fahm', label: 'الفهم والتفسير', cap: AXIS_CAP.fahm },
+    Object.assign({ k: 'roles', axis: 'tatbiq' }, rubAt(0, 'مشاركة أعضاء الفريق وتوزيع الأدوار', 10)),
+    Object.assign({ k: 'execution', axis: 'tatbiq' }, rubAt(1, 'التنفيذ الفعلي للمشروع', 30)),
+    Object.assign({ k: 'documentation', axis: 'tatbiq' }, rubAt(2, 'توثيق النتائج والأثر', 5))];
+  const critOf = k => CRIT.find(c => c.k === k) || { k, label: AXIS[k] || k, cap: AXIS_CAP[k] };
+  const fmtPts = v => (v === null || v === undefined || v === '' ? '—' : String(Math.round(Number(v) * 100) / 100));
+  const teamWord = n => (/^فريق\s/.test(String(n || '')) ? String(n) : `فريق ${n || ''}`);
+  const AXIS_ORDER = ['hifz', 'fahm', 'tatbiq', 'football', 'chess'];
+
+  // a judge (a parent or the admin): every approved team, the criteria of their axes, points + the reason
+  function judgeDesk(fk) {
+    const J = { data: null, open: {} };
+    const el = h('section', { class: 'a-card a-judge', hidden: true, 'data-judge': '', 'aria-labelledby': fk + '-h' });
+    async function load() {
+      const r = await YB.rpc('yb_my_judging', {});
+      J.data = r.ok && r.data && typeof r.data === 'object' ? r.data : null;
+      if (!r.ok) sessionLost(r);
+    }
+    function critRow(t, c) {
+      const s = (t.scores || {})[c.k] || null;
+      const lock = !!J.data.published;
+      const pid = uid('f'), rid = uid('f');
+      const pts = h('input', { id: pid, type: 'number', min: 0, max: c.cap, step: 0.5, inputmode: 'decimal', class: 'a-judge-pts', disabled: lock,
+        value: s ? Number(s.points) : '', 'data-fk': `jp-${t.team_id}-${c.k}` });
+      const why = h('textarea', { id: rid, class: 'a-note-in', rows: 2, maxlength: 500, disabled: lock, 'data-fk': `jr-${t.team_id}-${c.k}`,
+        placeholder: 'لماذا هذه الدرجة؟ مثل: تلاوة صحيحة مع تردد في الآية الرابعة.' });
+      why.value = s ? s.reason : '';
+      const msg = h('p', { class: 'a-live-msg', role: 'alert', hidden: true });
+      const bad = (txt, f) => { msg.textContent = txt; msg.hidden = false; say(txt); if (f) f.focus(); };
+      const save = btn(s ? 'احفظ التعديل' : 'احفظ الدرجة', 'check', 'btn-primary', async () => {
+        const v = pts.value === '' ? null : Number(pts.value);
+        const rs = String(why.value || '').trim();
+        if (v === null || !Number.isFinite(v)) return bad('اكتب الدرجة أولًا.', pts);
+        if (v < 0 || v > c.cap) return bad(`الدرجة من 0 إلى ${c.cap}.`, pts);
+        if (rs.length < 3) return bad('اكتب سبب الدرجة: يقرؤه الفريق بعد إعلان النتائج.', why);
+        const r = await YB.rpc('yb_judge_score', { team_id: t.team_id, criterion: c.k, points: v, reason: rs });
+        if (!r.ok) { if (sessionLost(r)) return; return bad(errMsg(r)); }
+        say(`حُفظت درجة «${c.label}» ل${teamWord(t.name)}.`);
+        await load();
+        paint(`jp-${t.team_id}-${c.k}`);
+      }, { 'data-fk': `js-${t.team_id}-${c.k}` });
+      return h('div', { class: 'a-judge-c' + (s ? ' done' : ''), 'data-crit': c.k },
+        h('div', { class: 'a-judge-top' }, h('label', { for: pid, class: 'a-l', text: c.label }), chip(`من ${c.cap}`, 'muted'), s ? chip('مُقيَّم', 'ok') : null),
+        h('div', { class: 'a-judge-in' }, pts, h('div', { class: 'a-f' }, h('label', { for: rid, class: 'a-hint', text: 'سبب الدرجة' }), why)),
+        msg, lock ? null : h('div', { class: 'a-actions' }, save));
+    }
+    async function loadSubs(t, box) {
+      if (!box || box.dataset.ready) return;
+      box.dataset.ready = '1';
+      const r = await read('yb_submissions', { select: SUB_COLS, filter: { team_id: 'eq.' + t.team_id, status: 'eq.accepted' }, order: 'created_at.desc' });
+      const rows = r.ok && Array.isArray(r.data) ? r.data : [];
+      box.replaceChildren(h('h4', { class: 'a-sub', text: 'مشاريع الفريق ومبادراته المقبولة' }),
+        rows.length ? h('div', { class: 'a-list' }, rows.map(x => subItem(x))) : h('p', { class: 'a-hint', text: 'لا مشاريع مقبولة لهذا الفريق بعد.' }));
+    }
+    function teamBox(t) {
+      const mine = J.data.axes || [];
+      const crits = CRIT.filter(c => mine.includes(c.axis));
+      const done = crits.filter(c => (t.scores || {})[c.k]).length;
+      const subsBox = mine.includes('tatbiq') && !t.conflict ? h('div', { class: 'a-judge-subs', 'data-jsubs': t.team_id }) : null;
+      const d = h('details', { class: 'a-judge-t', open: !!J.open[t.team_id], 'data-jteam': t.team_id });
+      d.addEventListener('toggle', () => { J.open[t.team_id] = d.open; if (d.open && subsBox) loadSubs(t, subsBox); });
+      d.append(h('summary', { 'data-fk': 'jt-' + t.team_id }, h('b', { text: t.name }),
+        t.conflict ? chip('لا تحكّمه', 'sun') : chip(`${done} من ${crits.length}`, done === crits.length ? 'ok' : 'brand')));
+      if (t.conflict) d.append(h('p', { class: 'a-note', text: 'لديك ابن أو ابنة في هذا الفريق، أو أنت من أعضائه، فلا تحكّمه. يحكّمه حكم آخر.' }));
+      else { crits.forEach(c => d.append(critRow(t, c))); if (subsBox) d.append(subsBox); }
+      if (d.open && subsBox) loadSubs(t, subsBox);
+      return d;
+    }
+    function paint(focus) {
+      if (!J.data || !Array.isArray(J.data.axes) || !J.data.axes.length) { el.hidden = true; return; }
+      el.replaceChildren(h('h3', { id: fk + '-h' }, icon('scale'), h('span', { text: 'التحكيم' })),
+        h('p', { class: 'a-lead', text: `اختارتك الإدارة حكمًا في: ${J.data.axes.map(a => AXIS[a]).join('، ')}. اكتب سبب كل درجة؛ يقرؤه الفريق بعد إعلان النتائج دون اسمك.` }),
+        J.data.published ? h('p', { class: 'a-note', text: 'أُعلنت النتائج، فالدرجات مقفلة الآن.' }) : null,
+        (J.data.teams || []).length ? h('div', { class: 'a-list' }, J.data.teams.map(teamBox)) : h('p', { class: 'a-empty', text: 'لا فرق معتمدة للتحكيم بعد.' }));
+      el.hidden = false;
+      if (focus) { const f = el.querySelector(`[data-fk="${CSS.escape(focus)}"]`); if (f) f.focus({ preventScroll: true }); }
+    }
+    return { el, start: async () => { await load(); paint(); } };
+  }
+
+  // the admin: choose the judges, read every score with its judge and reason, football and chess points, publish
+  function judgingAdmin(fk) {
+    const G = { judges: [], board: null, err: '' };
+    const el = h('div', { class: 'a-judging', 'data-judging-admin': '' });
+    const msgEl = h('p', { class: 'a-live-msg', role: 'alert', hidden: true });
+    const showMsg = t => { msgEl.textContent = t || ''; msgEl.hidden = !t; if (t) say(t); };
+    const focusFk = k => { const f = el.querySelector(`[data-fk="${CSS.escape(k)}"]`); if (f) f.focus({ preventScroll: true }); };
+    async function load() {
+      const [a, b] = await Promise.all([YB.rpc('yb_judges_list', {}), YB.rpc('yb_results_board', {})]);
+      G.judges = a.ok && Array.isArray(a.data) ? a.data : [];
+      G.board = b.ok && b.data && typeof b.data === 'object' ? b.data : null;
+      G.err = !a.ok ? errMsg(a) : !b.ok ? errMsg(b) : '';
+      if (!a.ok) sessionLost(a);
+    }
+    async function refresh(msg, focus) { await load(); paint(); if (msg) say(msg); if (focus) focusFk(focus); }
+    const roleWord = r => (r === 'admin' ? 'الإدارة' : 'ولي أمر');
+    function axisBoxes(sel, who) {
+      return h('div', { class: 'a-axes', role: 'group', 'aria-label': `محاور ${who}` }, ['hifz', 'fahm', 'tatbiq'].map(a => {
+        const id = uid('f');
+        return h('label', { class: 'a-check', for: id }, h('input', { type: 'checkbox', id, value: a, checked: sel.includes(a) }), h('span', { text: AXIS[a] }));
+      }));
+    }
+    const picked = box => Array.from(box.querySelectorAll('input:checked')).map(i => i.value);
+    async function setAxes(id, axes, done, focus) {
+      const r = await YB.rpc('yb_set_judge', { target: id, axes });
+      if (!r.ok) { if (sessionLost(r)) return; return showMsg(errMsg(r)); }
+      showMsg('');
+      await refresh(done, focus);
+    }
+    function judgesCard() {
+      const eligible = (A.profiles || []).filter(p => (p.role === 'parent' || p.role === 'admin') && !G.judges.some(j => j.user_id === p.id));
+      const rows = G.judges.map(j => {
+        const ax = axisBoxes(j.axes || [], j.full_name || '');
+        return h('li', { class: 'a-judge-row', 'data-judge-row': j.user_id },
+          h('div', { class: 'a-judge-top' }, h('b', { text: j.full_name || '—' }), chip(roleWord(j.role), 'muted'), chip(`${j.scored} درجة`, 'brand')),
+          ax, h('div', { class: 'a-actions' },
+            btn('احفظ المحاور', 'check', 'btn-ghost', () => {
+              const a = picked(ax);
+              if (!a.length) return showMsg('اختر محورًا واحدًا على الأقل، أو أزله من الحكّام.');
+              setAxes(j.user_id, a, `حُفظت محاور ${j.full_name}.`, 'jax-' + j.user_id);
+            }, { 'data-fk': 'jax-' + j.user_id }),
+            armed(btn('أزله من الحكّام', 'x', 'btn-ghost', null, { 'data-fk': 'jrm-' + j.user_id }), 'اضغط مرة أخرى للإزالة',
+              () => setAxes(j.user_id, [], `أُزيل ${j.full_name} من الحكّام. تبقى درجاته السابقة في السجل.`, fk + '-pick'))));
+      });
+      const sel = h('select', { class: 'a-select', 'aria-label': 'اختر الحساب', 'data-fk': fk + '-pick' },
+        [h('option', { value: '', text: 'اختر ولي أمر أو مشرفًا…' }), ...eligible.map(p => h('option', { value: p.id, text: `${p.full_name || p.email || '—'} (${roleWord(p.role)})` }))]);
+      const ax = axisBoxes(['hifz'], 'الحكم الجديد');
+      const add = btn('اجعله حكمًا', 'scale', 'btn-primary', () => {
+        if (!sel.value) return showMsg('اختر الحساب أولًا.');
+        const a = picked(ax);
+        if (!a.length) return showMsg('اختر محورًا واحدًا على الأقل.');
+        setAxes(sel.value, a, `أصبح ${sel.selectedOptions[0].textContent} حكمًا، ووصله إشعار.`, fk + '-pick');
+      }, { 'data-fk': fk + '-add' });
+      return h('section', { class: 'a-card', 'aria-labelledby': fk + '-jh', 'data-judges': '' }, h('h3', { id: fk + '-jh' }, icon('users'), h('span', { text: 'الحكّام' })),
+        h('p', { class: 'a-lead', text: 'تختار الإدارة الحكّام من أولياء الأمور أو المشرفين. ينشئ الحكم حسابًا بنوع «ولي أمر» أولًا، ثم تختاره هنا وتحدد محاوره. لا يحكّم أحد فريقًا فيه ابنه.' }),
+        rows.length ? h('ul', { class: 'a-judge-l' }, rows) : h('p', { class: 'a-empty', text: 'لم تختر أي حكم بعد.' }),
+        h('div', { class: 'a-judge-add' }, h('h4', { class: 'a-sub', text: 'أضف حكمًا' }),
+          eligible.length ? [sel, ax, h('div', { class: 'a-actions' }, add)] : h('p', { class: 'a-hint', text: 'لا حسابات أولياء أمور متاحة. اطلب من الحكم أن ينشئ حسابًا بنوع «ولي أمر» أولًا.' })));
+    }
+    function axisForm(t, ax, pubd) {
+      const cur = ((G.board && G.board.admin) || []).find(s => s.team_id === t.team_id && s.axis === ax);
+      const pid = uid('f'), rid = uid('f');
+      const pts = h('input', { id: pid, type: 'number', min: 0, max: AXIS_CAP[ax], step: 0.5, inputmode: 'decimal', class: 'a-judge-pts', disabled: pubd,
+        value: cur ? Number(cur.points) : '', 'data-fk': `ap-${t.team_id}-${ax}` });
+      const why = h('textarea', { id: rid, class: 'a-note-in', rows: 2, maxlength: 500, disabled: pubd, 'data-fk': `ar-${t.team_id}-${ax}`,
+        placeholder: ax === 'football' ? 'مثل: المركز الأول في المجموعة ثم الثاني في الدور النهائي.' : 'مثل: وصل لاعب الفريق إلى المباراة النهائية.' });
+      why.value = cur ? cur.reason : '';
+      const save = btn('احفظ', 'check', 'btn-ghost', async () => {
+        const v = pts.value === '' ? null : Number(pts.value), rs = String(why.value || '').trim();
+        if (v === null || !Number.isFinite(v) || v < 0 || v > AXIS_CAP[ax]) { pts.focus(); return showMsg(`درجة ${AXIS[ax]} من 0 إلى ${AXIS_CAP[ax]}.`); }
+        if (rs.length < 3) { why.focus(); return showMsg(`اكتب سبب درجة ${AXIS[ax]}.`); }
+        const r = await YB.rpc('yb_admin_score', { team_id: t.team_id, axis: ax, points: v, reason: rs });
+        if (!r.ok) { if (sessionLost(r)) return; return showMsg(errMsg(r)); }
+        showMsg('');
+        await refresh(`حُفظت درجة ${AXIS[ax]} ل${teamWord(t.team_name)}.`, `ap-${t.team_id}-${ax}`);
+      }, { 'data-fk': `as-${t.team_id}-${ax}`, disabled: pubd });
+      return h('div', { class: 'a-judge-c' + (cur ? ' done' : '') },
+        h('div', { class: 'a-judge-top' }, h('label', { for: pid, class: 'a-l', text: AXIS[ax] }), chip(`من ${AXIS_CAP[ax]}`, 'muted')),
+        h('div', { class: 'a-judge-in' }, pts, h('div', { class: 'a-f' }, h('label', { for: rid, class: 'a-hint', text: 'السبب' }), why)),
+        pubd ? null : h('div', { class: 'a-actions' }, save));
+    }
+    function boardCard() {
+      const B = G.board;
+      if (!B) return null;
+      const teams = B.teams || [], pubd = !!B.published;
+      const missing = teams.filter(t => AXIS_ORDER.some(a => t[a] === null || t[a] === undefined)).length;
+      const table = h('div', { class: 'a-tablewrap' }, h('table', { class: 'a-ptable a-results' },
+        h('thead', {}, h('tr', {}, ['المركز', 'الفريق', ...AXIS_ORDER.map(a => `${AXIS[a]} (${AXIS_CAP[a]})`), 'المجموع'].map(t => h('th', { scope: 'col', text: t })))),
+        h('tbody', {}, teams.map(t => h('tr', {}, h('td', { text: String(t.rank) }), h('th', { scope: 'row', text: t.team_name }),
+          AXIS_ORDER.map(a => h('td', { text: fmtPts(t[a]) })), h('td', {}, h('b', { text: fmtPts(t.total) })))))));
+      const details = teams.map(t => {
+        const sc = (B.scores || []).filter(s => s.team_id === t.team_id);
+        return h('details', { class: 'a-judge-t', 'data-board-team': t.team_id }, h('summary', { 'data-fk': 'bt-' + t.team_id }, h('b', { text: t.team_name }), chip(`${fmtPts(t.total)} من 100`, 'brand')),
+          sc.length ? h('ul', { class: 'a-reasons' }, sc.map(s => h('li', {},
+            h('div', { class: 'a-judge-top' }, h('b', { text: critOf(s.criterion).label }), chip(`${fmtPts(s.points)} من ${critOf(s.criterion).cap}`, 'ok'), h('small', { class: 'a-hint', text: s.judge || '' })),
+            h('p', { class: 'a-pj-txt', text: s.reason })))) : h('p', { class: 'a-hint', text: 'لم يقيّم أي حكم هذا الفريق بعد.' }),
+          axisForm(t, 'football', pubd), axisForm(t, 'chess', pubd));
+      });
+      const pub = armed(btn(pubd ? 'أوقف إعلان النتائج' : 'أعلن النتائج للجميع', pubd ? 'eye' : 'send', pubd ? 'btn-ghost' : 'btn-primary', null, { 'data-fk': fk + '-pub' }),
+        pubd ? 'اضغط مرة أخرى لإيقاف الإعلان' : 'اضغط مرة أخرى للإعلان', async () => {
+          const r = await YB.rpc('yb_publish_results', { publish: !pubd });
+          if (!r.ok) { if (sessionLost(r)) return; return showMsg(errMsg(r)); }
+          await refresh(pubd ? 'أُوقف إعلان النتائج، وفُتح التعديل من جديد.' : 'أُعلنت النتائج للجميع ووصل إشعار لكل الحسابات.', fk + '-pub');
+        });
+      return h('section', { class: 'a-card', 'aria-labelledby': fk + '-bh', 'data-board': '' }, h('h3', { id: fk + '-bh' }, icon('trophy'), h('span', { text: 'الدرجات والنتائج' })),
+        W.scoreLine ? h('p', { class: 'a-lead', text: W.scoreLine }) : null,
+        h('p', { class: 'a-hint', text: 'درجة كل معيار هي متوسط درجات الحكّام فيه، والتطبيق مجموع معاييره الثلاثة. التساوي يظهر تساويًا كما هو.' }),
+        teams.length ? table : h('p', { class: 'a-empty', text: 'لا فرق معتمدة بعد.' }),
+        details.length ? h('div', { class: 'a-list' }, details) : null,
+        h('div', { class: 'a-pub' }, pubd ? chip('النتائج معلنة الآن', 'ok') : chip('النتائج غير معلنة', 'muted'),
+          !pubd && missing ? h('p', { class: 'a-note', text: `${missing} من الفرق تنقصها درجة محور واحد على الأقل. يمكنك الإعلان، لكن الناقص يُحسب صفرًا.` }) : null,
+          h('div', { class: 'a-actions' }, pub)));
+    }
+    let desk = null;
+    function paint() {
+      if (!desk) { desk = judgeDesk(fk + '-me'); desk.start(); }
+      el.replaceChildren(...[G.err ? h('p', { class: 'a-live-msg', role: 'alert', text: G.err }) : null, msgEl, desk.el, judgesCard(), boardCard()].filter(Boolean));
+    }
+    return { el, start: async () => { el.replaceChildren(skeleton()); await load(); paint(); } };
+  }
+
+  // the team's people, after publication: the result and the reasons (no judges' names)
+  function scoresCard() {
+    const el = h('section', { class: 'a-card a-scores', hidden: true, 'data-scores': '' });
+    (async () => {
+      const r = await YB.rpc('yb_my_scores', {});
+      const d = r.ok && r.data;
+      if (!d || !d.published || !Array.isArray(d.teams) || !d.teams.length) return;
+      const kids = [];
+      d.teams.forEach((t, i) => {
+        const why = c => (t.reasons || []).filter(x => x.criterion === c.k);
+        const adm = ax => (t.admin || []).find(x => x.axis === ax);
+        const rows = [...CRIT.map(c => ({ label: c.label, pts: t[c.k], cap: c.cap, reasons: why(c).map(x => x.reason) })),
+          ...['football', 'chess'].map(ax => ({ label: AXIS[ax], pts: t[ax], cap: AXIS_CAP[ax], reasons: adm(ax) ? [adm(ax).reason] : [] }))];
+        kids.push(h('h3', { id: 'sc-h-' + i }, icon('trophy'), h('span', { text: `نتيجة ${teamWord(t.team_name)}: ${fmtPts(t.total)} من 100 · المركز ${t.rank}` })),
+          h('ul', { class: 'a-reasons' }, rows.map(x => h('li', {},
+            h('div', { class: 'a-judge-top' }, h('b', { text: x.label }), chip(`${fmtPts(x.pts)} من ${x.cap}`, x.pts === null || x.pts === undefined ? 'muted' : 'ok')),
+            x.reasons.length ? h('ul', { class: 'a-why' }, x.reasons.map(rs => h('li', { text: rs }))) : null))),
+          h('p', { class: 'a-hint', text: 'الأسباب كما كتبها الحكّام، دون أسمائهم. للتظلم راجع إدارة المسابقة خلال المدة المعلنة.' }));
+      });
+      el.replaceChildren(...kids);
+      el.hidden = false;
+    })();
+    return el;
+  }
+
   /* ------------------------------------------------------------------ LEADER */
   const L = { team: null, members: [], rs: {}, editing: null, boxes: {}, sched: null, profile: null, adding: false, addForm: null, editTeam: false };
   const editable = () => L.team && (L.team.status === 'draft' || L.team.status === 'submitted' || L.team.status === 'returned');
@@ -2186,7 +2430,7 @@
     L.boxes.marks = h('section', { class: 'a-card', 'aria-labelledby': 'l-marks-h', 'data-marks': '', hidden: true });
     L.subs = leaderSubs({ id: t.team_id, name: t.team_name, status: t.status }, 'lsub');
     if (!L.chat) { L.chat = chatRoom(false, 'lchat'); L.chat.start(); }
-    body.replaceChildren(L.boxes.top, L.boxes.check, announceFeed(), L.dates, L.boxes.marks, L.subs.el, L.chat.el, L.boxes.roster, L.boxes.roles, L.boxes.code, L.sched.node, L.printBox);
+    body.replaceChildren(L.boxes.top, L.boxes.check, scoresCard(), announceFeed(), L.dates, L.boxes.marks, L.subs.el, L.chat.el, L.boxes.roster, L.boxes.roles, L.boxes.code, L.sched.node, L.printBox);
     L.subs.start();
     paintLeader();
     startSchedule([L.sched]);
@@ -2546,6 +2790,7 @@
     const box = scheduleBox({ id: row.team_id, name: row.team_name });
     sh.body.replaceChildren(...[
       announceFeed(),
+      scoresCard(),
       h('section', { class: 'a-card a-teamcard' }, h('div', { class: 'a-team-top' }, h('div', {}, h('h3', { text: row.team_name }), row.area ? h('small', { class: 'a-hint', text: row.area }) : null), statusChip(row.status)),
         h('p', { class: 'a-lead', text: 'أنت عضو في هذا الفريق.' })),
       h('section', { class: 'a-card' }, h('h3', {}, icon('users'), h('span', { text: 'أعضاء الفريق' })),
@@ -2568,7 +2813,9 @@
     if (seq !== S.seq) return;
     if (!r.ok) { if (sessionLost(r.error)) return; sh.body.replaceChildren(errorBlock(YB.errorText(r.error), () => { sh.body.replaceChildren(skeleton()); route(); })); return; }
     const kids = r.data || [];
-    const nodes = [announceFeed()];
+    const jd = judgeDesk('pjdg');
+    jd.start();
+    const nodes = [announceFeed(), jd.el, scoresCard()];
     const boxes = [];
     if (!kids.length) nodes.push(h('p', { class: 'a-empty a-card', text: 'لم تربط أي ابن أو ابنة بعد. اكتب رمز الفريق واسم الطفل أدناه.' }));
     kids.forEach(k => {

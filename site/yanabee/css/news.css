@@ -11,3 +11,12 @@
 .ybn-i.open .ybn-b{display:block;-webkit-line-clamp:unset}
 .ybn-more{justify-self:start;min-height:40px;padding:6px 2px;border:0;background:none;color:var(--brand);font:inherit;font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 .ybn-more:focus-visible{outline:3px solid var(--brand);outline-offset:2px;border-radius:6px}
+/* «النتائج النهائية» (js/yb-results.js) */
+.ybr-lead{margin:0 0 12px;color:var(--ink-2);line-height:1.8}
+.ybr-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:var(--r-sm,14px);background:var(--surface)}
+.ybr-t{width:100%;min-width:620px;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.ybr-t th,.ybr-t td{padding:10px 8px;text-align:center;border-bottom:1px solid var(--line);color:var(--ink)}
+.ybr-t thead th{font-size:.85rem;color:var(--ink-2);background:var(--surface-2,var(--surface))}
+.ybr-t tbody th{text-align:start;font-weight:700}
+.ybr-t td:last-child{font-weight:800}
+.ybr-t tr.ybr-top{background:color-mix(in oklab,var(--brand) 9%,var(--surface))}

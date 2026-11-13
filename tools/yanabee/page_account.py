@@ -16,7 +16,7 @@ PAGE = 'account.html'
 # icons the script draws (names from core.ICONS only)
 ICON_NAMES = ['user', 'users', 'user-check', 'shield', 'lock', 'check', 'x', 'trash', 'printer', 'file-text', 'alert', 'chart',
               'calendar', 'clock', 'trophy', 'search', 'chevron-down', 'arrow-left', 'eye', 'flag', 'repeat', 'send', 'award',
-              'hand-heart', 'star', 'landmark', 'bell', 'route', 'image']
+              'hand-heart', 'star', 'landmark', 'bell', 'route', 'image', 'scale']
 
 
 def txt(s):
@@ -43,6 +43,9 @@ def words():
         'applyLine': txt(C['c-form']['f-apply'].paras[0]),
         'photoWarn': txt(C['c-card']['cd4'].paras[0]),
         'lessons': txt(C['c-card']['cd5'].items[1].text),
+        # judging (c-score, c-rubric): the score sentence and the tatbiq criteria, verbatim
+        'scoreLine': txt(C['c-score'].paras[0]),
+        'rubric': [[txt(r[0]), txt(r[1])] for r in C['c-score']['c-rubric'].table[1:-1]],
     }
 
 

@@ -520,3 +520,17 @@ def news_strip():
     return (f'<section class="yb-news" data-yb-news hidden aria-labelledby="ybn-h"><div class="wrap">'
             f'<h2 class="ybn-h" id="ybn-h">{ic("bell")}<span>آخر الإعلانات</span></h2>'
             f'<ul class="ybn-l" data-yb-news-list></ul></div></section>')
+
+
+def results_strip():
+    """«النتائج النهائية»: the public ranking (js/yb-results.js fills it after the admin publishes; hidden until then).
+    The axes and their points are read from c-score, the document's own sentence."""
+    import re as _re
+    line = COMP['c-score'].paras[0]
+    heads = ''.join(f'<th scope="col">{w} ({m.group(1)})</th>' for w in ('الحفظ', 'الفهم', 'التطبيق', 'كرة القدم', 'الشطرنج')
+                    for m in [_re.search(w + r'\s+(\d+)', line)])
+    return (f'<section class="yb-news yb-results" data-yb-results hidden aria-labelledby="ybr-h"><div class="wrap">'
+            f'<h2 class="ybn-h" id="ybr-h">{ic("trophy")}<span>النتائج النهائية</span></h2>'
+            f'<p class="ybr-lead">{t(line)}</p>'
+            f'<div class="ybr-wrap"><table class="ybr-t"><thead><tr><th scope="col">المركز</th><th scope="col">الفريق</th>{heads}'
+            f'<th scope="col">المجموع (100)</th></tr></thead><tbody data-yb-results-body></tbody></table></div></div></section>')

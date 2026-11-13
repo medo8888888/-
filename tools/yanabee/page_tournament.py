@@ -12,7 +12,7 @@ Words in #tn-words come from content/yanabee/competition.txt through the content
 """
 import json
 
-from core import COMP as C, PAGE_LABEL, news_strip, page, page_hero, split_kicker, strip_colon
+from core import COMP as C, PAGE_LABEL, news_strip, page, page_hero, results_strip, split_kicker, strip_colon
 from docpage import STATUS, node_html, sec
 
 PAGE = 'tournament.html'
@@ -80,9 +80,9 @@ def fmt():
 
 
 def build():
-    body = hero() + news_strip() + app() + fmt()
+    body = hero() + results_strip() + news_strip() + app() + fmt()
     desc = C['c-format'].title
     page(PAGE, PAGE_LABEL[PAGE], body, desc,
          css=('css/comp.css', 'css/tournament.css', 'css/news.css'),
-         js=('js/comp.js', 'js/yb-demo.js', 'js/yb-config.js', 'js/yb-api.js', 'js/tournament-engine.js', 'js/tournament.js', 'js/yb-news.js'))
+         js=('js/comp.js', 'js/yb-demo.js', 'js/yb-config.js', 'js/yb-api.js', 'js/tournament-engine.js', 'js/tournament.js', 'js/yb-news.js', 'js/yb-results.js'))
     return PAGE
