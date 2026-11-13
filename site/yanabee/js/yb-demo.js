@@ -133,6 +133,25 @@
     db.att = [];
     persist();
   }
+  // sample news (migration 0011), added lazily for old demo tabs: what the feed looks like once the season runs
+  function seedFeed() {
+    if (db.posts) return;
+    var ago = function (hours) { return new Date(Date.now() - hours * 3600000).toISOString(); };
+    var other = db.teams[1] || db.teams[0];
+    db.posts = [
+      { id: 'post-welcome', author: 'u-board', author_name: 'إدارة ينابيع', author_role: '', team_id: null, pinned: true, status: 'published', created_at: ago(52), published_at: ago(52),
+        body: 'أهلًا بكم في أخبار ينابيع 🌱\nهنا تنشر الإدارة مواعيد المسابقة وأخبارها، وتنشر الفرق ما تنجزه بعد مراجعة المشرف.\nتفاعلوا بالرموز، وعلّقوا بلطف، ولا تكتبوا أرقام الهواتف في التعليقات.',
+        reactions: [{ user_id: 'u-x1', kind: 'heart' }, { user_id: 'u-x2', kind: 'clap' }, { user_id: 'u-x3', kind: 'heart' }],
+        comments: [{ id: 1, author: 'u-x4', author_name: 'ولي أمر من فريق آخر', author_role: 'parent', body: 'بارك الله فيكم وفي جهودكم.', created_at: ago(50) }] },
+      { id: 'post-team', author: 'u-x5', author_name: 'قائد ' + (other ? other.name : 'فريق آخر'), author_role: 'leader', team_id: other ? other.id : null, team_color: 'purple', team_badge: 'moon', status: 'published', created_at: ago(20), published_at: ago(19),
+        body: 'تدريبنا الأول اكتمل اليوم بعد صلاة العصر ⚽\nتعلّمنا أن الصف الواحد لا يُبنى إلا بالتعاون، وراجعنا الآيات الأولى من سورة الصف معًا.',
+        reactions: [{ user_id: 'u-x1', kind: 'strong' }, { user_id: 'u-x2', kind: 'strong' }, { user_id: 'u-x3', kind: 'clap' }, { user_id: 'u-x6', kind: 'dua' }],
+        comments: [{ id: 2, author: 'u-x4', author_name: 'ولي أمر من فريق آخر', author_role: 'parent', body: 'ما شاء الله، استمروا!', created_at: ago(18) },
+          { id: 3, author: 'u-x7', author_name: 'قائد فريق ثالث', author_role: 'leader', body: 'نلقاكم في المباراة الأولى إن شاء الله.', created_at: ago(17) }] },
+      { id: 'post-dates', author: 'u-board', author_name: 'إدارة ينابيع', author_role: '', team_id: null, status: 'published', created_at: ago(6), published_at: ago(6),
+        body: 'تذكير: موعد التسميع الأول هذا الأسبوع. راجعوا «المواعيد القادمة» في حسابكم وأكّدوا حضور فرقكم.', reactions: [{ user_id: 'u-x2', kind: 'clap' }], comments: [] }];
+    persist();
+  }
   function notify(uids, kind, data) {
     db.notes = db.notes || [];
     uids.forEach(function (u) { if (u) db.notes.push({ id: ++db.noteSeq || (db.noteSeq = 1), user_id: u, kind: kind, data: data, read_at: null, created_at: now() }); });
@@ -278,6 +297,7 @@
       return method === 'GET' ? finish(db.teams.filter(function (t) { return t.status === 'approved'; }).map(function (t) { return { id: t.id, name: t.name, area: t.area }; })) : deny();
     }
     if (table === 'yb_announcements') return method === 'GET' ? finish([]) : deny();   // no announcements in the demo
+    if (table === 'yb_team_style') return method === 'GET' ? finish(Object.keys(db.tstyle || {}).map(function (k) { return copy(db.tstyle[k]); })) : deny();
     if (!me) return deny();
     if (table === 'my_roster') {
       if (method !== 'GET') return deny();
@@ -417,10 +437,12 @@
       yb_mark_read: [], yb_my_team_roster_status: [], yb_my_competitions: [], yb_rsvp: ['event_id', 'team_id', 'answer'],
       yb_team_checklist: ['team_id'], yb_claim_team: ['ref', 'phone'], yb_set_roles: ['team_id', 'reciter', 'reserve', 'chess', 'coord'],
       yb_chat_unread: [], yb_chat_list: [], yb_chat_seen: ['last_id'], yb_chat_post: ['body'], yb_chat_report: ['message_id', 'reason'],
-      yb_my_judging: [], yb_my_scores: [], yb_public_results: [] };
+      yb_my_judging: [], yb_my_scores: [], yb_public_results: [],
+      yb_my_prefs: [], yb_save_prefs: ['p'], yb_set_team_style: ['team_id', 'color', 'badge'], yb_feed: ['before', 'lim'], yb_post_save: ['id', 'body', 'photos'],
+      yb_post_delete: ['id'], yb_react: ['post_id', 'kind'], yb_comments: ['post_id'], yb_comment_post: ['post_id', 'body'], yb_comment_delete: ['id'], yb_comment_report: ['id', 'reason'] };
     if (!SIG[name]) return err(404, 'PGRST202', 'Could not find the function public.' + name);
     var keys = Object.keys(body || {});
-    var optional = name === 'yb_mark_read' ? ['ids'] : [];
+    var optional = name === 'yb_mark_read' ? ['ids'] : name === 'yb_feed' ? ['before', 'lim'] : name === 'yb_post_save' ? ['photos'] : name === 'yb_comment_report' ? ['reason'] : [];
     if (keys.some(function (k) { return SIG[name].indexOf(k) < 0; }) || SIG[name].some(function (k) { return keys.indexOf(k) < 0 && optional.indexOf(k) < 0; })) return err(404, 'PGRST202', 'Could not find the function public.' + name + ' in the schema cache');
     function raise(key, code) { return err(code === '42501' ? 403 : 400, code || 'P0001', key); }
     function clean(s) { return String(s || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase(); }
@@ -553,6 +575,108 @@
       db.chat.push({ id: db.chat.length + 1, body: cb, created_at: new Date().toISOString() });
       persist();
       return { status: 200, body: { ok: true, id: db.chat.length } };
+    }
+    // settings and the news feed (migration 0011): kept in this tab. Nobody is an admin in the demo, so a leader's
+    // post stays «بانتظار موافقة المشرف»; the seeded posts show what the feed looks like once the season runs.
+    if (name === 'yb_my_prefs' || name === 'yb_save_prefs') {
+      db.prefs = db.prefs || {};
+      var pr = db.prefs[me] || { avatar_path: null, theme: 'auto', accent: 'teal', text_size: 'm', hidden_sections: [], notify_off: [] };
+      if (name === 'yb_save_prefs') {
+        var pp = body.p && typeof body.p === 'object' ? body.p : {};
+        if ('avatar' in pp && pp.avatar) return { status: 200, body: { ok: false, error: 'bad_photo' } };
+        ['theme', 'accent', 'text_size', 'hidden_sections', 'notify_off'].forEach(function (k) { if (k in pp) pr[k] = pp[k]; });
+        db.prefs[me] = pr; persist();
+        return { status: 200, body: { ok: true, prefs: Object.assign({ can_avatar: false }, copy(pr)) } };
+      }
+      return { status: 200, body: Object.assign({ can_avatar: false }, copy(pr)) };
+    }
+    if (name === 'yb_set_team_style') {
+      var ts = teamById(body.team_id);
+      if (!ts || ts.leader_id !== me) return raise('permission_denied', '42501');
+      db.tstyle = db.tstyle || {};
+      db.tstyle[ts.id] = { team_id: ts.id, color: body.color, badge: body.badge }; persist();
+      return { status: 200, body: { ok: true } };
+    }
+    if (/^yb_(feed|post_|react|comment)/.test(name)) {
+      seedFeed();
+      var pme = db.profiles.filter(function (x) { return x.id === me; })[0] || {};
+      var postJson = function (x) {
+        var team = x.team_id ? teamById(x.team_id) : null, st = (db.tstyle || {})[x.team_id] || {};
+        var rx = {}; (x.reactions || []).forEach(function (r) { rx[r.kind] = (rx[r.kind] || 0) + 1; });
+        var mine = (x.reactions || []).filter(function (r) { return r.user_id === me; })[0];
+        return { id: x.id, body: x.body, photos: [], status: x.status, pinned: !!x.pinned, review_note: null, created_at: x.created_at, published_at: x.published_at, at: x.published_at || x.created_at,
+          mine: x.author === me, author_name: x.author_name, author_role: x.author_role, author_avatar: null,
+          team_id: x.team_id || null, team_name: team ? team.name : (x.team_name || null), team_color: st.color || x.team_color || null, team_badge: st.badge || x.team_badge || null,
+          reactions: rx, my_reaction: mine ? mine.kind : null, comments: (x.comments || []).length };
+      };
+      var postById = function (id) { return db.posts.filter(function (x) { return x.id === id; })[0]; };
+      if (name === 'yb_feed') {
+        var vis = db.posts.filter(function (x) { return x.status === 'published' || x.author === me; })
+          .sort(function (a, b) { return (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || Date.parse(b.published_at || b.created_at) - Date.parse(a.published_at || a.created_at); });
+        if (body.before) vis = vis.filter(function (x) { return !x.pinned && Date.parse(x.published_at || x.created_at) < Date.parse(body.before); });
+        var canPost = pme.role === 'leader' && db.teams.some(function (t) { return t.leader_id === me; });
+        return { status: 200, body: { posts: vis.slice(0, 15).map(postJson), can_post: canPost, can_comment: pme.role === 'leader' || pme.role === 'parent', admin: false, members_comment: false, queue: null, reports: null } };
+      }
+      if (name === 'yb_post_save') {
+        var lt2 = db.teams.filter(function (t) { return t.leader_id === me; })[0];
+        if (pme.role !== 'leader') return raise('permission_denied', '42501');
+        if (!lt2) return { status: 200, body: { ok: false, error: 'no_team' } };
+        var pb = String(body.body || '').trim();
+        if (!pb || pb.length > 1500) return { status: 200, body: { ok: false, error: 'invalid_data' } };
+        var px = postById(body.id);
+        if (px && px.author !== me) return raise('permission_denied', '42501');
+        if (px) { px.body = pb; px.status = 'pending'; }
+        else db.posts.push({ id: body.id, author: me, author_name: pme.full_name, author_role: 'leader', team_id: lt2.id, body: pb, status: 'pending', created_at: new Date().toISOString(), published_at: null, reactions: [], comments: [] });
+        persist();
+        return { status: 200, body: { ok: true, id: body.id, status: 'pending' } };
+      }
+      if (name === 'yb_post_delete') {
+        var pd = postById(body.id);
+        if (!pd) return { status: 200, body: { ok: false, error: 'not_found' } };
+        if (pd.author !== me) return raise('permission_denied', '42501');
+        db.posts.splice(db.posts.indexOf(pd), 1); persist();
+        return { status: 200, body: { ok: true } };
+      }
+      if (name === 'yb_react') {
+        var pr2 = postById(body.post_id);
+        if (!pr2 || pr2.status !== 'published') return { status: 200, body: { ok: false, error: 'not_found' } };
+        if (body.kind !== null && ['clap', 'heart', 'dua', 'strong'].indexOf(body.kind) < 0) return raise('invalid_argument');
+        pr2.reactions = (pr2.reactions || []).filter(function (r) { return r.user_id !== me; });
+        if (body.kind) pr2.reactions.push({ user_id: me, kind: body.kind });
+        persist();
+        var j = postJson(pr2);
+        return { status: 200, body: { ok: true, reactions: j.reactions, mine: j.my_reaction } };
+      }
+      var pc = postById(body.post_id);
+      if (name === 'yb_comments') {
+        if (!pc || (pc.status !== 'published' && pc.author !== me)) return raise('permission_denied', '42501');
+        return { status: 200, body: (pc.comments || []).map(function (c2) { return { id: c2.id, body: c2.body, hidden: false, author_name: c2.author_name, author_role: c2.author_role, author_avatar: null,
+          mine: c2.author === me, reported: (c2.reporters || []).indexOf(me) >= 0, reports: 0, author_muted: false, created_at: c2.created_at }; }) };
+      }
+      if (name === 'yb_comment_post') {
+        if (!(pme.role === 'leader' || pme.role === 'parent')) return raise('permission_denied', '42501');
+        if (!pc || pc.status !== 'published') return { status: 200, body: { ok: false, error: 'not_found' } };
+        var cbd = String(body.body || '').trim();
+        if (!cbd || cbd.length > 500) return { status: 200, body: { ok: false, error: 'invalid_data' } };
+        var dg = cbd.replace(/[٠-٩]/g, function (d) { return String(d.charCodeAt(0) - 0x660); }).replace(/[۰-۹]/g, function (d) { return String(d.charCodeAt(0) - 0x6F0); }).replace(/[\s()+-]/g, '');
+        if (/[0-9]{7,}/.test(dg) || /[^\s@]+@[^\s@]+\.[a-z]{2,}/i.test(cbd)) return { status: 200, body: { ok: false, error: 'contact_not_allowed' } };
+        db.cmtN = (db.cmtN || 100) + 1;
+        pc.comments = pc.comments || [];
+        pc.comments.push({ id: db.cmtN, author: me, author_name: pme.full_name, author_role: pme.role, body: cbd, created_at: new Date().toISOString() });
+        persist();
+        return { status: 200, body: { ok: true, id: db.cmtN } };
+      }
+      var cAll = [].concat.apply([], db.posts.map(function (x) { return (x.comments || []).map(function (c2) { return { post: x, c: c2 }; }); }));
+      var cHit = cAll.filter(function (z) { return z.c.id === body.id; })[0];
+      if (!cHit) return { status: 200, body: { ok: false, error: 'not_found' } };
+      if (name === 'yb_comment_delete') {
+        if (cHit.c.author !== me) return raise('permission_denied', '42501');
+        cHit.post.comments.splice(cHit.post.comments.indexOf(cHit.c), 1); persist();
+        return { status: 200, body: { ok: true } };
+      }
+      if (cHit.c.author === me) return { status: 200, body: { ok: false, error: 'invalid_argument' } };
+      cHit.c.reporters = (cHit.c.reporters || []).concat([me]); persist();
+      return { status: 200, body: { ok: true } };
     }
     if (name === 'yb_claim_team') return { status: 200, body: { ok: false, error: 'not_found' } };   // nothing is sent from the form in the demo
     // roles (migration 0006): the demo leader picks the reciters, the chess player and the coordinator

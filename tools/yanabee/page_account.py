@@ -16,7 +16,7 @@ PAGE = 'account.html'
 # icons the script draws (names from core.ICONS only)
 ICON_NAMES = ['user', 'users', 'user-check', 'shield', 'lock', 'check', 'x', 'trash', 'printer', 'file-text', 'alert', 'chart',
               'calendar', 'clock', 'trophy', 'search', 'chevron-down', 'arrow-left', 'eye', 'flag', 'repeat', 'send', 'award',
-              'hand-heart', 'star', 'landmark', 'bell', 'route', 'image', 'scale']
+              'hand-heart', 'star', 'landmark', 'bell', 'route', 'image', 'scale', 'megaphone', 'message', 'pin', 'sparkles']
 
 
 def txt(s):

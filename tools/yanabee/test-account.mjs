@@ -55,6 +55,7 @@ class Fake {
     this.subs = []; this.objects = new Map(); this.uploads = [];   // migration 0008 (submissions, private photos)
     this.judges = new Map(); this.jscores = []; this.ascores = []; this.published = false;   // migration 0010
     this.ann = []; this.annSeq = 0; this.chat = []; this.chatSeq = 0; this.reports = []; this.mutes = new Map(); this.reads = new Map();   // migration 0009
+    this.posts = []; this.cmts = []; this.cmtSeq = 0; this.creports = []; this.prefs = new Map(); this.tstyle = new Map(); this.membersComment = false;   // migration 0011
     this.tokens = new Map(); this.refresh = new Map(); this.log = []; this.recovers = []; this.fail = []; this.delay = 0; this.tick = 0;
   }
   uid() { return crypto.randomUUID(); }
@@ -319,6 +320,7 @@ class Fake {
       }
       return deny();
     }
+    if (table === 'yb_team_style') return method === 'GET' ? finish([...this.tstyle.values()].map(x => ({ ...x }))) : deny();   // 0011: public colors and badges
     if (table === 'yb_submissions') {
       if (method !== 'GET') return deny();
       return finish(this.subs.filter(x => this.subStaff(c) || this.subPerson(me, x.team_id)).map(x => ({ ...x, photos: [...x.photos] })));
@@ -465,8 +467,15 @@ class Fake {
       yb_chat_hide: ['message_id', 'hide'], yb_chat_resolve: ['message_id'], yb_chat_mute: ['message_id', 'hours', 'reason'], yb_chat_unmute: ['target'], yb_chat_mutes_list: [],
       yb_chat_purge: [], yb_chat_seen: ['last_id'], yb_chat_unread: [],
       yb_my_judging: [], yb_judge_score: ['team_id', 'criterion', 'points', 'reason'], yb_set_judge: ['target', 'axes'], yb_judges_list: [],
-      yb_admin_score: ['team_id', 'axis', 'points', 'reason'], yb_results_board: [], yb_publish_results: ['publish'], yb_public_results: [], yb_my_scores: [] };
+      yb_admin_score: ['team_id', 'axis', 'points', 'reason'], yb_results_board: [], yb_publish_results: ['publish'], yb_public_results: [], yb_my_scores: [],
+      yb_my_prefs: [], yb_save_prefs: ['p'], yb_set_team_style: ['team_id', 'color', 'badge'], yb_feed: ['before', 'lim'], yb_post_save: ['id', 'body', 'photos'],
+      yb_post_delete: ['id'], yb_post_moderate: ['id', 'action', 'note'], yb_react: ['post_id', 'kind'], yb_comments: ['post_id'], yb_comment_post: ['post_id', 'body'],
+      yb_comment_delete: ['id'], yb_comment_report: ['id', 'reason'], yb_comment_moderate: ['id', 'action'], yb_comment_mute: ['id', 'hours', 'reason'], yb_feed_reports: [],
+      yb_set_members_comment: ['allow'], yb_transfer_team: ['team_id', 'new_leader', 'old_stays', 'old_role'], yb_analytics: [] };
     if (!SIG[name]) return err(404, 'PGRST202', 'Could not find the function public.' + name);
+    // 0011: optional arguments (SQL defaults)
+    const DEF = { yb_feed: { before: null, lim: 15 }, yb_post_save: { photos: [] }, yb_post_moderate: { note: null }, yb_comment_report: { reason: null }, yb_comment_mute: { hours: null, reason: null }, yb_transfer_team: { old_role: 'parent' } };
+    if (DEF[name]) body = { ...DEF[name], ...(body || {}) };
     if (name === 'yb_mark_read') {
       const ids = body && Array.isArray(body.ids) ? body.ids : null;
       let n = 0;
@@ -732,6 +741,206 @@ class Fake {
       const rank = { submitted: 0, returned: 1 };
       return { status: 200, body: this.subs.map(x => ({ ...x, team_name: (this.teams.find(t => t.id === x.team_id) || {}).name })).sort((a, b) => (rank[a.status] ?? 2) - (rank[b.status] ?? 2)) };
     }
+    /* migration 0011: settings, team identity, the feed, the handover, the statistics */
+    const prof = id => this.profiles.find(p => p.id === id) || {};
+    const isAdult = id => ['leader', 'parent', 'officer', 'admin'].includes(prof(id).role);
+    const dname = id => { const p = prof(id); return p.role === 'member' ? String(p.full_name || '').trim().split(/\s+/)[0] : (p.full_name || ''); };
+    const myPrefs = () => ({ avatar_path: null, theme: 'auto', accent: 'teal', text_size: 'm', hidden_sections: [], notify_off: [], ...(this.prefs.get(me) || {}), can_avatar: isAdult(me) });
+    const postJson = x => {
+      const st = this.tstyle.get(x.team_id) || {}, rx = {};
+      x.reactions.forEach(r => { rx[r.kind] = (rx[r.kind] || 0) + 1; });
+      return { id: x.id, body: x.body, photos: [...x.photos], status: x.status, pinned: x.pinned, review_note: x.author === me || admin ? x.review_note : null,
+        created_at: x.created_at, published_at: x.published_at, at: x.published_at || x.created_at, mine: x.author === me, author_name: dname(x.author), author_role: x.author_role,
+        author_avatar: null, team_id: x.team_id, team_name: (this.teams.find(t => t.id === x.team_id) || {}).name || null, team_color: st.color || null, team_badge: st.badge || null,
+        reactions: rx, my_reaction: (x.reactions.find(r => r.user_id === me) || {}).kind || null, comments: this.cmts.filter(cm => cm.post_id === x.id && (!cm.hidden || admin)).length };
+    };
+    const postOf = id => this.posts.find(x => x.id === id);
+    const cmtMuted = u => { const m = this.mutes.get(u); return !!m && (m.until === null || m.until > Date.now()); };
+    const canComment = () => ['leader', 'parent', 'officer', 'admin'].includes(c.role) || (c.role === 'member' && this.membersComment);
+    if (name === 'yb_my_prefs') return { status: 200, body: myPrefs() };
+    if (name === 'yb_save_prefs') {
+      const p = body.p && typeof body.p === 'object' ? body.p : null;
+      if (!p) return raise('invalid_argument');
+      if ('avatar' in p && p.avatar && !isAdult(me)) return { status: 200, body: { ok: false, error: 'avatar_adults_only' } };
+      const ok = (!('theme' in p) || ['auto', 'light', 'dark'].includes(p.theme)) && (!('accent' in p) || ['teal', 'blue', 'green', 'amber', 'orange', 'red', 'purple', 'pink'].includes(p.accent))
+        && (!('text_size' in p) || ['m', 'l', 'xl'].includes(p.text_size)) && (!('notify_off' in p) || (Array.isArray(p.notify_off) && p.notify_off.every(k => ['matches', 'projects', 'announcements', 'feed'].includes(k))))
+        && (!('hidden_sections' in p) || Array.isArray(p.hidden_sections));
+      if (!ok) return { status: 200, body: { ok: false, error: 'invalid_data' } };
+      const cur = this.prefs.get(me) || {};
+      ['theme', 'accent', 'text_size', 'hidden_sections', 'notify_off'].forEach(k => { if (k in p) cur[k] = p[k]; });
+      if ('avatar' in p) cur.avatar_path = p.avatar || null;
+      this.prefs.set(me, cur);
+      return { status: 200, body: { ok: true, prefs: myPrefs() } };
+    }
+    if (name === 'yb_set_team_style') {
+      if (!(admin || this.teams.some(t => t.id === body.team_id && t.leader_id === me))) return raise('permission_denied', '42501');
+      if (!['teal', 'blue', 'green', 'amber', 'orange', 'red', 'purple', 'pink'].includes(body.color) || !['star', 'moon', 'sun', 'leaf', 'book', 'ball', 'chess', 'bolt', 'heart', 'shield'].includes(body.badge)) return { status: 200, body: { ok: false, error: 'invalid_data' } };
+      this.tstyle.set(body.team_id, { team_id: body.team_id, color: body.color, badge: body.badge });
+      return { status: 200, body: { ok: true } };
+    }
+    if (name === 'yb_feed') {
+      const vis = this.posts.filter(x => x.status === 'published' || x.author === me || (admin && x.status === 'hidden'))
+        .filter(x => !body.before || (!x.pinned && (x.published_at || x.created_at) < body.before))
+        .sort((a, b) => ((b.pinned && !body.before) - (a.pinned && !body.before)) || (b.published_at || b.created_at).localeCompare(a.published_at || a.created_at));
+      return { status: 200, body: { posts: vis.slice(0, body.lim || 15).map(postJson),
+        can_post: admin || (c.role === 'leader' && this.teams.some(t => t.leader_id === me)), can_comment: canComment(), admin, members_comment: this.membersComment,
+        queue: admin && !body.before ? this.posts.filter(x => x.status === 'pending').map(postJson) : null,
+        reports: admin ? new Set(this.creports.filter(r => !r.resolved).map(r => r.comment_id)).size : null } };
+    }
+    if (name === 'yb_post_save') {
+      if (!['leader', 'admin'].includes(c.role)) return raise('permission_denied', '42501');
+      const x = postOf(body.id);
+      if (x && x.author !== me && !admin) return raise('permission_denied', '42501');
+      const tid = c.role === 'leader' ? (this.teams.find(t => t.leader_id === me) || {}).id : null;
+      if (c.role === 'leader' && !tid) return { status: 200, body: { ok: false, error: 'no_team' } };
+      const b = String(body.body || '').trim();
+      if (!b || b.length > 1500) return { status: 200, body: { ok: false, error: 'invalid_data' } };
+      const st = admin ? (x ? x.status : 'published') : 'pending';
+      if (x) Object.assign(x, { body: b, photos: [...(body.photos || [])], status: st, pinned: x.pinned && st === 'published', review_note: st === 'pending' ? null : x.review_note });
+      else this.posts.push({ id: body.id, author: me, author_role: c.role, team_id: tid, body: b, photos: [...(body.photos || [])], status: st, review_note: null, pinned: false,
+        created_at: this.now(), published_at: st === 'published' ? this.now() : null, reactions: [] });
+      if (st === 'pending') this.notify(this.profiles.filter(p => p.role === 'admin').map(p => p.id), 'post_pending', { post_id: body.id, team_name: (this.teams.find(t => t.id === tid) || {}).name, snippet: b.slice(0, 60) });
+      return { status: 200, body: { ok: true, id: body.id, status: st } };
+    }
+    if (name === 'yb_post_delete') {
+      const x = postOf(body.id);
+      if (!x) return { status: 200, body: { ok: false, error: 'not_found' } };
+      if (x.author !== me && !admin) return raise('permission_denied', '42501');
+      this.posts.splice(this.posts.indexOf(x), 1);
+      return { status: 200, body: { ok: true } };
+    }
+    if (name === 'yb_post_moderate') {
+      if (!admin) return raise('permission_denied', '42501');
+      const x = postOf(body.id), a = body.action;
+      if (!['publish', 'reject', 'pin', 'unpin', 'hide', 'show'].includes(a)) return raise('invalid_argument');
+      if (!x) return { status: 200, body: { ok: false, error: 'not_found' } };
+      const okSt = { publish: ['pending', 'rejected'], reject: ['pending'], pin: ['published'], unpin: ['published'], hide: ['published'], show: ['hidden'] }[a];
+      if (!okSt.includes(x.status)) return { status: 200, body: { ok: false, error: 'invalid_status' } };
+      if (a === 'publish') Object.assign(x, { status: 'published', published_at: x.published_at || this.now(), review_note: null });
+      if (a === 'reject') Object.assign(x, { status: 'rejected', review_note: body.note || null });
+      if (a === 'pin' || a === 'unpin') x.pinned = a === 'pin';
+      if (a === 'hide') Object.assign(x, { status: 'hidden', pinned: false });
+      if (a === 'show') x.status = 'published';
+      if (['publish', 'reject', 'hide'].includes(a) && x.author !== me) this.notify([x.author], 'post_reviewed', { post_id: x.id, action: a, note: body.note || null, snippet: x.body.slice(0, 60) });
+      return { status: 200, body: { ok: true } };
+    }
+    if (name === 'yb_react') {
+      const x = postOf(body.post_id);
+      if (!x || x.status !== 'published') return { status: 200, body: { ok: false, error: 'not_found' } };
+      if (body.kind !== null && !['clap', 'heart', 'dua', 'strong'].includes(body.kind)) return raise('invalid_argument');
+      x.reactions = x.reactions.filter(r => r.user_id !== me);
+      if (body.kind) x.reactions.push({ user_id: me, kind: body.kind, at: this.now() });
+      const j = postJson(x);
+      return { status: 200, body: { ok: true, reactions: j.reactions, mine: j.my_reaction } };
+    }
+    if (name === 'yb_comments') {
+      const x = postOf(body.post_id);
+      if (!x || !(x.status === 'published' || x.author === me || admin)) return raise('permission_denied', '42501');
+      return { status: 200, body: this.cmts.filter(cm => cm.post_id === x.id).map(cm => ({ id: cm.id, body: cm.hidden && !admin ? null : cm.body, hidden: cm.hidden,
+        author_name: dname(cm.author), author_role: prof(cm.author).role, author_avatar: null, mine: cm.author === me,
+        reported: this.creports.some(r => r.comment_id === cm.id && r.reporter === me), reports: admin ? this.creports.filter(r => r.comment_id === cm.id && !r.resolved).length : 0,
+        author_muted: admin ? cmtMuted(cm.author) : false, created_at: cm.created_at })) };
+    }
+    if (name === 'yb_comment_post') {
+      if (!canComment()) return raise('permission_denied', '42501');
+      const x = postOf(body.post_id);
+      if (!x || x.status !== 'published') return { status: 200, body: { ok: false, error: 'not_found' } };
+      const b = String(body.body || '').trim();
+      if (!b || b.length > 500) return { status: 200, body: { ok: false, error: 'invalid_data' } };
+      if (cmtMuted(me)) return { status: 200, body: { ok: false, error: 'chat_muted' } };
+      const dg = b.replace(/[٠-٩]/g, d => String(d.charCodeAt(0) - 0x660)).replace(/[\s()+-]/g, '');
+      if (/[0-9]{7,}/.test(dg) || /[^\s@]+@[^\s@]+\.[a-z]{2,}/i.test(b)) return { status: 200, body: { ok: false, error: 'contact_not_allowed' } };
+      const cm = { id: ++this.cmtSeq, post_id: x.id, author: me, body: b, hidden: false, created_at: this.now() };
+      this.cmts.push(cm);
+      if (x.author !== me) this.notify([x.author], 'comment_new', { post_id: x.id, by: dname(me), snippet: x.body.slice(0, 60) });
+      return { status: 200, body: { ok: true, id: cm.id } };
+    }
+    if (['yb_comment_delete', 'yb_comment_report', 'yb_comment_moderate', 'yb_comment_mute'].includes(name)) {
+      const cm = this.cmts.find(q => q.id === body.id);
+      if (name !== 'yb_comment_report' && name !== 'yb_comment_delete' && !admin) return raise('permission_denied', '42501');
+      if (!cm) return { status: 200, body: { ok: false, error: 'not_found' } };
+      if (name === 'yb_comment_delete') {
+        if (cm.author !== me && !admin) return raise('permission_denied', '42501');
+        this.cmts.splice(this.cmts.indexOf(cm), 1);
+        return { status: 200, body: { ok: true } };
+      }
+      if (name === 'yb_comment_report') {
+        if (cm.author === me) return { status: 200, body: { ok: false, error: 'invalid_argument' } };
+        const first = !this.creports.some(r => r.comment_id === cm.id && !r.resolved);
+        this.creports = this.creports.filter(r => !(r.comment_id === cm.id && r.reporter === me));
+        this.creports.push({ comment_id: cm.id, reporter: me, reason: body.reason || null, resolved: false, at: this.now() });
+        if (first) this.notify(this.profiles.filter(p => p.role === 'admin').map(p => p.id), 'comment_report', { comment_id: cm.id, post_id: cm.post_id });
+        return { status: 200, body: { ok: true } };
+      }
+      if (name === 'yb_comment_moderate') {
+        if (!['hide', 'show', 'keep'].includes(body.action)) return raise('invalid_argument');
+        if (body.action !== 'keep') cm.hidden = body.action === 'hide';
+        this.creports.forEach(r => { if (r.comment_id === cm.id) r.resolved = true; });
+        return { status: 200, body: { ok: true } };
+      }
+      if (cm.author === me || prof(cm.author).role === 'admin') return { status: 200, body: { ok: false, error: 'invalid_argument' } };
+      this.mutes.set(cm.author, { until: body.hours === null ? null : Date.now() + body.hours * 36e5, untilIso: null });
+      this.notify([cm.author], 'chat_muted', { hours: body.hours, where: 'comments' });
+      return { status: 200, body: { ok: true } };
+    }
+    if (name === 'yb_feed_reports') {
+      if (!admin) return raise('permission_denied', '42501');
+      const open = this.creports.filter(r => !r.resolved);
+      return { status: 200, body: [...new Set(open.map(r => r.comment_id))].map(id => { const cm = this.cmts.find(q => q.id === id); const x = postOf(cm.post_id);
+        const rs = open.filter(r => r.comment_id === id);
+        return { comment_id: id, post_id: cm.post_id, body: cm.body, hidden: cm.hidden, author_name: dname(cm.author), post_snippet: x.body.slice(0, 80), reports: rs.length, reasons: rs.map(r => r.reason).filter(Boolean), last_at: rs[rs.length - 1].at }; }) };
+    }
+    if (name === 'yb_set_members_comment') {
+      if (!admin) return raise('permission_denied', '42501');
+      this.membersComment = !!body.allow;
+      return { status: 200, body: { ok: true, allow: this.membersComment } };
+    }
+    if (name === 'yb_transfer_team') {
+      if (!admin) return raise('permission_denied', '42501');
+      if (!['parent', 'member'].includes(body.old_role)) return raise('invalid_argument');
+      const t = this.teams.find(x => x.id === body.team_id);
+      if (!t) return { status: 200, body: { ok: false, error: 'not_found' } };
+      const np = this.profiles.find(p => p.id === body.new_leader);
+      if (!np) return { status: 200, body: { ok: false, error: 'user_not_found' } };
+      if (['admin', 'officer'].includes(np.role)) return { status: 200, body: { ok: false, error: 'bad_new_leader' } };
+      if (this.teams.some(x => x.leader_id === np.id)) return { status: 200, body: { ok: false, error: 'leads_other_team' } };
+      if (this.members.some(m => m.user_id === np.id && m.team_id !== t.id)) return { status: 200, body: { ok: false, error: 'in_other_team' } };
+      const oldm = this.members.find(m => m.team_id === t.id && m.is_leader), newm = this.members.find(m => m.team_id === t.id && m.user_id === np.id);
+      if (!newm && (body.old_stays || !oldm) && this.members.filter(m => m.team_id === t.id).length >= 7) return { status: 200, body: { ok: false, error: 'team_full' } };
+      if (oldm) { if (body.old_stays) oldm.is_leader = false; else this.members.splice(this.members.indexOf(oldm), 1); }
+      if (newm) newm.is_leader = true;
+      else this.members.push({ id: this.uid(), team_id: t.id, full_name: np.full_name || '-', age: null, guardian_name: null, guardian_phone: null, is_leader: true, user_id: np.id, consent_status: 'pending', consent_at: null, created_at: this.now(), roles: [] });
+      const old = t.leader_id;
+      t.leader_id = np.id; np.role = 'leader';
+      const op = this.profiles.find(p => p.id === old);
+      if (op && op.role === 'leader') op.role = body.old_stays ? 'member' : body.old_role;
+      this.notify([np.id], 'team_leader_new', { team_id: t.id, team_name: t.name });
+      if (old) this.notify([old], 'team_leader_left', { team_id: t.id, team_name: t.name, stays: !!body.old_stays });
+      return { status: 200, body: { ok: true } };
+    }
+    if (name === 'yb_analytics') {
+      if (!admin) return raise('permission_denied', '42501');
+      const cnt = (arr, k) => arr.reduce((o, x) => { o[x[k]] = (o[x[k]] || 0) + 1; return o; }, {});
+      const inComp = this.teams.filter(t => ['submitted', 'approved'].includes(t.status));
+      const minor = m => m.age !== null && m.age < 18;
+      const rx = {}; this.posts.forEach(x => x.reactions.forEach(r => { rx[r.kind] = (rx[r.kind] || 0) + 1; }));
+      const day = d => String(d).slice(0, 10);
+      const perDay = arr => Object.entries(cnt(arr.map(x => ({ d: day(x.created_at) })), 'd')).map(([d, n]) => ({ d, n }));
+      return { status: 200, body: { generated_at: new Date().toISOString(),
+        accounts: { by_role: cnt(this.profiles, 'role'), per_day: perDay(this.profiles) },
+        teams: { by_status: cnt(this.teams, 'status'), waitlist: this.teams.filter(t => t.waitlist).length, fee: cnt(inComp.map(t => ({ f: t.fee_status || 'unpaid' })), 'f'), per_day: perDay(this.teams),
+          list: inComp.map(t => { const ms = this.members.filter(m => m.team_id === t.id); return { name: t.name, status: t.status, fee: t.fee_status || 'unpaid', members: ms.length, minors: ms.filter(minor).length,
+            consents: ms.filter(m => minor(m) && m.consent_status === 'received').length, joined: ms.filter(m => m.user_id).length }; }) },
+        members: { total: this.members.length, minors: this.members.filter(minor).length, consents: this.members.filter(m => minor(m) && m.consent_status === 'received').length, joined: this.members.filter(m => m.user_id).length,
+          ages: { u10: this.members.filter(m => m.age !== null && m.age < 10).length, a10: this.members.filter(m => m.age >= 10 && m.age <= 12).length, a13: this.members.filter(m => m.age >= 13 && m.age <= 15).length,
+            a16: this.members.filter(m => m.age >= 16 && m.age <= 17).length, adult: this.members.filter(m => m.age >= 18).length, unknown: this.members.filter(m => m.age === null || m.age === undefined).length } },
+        matches: {}, goals: { total: this.marks.filter(k => k.kind === 'goal').length, by_team: [], spirit: 0 },
+        projects: { by_status: cnt(this.subs, 'status'), by_place: cnt(this.subs.filter(s => s.status === 'accepted'), 'place'), featured: this.subs.filter(s => s.featured).length, beneficiaries: 0 },
+        feed: { by_status: cnt(this.posts, 'status'), reactions: rx, comments: this.cmts.length, reports_open: new Set(this.creports.filter(r => !r.resolved).map(r => r.comment_id)).size,
+          per_day: Array.from({ length: 30 }, (_, i) => { const d = new Date(Date.now() - (29 - i) * 864e5).toISOString().slice(0, 10); return { d, posts: this.posts.filter(x => day(x.created_at) === d).length, comments: this.cmts.filter(x => day(x.created_at) === d).length, reactions: 0 }; }) },
+        notes: { total: this.notes.length, read: this.notes.filter(n => n.read_at).length },
+        judging: { judges: this.judges.size, scores: this.jscores.length, teams_scored: new Set(this.jscores.map(s => s.team_id)).size, published: this.published } } };
+    }
     if (name === 'yb_feature_submission') {   // the admin picks accepted work for the home page
       if (!admin) return raise('permission_denied', '42501');
       const x = this.subs.find(s => s.id === body.id);
@@ -977,6 +1186,7 @@ class Fake {
       if (!p) return raise('user_not_found');
       if (p.role === 'admin') return raise('permission_denied', '42501');
       if (!['officer', 'leader', 'member', 'parent'].includes(body.new_role)) return err(400, '22P02', 'invalid input value for enum user_role');
+      if (p.role === 'leader' && body.new_role !== 'leader' && this.teams.some(t => t.leader_id === p.id)) return raise('leads_team');   // 0011
       if (p.role === 'officer' && body.new_role !== 'officer') this.officers = this.officers.filter(o => o.user_id !== p.id);
       p.role = body.new_role;
       return { status: 200, body: { ok: true, role: p.role } };
@@ -1084,7 +1294,7 @@ section('source: no secrets, no logging, no HTML injection, no direct network');
   check('no direct network primitive (everything goes through window.YB)', !/\bfetch\(|XMLHttpRequest|sendBeacon|WebSocket|EventSource/.test(code));
   check('no hard-coded URL string', !/['"`]https?:\/\//.test(code));
   check('no service key / JWT-looking literal', !/service_role|eyJ[A-Za-z0-9_-]{20,}/.test(code));
-  check('the only storage key it writes is the registration draft', (code.match(/localStorage\.setItem/g) || []).length === 1 && /setItem\(DRAFT_KEY/.test(code));
+  check('the only storage keys it writes are the registration draft and the chosen theme', (code.match(/localStorage\.setItem/g) || []).length === 2 && /setItem\(DRAFT_KEY/.test(code) && /setItem\('yanabee-theme'/.test(code));
   check('no token or password is stored (no access_token / refresh_token / sessionStorage in account.js)', !/\.access_token|\.refresh_token|sessionStorage/.test(code));
   check('uses YB.poll for the tournament state', /YB\.poll\(/.test(code));
   const page = fs.readFileSync(path.join(SITE, 'account.html'), 'utf8');
@@ -1403,7 +1613,7 @@ let teamId = '';
   await settle(AD);
   const stateBefore = world.count(/tournament_state/);
   await signInOk(AD, ADMIN.email);
-  check('admin screen: role badge الإدارة, nine tabs (with الجدول, النتائج, المشاريع, التواصل, التحكيم)', (await AD.locator('.a-head .a-badge').innerText()) === 'الإدارة' && (await AD.locator('[role=tab]').allInnerTexts()).join('|').replace(/\s+/g, ' ').includes('الجدول') && (await AD.locator('[role=tab]').count()) === 9);
+  check('admin screen: role badge الإدارة, eleven tabs (with الإحصاءات, الأخبار, الجدول, النتائج, المشاريع, التواصل, التحكيم)', (await AD.locator('.a-head .a-badge').innerText()) === 'الإدارة' && /الإحصاءات.*الأخبار.*الجدول/.test((await AD.locator('[role=tab]').allInnerTexts()).join('|').replace(/\s+/g, ' ')) && (await AD.locator('[role=tab]').count()) === 11);
   check('admin load does NOT poll or read the tournament state', world.count(/tournament_state/) === stateBefore);
   const counts = await AD.locator('.a-counters .a-count').allInnerTexts();
   check('counters by status (1 قيد المراجعة, 0 مطلوب تعديل, total 1)', counts.some(c => /^1\s*كل الفرق/.test(c.replace(/\n/g, ' '))) && counts.some(c => /^1\s*قيد المراجعة/.test(c.replace(/\n/g, ' '))) && counts.some(c => /^0\s*مطلوب تعديل/.test(c.replace(/\n/g, ' '))) && counts.some(c => /^0\s*معتمد/.test(c.replace(/\n/g, ' '))));
@@ -1530,7 +1740,7 @@ let memberEmail = 'sara@t.test', parentEmail = 'parent@t.test';
   check('member sees own consent status (received: set by the admin)', /استُلمت موافقة ولي الأمر/.test(mt));
   check('no admin / leader controls on the member screen', !(await M.locator('input[role=switch], form.a-add, button[data-fk=submit], .a-tabs-4').count()));
   const reqs = world.log.filter(l => l.who === world.profileByEmail(memberEmail).id).map(l => l.path.replace('/rest/v1/', ''));
-  check('member screen reads only my_team, my_roster, tournament_state and the own profile (never teams, team_members, profiles list)', reqs.every(r => /^(rpc\/(my_team|join_team|yb_mark_read|yb_my_scores)|my_roster|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements)$/.test(r)), [...new Set(reqs)].join());
+  check('member screen reads only my_team, my_roster, tournament_state and the own profile (never teams, team_members, profiles list)', reqs.every(r => /^(rpc\/(my_team|join_team|yb_mark_read|yb_my_scores|yb_my_prefs|yb_feed)|my_roster|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements)$/.test(r)), [...new Set(reqs)].join());
   const tour = await M.locator('.a-sched').innerText();
   check('schedule card shows the empty state before the tournament is published', /لم تُنشر بيانات البطولة بعد/.test(tour));
   // second account tries the same name
@@ -1585,7 +1795,7 @@ let memberEmail = 'sara@t.test', parentEmail = 'parent@t.test';
   const chips = await P.locator('.a-child .a-consent .a-chip').allInnerTexts();
   check('two children: one «استُلمت», one «لم تُستلم بعد»; ONE schedule card for the shared team', chips.some(c => /^استُلمت/.test(c)) && chips.some(c => /لم تُستلم/.test(c)) && (await P.locator('.a-sched').count()) === 1);
   const preqs = world.log.filter(l => l.who === world.profileByEmail(parentEmail).id).map(l => l.path.replace('/rest/v1/', ''));
-  check('parent screen reads only my_children, tournament_state and the own profile', preqs.every(r => /^(rpc\/(link_child|yb_mark_read|yb_my_scores|yb_my_judging)|my_children|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements)$/.test(r)), [...new Set(preqs)].join());
+  check('parent screen reads only my_children, tournament_state and the own profile', preqs.every(r => /^(rpc\/(link_child|yb_mark_read|yb_my_scores|yb_my_judging|yb_my_prefs|yb_feed)|my_children|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements)$/.test(r)), [...new Set(preqs)].join());
   check('parent console clean', P.errs.length === 0, P.errs.join('|'));
   world.P = P;
 }
@@ -1767,7 +1977,7 @@ section('admin: tabs, people, tournament, export, print');
   await A.locator('#at-teams').click();
   await A.locator('#at-teams').focus();
   await A.keyboard.press('ArrowLeft');
-  check('admin tabs: arrow keys move to the next tab and keep focus on it', (await A.locator('#at-people').getAttribute('aria-selected')) === 'true' && await A.evaluate(() => document.activeElement.id) === 'at-people');
+  check('admin tabs: arrow keys move to the next tab and keep focus on it', (await A.locator('#at-stats').getAttribute('aria-selected')) === 'true' && await A.evaluate(() => document.activeElement.id) === 'at-stats');
   check('exactly one admin tab is tabbable', (await A.locator('[role=tab][tabindex="0"]').count()) === 1);
   check('admin console clean', A.errs.length === 0, A.errs.join('|'));
   await close(A);
@@ -3132,6 +3342,185 @@ section('judging (0010): the admin chooses judges, a judge gives points with rea
   await J2.waitForSelector('[data-judge]:not([hidden])', { timeout: 8000 });
   check('after publication the judge sees «مقفلة» and no save buttons', /مقفلة/.test(await J2.locator('[data-judge]').innerText()) && (await J2.locator('[data-judge] [data-fk^="js-"]').count()) === 0);
   await close(J2);
+}
+
+section('the news feed, customization, the handover and the statistics (0011): one season day, start to finish');
+{
+  const fake = new Fake();
+  fake.addUser({ email: 'boss@t.test', name: 'المشرف', role: 'member' }); fake.setAdmin('boss@t.test');
+  fake.addUser({ email: 'la@t.test', name: 'قائد النور', role: 'leader' });
+  fake.addUser({ email: 'lb@t.test', name: 'قائد الأمل', role: 'leader' });
+  fake.addUser({ email: 'ma@t.test', name: 'سالم أحمد', role: 'member' });
+  fake.addUser({ email: 'pa@t.test', name: 'ولي يوسف', role: 'parent' });
+  fake.addUser({ email: 'pb@t.test', name: 'ولي جديد', role: 'parent' });
+  fake.seedTeam({ leaderEmail: 'la@t.test', name: 'النور', status: 'approved', members: [{ name: 'سالم أحمد', age: 12 }, { name: 'يوسف علي', age: 13 }, { name: 'عمر حسن', age: 14 }, { name: 'زيد محمود', age: 15 }] });
+  const TB = fake.seedTeam({ leaderEmail: 'lb@t.test', name: 'الأمل', status: 'approved', members: [{ name: 'أنس بكر', age: 12 }, { name: 'جابر دار', age: 13 }, { name: 'هاني وليد', age: 14 }, { name: 'كريم سعد', age: 15 }] });
+  fake.members.find(m => m.full_name === 'سالم أحمد').user_id = fake.profileByEmail('ma@t.test').id;
+  fake.links.push({ parent_id: fake.profileByEmail('pa@t.test').id, member_id: fake.members.find(m => m.full_name === 'يوسف علي').id, created_at: fake.now() });
+
+  /* the leader gives the team its color and badge, then writes news (it waits for the admin) */
+  const L = await open(fake, { label: 'soc-la' });
+  await settle(L); await signInOk(L, 'la@t.test');
+  await L.waitForSelector('[data-team-style] [data-fk="tsc-purple"]', { timeout: 8000 });
+  await L.locator('[data-fk="tsc-purple"]').check();
+  await L.locator('[data-fk="tsb-moon"]').check();
+  await L.locator('[data-fk="tst-save"]').click();
+  await L.waitForFunction(() => /حُفظت هوية الفريق/.test(document.querySelector('[data-team-style]').innerText));
+  check('the leader saves the team color and badge', JSON.stringify(fake.tstyle.get(fake.teams[0].id)) === JSON.stringify({ team_id: fake.teams[0].id, color: 'purple', badge: 'moon' }));
+  await L.waitForSelector('[data-feed] [data-feed-form]', { timeout: 8000 });
+  check('the side menu has «الأخبار» right after the overview', (await L.locator('.a-side-nav [data-nav]').allInnerTexts()).slice(0, 2).join('|').replace(/\s+/g, ' ').trim() === 'نظرة عامة|الأخبار');
+  check('the leader is told news waits for the admin', /يراجع المشرف خبرك/.test(await L.locator('[data-feed-form]').innerText()));
+  await L.locator('[data-fk="feed-ta"]').fill('تدريبنا الأول اكتمل بعد صلاة العصر، وراجعنا آيات سورة الصف معًا.');
+  await L.locator('[data-feed-form] button[type=submit]').click();
+  await L.waitForSelector('[data-feed] .a-post.st-pending', { timeout: 8000 });
+  const lp = fake.posts[0];
+  check('a leader\'s post is saved as waiting, and the admin is told', lp && lp.status === 'pending' && fake.notes.some(n => n.kind === 'post_pending' && n.user_id === fake.profileByEmail('boss@t.test').id));
+  check('the leader sees it marked «بانتظار موافقة المشرف», with the team badge', /بانتظار موافقة المشرف/.test(await L.locator('.a-post.st-pending').innerText()) && /النور/.test(await L.locator('.a-post.st-pending .a-tbadge').innerText()));
+  check('leader console clean (feed)', L.errs.length === 0, L.errs.join('|'));
+  await close(L);
+
+  /* the admin publishes it, writes a pinned post of their own */
+  const A = await open(fake, { label: 'soc-admin' });
+  await settle(A); await signInOk(A, 'boss@t.test');
+  await A.locator('#at-feed').click();
+  await A.waitForSelector(`[data-feed-queue] [data-fk="pqp-${lp.id}"]`, { timeout: 8000 });
+  check('the admin\'s «الأخبار» tab shows the waiting post in «بانتظار موافقتك (1)»', /بانتظار موافقتك \(1\)/.test(await A.locator('[data-feed-queue]').innerText()));
+  await A.locator(`[data-fk="pqp-${lp.id}"]`).click();
+  await A.waitForFunction(() => !document.querySelector('[data-feed-queue]'));
+  check('«انشره» publishes it and tells the leader', lp.status === 'published' && fake.notes.some(n => n.kind === 'post_reviewed' && n.data.action === 'publish'));
+  await A.locator('[data-fk="feed-ta"]').fill('أهلًا بكم في أخبار ينابيع. موعد التسميع الأول يوم الخميس.');
+  await A.locator('[data-feed-form] button[type=submit]').click();
+  await A.waitForFunction(() => document.querySelectorAll('[data-feed] .a-feed-l .a-post').length === 2);
+  const ap = fake.posts.find(x => x.author_role === 'admin');
+  check('the admin\'s post is published at once', ap && ap.status === 'published');
+  await A.locator(`[data-fk="pp-${ap.id}"]`).click();
+  await A.waitForSelector(`[data-post="${ap.id}"].pinned`);
+  check('«ثبّت في الأعلى» pins it to the top of the feed', ap.pinned && (await A.locator('[data-feed] .a-feed-l .a-post').first().getAttribute('data-post')) === ap.id);
+  check('members\' comments start off (the owner has not decided student chat yet)', !(await A.locator('[data-fk="feed-mc"]').isChecked()) && !fake.membersComment);
+  check('admin console clean (feed)', A.errs.length === 0, A.errs.join('|'));
+  await close(A);
+
+  /* a member reacts but cannot comment */
+  const M = await open(fake, { label: 'soc-ma', mobile: true });
+  await settle(M); await signInOk(M, 'ma@t.test');
+  await M.waitForSelector(`[data-feed] [data-post="${lp.id}"]`, { timeout: 8000 });
+  check('the member\'s feed: pinned admin post first, then the team news', (await M.locator('[data-feed] .a-post').first().getAttribute('data-post')) === ap.id);
+  await M.locator(`[data-fk="rx-strong-${lp.id}"]`).click();
+  await M.waitForFunction(id => document.querySelector(`[data-fk="rx-strong-${id}"]`).getAttribute('aria-pressed') === 'true', lp.id);
+  check('the member reacts 💪 (counted once, shown pressed)', lp.reactions.length === 1 && lp.reactions[0].kind === 'strong');
+  await M.locator(`[data-fk="cm-${lp.id}"]`).click();
+  await M.waitForSelector(`[data-comments="${lp.id}"] .a-empty`);
+  check('the member reads comments but has no comment box while it is off', !(await M.locator(`[data-comments="${lp.id}"] textarea`).count()) && /حين تسمح به الإدارة/.test(await M.locator(`[data-comments="${lp.id}"]`).innerText()));
+  check('phone width: the feed does not overflow', (await overflow(M)) <= 0);
+  await close(M);
+
+  /* a parent comments; a phone number is refused */
+  const P = await open(fake, { label: 'soc-pa' });
+  await settle(P); await signInOk(P, 'pa@t.test');
+  await P.waitForSelector(`[data-fk="cm-${lp.id}"]`, { timeout: 8000 });
+  await P.locator(`[data-fk="cm-${lp.id}"]`).click();
+  await P.waitForSelector(`[data-fk="ct-${lp.id}"]`);
+  await P.locator(`[data-fk="ct-${lp.id}"]`).fill('تواصلوا معي على 0530 517 5431');
+  await P.locator(`[data-comments="${lp.id}"] button[type=submit]`).click();
+  await P.waitForSelector(`[data-comments="${lp.id}"] .a-err:not([hidden])`);
+  check('a comment with a phone number is refused, with the reason', /أرقام الهواتف/.test(await P.locator(`[data-comments="${lp.id}"] .a-err`).innerText()) && fake.cmts.length === 0);
+  await P.locator(`[data-fk="ct-${lp.id}"]`).fill('ما شاء الله، بارك الله فيكم');
+  await P.locator(`[data-comments="${lp.id}"] button[type=submit]`).click();
+  await P.waitForSelector(`[data-comments="${lp.id}"] .a-cmt`);
+  check('the parent comments; the count follows; the leader is told', fake.cmts.length === 1 && /التعليقات \(1\)/.test(await P.locator(`[data-fk="cm-${lp.id}"]`).innerText()) && fake.notes.some(n => n.kind === 'comment_new'));
+  /* the parent customizes the account */
+  await P.locator('[data-fk="cust-open"]').click();
+  await P.waitForSelector('[data-settings]:not([hidden]) [data-fk="cth-dark"]');
+  await P.locator('[data-fk="cth-dark"]').check();
+  await P.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
+  await P.locator('[data-fk="cac-purple"]').check();
+  await P.waitForFunction(() => document.documentElement.classList.contains('acc-purple'));
+  await P.locator('[data-fk="csz-l"]').check();
+  await P.waitForFunction(() => document.documentElement.classList.contains('ts-l'));
+  const pid = fake.profileByEmail('pa@t.test').id;
+  check('dark theme, purple accent and large text are applied and saved to the account', JSON.stringify([fake.prefs.get(pid).theme, fake.prefs.get(pid).accent, fake.prefs.get(pid).text_size]) === '["dark","purple","l"]');
+  await P.locator('[data-fk="cnote-projects"]').uncheck();
+  await P.waitForFunction(() => /لن تصلك تنبيهات/.test(document.querySelector('[data-cust-status]').textContent));
+  check('notification choice saved (projects off)', JSON.stringify(fake.prefs.get(pid).notify_off) === '["projects"]');
+  await P.locator('[data-fk="csec-link"]').uncheck();
+  await P.waitForFunction(() => !document.querySelector('[data-nav="link"]'));
+  check('hiding a section removes it from the side menu and the page', !(await P.locator('#sec-link').count()) && JSON.stringify(fake.prefs.get(pid).hidden_sections) === '["link"]');
+  check('a parent may upload a profile picture (a grown-up)', (await P.locator('[data-settings] [data-fk="cpic"]').count()) === 1);
+  check('parent console clean (comments, settings)', P.errs.length === 0, P.errs.join('|'));
+  await close(P);
+  const P2 = await open(fake, { label: 'soc-pa2' });
+  await settle(P2); await signInOk(P2, 'pa@t.test');
+  await P2.waitForSelector('[data-feed]', { timeout: 8000 });
+  check('the settings follow the person to a new device (theme, accent, hidden section)', await P2.evaluate(() => document.documentElement.dataset.theme === 'dark' && document.documentElement.classList.contains('acc-purple') && !document.querySelector('[data-nav="link"]')));
+  await close(P2);
+  const M2 = await open(fake, { label: 'soc-ma2' });
+  await settle(M2); await signInOk(M2, 'ma@t.test');
+  await M2.locator('[data-fk="cust-open"]').click();
+  await M2.waitForSelector('[data-settings]:not([hidden])');
+  check('a member (child) gets initials, never a picture upload', !(await M2.locator('[data-settings] [data-fk="cpic"]').count()) && /لا تُرفع صور الأعضاء/.test(await M2.locator('[data-settings]').innerText()));
+  await close(M2);
+
+  /* another leader reports the comment; the admin hides it */
+  const LB = await open(fake, { label: 'soc-lb' });
+  await settle(LB); await signInOk(LB, 'lb@t.test');
+  await LB.waitForSelector(`[data-fk="cm-${lp.id}"]`, { timeout: 8000 });
+  await LB.locator(`[data-fk="cm-${lp.id}"]`).click();
+  const cid = fake.cmts[0].id;
+  await LB.waitForSelector(`[data-fk="cr-${cid}"]`);
+  await LB.locator(`[data-fk="cr-${cid}"]`).click();
+  check('reporting needs a second press', fake.creports.length === 0);
+  await LB.locator(`[data-fk="cr-${cid}"]`).click();
+  await LB.waitForFunction(() => /أبلغت عنه/.test(document.querySelector('[data-comments]').innerText));
+  check('the report reaches the admin', fake.creports.length === 1 && fake.notes.some(n => n.kind === 'comment_report'));
+  await close(LB);
+  const A2 = await open(fake, { label: 'soc-admin2' });
+  await settle(A2); await signInOk(A2, 'boss@t.test');
+  await A2.locator('#at-feed').click();
+  await A2.waitForSelector('[data-fk="feed-reps"]', { timeout: 8000 });
+  check('the admin sees «بلاغات التعليقات (1)»', /بلاغات التعليقات \(1\)/.test(await A2.locator('[data-fk="feed-reps"]').innerText()));
+  await A2.locator('[data-fk="feed-reps"]').click();
+  await A2.waitForSelector(`[data-fk="crh-${cid}"]`);
+  await A2.locator(`[data-fk="crh-${cid}"]`).click();
+  await A2.waitForFunction(() => /بلاغات التعليقات$/.test(document.querySelector('[data-fk="feed-reps"]').innerText.trim()));
+  check('«أخفِ التعليق» hides it and closes the report', fake.cmts[0].hidden && fake.creports.every(r => r.resolved));
+
+  /* the handover: a leader who leads a team is not demoted directly */
+  await A2.locator('#at-people').click();
+  const lbId = fake.profileByEmail('lb@t.test').id, pbId = fake.profileByEmail('pb@t.test').id;
+  await A2.waitForSelector(`[data-fk="rs-${lbId}"]`);
+  check('a leader with a team has «سلّم الفريق»', (await A2.locator(`[data-fk="tr-open-${lbId}"]`).count()) === 1);
+  await A2.locator('.a-person', { hasText: 'قائد الأمل' }).locator('select').first().selectOption('parent');
+  await A2.locator(`[data-fk="rs-${lbId}"]`).click();
+  await A2.waitForSelector(`[data-transfer="${lbId}"]:not([hidden]) select`);
+  check('changing the role is refused with the reason, and the handover opens', /سلّم الفريق لشخص آخر أولًا/.test(await A2.locator('.a-person', { hasText: 'قائد الأمل' }).innerText()) && fake.profileByEmail('lb@t.test').role === 'leader');
+  await A2.locator(`[data-fk="tr-to-${lbId}"]`).selectOption(pbId);
+  await A2.locator(`[data-fk="tr-parent-${lbId}"]`).check();
+  await A2.locator(`[data-fk="tr-go-${lbId}"]`).click();
+  check('the handover needs a second press', TB.leader_id === lbId);
+  await A2.locator(`[data-fk="tr-go-${lbId}"]`).click();
+  await A2.waitForFunction(() => /سُلّم/.test(document.querySelector('[data-live]').textContent));
+  check('the team is handed over: the parent leads it, the old leader is a parent now', TB.leader_id === pbId && fake.profileByEmail('pb@t.test').role === 'leader' && fake.profileByEmail('lb@t.test').role === 'parent');
+  check('both are told', fake.notes.some(n => n.kind === 'team_leader_new' && n.user_id === pbId) && fake.notes.some(n => n.kind === 'team_leader_left' && n.user_id === lbId));
+
+  /* the statistics */
+  await A2.locator('#at-stats').click();
+  await A2.waitForSelector('[data-stats] .a-viz-g', { timeout: 8000 });
+  const kp = await A2.locator('[data-stats] .a-kpi').allInnerTexts();
+  check('statistics: eight summary tiles (teams, participants, consents, fees, matches, projects, news, notifications)', kp.length === 8 && /الفرق المعتمدة/.test(kp[0]) && /2 من 12/.test(kp[0]));
+  check('ten charts, each with a title; every chart that has data has a table behind it', (await A2.locator('[data-stats] .a-viz').count()) === 10 && (await A2.locator('[data-stats] .a-viz details table').count()) >= 8);
+  check('the registration line has two named series and a legend', (await A2.locator('[data-stats] .a-line .ln').count()) >= 2 && /الحسابات/.test(await A2.locator('[data-stats] .a-legend').first().innerText()));
+  check('bars carry their value as text (no color-only reading)', /2/.test(await A2.locator('[data-stats] .a-viz', { hasText: 'الفرق حسب الحالة' }).locator('.a-hb-v').allInnerTexts().then(a => a.join(' '))));
+  await A2.locator('[data-stats] .a-viz', { hasText: 'الفرق حسب الحالة' }).locator('.a-hb-t').nth(3).hover();
+  check('hovering a bar shows a tooltip', /معتمد: 2/.test(await A2.locator('[data-stats] .a-viz', { hasText: 'الفرق حسب الحالة' }).locator('.a-viz-tip').innerText()));
+  check('statistics never show children\'s names', !/سالم|يوسف علي|أنس بكر/.test(await A2.locator('[data-stats]').innerText()));
+  check('admin console clean (reports, handover, statistics)', A2.errs.length === 0, A2.errs.join('|'));
+  await close(A2);
+  const A3 = await open(fake, { label: 'soc-admin3', mobile: true });
+  await settle(A3); await signInOk(A3, 'boss@t.test');
+  await A3.locator('#at-stats').click();
+  await A3.waitForSelector('[data-stats] .a-viz-g', { timeout: 8000 });
+  check('phone width: the statistics do not overflow', (await overflow(A3)) <= 0);
+  await close(A3);
 }
 
 section('network hosts and console');

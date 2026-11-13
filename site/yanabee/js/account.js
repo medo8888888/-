@@ -111,7 +111,7 @@
 
   /* ------------------------------------------------------------------ app state */
   const S = { seq: 0, uid: null, role: null, expired: false, manualOut: false, recoveryDone: false, stopPoll: null, stopInbox: null, rendered: null, modeSet: null, confirmedShown: false };
-  const clearData = () => { A.teams = []; A.members = []; A.profiles = []; A.state = undefined; A.evm = null; A.res = null; A.proj = null; A.ann = null; A.chat = null; A.judge = null; O.res = null; O.proj = null; O.evm = null; O.chat = null; O.tiles = null; L.chat = null; L.team = null; L.members = []; };
+  const clearData = () => { A.teams = []; A.members = []; A.profiles = []; A.state = undefined; A.evm = null; A.res = null; A.proj = null; A.ann = null; A.chat = null; A.judge = null; O.res = null; O.proj = null; O.evm = null; O.chat = null; O.tiles = null; L.chat = null; L.team = null; L.members = []; L.style = null; A.stats = null; };
 
   function mount(node, focus) {
     put(root, node);
@@ -462,19 +462,31 @@
     const body = h('div', { class: 'a-body' });
     const inbox = inboxBox();
     const roleName = ROLE[profile.role] || 'عضو';
+    S.me = profile;
+    const avatar = h('span', { class: 'a-avatar', 'aria-hidden': 'true', text: initial });
+    const paintAvatar = () => {
+      const p = S.prefs && S.prefs.avatar_path;
+      if (!p) { put(avatar, initial); return; }
+      photoUrls([p], AV_BUCKET).then(u => { if (u[p]) put(avatar, h('img', { src: u[p], alt: '' })); });
+    };
+    paintAvatar();
+    const cust = settingsPanel(profile, paintAvatar);
+    const custBtn = h('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'aria-expanded': 'false', 'data-fk': 'cust-open',
+      onclick: () => { if (cust.hidden) { cust.open(); custBtn.setAttribute('aria-expanded', 'true'); } else cust.close(); } }, icon('sparkles'), h('span', { text: 'تخصيص' }));
+    cust.onclose = () => { custBtn.setAttribute('aria-expanded', 'false'); custBtn.focus(); };
     const head = h('header', { class: 'a-head a-card' },
-      h('span', { class: 'a-avatar', 'aria-hidden': 'true', text: initial }),
+      avatar,
       h('div', { class: 'a-who' },
         h('h2', { text: profile.full_name || 'حسابي', tabindex: '-1', 'data-focus': '' }),
         h('div', { class: 'a-who-m' }, h('span', { class: 'a-badge r-' + profile.role, text: roleName }), h('small', { class: 'a-mail', dir: 'ltr', text: profile.email || '' }),
           h('small', { class: 'a-today', text: (() => { try { return new Date().toLocaleDateString('ar-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'long' }); } catch (e) { return ''; } })() }))),
-      h('div', { class: 'a-head-b' }, inbox.bell, pwBtn, outBtn));
+      h('div', { class: 'a-head-b' }, inbox.bell, custBtn, pwBtn, outBtn));
     const nav = h('nav', { class: 'a-side-nav', 'aria-label': 'أقسام حسابي' });
     const side = h('aside', { class: 'a-side' },
       h('a', { class: 'a-brand', href: 'index.html', 'aria-label': 'ينابيع: الموقع العام' }, h('b', { text: 'ينابيع' }), h('small', { text: 'لوحتي' })),
       nav,
       h('a', { class: 'a-side-out', href: 'index.html' }, icon('arrow-left'), h('span', { text: 'الموقع العام' })));
-    const main = h('div', { class: 'a-main' }, head, inbox.panel, pwWrap, flash, body);
+    const main = h('div', { class: 'a-main' }, head, inbox.panel, cust, pwWrap, flash, body);
     const el = h('div', { class: 'a-app dash a-role-' + profile.role }, side, main);
     inbox.start();
     if (S.flash) { flash.append(banner(S.flash, 'ok')); say(S.flash); S.flash = ''; }
@@ -491,7 +503,9 @@
   function dashLayout(groups) {
     const sh = S.sh;
     if (!sh) return;
-    const secs = groups.filter(g => g && g.nodes.some(Boolean));
+    S.lastGroups = groups.filter(Boolean);
+    const hidden = (S.prefs && S.prefs.hidden_sections) || [];
+    const secs = groups.filter(g => g && g.nodes.some(Boolean) && (g.key === 'home' || !hidden.includes(g.key)));
     const nodes = secs.map(g => h('section', { class: 'a-sec', id: 'sec-' + g.key, 'aria-labelledby': 'sec-h-' + g.key, 'data-sec': g.key },
       h('h2', { class: 'a-sec-h', id: 'sec-h-' + g.key, tabIndex: -1 }, icon(g.icon), h('span', { text: g.label })),
       h('div', { class: 'a-grid' + (g.one ? ' one' : '') }, g.nodes.filter(Boolean))));
@@ -648,7 +662,14 @@
     if (n.kind === 'results_published') return 'أُعلنت النتائج النهائية للمسابقة. افتح حسابك لترى نتيجة فريقك وأسباب الدرجات.';
     if (n.kind === 'announcement') return `إعلان جديد: ${d.title || ''}`;
     if (n.kind === 'chat_report') return 'بلاغ جديد عن رسالة في غرفة القادة. افتح «التواصل» للمراجعة.';
-    if (n.kind === 'chat_muted') return `أوقفت الإدارة مشاركتك في غرفة القادة ${d.hours ? (d.hours === 24 ? 'يومًا واحدًا' : d.hours === 168 ? 'أسبوعًا' : `${d.hours} ساعة`) : 'حتى إشعار آخر'}، ويمكنك القراءة.`;
+    if (n.kind === 'chat_muted') return `أوقفت الإدارة ${d.where === 'comments' ? 'تعليقاتك ومشاركتك في الغرفة' : 'مشاركتك في غرفة القادة'} ${d.hours ? (d.hours === 24 ? 'يومًا واحدًا' : d.hours === 168 ? 'أسبوعًا' : `${d.hours} ساعة`) : 'حتى إشعار آخر'}، ويمكنك القراءة.`;
+    if (n.kind === 'post_pending') return `خبر جديد من ${d.team_name ? 'فريق «' + d.team_name + '»' : 'قائد فريق'} ينتظر موافقتك: «${d.snippet || ''}». افتح «الأخبار».`;
+    if (n.kind === 'post_reviewed') return d.action === 'publish' ? `نُشر خبرك «${d.snippet || ''}» وصار يراه الجميع.`
+      : d.action === 'reject' ? `أعاد المشرف خبرك «${d.snippet || ''}» للتعديل${d.note ? ': ' + d.note : '.'}` : `أخفى المشرف خبرك «${d.snippet || ''}».`;
+    if (n.kind === 'comment_new') return `علّق ${d.by || 'أحدهم'} على خبرك «${d.snippet || ''}».`;
+    if (n.kind === 'comment_report') return 'بلاغ جديد عن تعليق في الأخبار. افتح «الأخبار» ثم «بلاغات التعليقات».';
+    if (n.kind === 'team_leader_new') return `صرت قائد ${/^فريق\s/.test(d.team_name || '') ? '' : 'فريق '}«${d.team_name || ''}». تجد الفريق كاملًا في حسابك.`;
+    if (n.kind === 'team_leader_left') return `سلّمت الإدارة قيادة «${d.team_name || ''}» لشخص آخر${d.stays ? '، وبقيت عضوًا في الفريق' : ''}.`;
     if (n.kind === 'submission_new') return `أرسل ${team} عملًا للمراجعة: «${d.title || ''}».`;
     if (n.kind === 'submission_reviewed') return d.status === 'accepted' ? `قُبل عمل فريقك «${d.title || ''}» في المشاريع والمبادرات.`
       : d.status === 'returned' ? `أُعيد عمل «${d.title || ''}» للتعديل: ${d.note || ''}` : `لم يُقبل عمل «${d.title || ''}»${d.note ? ': ' + d.note : '.'}`;
@@ -991,8 +1012,8 @@
         h('b', { text: String(n) }), h('span', { text: label })))));
   }
   function adminTabs() {
-    const defs = [['teams', 'الفرق', 'users'], ['people', 'الأشخاص', 'user'], ['schedule', 'الجدول', 'calendar'], ['results', 'النتائج', 'flag'], ['projects', 'المشاريع', 'image'], ['comms', 'التواصل', 'bell'], ['judging', 'التحكيم', 'scale'], ['tour', 'لوحة البطولة', 'trophy'], ['export', 'تصدير', 'file-text']];
-    const list = h('div', { role: 'tablist', 'aria-label': 'أقسام الإدارة', class: 'a-tabs a-tabs-4 a-tabs-5 a-tabs-6 a-tabs-7 a-tabs-8 a-tabs-9' });
+    const defs = [['teams', 'الفرق', 'users'], ['stats', 'الإحصاءات', 'chart'], ['feed', 'الأخبار', 'megaphone'], ['people', 'الأشخاص', 'user'], ['schedule', 'الجدول', 'calendar'], ['results', 'النتائج', 'flag'], ['projects', 'المشاريع', 'image'], ['comms', 'التواصل', 'bell'], ['judging', 'التحكيم', 'scale'], ['tour', 'لوحة البطولة', 'trophy'], ['export', 'تصدير', 'file-text']];
+    const list = h('div', { role: 'tablist', 'aria-label': 'أقسام الإدارة', class: 'a-tabs a-tabs-4 a-tabs-5 a-tabs-6 a-tabs-7 a-tabs-8 a-tabs-9 a-tabs-11' });
     const els = defs.map(([k, label, ic], i) => {
       const on = A.tab === k;
       const b = h('button', { type: 'button', role: 'tab', id: 'at-' + k, 'aria-controls': 'ap-' + k, 'aria-selected': String(on), tabIndex: on ? 0 : -1, class: 'a-tab', 'data-fk': 'tab-' + k,
@@ -1012,6 +1033,8 @@
     const keep = focusKey || (document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.fk : '');
     const panel = h('div', { role: 'tabpanel', id: 'ap-' + A.tab, 'aria-labelledby': 'at-' + A.tab, class: 'a-panel' });
     if (A.tab === 'teams') drawAdminTeams(panel);
+    else if (A.tab === 'stats') drawAdminStats(panel);
+    else if (A.tab === 'feed') { if (!S.feed) { S.feed = feedDesk('feed'); S.feed.start(); } panel.append(S.feed.el); }
     else if (A.tab === 'people') drawAdminPeople(panel);
     else if (A.tab === 'tour') drawAdminTour(panel);
     else if (A.tab === 'results') {
@@ -1236,15 +1259,29 @@
     else if (p.role !== 'admin') {
       const sid = uid('role');
       const sel = h('select', { id: sid, class: 'a-select', 'aria-label': 'دور ' + (p.full_name || p.email) }, ['officer', 'leader', 'member', 'parent'].map(k => h('option', { value: k, selected: p.role === k, text: ROLE[k] })));
+      const led = p.role === 'leader' ? A.teams.find(t => t.leader_id === p.id) : null;
+      const tbox = led ? transferBox(p, led) : null;
+      const rmsg = h('p', { class: 'a-live-msg', role: 'alert', hidden: true });
       const save = btn('حفظ الدور', 'check', 'btn-ghost', async () => {
         if (save.dataset.busy) return;
         save.dataset.busy = '1';
+        rmsg.hidden = true;
         const r = await YB.rpc('set_user_role', { target: p.id, new_role: sel.value });
-        if (!r.ok) { delete save.dataset.busy; if (!sessionLost(r)) say(errMsg(r)); return; }
+        if (!r.ok) {
+          delete save.dataset.busy;
+          if (sessionLost(r)) return;
+          rmsg.textContent = errMsg(r); rmsg.hidden = false; say(rmsg.textContent);
+          if (r.error === 'leads_team' && tbox) { tbox.open(); if (trBtn) trBtn.setAttribute('aria-expanded', 'true'); }
+          return;
+        }
         await refreshAdmin('تم تغيير الدور.', 'rs-' + p.id);
       }, { disabled: true, 'data-fk': 'rs-' + p.id });
       sel.addEventListener('change', () => { save.disabled = sel.value === p.role; });
-      row.append(h('div', { class: 'a-person-a' }, sel, save));
+      const trBtn = tbox ? h('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'aria-expanded': 'false', 'data-fk': 'tr-open-' + p.id,
+        onclick: e => { if (tbox.hidden) tbox.open(); else tbox.hidden = true; e.currentTarget.setAttribute('aria-expanded', String(!tbox.hidden)); } },
+        icon('repeat'), h('span', { text: 'سلّم الفريق' })) : null;
+      row.append(h('div', { class: 'a-person-a' }, sel, save, trBtn), rmsg);
+      if (tbox) row.append(tbox);
       if (p.role === 'officer') row.append(officerComps(p));
     }
     return row;
@@ -1387,6 +1424,7 @@
     if (!O.tiles) O.tiles = officerTiles();
     dashLayout([
       { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [O.tiles, comps, announceFeed()] },
+      feedGroup(),
       { key: 'review', label: 'طلبات التسجيل', icon: 'users', one: true, nodes: [O.comps.includes('registration') ? reviewQueue() : null, O.roles ? roleListCard() : null] },
       { key: 'results', label: 'النتائج', icon: 'flag', one: true, nodes: [games.length ? O.res.el : null] },
       { key: 'projects', label: 'المشاريع', icon: 'image', one: true, nodes: [O.proj ? O.proj.el : null] },
@@ -1966,7 +2004,7 @@
   const isoDay = d => { const p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; };
   const dayText = s => (s ? fmtDate(String(s).slice(0, 10) + 'T12:00:00') : '');
 
-  async function shrinkPhoto(file) {
+  async function shrinkPhoto(file, edge) {
     if (!file || !/^image\//.test(file.type || '')) throw { error: 'bad_file_type' };
     let src = null, w = 0, ht = 0, url = '';
     try { src = await createImageBitmap(file, { imageOrientation: 'from-image' }); w = src.width; ht = src.height; } catch (e) {
@@ -1975,7 +2013,7 @@
       if (src) { w = src.naturalWidth; ht = src.naturalHeight; }
     }
     if (!src || !w || !ht) { if (url) URL.revokeObjectURL(url); throw { error: 'bad_file_type' }; }
-    const k = Math.min(1, PHOTO_EDGE / Math.max(w, ht));
+    const k = Math.min(1, (edge || PHOTO_EDGE) / Math.max(w, ht));
     const c = document.createElement('canvas');
     c.width = Math.max(1, Math.round(w * k)); c.height = Math.max(1, Math.round(ht * k));
     const g = c.getContext('2d');
@@ -1991,17 +2029,17 @@
 
   // signed links live 15 minutes; they are asked again a little before that
   const PHOTO_URL = new Map();
-  async function photoUrls(paths) {
-    const now = Date.now(), out = {}, miss = [];
-    paths.forEach(p => { const c = PHOTO_URL.get(p); if (c && c.until > now) out[p] = c.url; else miss.push(p); });
+  async function photoUrls(paths, bucket) {
+    const b = bucket || SUB_BUCKET, now = Date.now(), out = {}, miss = [];
+    paths.forEach(p => { const c = PHOTO_URL.get(b + ':' + p); if (c && c.until > now) out[p] = c.url; else miss.push(p); });
     if (miss.length && YB.signedUrls) {
-      const r = await YB.signedUrls(SUB_BUCKET, miss, 900);
-      if (r.ok && r.data) Object.keys(r.data).forEach(p => { PHOTO_URL.set(p, { url: r.data[p], until: now + 780000 }); out[p] = r.data[p]; });
+      const r = await YB.signedUrls(b, miss, 900);
+      if (r.ok && r.data) Object.keys(r.data).forEach(p => { PHOTO_URL.set(b + ':' + p, { url: r.data[p], until: now + 780000 }); out[p] = r.data[p]; });
     }
     return out;
   }
   // items: [{ path } | { url }]; onRemove(i) draws a remove button on each
-  function photoStrip(items, onRemove, title) {
+  function photoStrip(items, onRemove, title, bucket) {
     const ul = h('ul', { class: 'a-photos', 'aria-label': title ? `صور «${title}»` : 'صور التوثيق' });
     items.forEach((it, i) => {
       const li = h('li', { class: 'a-photo' });
@@ -2010,13 +2048,13 @@
       if (onRemove) li.append(h('button', { type: 'button', class: 'a-photo-x', 'aria-label': `احذف الصورة ${i + 1}`, 'data-fk': 'sphx-' + i, onclick: () => onRemove(i) }, icon('x')));
       ul.append(li);
     });
-    fillPhotos(ul, title);
+    fillPhotos(ul, title, bucket);
     return ul;
   }
-  async function fillPhotos(ul, title) {
+  async function fillPhotos(ul, title, bucket) {
     const lis = Array.from(ul.querySelectorAll('li[data-path]'));
     if (!lis.length) return;
-    const urls = await photoUrls(lis.map(li => li.dataset.path));
+    const urls = await photoUrls(lis.map(li => li.dataset.path), bucket);
     lis.forEach((li, i) => {
       const u = urls[li.dataset.path];
       const ph = li.querySelector('.a-photo-ph');
@@ -2605,8 +2643,9 @@
     if (!L.chat) { L.chat = chatRoom(false, 'lchat'); L.chat.start(); }
     dashLayout([
       { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [leaderTiles(t), L.boxes.top, L.boxes.check, scoresCard(), announceFeed()] },
+      feedGroup(),
       { key: 'matches', label: 'المباريات والمواعيد', icon: 'trophy', one: true, nodes: [L.dates, L.sched.node, L.boxes.marks] },
-      { key: 'team', label: 'الفريق', icon: 'users', nodes: [L.boxes.roster, L.boxes.roles, L.boxes.code, L.printBox] },
+      { key: 'team', label: 'الفريق', icon: 'users', nodes: [L.boxes.roster, L.boxes.roles, L.boxes.code, (L.style || (L.style = teamStyleCard(t), L.style.start(), L.style)).el, L.printBox] },
       { key: 'projects', label: 'المشاريع والمبادرات', icon: 'image', one: true, nodes: [L.subs.el] },
       { key: 'room', label: 'غرفة القادة', icon: 'bell', one: true, nodes: [L.chat.el] }]);
     L.subs.start();
@@ -2981,6 +3020,7 @@
       box.node];
     dashLayout([
       { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [memberTiles(row), mv[2], mv[0], mv[1], mv[4]] },
+      feedGroup(),
       { key: 'matches', label: 'المباريات والمواعيد', icon: 'trophy', one: true, nodes: [mv[5], mv[7]] },
       { key: 'team', label: 'الفريق', icon: 'users', nodes: [mv[3]] },
       { key: 'projects', label: 'المشاريع والمبادرات', icon: 'image', one: true, nodes: [mv[6]] }]);
@@ -3019,10 +3059,705 @@
       h('p', { class: 'a-lead', text: 'اطلب من قائد الفريق رمز الفريق، واكتب اسم الطفل كما كتبه في القائمة.' }), joinForm('parent'));
     dashLayout([
       { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: home },
+      feedGroup(),
       { key: 'judge', label: 'التحكيم', icon: 'scale', one: true, nodes: [jd.el] },
       { key: 'matches', label: 'المباريات والمشاريع', icon: 'trophy', one: true, nodes: games },
       { key: 'link', label: 'ربط ابن أو ابنة', icon: 'user-check', nodes: [link] }]);
     startSchedule(boxes);
+  }
+
+  /* ------------------------------------------------------------------ SOCIAL (migration 0011): the news feed, customization,
+     the leader handover and the admin's statistics. The admin publishes at once; a team leader's post waits for the admin
+     (who also checks the parents' consent for any photo). Everyone signed in reacts; comments are for grown-ups unless the
+     admin lets members comment. A child never shows a photo of themselves: initials in the team's color. */
+  const FEED_BUCKET = 'yanabee-feed', AV_BUCKET = 'yanabee-avatars', FEED_PHOTOS = 4, FEED_MAX = 1500;
+  const REACT = [['clap', '👏', 'تصفيق'], ['heart', '❤️', 'أحببته'], ['dua', '🤲', 'دعاء'], ['strong', '💪', 'قوة']];
+  const PALETTE = { teal: ['فيروزي', '#0a7680'], blue: ['أزرق', '#1f63b8'], green: ['أخضر', '#1d7a37'], amber: ['عنبري', '#8a5a00'],
+    orange: ['برتقالي', '#b3461a'], red: ['أحمر', '#b3302f'], purple: ['بنفسجي', '#5b3fb5'], pink: ['وردي', '#a8326a'] };
+  const BADGES = { star: ['نجمة', '⭐'], moon: ['هلال', '🌙'], sun: ['شمس', '☀️'], leaf: ['ورقة', '🌿'], book: ['كتاب', '📖'],
+    ball: ['كرة', '⚽'], chess: ['شطرنج', '♟️'], bolt: ['برق', '⚡'], heart: ['قلب', '💚'], shield: ['درع', '🛡️'] };
+  const NOTE_GROUPS = [['matches', 'المباريات والنتائج والمواعيد'], ['projects', 'المشاريع والمبادرات'], ['announcements', 'الإعلانات'], ['feed', 'الأخبار والتعليقات على منشوراتي']];
+  const SIZES = { m: 'عادي', l: 'كبير', xl: 'أكبر' };
+  const THEMES = { auto: 'مثل جهازي', light: 'فاتح', dark: 'داكن' };
+  const POST_ERR = { too_fast: 'نشرت قبل لحظات. انتظر قليلًا ثم انشر.', too_many: 'لديك خمسة أخبار تنتظر موافقة المشرف. انتظر حتى يراجعها.',
+    no_team: 'تحتاج فريقًا لتنشر أخباره.', too_many_photos: 'أربع صور على الأكثر في الخبر.', bad_photo: 'تعذّر ربط إحدى الصور. احذفها وأعد اختيارها.' };
+  const CMT_ERR = { too_fast: 'علّقت قبل لحظات. انتظر ثواني قليلة.', chat_muted: 'أوقفت الإدارة تعليقاتك مؤقتًا؛ يمكنك القراءة فقط.',
+    contact_not_allowed: 'لا تُكتب أرقام الهواتف ولا البريد في التعليقات، حفاظًا على الجميع.', not_found: 'هذا الخبر لم يعد متاحًا.' };
+
+  function timeAgo(iso) {
+    const t = Date.parse(iso || '');
+    if (!Number.isFinite(t)) return '';
+    const s = Math.max(0, (Date.now() - t) / 1000);
+    if (s < 60) return 'الآن';
+    if (s < 3600) { const m = Math.round(s / 60); return m === 1 ? 'قبل دقيقة' : m === 2 ? 'قبل دقيقتين' : m <= 10 ? `قبل ${m} دقائق` : `قبل ${m} دقيقة`; }
+    if (s < 86400) { const hh = Math.round(s / 3600); return hh === 1 ? 'قبل ساعة' : hh === 2 ? 'قبل ساعتين' : hh <= 10 ? `قبل ${hh} ساعات` : `قبل ${hh} ساعة`; }
+    if (s < 172800) return 'أمس';
+    try { return new Date(t).toLocaleDateString('ar-u-nu-latn', { day: 'numeric', month: 'long' }); } catch (e) { return ''; }
+  }
+  // a round picture, or the first letter on the team's color (always for a child)
+  function avatarEl(name, path, color, cls) {
+    const c = (PALETTE[color] || PALETTE.teal)[1];
+    const el = h('span', { class: 'a-av' + (cls ? ' ' + cls : ''), 'aria-hidden': 'true', style: `--av:${c}`, text: (String(name || '?').trim().charAt(0) || '?') });
+    if (path) photoUrls([path], AV_BUCKET).then(u => { if (u[path]) put(el, h('img', { src: u[path], alt: '', loading: 'lazy', decoding: 'async' })); });
+    return el;
+  }
+
+  /* --- personal settings (yb_my_prefs / yb_save_prefs): theme, accent, text size, hidden sections, notifications, picture */
+  async function loadPrefs() {
+    let r;
+    try { r = await YB.rpc('yb_my_prefs', {}); } catch (e) { r = null; }
+    applyPrefs(r && r.ok && r.data && typeof r.data === 'object' ? r.data : null);
+  }
+  function applyPrefs(p) {
+    S.prefs = p || { theme: 'auto', accent: 'teal', text_size: 'm', hidden_sections: [], notify_off: [], avatar_path: null, can_avatar: false };
+    const de = document.documentElement;
+    Object.keys(PALETTE).forEach(k => de.classList.toggle('acc-' + k, k === S.prefs.accent && k !== 'teal'));
+    ['l', 'xl'].forEach(k => de.classList.toggle('ts-' + k, S.prefs.text_size === k));
+    if (p && S.prefs.theme && S.prefs.theme !== 'auto') {
+      de.dataset.theme = S.prefs.theme;
+      try { localStorage.setItem('yanabee-theme', S.prefs.theme); } catch (e) { /* storage blocked */ }
+    } else if (p) {
+      try { localStorage.removeItem('yanabee-theme'); } catch (e) { /* storage blocked */ }
+      de.dataset.theme = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+  }
+  async function savePref(patch, done) {
+    const r = await YB.rpc('yb_save_prefs', { p: patch });
+    if (!r.ok || !r.data || !r.data.ok) { if (r && sessionLost(r)) return false; say(errMsg(r.ok ? { error: r.data && r.data.error } : r)); return false; }
+    applyPrefs(r.data.prefs);
+    if (done) say(done);
+    return true;
+  }
+  function settingsPanel(profile, onAvatar) {
+    const P = () => S.prefs || {};
+    const el = h('section', { class: 'a-card a-cust', hidden: true, 'aria-labelledby': 'cust-h', 'data-settings': '' });
+    const status = h('p', { class: 'a-hint', role: 'status', 'data-cust-status': '' });
+    const saved = msg => { status.textContent = msg || 'حُفظ.'; };
+    const radios = (name, legend, opts, current, onPick, cls) => h('fieldset', { class: 'a-cust-set ' + (cls || '') }, h('legend', { text: legend }),
+      h('div', { class: 'a-cust-opts' }, Object.keys(opts).map(k => {
+        const o = opts[k];
+        const inp = h('input', { type: 'radio', name, value: k, checked: k === current, 'data-fk': name + '-' + k });
+        inp.addEventListener('change', () => { if (inp.checked) onPick(k); });
+        return h('label', { class: 'a-cust-opt' + (o.sw ? ' sw' : ''), style: o.sw ? `--sw:${o.sw}` : null }, inp,
+          o.sw ? h('span', { class: 'a-swd', 'aria-hidden': 'true' }) : null, h('span', { class: o.sw ? 'a-sr' : '', text: o.label }));
+      })));
+    function paint() {
+      const p = P();
+      const theme = radios('cth', 'المظهر', Object.fromEntries(Object.keys(THEMES).map(k => [k, { label: THEMES[k] }])), p.theme || 'auto',
+        async k => { if (await savePref({ theme: k })) saved('حُفظ المظهر.'); });
+      const accent = radios('cac', 'لون لوحتي', Object.fromEntries(Object.keys(PALETTE).map(k => [k, { label: PALETTE[k][0], sw: PALETTE[k][1] }])), p.accent || 'teal',
+        async k => { if (await savePref({ accent: k })) saved('حُفظ اللون.'); }, 'swatches');
+      const size = radios('csz', 'حجم الخط', Object.fromEntries(Object.keys(SIZES).map(k => [k, { label: SIZES[k] }])), p.text_size || 'm',
+        async k => { if (await savePref({ text_size: k })) saved('حُفظ حجم الخط.'); });
+      // the sections of this screen (the overview always stays)
+      const secs = (S.lastGroups || []).filter(g => g && g.key !== 'home');
+      const hidden = p.hidden_sections || [];
+      const secBox = secs.length ? h('fieldset', { class: 'a-cust-set' }, h('legend', { text: 'أقسام لوحتي' }),
+        h('p', { class: 'a-hint', text: 'أخفِ ما لا تحتاجه. تبقى «نظرة عامة» دائمًا.' }),
+        h('div', { class: 'a-cust-checks' }, secs.map(g => {
+          const cb = h('input', { type: 'checkbox', checked: !hidden.includes(g.key), 'data-fk': 'csec-' + g.key });
+          cb.addEventListener('change', async () => {
+            const now = new Set(P().hidden_sections || []);
+            if (cb.checked) now.delete(g.key); else now.add(g.key);
+            if (await savePref({ hidden_sections: Array.from(now) })) { saved(cb.checked ? `أُظهر «${g.label}».` : `أُخفي «${g.label}».`); if (S.lastGroups) dashLayout(S.lastGroups); }
+            else cb.checked = !cb.checked;
+          });
+          return h('label', { class: 'a-check' }, cb, h('span', { text: g.label }));
+        }))) : null;
+      const off = p.notify_off || [];
+      const notes = h('fieldset', { class: 'a-cust-set' }, h('legend', { text: 'التنبيهات' }),
+        h('div', { class: 'a-cust-checks' }, NOTE_GROUPS.map(([k, label]) => {
+          const cb = h('input', { type: 'checkbox', checked: !off.includes(k), 'data-fk': 'cnote-' + k });
+          cb.addEventListener('change', async () => {
+            const now = new Set(P().notify_off || []);
+            if (cb.checked) now.delete(k); else now.add(k);
+            if (await savePref({ notify_off: Array.from(now) })) saved(cb.checked ? `ستصلك تنبيهات «${label}».` : `لن تصلك تنبيهات «${label}».`);
+            else cb.checked = !cb.checked;
+          });
+          return h('label', { class: 'a-check' }, cb, h('span', { text: label }));
+        })),
+        h('p', { class: 'a-hint', text: 'تصلك دائمًا التنبيهات المهمة: حالة الفريق، وموافقات الأهل، والتحكيم والنتائج، وقرارات الإدارة.' }));
+      put(el, h('div', { class: 'a-cust-h' }, h('h3', { id: 'cust-h' }, icon('sparkles'), h('span', { text: 'تخصيص حسابي' })),
+          h('button', { type: 'button', class: 'a-link', text: 'إغلاق', onclick: () => el.close() })),
+        h('div', { class: 'a-cust-grid' }, h('div', {}, theme, accent, size), h('div', {}, pictureBox(), secBox, notes)), status);
+    }
+    function pictureBox() {
+      const p = P();
+      if (!p.can_avatar) return h('div', { class: 'a-cust-set' }, h('b', { class: 'a-l', text: 'صورتك' }),
+        h('div', { class: 'a-cust-pic' }, avatarEl(profile.full_name, null, 'teal', 'lg'),
+          h('p', { class: 'a-hint', text: 'يظهر الحرف الأول من اسمك بلون فريقك. لا تُرفع صور الأعضاء، حفاظًا عليهم.' })));
+      const pickId = uid('f');
+      const pick = h('input', { id: pickId, type: 'file', accept: 'image/*', class: 'a-file-h', 'data-fk': 'cpic' });
+      const msg = h('p', { class: 'a-live-msg', role: 'alert', hidden: true });
+      pick.addEventListener('change', async () => {
+        const f = pick.files && pick.files[0];
+        pick.value = '';
+        if (!f) return;
+        msg.hidden = true;
+        status.textContent = 'جارٍ رفع الصورة…';
+        let blob;
+        try { blob = await shrinkPhoto(f, 480); } catch (e) { status.textContent = ''; msg.textContent = YB.errorText(e); msg.hidden = false; return; }
+        const path = `${S.uid}/${Date.now().toString(36)}.jpg`;
+        const old = P().avatar_path;
+        const u = await YB.upload(AV_BUCKET, path, blob, 'image/jpeg');
+        if (!u.ok) { status.textContent = ''; if (sessionLost(u)) return; msg.textContent = errMsg(u); msg.hidden = false; return; }
+        if (await savePref({ avatar: path })) {
+          if (old && old !== path) YB.removeFiles(AV_BUCKET, [old]);
+          saved('حُفظت صورتك.'); paint(); if (onAvatar) onAvatar();
+        } else status.textContent = '';
+      });
+      const remove = p.avatar_path ? btn('أزل الصورة', 'trash', 'btn-ghost', async () => {
+        const old = P().avatar_path;
+        if (await savePref({ avatar: null })) { if (old) YB.removeFiles(AV_BUCKET, [old]); saved('أُزيلت صورتك.'); paint(); if (onAvatar) onAvatar(); }
+      }, { 'data-fk': 'cpic-x' }) : null;
+      return h('div', { class: 'a-cust-set' }, h('b', { class: 'a-l', text: 'صورتك' }),
+        h('div', { class: 'a-cust-pic' }, avatarEl(profile.full_name, p.avatar_path, 'teal', 'lg'),
+          h('div', {}, h('label', { for: pickId, class: 'btn btn-ghost btn-sm' }, icon('image'), h('span', { text: p.avatar_path ? 'غيّر الصورة' : 'اختر صورة' })), pick, remove,
+            h('small', { class: 'a-hint', text: 'تُصغَّر على جهازك قبل الرفع. يراها من سجّل الدخول فقط.' }))), msg);
+    }
+    el.open = () => { paint(); el.hidden = false; const f = el.querySelector('input'); if (f) f.focus(); };
+    el.close = () => { el.hidden = true; if (el.onclose) el.onclose(); };
+    return el;
+  }
+
+  /* --- team identity (yb_team_style): the leader picks a color and a badge */
+  function teamStyleCard(team) {
+    const el = h('section', { class: 'a-card a-tstyle', 'aria-labelledby': 'tst-h', 'data-team-style': '' });
+    const cur = { color: 'teal', badge: 'star' };
+    const preview = h('div', { class: 'a-tstyle-p', 'aria-live': 'polite' });
+    const paintPreview = () => put(preview, h('span', { class: 'a-tbadge', style: `--tc:${PALETTE[cur.color][1]}` }, h('span', { 'aria-hidden': 'true', text: BADGES[cur.badge][1] }),
+      h('b', { text: team.team_name || team.name || '' })), h('small', { class: 'a-hint', text: `${PALETTE[cur.color][0]} · ${BADGES[cur.badge][0]}` }));
+    const group = (name, legend, opts, key) => h('fieldset', { class: 'a-cust-set' }, h('legend', { text: legend }), h('div', { class: 'a-cust-opts' + (key === 'color' ? ' swatches' : ' badges') },
+      Object.keys(opts).map(k => {
+        const inp = h('input', { type: 'radio', name, value: k, checked: cur[key] === k, 'data-fk': name + '-' + k });
+        inp.addEventListener('change', () => { if (inp.checked) { cur[key] = k; paintPreview(); } });
+        return h('label', { class: 'a-cust-opt' + (key === 'color' ? ' sw' : ' bd'), style: key === 'color' ? `--sw:${opts[k][1]}` : null }, inp,
+          key === 'color' ? h('span', { class: 'a-swd', 'aria-hidden': 'true' }) : h('span', { class: 'a-bd', 'aria-hidden': 'true', text: opts[k][1] }), h('span', { class: 'a-sr', text: opts[k][0] }));
+      })));
+    const msg = h('p', { class: 'a-hint', role: 'status' });
+    async function start() {
+      const r = await read('yb_team_style', { select: 'color,badge', filter: { team_id: 'eq.' + (team.team_id || team.id) } });
+      const row = r.ok && Array.isArray(r.data) && r.data[0];
+      if (row && PALETTE[row.color]) cur.color = row.color;
+      if (row && BADGES[row.badge]) cur.badge = row.badge;
+      S.myColor = cur.color;
+      paint();
+    }
+    function paint() {
+      const name = 'ts';
+      put(el, h('h3', { id: 'tst-h' }, icon('flag'), h('span', { text: 'هوية الفريق' })),
+        h('p', { class: 'a-lead', text: 'اختر لون فريقك وشارته. تظهران على أخبار الفريق وفي بطاقته.' }), preview,
+        group(name + 'c', 'اللون', PALETTE, 'color'), group(name + 'b', 'الشارة', BADGES, 'badge'), msg,
+        h('div', { class: 'a-actions' }, btn('احفظ هوية الفريق', 'check', 'btn-primary', async () => {
+          const r = await YB.rpc('yb_set_team_style', { team_id: team.team_id || team.id, color: cur.color, badge: cur.badge });
+          if (!r.ok || !r.data || !r.data.ok) { if (r && sessionLost(r)) return; msg.textContent = errMsg(r.ok ? { error: r.data && r.data.error } : r); return; }
+          S.myColor = cur.color;
+          msg.textContent = 'حُفظت هوية الفريق.'; say(msg.textContent);
+        }, { 'data-fk': 'tst-save' })));
+      paintPreview();
+    }
+    return { el, start };
+  }
+
+  /* --- the news feed */
+  function feedDesk(fk) {
+    const F = { posts: [], meta: null, more: false, err: '', open: new Set(), edit: null, reports: null, showReports: false };
+    const el = h('section', { class: 'a-card a-feed', 'aria-labelledby': fk + '-h', 'data-feed': '' });
+    const list = h('div', { class: 'a-feed-l', 'aria-live': 'polite' });
+    const focusFk = k => { const f = el.querySelector(`[data-fk="${CSS.escape(k)}"]`); if (f) f.focus({ preventScroll: true }); };
+    async function load(before) {
+      const r = await YB.rpc('yb_feed', before ? { before, lim: 15 } : { lim: 15 });
+      if (!r.ok || !r.data || typeof r.data !== 'object') { F.err = errMsg(r); if (r) sessionLost(r); return false; }
+      F.err = '';
+      const posts = Array.isArray(r.data.posts) ? r.data.posts : [];
+      if (before) F.posts = F.posts.concat(posts.filter(x => !F.posts.some(y => y.id === x.id)));
+      else { F.posts = posts; F.meta = r.data; }
+      F.more = posts.length >= 15;
+      return true;
+    }
+    async function refresh(msg, focus) { await load(); if (F.showReports) await loadReports(); paint(); if (msg) say(msg); if (focus) focusFk(focus); }
+    async function loadReports() {
+      const r = await YB.rpc('yb_feed_reports', {});
+      F.reports = r.ok && Array.isArray(r.data) ? r.data : [];
+    }
+    const M = () => F.meta || {};
+    function paint() {
+      const m = M();
+      const head = h('div', { class: 'a-feed-h' }, h('h3', { id: fk + '-h' }, icon('megaphone'), h('span', { text: 'الأخبار' })),
+        btn('تحديث', 'repeat', 'btn-ghost', () => refresh('تم التحديث.', fk + '-refresh'), { 'data-fk': fk + '-refresh' }));
+      const adminBar = m.admin ? adminTools() : null;
+      const queue = m.admin && Array.isArray(m.queue) && m.queue.length ? h('div', { class: 'a-feed-q', 'data-feed-queue': '' },
+        h('h4', {}, icon('clock'), h('span', { text: `بانتظار موافقتك (${m.queue.length})` })),
+        h('p', { class: 'a-hint', text: 'أخبار القادة لا تظهر لأحد قبل أن تنشرها. تأكد أن أولياء أمور من يظهر في الصور موافقون.' }),
+        m.queue.map(x => postCard(x, true))) : null;
+      put(list, ...(F.posts.length ? F.posts.map(x => postCard(x, false)) : [h('p', { class: 'a-empty', text: m.can_post ? 'لا أخبار بعد. اكتب أول خبر!' : 'لا أخبار بعد. ستظهر هنا أخبار الإدارة والفرق.' })]));
+      put(el, head, F.err ? h('p', { class: 'a-live-msg', role: 'alert', text: F.err }) : null, adminBar, queue,
+        m.can_post ? composer() : null, list,
+        F.more ? h('div', { class: 'a-actions center' }, btn('أخبار أقدم', 'chevron-down', 'btn-ghost', async () => {
+          const last = F.posts.filter(x => !x.pinned).slice(-1)[0];
+          if (!last) return;
+          await load(last.at); paint(); focusFk(fk + '-more');
+        }, { 'data-fk': fk + '-more' })) : null);
+    }
+    function adminTools() {
+      const m = M();
+      const cb = h('input', { type: 'checkbox', checked: !!m.members_comment, 'data-fk': fk + '-mc' });
+      cb.addEventListener('change', async () => {
+        cb.disabled = true;
+        const r = await YB.rpc('yb_set_members_comment', { allow: cb.checked });
+        cb.disabled = false;
+        if (!r.ok) { cb.checked = !cb.checked; if (!sessionLost(r)) say(errMsg(r)); return; }
+        await refresh(cb.checked ? 'صار بإمكان الأعضاء التعليق.' : 'أُوقفت تعليقات الأعضاء.', fk + '-mc');
+      });
+      const n = m.reports || 0;
+      const repBtn = btn(n ? `بلاغات التعليقات (${n})` : 'بلاغات التعليقات', 'alert', n ? 'btn-primary' : 'btn-ghost', async () => {
+        F.showReports = !F.showReports;
+        if (F.showReports) await loadReports();
+        paint(); focusFk(fk + '-reps');
+      }, { 'data-fk': fk + '-reps', 'aria-expanded': String(F.showReports) });
+      return h('div', { class: 'a-feed-admin' }, h('div', { class: 'a-feed-tools' },
+        h('label', { class: 'a-check' }, cb, h('span', { text: 'السماح للأعضاء (الأطفال) بالتعليق' })), repBtn),
+        F.showReports ? reportsList() : null);
+    }
+    function reportsList() {
+      const rows = F.reports || [];
+      if (!rows.length) return h('p', { class: 'a-empty', text: 'لا بلاغات مفتوحة.' });
+      return h('ul', { class: 'a-feed-reps', 'data-feed-reports': '' }, rows.map(x => {
+        const act = (action, done) => async () => {
+          const r = await YB.rpc('yb_comment_moderate', { id: x.comment_id, action });
+          if (!r.ok) { if (!sessionLost(r)) say(errMsg(r)); return; }
+          await refresh(done, fk + '-reps');
+        };
+        return h('li', { class: 'a-feed-rep' },
+          h('p', {}, h('b', { text: x.author_name + ': ' }), h('span', { text: x.body })),
+          h('small', { class: 'a-hint', text: `على خبر: «${x.post_snippet}» · بلاغات: ${x.reports}${(x.reasons || []).length ? ' · السبب: ' + x.reasons.join('، ') : ''}` }),
+          h('div', { class: 'a-actions' },
+            btn('أخفِ التعليق', 'eye', 'btn-primary', act('hide', 'أُخفي التعليق.'), { 'data-fk': 'crh-' + x.comment_id }),
+            btn('أبقِه وأغلق البلاغ', 'check', 'btn-ghost', act('keep', 'أُغلق البلاغ.'), { 'data-fk': 'crk-' + x.comment_id }),
+            armed(btn('أوقف كاتبه يومًا', 'lock', 'btn-ghost', null, { 'data-fk': 'crm-' + x.comment_id }), 'اضغط مرة أخرى للتأكيد', async () => {
+              const r = await YB.rpc('yb_comment_mute', { id: x.comment_id, hours: 24, reason: 'بلاغ على تعليق' });
+              if (!r.ok) { if (!sessionLost(r)) say(errMsg(r)); return; }
+              await refresh('أُوقف الكاتب عن التعليق يومًا واحدًا.', fk + '-reps');
+            })));
+      }));
+    }
+    function composer() {
+      const ed = F.edit || { id: null, body: '', photos: [], adds: [], mine: true };
+      const isLeader = S.role === 'leader';
+      const taId = uid('f'), pickId = uid('f');
+      const ta = h('textarea', { id: taId, class: 'a-note-in a-feed-ta', rows: 3, maxlength: FEED_MAX, 'data-fk': fk + '-ta',
+        placeholder: isLeader ? 'شارك خبرًا عن فريقك: تدريب، مبادرة، لحظة جميلة…' : 'اكتب خبرًا لكل المشاركين…' });
+      ta.value = ed.body || '';
+      const counter = h('small', { class: 'a-hint', 'aria-live': 'polite' });
+      const count = () => { counter.textContent = `${String(ta.value).length} / ${FEED_MAX}`; };
+      ta.addEventListener('input', count);
+      const canPhoto = ed.mine !== false && !(DEMO && DEMO.active);   // the demo has no photo storage
+      const pick = h('input', { id: pickId, type: 'file', accept: 'image/*', multiple: true, class: 'a-file-h', 'data-fk': fk + '-pick' });
+      const strip = h('div', { class: 'a-feed-pre' });
+      const ok = h('input', { type: 'checkbox', name: 'fok', 'data-fk': fk + '-ok' });
+      const okRow = h('label', { class: 'a-check', hidden: true }, ok, h('span', { text: 'تأكدت أن أولياء أمور من يظهر في الصور موافقون على نشرها.' }));
+      const total = () => ed.photos.length + ed.adds.length;
+      function paintStrip() {
+        put(strip, total() ? photoStrip(ed.photos.map(path => ({ path })).concat(ed.adds.map(a => ({ url: a.url }))), i => {
+          if (i < ed.photos.length) ed.photos.splice(i, 1); else { const a = ed.adds.splice(i - ed.photos.length, 1)[0]; if (a && a.url) URL.revokeObjectURL(a.url); }
+          paintStrip();
+        }, 'الخبر', FEED_BUCKET) : null);
+        okRow.hidden = !(isLeader && total());
+        pick.disabled = total() >= FEED_PHOTOS;
+      }
+      pick.addEventListener('change', () => {
+        Array.from(pick.files || []).forEach(f => { if (total() < FEED_PHOTOS && /^image\//.test(f.type || '')) ed.adds.push({ file: f, url: URL.createObjectURL(f) }); });
+        pick.value = '';
+        paintStrip();
+      });
+      const progress = h('p', { class: 'a-hint', role: 'status' });
+      const form = h('form', { class: 'a-form a-feed-c', 'aria-label': ed.id ? 'تعديل الخبر' : 'خبر جديد', 'data-feed-form': '' },
+        h('div', { class: 'a-feed-c-top' }, avatarEl(S.me && S.me.full_name, S.prefs && S.prefs.avatar_path, S.myColor),
+          h('div', { class: 'a-f' }, h('label', { for: taId, class: 'a-l', text: ed.id ? 'عدّل الخبر' : (isLeader ? 'خبر من فريقك' : 'خبر جديد') }), ta, counter)),
+        strip, okRow,
+        isLeader ? h('p', { class: 'a-hint' }, icon('shield'), h('span', { text: ' يراجع المشرف خبرك قبل أن يراه الجميع.' })) : null,
+        progress,
+        h('div', { class: 'a-actions' },
+          canPhoto ? h('label', { for: pickId, class: 'btn btn-ghost btn-sm' }, icon('image'), h('span', { text: 'صور (حتى 4)' })) : null, canPhoto ? pick : null,
+          submitBtn(ed.id ? 'احفظ التعديل' : (isLeader ? 'أرسل للمراجعة' : 'انشر'), 'send'),
+          ed.id ? h('button', { type: 'button', class: 'a-link', text: 'إلغاء', onclick: () => { F.edit = null; paint(); focusFk(fk + '-ta'); } }) : null));
+      count(); paintStrip();
+      bind(form, async () => {
+        const body = String(ta.value || '').trim();
+        if (!body) return showErr(form, 'اكتب نص الخبر.', ta);
+        if (isLeader && total() && !ok.checked) return showErr(form, 'أكّد موافقة الأهل على الصور، أو احذف الصور.', ok);
+        showErr(form, '');
+        const id = ed.id || newId();
+        const added = [];
+        for (let i = 0; i < ed.adds.length; i++) {
+          progress.textContent = `جارٍ رفع الصورة ${i + 1} من ${ed.adds.length}…`;
+          let blob;
+          try { blob = await shrinkPhoto(ed.adds[i].file); } catch (e) { progress.textContent = ''; return showErr(form, YB.errorText(e), pick); }
+          const path = `${S.uid}/${id}/${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}.jpg`;
+          const u = await YB.upload(FEED_BUCKET, path, blob, 'image/jpeg');
+          if (!u.ok) { progress.textContent = ''; if (sessionLost(u)) return; return showErr(form, errMsg(u), pick); }
+          added.push(path);
+        }
+        progress.textContent = '';
+        const photos = ed.photos.concat(added);
+        const r = await YB.rpc('yb_post_save', { id, body, photos });
+        if (!r.ok || !r.data || !r.data.ok) {
+          if (r && sessionLost(r)) return;
+          if (added.length) YB.removeFiles(FEED_BUCKET, added);
+          return showErr(form, errMsg(r.ok ? { error: r.data && r.data.error } : r, POST_ERR), ta);
+        }
+        const dropped = (ed.orig || []).filter(p => !photos.includes(p));
+        if (dropped.length) YB.removeFiles(FEED_BUCKET, dropped);
+        ed.adds.forEach(a => { if (a.url) URL.revokeObjectURL(a.url); });
+        F.edit = null;
+        await refresh(r.data.status === 'pending' ? 'أُرسل الخبر إلى المشرف. سيظهر للجميع بعد موافقته.' : (ed.id ? 'حُفظ التعديل.' : 'نُشر الخبر.'), fk + '-ta');
+      });
+      return form;
+    }
+    function postCard(x, inQueue) {
+      const m = M();
+      const isOpen = F.open.has(x.id);
+      const roleTxt = x.author_role === 'admin' ? 'الإدارة' : (ROLE[x.author_role] || '');
+      const team = x.team_name ? h('span', { class: 'a-tbadge sm', style: `--tc:${(PALETTE[x.team_color] || PALETTE.teal)[1]}` },
+        x.team_badge && BADGES[x.team_badge] ? h('span', { 'aria-hidden': 'true', text: BADGES[x.team_badge][1] }) : null, h('span', { text: x.team_name })) : null;
+      const chips = [x.pinned ? chip('مثبّت', 'brand') : null,
+        x.status === 'pending' ? chip('بانتظار موافقة المشرف', 'sun') : null,
+        x.status === 'rejected' ? chip('أُعيد للتعديل', 'bad') : null,
+        x.status === 'hidden' ? chip('مخفي عن الجميع', 'muted') : null].filter(Boolean);
+      const long = String(x.body || '').length > 320;
+      const body = h('p', { class: 'a-post-b' + (long ? ' clamp' : ''), text: x.body });
+      const more = long ? h('button', { type: 'button', class: 'a-link', 'aria-expanded': 'false', text: 'اقرأ المزيد', onclick: e => {
+        const open = body.classList.toggle('clamp') === false;
+        e.currentTarget.textContent = open ? 'أقل' : 'اقرأ المزيد';
+        e.currentTarget.setAttribute('aria-expanded', String(open));
+      } }) : null;
+      const photos = (x.photos || []).length ? postPhotos(x) : null;
+      const note = x.review_note && (x.status === 'rejected' || x.mine || m.admin) ? h('p', { class: 'a-pj-note', role: 'note' }, icon('alert'), h('span', { text: `ملاحظة المشرف: ${x.review_note}` })) : null;
+      const published = x.status === 'published';
+      const reacts = published ? h('div', { class: 'a-post-r', role: 'group', 'aria-label': 'تفاعل' }, REACT.map(([k, emo, label]) => {
+        const n = (x.reactions && x.reactions[k]) || 0, on = x.my_reaction === k;
+        return h('button', { type: 'button', class: 'a-react' + (on ? ' on' : ''), 'aria-pressed': String(on), 'aria-label': `${label} (${n})`, 'data-fk': `rx-${k}-${x.id}`,
+          onclick: async () => {
+            const r = await YB.rpc('yb_react', { post_id: x.id, kind: on ? null : k });
+            if (!r.ok || !r.data || !r.data.ok) { if (r && sessionLost(r)) return; say(errMsg(r.ok ? { error: r.data && r.data.error } : r)); return; }
+            x.reactions = r.data.reactions || {}; x.my_reaction = r.data.mine || null;
+            paint(); focusFk(`rx-${k}-${x.id}`); say(on ? 'أُزيل تفاعلك.' : `تفاعلت: ${label}.`);
+          } }, h('span', { 'aria-hidden': 'true', text: emo }), h('b', { text: n ? String(n) : '' }));
+      })) : null;
+      const acts = [];
+      if (published) acts.push(h('button', { type: 'button', class: 'a-post-cbtn', 'aria-expanded': String(isOpen), 'data-fk': 'cm-' + x.id,
+        onclick: () => { if (isOpen) F.open.delete(x.id); else F.open.add(x.id); paint(); focusFk('cm-' + x.id); } },
+        icon('message'), h('span', { text: `التعليقات (${x.comments || 0})` })));
+      if (inQueue) {
+        const nid = uid('f');
+        const nt = h('input', { id: nid, class: 'a-in', maxlength: 300, placeholder: 'مثل: احذفوا الصورة الثانية', 'data-fk': 'pqn-' + x.id });
+        acts.push(btn('انشره', 'check', 'btn-primary', () => moderate(x, 'publish', null, 'نُشر الخبر، وأُبلغ القائد.'), { 'data-fk': 'pqp-' + x.id }),
+          h('span', { class: 'a-feed-ret' }, h('label', { for: nid, class: 'a-sr', text: 'ملاحظة للقائد' }), nt,
+            btn('أعده بملاحظة', 'repeat', 'btn-ghost', () => moderate(x, 'reject', nt.value, 'أُعيد الخبر للقائد مع ملاحظتك.'), { 'data-fk': 'pqr-' + x.id })));
+      } else {
+        if (x.mine && x.status !== 'hidden') acts.push(btn('عدّل', 'file-text', 'btn-ghost', () => {
+          F.edit = { id: x.id, body: x.body, photos: [...(x.photos || [])], orig: [...(x.photos || [])], adds: [], mine: true };
+          paint(); focusFk(fk + '-ta');
+        }, { 'data-fk': 'pe-' + x.id }));
+        else if (m.admin && x.status === 'published') acts.push(btn('عدّل', 'file-text', 'btn-ghost', () => {
+          F.edit = { id: x.id, body: x.body, photos: [...(x.photos || [])], orig: [], adds: [], mine: false };
+          paint(); focusFk(fk + '-ta');
+        }, { 'data-fk': 'pe-' + x.id }));
+        if (m.admin && x.status === 'published') acts.push(btn(x.pinned ? 'ألغِ التثبيت' : 'ثبّت في الأعلى', 'pin', 'btn-ghost', () => moderate(x, x.pinned ? 'unpin' : 'pin', null, x.pinned ? 'أُلغي التثبيت.' : 'ثُبّت الخبر في الأعلى.'), { 'data-fk': 'pp-' + x.id }),
+          btn('أخفِه', 'eye', 'btn-ghost', () => moderate(x, 'hide', null, 'أُخفي الخبر عن الجميع.'), { 'data-fk': 'ph-' + x.id }));
+        if (m.admin && x.status === 'hidden') acts.push(btn('أظهره', 'eye', 'btn-ghost', () => moderate(x, 'show', null, 'عاد الخبر إلى الصفحة.'), { 'data-fk': 'ph-' + x.id }));
+        if (x.mine || m.admin) acts.push(armed(btn('احذف', 'trash', 'btn-ghost', null, { 'data-fk': 'pd-' + x.id }), 'اضغط مرة أخرى للحذف', async () => {
+          if ((x.photos || []).length) await YB.removeFiles(FEED_BUCKET, x.photos);
+          const r = await YB.rpc('yb_post_delete', { id: x.id });
+          if (!r.ok) { if (!sessionLost(r)) say(errMsg(r)); return; }
+          await refresh('حُذف الخبر.', fk + '-refresh');
+        }));
+      }
+      return h('article', { class: 'a-post' + (x.pinned ? ' pinned' : '') + (x.status !== 'published' ? ' st-' + x.status : ''), 'data-post': x.id, 'aria-label': `خبر من ${x.author_name}` },
+        h('header', { class: 'a-post-h' }, avatarEl(x.author_name, x.author_avatar, x.team_color),
+          h('div', { class: 'a-post-who' }, h('b', { text: x.author_name || '—' }),
+            h('small', {}, roleTxt ? h('span', { text: roleTxt }) : null, team, h('time', { datetime: x.at || x.published_at || x.created_at, text: timeAgo(x.at || x.published_at || x.created_at) }))),
+          chips.length ? h('div', { class: 'a-post-chips' }, chips) : null),
+        body, more, photos, note, reacts,
+        acts.length ? h('div', { class: 'a-post-a' }, acts) : null,
+        isOpen && published ? commentsBox(x) : null);
+    }
+    function postPhotos(x) {
+      const ps = x.photos.slice(0, FEED_PHOTOS);
+      const grid = h('div', { class: 'a-post-ph n' + ps.length });
+      ps.forEach(p => grid.append(h('span', { class: 'a-post-pi', 'data-path': p }, h('span', { class: 'a-photo-ph', 'aria-hidden': 'true' }, icon('image')))));
+      photoUrls(ps, FEED_BUCKET).then(u => grid.querySelectorAll('[data-path]').forEach((s, i) => {
+        const url = u[s.dataset.path];
+        if (url) put(s, h('a', { href: url, target: '_blank', rel: 'noopener noreferrer', 'aria-label': `افتح الصورة ${i + 1} بحجمها الكامل` }, h('img', { src: url, alt: '', loading: 'lazy', decoding: 'async' })));
+      }));
+      return grid;
+    }
+    async function moderate(x, action, note, done) {
+      const r = await YB.rpc('yb_post_moderate', note && String(note).trim() ? { id: x.id, action, note: String(note).trim() } : { id: x.id, action });
+      if (!r.ok || !r.data || !r.data.ok) { if (r && sessionLost(r)) return; say(errMsg(r.ok ? { error: r.data && r.data.error } : r)); return; }
+      await refresh(done, fk + '-refresh');
+    }
+    function commentsBox(x) {
+      const m = M();
+      const box = h('div', { class: 'a-cmts', 'data-comments': x.id }, h('p', { class: 'a-hint', text: 'جارٍ التحميل…' }));
+      const paintC = rows => {
+        const ul = h('ul', { class: 'a-cmt-l' }, rows.map(c => {
+          const acts = [];
+          if (c.mine) acts.push(armed(btn('احذف', 'trash', 'btn-ghost', null, { 'data-fk': 'cd-' + c.id }), 'اضغط للتأكيد', async () => {
+            const r = await YB.rpc('yb_comment_delete', { id: c.id });
+            if (!r.ok) { if (!sessionLost(r)) say(errMsg(r)); return; }
+            x.comments = Math.max(0, (x.comments || 1) - 1); await reload('حُذف تعليقك.');
+          }));
+          else if (!m.admin && !c.hidden) acts.push(c.reported ? h('small', { class: 'a-hint', text: 'أبلغت عنه' }) :
+            armed(btn('أبلغ', 'flag', 'btn-ghost', null, { 'data-fk': 'cr-' + c.id }), 'اضغط للتأكيد', async () => {
+              const r = await YB.rpc('yb_comment_report', { id: c.id });
+              if (!r.ok || !r.data || !r.data.ok) { if (r && sessionLost(r)) return; say(errMsg(r.ok ? { error: r.data && r.data.error } : r)); return; }
+              await reload('وصل بلاغك إلى المشرف. شكرًا لك.');
+            }));
+          if (m.admin && !c.mine) acts.push(btn(c.hidden ? 'أظهره' : 'أخفِه', 'eye', 'btn-ghost', async () => {
+            const r = await YB.rpc('yb_comment_moderate', { id: c.id, action: c.hidden ? 'show' : 'hide' });
+            if (!r.ok) { if (!sessionLost(r)) say(errMsg(r)); return; }
+            await reload(c.hidden ? 'أُظهر التعليق.' : 'أُخفي التعليق.', 'ch-' + c.id);
+          }, { 'data-fk': 'ch-' + c.id }), c.author_muted ? h('small', { class: 'a-hint', text: 'كاتبه موقوف' }) :
+            armed(btn('أوقفه يومًا', 'lock', 'btn-ghost', null, { 'data-fk': 'cmu-' + c.id }), 'اضغط للتأكيد', async () => {
+              const r = await YB.rpc('yb_comment_mute', { id: c.id, hours: 24 });
+              if (!r.ok || !r.data || !r.data.ok) { if (r && sessionLost(r)) return; say(errMsg(r.ok ? { error: r.data && r.data.error } : r)); return; }
+              await reload('أُوقف الكاتب عن التعليق يومًا واحدًا.');
+            }));
+          return h('li', { class: 'a-cmt' + (c.hidden ? ' hid' : '') }, avatarEl(c.author_name, c.author_avatar, null, 'sm'),
+            h('div', { class: 'a-cmt-b' }, h('p', {}, h('b', { text: c.author_name || '—' }), ' ',
+              h('span', { text: c.hidden && !m.admin ? 'أخفى المشرف هذا التعليق.' : c.body }), c.hidden && m.admin ? chip('مخفي', 'muted') : null),
+              h('small', { class: 'a-hint' }, h('time', { datetime: c.created_at, text: timeAgo(c.created_at) }), c.reports ? ` · بلاغات: ${c.reports}` : ''),
+              acts.length ? h('div', { class: 'a-cmt-a' }, acts) : null));
+        }));
+        const form = m.can_comment ? commentForm() : (S.role === 'member' ? h('p', { class: 'a-hint', text: 'التعليق متاح للأعضاء حين تسمح به الإدارة. يمكنك التفاعل بالرموز.' }) : null);
+        put(box, rows.length ? ul : h('p', { class: 'a-empty', text: 'لا تعليقات بعد.' }), form);
+      };
+      function commentForm() {
+        const id = uid('f');
+        const ta = h('textarea', { id, class: 'a-note-in', rows: 2, maxlength: 500, placeholder: 'اكتب تعليقًا لطيفًا…', 'data-fk': 'ct-' + x.id });
+        const f = h('form', { class: 'a-form a-cmt-f', 'aria-label': 'تعليق جديد' }, h('label', { for: id, class: 'a-sr', text: 'تعليقك' }), ta,
+          h('div', { class: 'a-actions' }, submitBtn('علّق', 'send')));
+        bind(f, async () => {
+          const b = String(ta.value || '').trim();
+          if (!b) return showErr(f, 'اكتب تعليقك أولًا.', ta);
+          const r = await YB.rpc('yb_comment_post', { post_id: x.id, body: b });
+          if (!r.ok || !r.data || !r.data.ok) { if (r && sessionLost(r)) return; return showErr(f, errMsg(r.ok ? { error: r.data && r.data.error } : r, CMT_ERR), ta); }
+          x.comments = (x.comments || 0) + 1;
+          await reload('أُضيف تعليقك.', 'ct-' + x.id);
+        });
+        return f;
+      }
+      async function reload(msg, focus) {
+        const r = await YB.rpc('yb_comments', { post_id: x.id });
+        if (!r.ok) { put(box, h('p', { class: 'a-live-msg', role: 'alert', text: errMsg(r) })); return; }
+        paintC(Array.isArray(r.data) ? r.data : []);
+        const cbtn = el.querySelector(`[data-fk="cm-${CSS.escape(x.id)}"] span`);
+        if (cbtn) cbtn.textContent = `التعليقات (${x.comments || 0})`;
+        if (msg) say(msg);
+        if (focus) focusFk(focus);
+      }
+      reload();
+      return box;
+    }
+    return { el, start: async () => { put(el, skeleton()); await load(); paint(); } };
+  }
+  // the feed section of a dashboard (one feed per screen, kept across repaints)
+  function feedGroup() {
+    if (!S.feed) { S.feed = feedDesk('feed'); S.feed.start(); }
+    return { key: 'feed', label: 'الأخبار', icon: 'megaphone', one: true, nodes: [S.feed.el] };
+  }
+
+  /* --- the leader handover (yb_transfer_team), from «الأشخاص» */
+  // the box stays empty until it is opened (the candidate list names other people)
+  function transferBox(p, team) {
+    const box = h('div', { class: 'a-transfer', hidden: true, 'data-transfer': p.id });
+    box.open = () => { if (!box.firstChild) fillTransfer(box, p, team); box.hidden = false; const f = box.querySelector('select'); if (f) f.focus(); };
+    return box;
+  }
+  function fillTransfer(box, p, team) {
+    const leads = new Set(A.teams.map(t => t.leader_id));
+    const inTeam = new Map(A.members.filter(m => m.user_id).map(m => [m.user_id, m.team_id]));
+    const cands = A.profiles.filter(x => x.id !== p.id && (x.role === 'member' || x.role === 'parent' || (x.role === 'leader' && !leads.has(x.id)))
+      && (!inTeam.has(x.id) || inTeam.get(x.id) === team.id));
+    const sid = uid('f');
+    const sel = h('select', { id: sid, class: 'a-select', 'data-fk': 'tr-to-' + p.id },
+      h('option', { value: '', text: cands.length ? 'اختر القائد الجديد' : 'لا يوجد حساب مناسب بعد' }),
+      cands.map(x => h('option', { value: x.id, text: `${x.full_name || x.email} · ${ROLE[x.role] || x.role}${inTeam.get(x.id) === team.id ? ' · في الفريق' : ''}` })));
+    const fate = uid('fate');
+    const opt = (v, label, on) => h('label', { class: 'a-check' }, h('input', { type: 'radio', name: fate, value: v, checked: !!on, 'data-fk': `tr-${v}-${p.id}` }), h('span', { text: label }));
+    const msg = h('p', { class: 'a-live-msg', role: 'alert', hidden: true });
+    const go = armed(btn('سلّم الفريق', 'repeat', 'btn-primary', null, { 'data-fk': 'tr-go-' + p.id }), 'اضغط مرة أخرى للتأكيد', async () => {
+      msg.hidden = true;
+      if (!sel.value) { msg.textContent = 'اختر من سيقود الفريق.'; msg.hidden = false; sel.focus(); return; }
+      const f = box.querySelector(`input[name="${fate}"]:checked`).value;
+      const r = await YB.rpc('yb_transfer_team', { team_id: team.id, new_leader: sel.value, old_stays: f === 'stay', old_role: f === 'stay' ? 'member' : f });
+      if (!r.ok || !r.data || !r.data.ok) { if (r && sessionLost(r)) return; msg.textContent = errMsg(r.ok ? { error: r.data && r.data.error } : r); msg.hidden = false; return; }
+      await refreshAdmin(`سُلّم «${team.name}» إلى قائده الجديد، وأُبلغ الطرفان.`, 'rs-' + p.id);
+    });
+    put(box, h('p', { class: 'a-hint', text: `يقود «${team.name}». ليصبح دوره غير «قائد فريق»، اختر من يتولى الفريق: ولي أمر، أو عضو في الفريق، أو قائد بلا فريق.` }),
+      h('div', { class: 'a-f' }, h('label', { for: sid, class: 'a-l', text: 'القائد الجديد' }), sel),
+      h('fieldset', { class: 'a-comps' }, h('legend', { text: 'وماذا عن القائد الحالي؟' }),
+        opt('stay', 'يبقى في الفريق عضوًا', true), opt('parent', 'يغادر الفريق ويصبح ولي أمر'), opt('member', 'يغادر الفريق ويبقى حسابًا بلا فريق')),
+      msg, h('div', { class: 'a-actions' }, go));
+  }
+
+  /* --- the admin's statistics (yb_analytics): charts with a table behind each one */
+  function vizTip(host) {
+    const tip = h('div', { class: 'a-viz-tip', role: 'tooltip', hidden: true });
+    host.append(tip);
+    const show = (t, x, y) => {
+      tip.textContent = t; tip.hidden = false;
+      const hb = host.getBoundingClientRect(), w = tip.offsetWidth;
+      tip.style.left = Math.max(4, Math.min(hb.width - w - 4, x - hb.left - w / 2)) + 'px';
+      tip.style.top = Math.max(4, y - hb.top - tip.offsetHeight - 12) + 'px';
+    };
+    host.addEventListener('pointerover', e => { const m = e.target.closest('[data-tip]'); if (m && host.contains(m)) { const b = m.getBoundingClientRect(); show(m.dataset.tip, b.left + b.width / 2, b.top); } });
+    host.addEventListener('pointerout', e => { if (!e.relatedTarget || !host.contains(e.relatedTarget) || !e.relatedTarget.closest('[data-tip]')) tip.hidden = true; });
+    host.addEventListener('focusin', e => { const m = e.target.closest('[data-tip]'); if (m) { const b = m.getBoundingClientRect(); show(m.dataset.tip, b.left + b.width / 2, b.top); } });
+    host.addEventListener('focusout', () => { tip.hidden = true; });
+    return { show, hide: () => { tip.hidden = true; } };
+  }
+  const sv = (tag, a) => { const e = document.createElementNS(SVGNS, tag); Object.keys(a || {}).forEach(k => e.setAttribute(k, String(a[k]))); return e; };
+  const fmtN = n => (Number(n) || 0).toLocaleString('ar-u-nu-latn');
+  const dayLabel = d => { try { return new Date(String(d).slice(0, 10) + 'T12:00:00').toLocaleDateString('ar-u-nu-latn', { day: 'numeric', month: 'short' }); } catch (e) { return d; } };
+  function vizCard(title, sub, chart, table, cls) {
+    const id = uid('viz');
+    return h('figure', { class: 'a-card a-viz' + (cls ? ' ' + cls : ''), 'aria-labelledby': id },
+      h('figcaption', {}, h('h4', { id, text: title }), sub ? h('p', { class: 'a-hint', text: sub }) : null), chart,
+      table ? h('details', { class: 'a-viz-t' }, h('summary', { text: 'اعرض الأرقام جدولًا' }), table) : null);
+  }
+  function vizTable(cols, rows) {
+    return h('div', { class: 'a-tablewrap' }, h('table', { class: 'a-tbl' }, h('thead', {}, h('tr', {}, cols.map(c => h('th', { scope: 'col', text: c })))),
+      h('tbody', {}, rows.map(r => h('tr', {}, r.map((c, i) => i === 0 ? h('th', { scope: 'row', text: String(c) }) : h('td', { text: String(c) })))))));
+  }
+  // horizontal bars, one hue; the value is written beside each bar
+  function barList(items, opts) {
+    opts = opts || {};
+    const max = Math.max(1, ...items.map(i => i.max || i.value || 0));
+    return h('ul', { class: 'a-hbars' + (opts.cls ? ' ' + opts.cls : '') }, items.map(i => {
+      const w = Math.round(100 * (i.value || 0) / (i.max || max));
+      return h('li', { class: 'a-hb' }, h('span', { class: 'a-hb-l', text: i.label }),
+        h('span', { class: 'a-hb-t', tabindex: '0', 'data-tip': i.tip || `${i.label}: ${fmtN(i.value)}` }, h('span', { class: 'a-hb-f', style: `width:${w}%` })),
+        h('b', { class: 'a-hb-v', text: i.text || fmtN(i.value) }));
+    }));
+  }
+  // lines over days (the oldest day on the right, as Arabic reads), with a crosshair and a tooltip
+  function lineChart(days, series, opts) {
+    opts = opts || {};
+    const W = 640, H = 200, pl = 10, pr = 34, pt = 14, pb = 26;
+    const n = days.length;
+    const max = Math.max(1, ...series.flatMap(s => s.values));
+    const x = i => pl + (n <= 1 ? 0 : (W - pl - pr) * (1 - i / (n - 1)));
+    const y = v => pt + (H - pt - pb) * (1 - v / max);
+    const svg = sv('svg', { viewBox: `0 0 ${W} ${H}`, class: 'a-line', role: 'img', 'aria-label': opts.label || '' });
+    [0, 0.5, 1].forEach(f => {
+      const v = Math.round(max * f);
+      svg.append(sv('line', { x1: pl, x2: W - pr, y1: y(v), y2: y(v), class: 'g' }));
+      const t = sv('text', { x: W - pr + 6, y: y(v) + 4, class: 'ax' }); t.textContent = fmtN(v); svg.append(t);
+    });
+    [0, n - 1].forEach(i => { if (i < 0) return; const t = sv('text', { x: x(i), y: H - 6, class: 'ax', 'text-anchor': i === 0 ? 'end' : 'start' }); t.textContent = dayLabel(days[i]); svg.append(t); });
+    series.forEach((s, k) => {
+      const pts = s.values.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+      svg.append(sv('polyline', { points: pts, class: 'ln s' + (k + 1) }));
+    });
+    const cross = sv('line', { y1: pt, y2: H - pb, class: 'cx', visibility: 'hidden' });
+    const dots = series.map((s, k) => sv('circle', { r: 4.5, class: 'dt s' + (k + 1), visibility: 'hidden' }));
+    svg.append(cross, ...dots);
+    const wrap = h('div', { class: 'a-line-w', tabindex: '0', 'aria-label': (opts.label || '') + '. استخدم الأسهم للتنقل بين الأيام.' }, svg);
+    const tip = vizTip(wrap);
+    let at = -1;
+    const mark = i => {
+      at = Math.max(0, Math.min(n - 1, i));
+      cross.setAttribute('x1', x(at)); cross.setAttribute('x2', x(at)); cross.setAttribute('visibility', 'visible');
+      dots.forEach((d, k) => { d.setAttribute('cx', x(at)); d.setAttribute('cy', y(series[k].values[at])); d.setAttribute('visibility', 'visible'); });
+      const r = svg.getBoundingClientRect();
+      tip.show(`${dayLabel(days[at])} · ` + series.map(s => `${s.name}: ${fmtN(s.values[at])}`).join(' · '), r.left + r.width * x(at) / W, r.top + r.height * Math.min(...series.map(s => y(s.values[at]))) / H);
+    };
+    const off = () => { cross.setAttribute('visibility', 'hidden'); dots.forEach(d => d.setAttribute('visibility', 'hidden')); tip.hide(); };
+    wrap.addEventListener('pointermove', e => { const r = svg.getBoundingClientRect(); const px = (e.clientX - r.left) * W / r.width; mark(Math.round((1 - (px - pl) / (W - pl - pr)) * (n - 1))); });
+    wrap.addEventListener('pointerleave', off);
+    wrap.addEventListener('keydown', e => { if (e.key === 'ArrowLeft') { e.preventDefault(); mark(at < 0 ? 0 : at + 1); } else if (e.key === 'ArrowRight') { e.preventDefault(); mark(at < 0 ? n - 1 : at - 1); } else if (e.key === 'Escape') off(); });
+    wrap.addEventListener('blur', off);
+    const legend = series.length > 1 ? h('ul', { class: 'a-legend' }, series.map((s, k) => h('li', {}, h('i', { class: 's' + (k + 1), 'aria-hidden': 'true' }), h('span', { text: `${s.name} (${fmtN(opts.total ? s.values.reduce((a, b) => a + b, 0) : (s.values[s.values.length - 1] || 0))})` })))) : null;
+    return h('div', {}, legend, wrap);
+  }
+  // fill the gaps of a [{d, n}] list over the last `span` days (oldest first)
+  function daySeries(rows, span, key) {
+    const m = new Map((rows || []).map(r => [String(r.d).slice(0, 10), Number(r[key || 'n']) || 0]));
+    const out = [];
+    for (let i = span - 1; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); const k = isoDay(d); out.push([k, m.get(k) || 0]); }
+    return out;
+  }
+  function drawAdminStats(panel) {
+    const box = h('div', { class: 'a-an', 'data-stats': '' });
+    panel.append(box);
+    const paint = () => {
+      const st = A.stats;
+      if (!st) { put(box, skeleton()); return; }
+      if (st.error) { put(box, errorBlock(st.error, async () => { A.stats = null; paint(); await loadStats(); paint(); })); return; }
+      const t = st.teams || {}, m = st.members || {}, fd = st.feed || {}, pj = st.projects || {}, g = st.goals || {}, ms = st.matches || {}, nt = st.notes || {}, jd = st.judging || {};
+      const bs = t.by_status || {}, fee = t.fee || {};
+      const approved = bs.approved || 0, inComp = (t.list || []).length;
+      const played = Object.values(ms).reduce((a, c) => a + (c.approved || 0), 0);
+      const consentPct = m.minors ? Math.round(100 * (m.consents || 0) / m.minors) : null;
+      const readPct = nt.total ? Math.round(100 * (nt.read || 0) / nt.total) : null;
+      const reactions = Object.values(fd.reactions || {}).reduce((a, b) => a + b, 0);
+      const kp = kpis(
+        tile('الفرق المعتمدة', 'users', `${approved} من 12`, (bs.submitted ? `${bs.submitted} قيد المراجعة` : 'لا طلبات تنتظر') + (t.waitlist ? ` · ${t.waitlist} في الانتظار` : ''), approved >= 12 ? 'ok' : ''),
+        tile('المشاركون', 'user', m.total || 0, `${m.joined || 0} لهم حسابات`),
+        tile('موافقات الأهل', 'user-check', consentPct === null ? '—' : consentPct + '%', m.minors ? `${m.consents || 0} من ${m.minors}` : 'لا أطفال بعد', consentPct !== null && consentPct < 100 ? 'sun' : 'ok'),
+        tile('الرسوم المدفوعة', 'landmark', `${(fee.paid || 0) + (fee.waived || 0)} من ${inComp}`, fee.unpaid ? `${fee.unpaid} لم تدفع` : 'مكتملة', fee.unpaid ? 'sun' : 'ok'),
+        tile('مباريات معتمدة', 'trophy', played, `${g.total || 0} هدفًا · ${g.spirit || 0} روح فريق`),
+        tile('مشاريع مقبولة', 'image', (pj.by_status || {}).accepted || 0, `${fmtN(pj.beneficiaries || 0)} مستفيدًا · ${pj.featured || 0} في الصفحة الرئيسية`),
+        tile('الأخبار', 'megaphone', (fd.by_status || {}).published || 0, `${reactions} تفاعلًا · ${fd.comments || 0} تعليقًا${fd.reports_open ? ` · ${fd.reports_open} بلاغ` : ''}`, fd.reports_open ? 'sun' : ''),
+        tile('قراءة التنبيهات', 'bell', readPct === null ? '—' : readPct + '%', `${fmtN(nt.read || 0)} من ${fmtN(nt.total || 0)}`));
+      const acc = daySeries((st.accounts || {}).per_day, 60), tms = daySeries(t.per_day, 60);
+      let cum = 0; const accCum = acc.map(r => (cum += r[1]));
+      cum = 0; const tmCum = tms.map(r => (cum += r[1]));
+      // newest first in the chart's arrays (index 0 = today, drawn at the left)
+      const growth = vizCard('التسجيل خلال 60 يومًا', 'المجموع التراكمي للحسابات والفرق الجديدة في هذه الفترة.',
+        lineChart(acc.map(r => r[0]), [{ name: 'الحسابات', values: accCum }, { name: 'الفرق', values: tmCum }], { label: 'التسجيل خلال 60 يومًا' }),
+        vizTable(['اليوم', 'حسابات جديدة', 'فرق جديدة'], acc.map((r, i) => [r[0], r[1], tms[i][1]]).filter(r => r[1] || r[2]).map(r => [dayLabel(r[0]), r[1], r[2]])), 'wide');
+      const stRows = Object.keys(STATUS).map(k => ({ label: STATUS[k], value: bs[k] || 0 }));
+      const status = vizCard('الفرق حسب الحالة', null, barList(stRows), vizTable(['الحالة', 'عدد الفرق'], stRows.map(r => [r.label, r.value])));
+      const tl = t.list || [];
+      const consents = vizCard('موافقات الأهل لكل فريق', 'كم من الأطفال في الفريق وصلت موافقة وليّ أمره.',
+        tl.length ? barList(tl.map(r => ({ label: r.name, value: r.consents, max: Math.max(1, r.minors), text: r.minors ? `${r.consents} من ${r.minors}` : '—', tip: `${r.name}: ${r.consents} من ${r.minors}` })), { cls: 'pct' }) : h('p', { class: 'a-empty', text: 'لا فرق في المسابقة بعد.' }),
+        tl.length ? vizTable(['الفريق', 'الأعضاء', 'الأطفال', 'الموافقات', 'لهم حسابات', 'الرسوم'], tl.map(r => [r.name, r.members, r.minors, r.consents, r.joined, { paid: 'مدفوعة', waived: 'معفاة', unpaid: 'لم تُدفع' }[r.fee] || r.fee])) : null);
+      const ag = m.ages || {};
+      const ageRows = [['أقل من 10', ag.u10], ['10 إلى 12', ag.a10], ['13 إلى 15', ag.a13], ['16 و17', ag.a16], ['18 فأكثر', ag.adult], ['غير مذكور', ag.unknown]].map(([l, v]) => ({ label: l, value: v || 0 }));
+      const ages = vizCard('أعمار المشاركين', null, barList(ageRows), vizTable(['العمر', 'العدد'], ageRows.map(r => [r.label, r.value])));
+      const gl = (g.by_team || []).map(r => ({ label: r.name, value: r.n }));
+      const goals = vizCard('الأهداف حسب الفريق', 'من المباريات المسجّلة.', gl.length ? barList(gl) : h('p', { class: 'a-empty', text: 'لم تُسجّل أهداف بعد.' }), gl.length ? vizTable(['الفريق', 'الأهداف'], gl.map(r => [r.label, r.value])) : null);
+      const pl = Object.keys(SUB_PLACE).map(k => ({ label: SUB_PLACE[k], value: (pj.by_place || {})[k] || 0 }));
+      const places = vizCard('المشاريع المقبولة حسب المكان', null, barList(pl), vizTable(['المكان', 'العدد'], pl.map(r => [r.label, r.value])));
+      const pd = fd.per_day || [];
+      const activity = vizCard('نشاط الأخبار خلال 30 يومًا', 'المنشورات والتعليقات والتفاعلات كل يوم.',
+        pd.length ? lineChart(pd.map(r => r.d), [{ name: 'تفاعلات', values: pd.map(r => r.reactions) }, { name: 'تعليقات', values: pd.map(r => r.comments) }, { name: 'منشورات', values: pd.map(r => r.posts) }], { label: 'نشاط الأخبار خلال 30 يومًا', total: true }) : h('p', { class: 'a-empty', text: 'لا نشاط بعد.' }),
+        pd.length ? vizTable(['اليوم', 'منشورات', 'تعليقات', 'تفاعلات'], (fd.per_day || []).filter(r => r.posts || r.comments || r.reactions).map(r => [dayLabel(r.d), r.posts, r.comments, r.reactions])) : null, 'wide');
+      const rx = REACT.map(([k, emo, label]) => ({ label: `${emo} ${label}`, value: (fd.reactions || {})[k] || 0 }));
+      const react = vizCard('التفاعلات حسب النوع', null, barList(rx), vizTable(['التفاعل', 'العدد'], rx.map(r => [r.label, r.value])));
+      const roles = Object.keys(ROLE).map(k => ({ label: ROLE[k], value: ((st.accounts || {}).by_role || {})[k] || 0 }));
+      const people = vizCard('الحسابات حسب الدور', null, barList(roles), vizTable(['الدور', 'العدد'], roles.map(r => [r.label, r.value])));
+      const judge = vizCard('التحكيم', jd.published ? 'النتائج منشورة.' : 'النتائج لم تُنشر بعد.', barList([
+        { label: 'الحكّام', value: jd.judges || 0 }, { label: 'الفرق التي قُيّمت', value: jd.teams_scored || 0, max: Math.max(1, approved), text: `${jd.teams_scored || 0} من ${approved}` },
+        { label: 'الدرجات المسجّلة', value: jd.scores || 0 }]), null);
+      let when = '';
+      try { when = new Date(st.generated_at).toLocaleTimeString('ar-u-nu-latn', { hour: 'numeric', minute: '2-digit' }); } catch (e) { when = ''; }
+      put(box, h('div', { class: 'a-an-h' }, h('h3', {}, icon('chart'), h('span', { text: 'الإحصاءات' })),
+          h('small', { class: 'a-hint', text: when ? `آخر تحديث ${when}` : '' }),
+          btn('تحديث', 'repeat', 'btn-ghost', async () => { await loadStats(); paint(); say('حُدّثت الإحصاءات.'); const f = box.querySelector('[data-fk="st-refresh"]'); if (f) f.focus(); }, { 'data-fk': 'st-refresh' })),
+        kp, h('div', { class: 'a-viz-g' }, growth, status, consents, ages, goals, places, activity, react, people, judge));
+      box.querySelectorAll('.a-hbars').forEach(b => vizTip(b.parentElement));
+    };
+    async function loadStats() {
+      const r = await YB.rpc('yb_analytics', {});
+      if (!r.ok || !r.data || typeof r.data !== 'object') { if (r && sessionLost(r)) return; A.stats = { error: errMsg(r) }; return; }
+      A.stats = r.data;
+    }
+    paint();
+    if (!A.stats || A.stats.error) loadStats().then(() => { if (box.isConnected) paint(); });
   }
 
   /* ------------------------------------------------------------------ router */
@@ -3034,7 +3769,7 @@
     if (S.stopChat) S.stopChat();
     if (S.dashObs) { S.dashObs.disconnect(); S.dashObs = null; }
     if (S.dashMo) { S.dashMo.disconnect(); S.dashMo = null; }
-    S.boardP = null; S.sh = null;
+    S.boardP = null; S.sh = null; S.feed = null; S.lastGroups = null; S.myColor = null;
     document.documentElement.classList.remove('is-dash');
     S.modeSet = null;
     S.focusNext = !!opts.focus;
@@ -3071,6 +3806,8 @@
     if (YB.linkType === 'signup' && !S.confirmedShown) { S.confirmedShown = true; if (!S.flash) S.flash = 'تم تأكيد بريدك الإلكتروني.'; }
     S.uid = profile.id; S.role = profile.role; S.rendered = 'role:' + profile.id + ':' + profile.role;
     clearData();
+    await loadPrefs();
+    if (seq !== S.seq) return;
     const role = profile.role;
     if (role === 'admin') return viewAdmin(profile, seq);
     if (role === 'officer') return viewOfficer(profile, seq);

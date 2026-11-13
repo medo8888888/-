@@ -1,6 +1,6 @@
 -- Yanabee 0011: the news feed, customization, a safe leader handover, and the admin's statistics.
 -- (Owner's requests of 13 Nov 2026: "like news or social media", team identity, profile pictures,
--- personal settings, notification choices, "charts and analytics", "demote a leader".)
+-- personal settings, notification choices, "charts and analytics", changing a leader's role.)
 --
 -- FEED. Posts are written by the admin (published at once) and by team leaders (pending until the
 -- admin publishes them; that is also where the admin checks the parents' consent for any photo,
@@ -21,7 +21,7 @@
 -- off; essential notes (team status, consent, judging, results, moderation) always arrive.
 -- Pictures: PRIVATE bucket 'yanabee-avatars' under <user_id>/<file>, read by signed-in people.
 --
--- HANDOVER. set_user_role (0001) no longer demotes a leader who still leads a team
+-- HANDOVER. set_user_role (0001) no longer moves a leader who still leads a team to another role
 -- ('leads_team'): the admin first hands the team to someone else (yb_transfer_team), who becomes
 -- its leader; the old leader stays in the team as a member or leaves it.
 --
@@ -759,7 +759,7 @@ create policy yb_av_obj_delete on storage.objects for delete to authenticated
 -- ---------------------------------------------------------------------------
 -- 4. Handing a team to a new leader
 -- ---------------------------------------------------------------------------
--- 0001's set_user_role, but a leader who still leads a team is not demoted: hand the team over first
+-- 0001's set_user_role, but a leader who still leads a team keeps the role: hand the team over first
 create or replace function public.set_user_role(target uuid, new_role public.user_role)
 returns jsonb
 language plpgsql security definer
