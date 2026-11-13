@@ -82,4 +82,6 @@ offline with PGlite, then goes live in one apply (slice 20).
 23. [ ] **Release hardening**: fix the flaky wow and gallery tests, remove `.lab-stub`, run the integration check at 390 and 1280px, build the final zip (the owner uploads it; never auto-deploy).
 24. [ ] *(Optional)* **Web Push** for the inbox, private chess labels, Arabic email templates, a custom domain (SPEC 4.9); 🔒 a live quiz with a buzzer for hifz and fahm, only if the owner wants it (SPEC 4.11).
 
+17b. [x] **The signed-in dashboard** (owner request, 13 Nov 2026: "the outside is the landing page, inside is where the real stuff happens"). Signed in, `account.html` drops the site's header, footer and hero and becomes an app: a side menu (a sliding bar on phones) that jumps between the role's sections and marks the one in view, summary tiles on «نظرة عامة» (team status, members, parent consents, next match, group position, accepted projects, unread room messages, published result), and every card grouped into sections (matches, team, projects, room). The admin's nine tabs sit in the side menu. No database change; no extra data is read (projects tiles wait for approval, as the projects card does).
+
 Build order: 12 → 13 → 14 → 15 → 16 → 17 → 18 → 19 → 20 → 21 → 23. Item 22 happens whenever the owner answers.

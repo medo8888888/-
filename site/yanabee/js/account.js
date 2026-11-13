@@ -35,6 +35,8 @@
   let uidN = 0;
   const uid = p => `${p}-${++uidN}`;
   const PROPS = { value: 1, checked: 1, disabled: 1, hidden: 1, required: 1, selected: 1, readOnly: 1, tabIndex: 1, open: 1 };
+  // replaceChildren that skips null / false / undefined (the browser would print them as text)
+  const put = (el, ...kids) => el.replaceChildren(...kids.flat(Infinity).filter(c => c !== null && c !== undefined && c !== false));
   function h(tag, a, ...kids) {
     const e = document.createElement(tag);
     if (a) {
@@ -109,10 +111,10 @@
 
   /* ------------------------------------------------------------------ app state */
   const S = { seq: 0, uid: null, role: null, expired: false, manualOut: false, recoveryDone: false, stopPoll: null, stopInbox: null, rendered: null, modeSet: null, confirmedShown: false };
-  const clearData = () => { A.teams = []; A.members = []; A.profiles = []; A.state = undefined; A.evm = null; A.res = null; A.proj = null; A.ann = null; A.chat = null; A.judge = null; O.res = null; O.proj = null; O.evm = null; O.chat = null; L.chat = null; L.team = null; L.members = []; };
+  const clearData = () => { A.teams = []; A.members = []; A.profiles = []; A.state = undefined; A.evm = null; A.res = null; A.proj = null; A.ann = null; A.chat = null; A.judge = null; O.res = null; O.proj = null; O.evm = null; O.chat = null; O.tiles = null; L.chat = null; L.team = null; L.members = []; };
 
   function mount(node, focus) {
-    root.replaceChildren(node);
+    put(root, node);
     root.setAttribute('aria-busy', 'false');
     if (focus) {
       const f = node.querySelector('[data-focus]');
@@ -344,7 +346,7 @@
       sPass.input.value = '';
       if (r.needsConfirm) {
         signForm.hidden = true;
-        signDone.replaceChildren(icon('check'), h('div', {}, h('b', { text: 'تم إنشاء حسابك' }),
+        put(signDone, icon('check'), h('div', {}, h('b', { text: 'تم إنشاء حسابك' }),
           h('p', { text: 'أرسلنا رسالة تأكيد إلى بريدك. افتحها ثم عد إلى هنا وسجّل الدخول. تحقق من البريد المزعج إن لم تصل.' }),
           h('button', { type: 'button', class: 'btn btn-primary btn-sm', onclick: () => go('login', true) }, icon('lock'), h('span', { text: 'الذهاب إلى الدخول' }))));
         signDone.hidden = false;
@@ -441,7 +443,7 @@
       if (!r.ok) { if (sessionLost(r)) return; return showErr(pwForm, errMsg(r), p1.input); }
       p1.input.value = ''; p2.input.value = '';
       toggle(false);
-      flash.replaceChildren(banner('تم تغيير كلمة المرور.', 'ok'));
+      put(flash, banner('تم تغيير كلمة المرور.', 'ok'));
       say('تم تغيير كلمة المرور.');
     });
     const flash = h('div', { class: 'a-flash' });
@@ -464,14 +466,170 @@
       h('span', { class: 'a-avatar', 'aria-hidden': 'true', text: initial }),
       h('div', { class: 'a-who' },
         h('h2', { text: profile.full_name || 'حسابي', tabindex: '-1', 'data-focus': '' }),
-        h('div', { class: 'a-who-m' }, h('span', { class: 'a-badge r-' + profile.role, text: roleName }), h('small', { class: 'a-mail', dir: 'ltr', text: profile.email || '' }))),
+        h('div', { class: 'a-who-m' }, h('span', { class: 'a-badge r-' + profile.role, text: roleName }), h('small', { class: 'a-mail', dir: 'ltr', text: profile.email || '' }),
+          h('small', { class: 'a-today', text: (() => { try { return new Date().toLocaleDateString('ar-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'long' }); } catch (e) { return ''; } })() }))),
       h('div', { class: 'a-head-b' }, inbox.bell, pwBtn, outBtn));
-    const el = h('div', { class: 'a-app a-role-' + profile.role }, head, inbox.panel, pwWrap, flash, body);
+    const nav = h('nav', { class: 'a-side-nav', 'aria-label': 'أقسام حسابي' });
+    const side = h('aside', { class: 'a-side' },
+      h('a', { class: 'a-brand', href: 'index.html', 'aria-label': 'ينابيع: الموقع العام' }, h('b', { text: 'ينابيع' }), h('small', { text: 'لوحتي' })),
+      nav,
+      h('a', { class: 'a-side-out', href: 'index.html' }, icon('arrow-left'), h('span', { text: 'الموقع العام' })));
+    const main = h('div', { class: 'a-main' }, head, inbox.panel, pwWrap, flash, body);
+    const el = h('div', { class: 'a-app dash a-role-' + profile.role }, side, main);
     inbox.start();
     if (S.flash) { flash.append(banner(S.flash, 'ok')); say(S.flash); S.flash = ''; }
-    return { el, body, flash };
+    S.sh = { el, body, flash, nav };
+    document.documentElement.classList.add('is-dash');
+    return S.sh;
   }
 
+
+  /* ------------------------------------------------------------------ the dashboard (signed in) */
+  // Signed in, the page becomes an app: the site's banner goes, a side menu jumps between the role's sections and marks the
+  // one in view, and «نظرة عامة» opens with summary tiles. Every section stays on the page (nothing is locked behind a
+  // tab), so the screen also reads top to bottom on a phone, where the menu becomes a sliding bar.
+  function dashLayout(groups) {
+    const sh = S.sh;
+    if (!sh) return;
+    const secs = groups.filter(g => g && g.nodes.some(Boolean));
+    const nodes = secs.map(g => h('section', { class: 'a-sec', id: 'sec-' + g.key, 'aria-labelledby': 'sec-h-' + g.key, 'data-sec': g.key },
+      h('h2', { class: 'a-sec-h', id: 'sec-h-' + g.key, tabIndex: -1 }, icon(g.icon), h('span', { text: g.label })),
+      h('div', { class: 'a-grid' + (g.one ? ' one' : '') }, g.nodes.filter(Boolean))));
+    const mark = k => sh.nav.querySelectorAll('[data-nav]').forEach(a => {
+      const on = a.dataset.nav === k;
+      a.classList.toggle('on', on);
+      if (on) a.setAttribute('aria-current', 'true'); else a.removeAttribute('aria-current');
+    });
+    const go = k => {
+      const s = document.getElementById('sec-' + k);
+      if (!s) return;
+      const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+      s.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+      s.querySelector('.a-sec-h').focus({ preventScroll: true });
+      mark(k);
+    };
+    put(sh.nav, h('ul', { class: 'a-nav' }, secs.map((g, i) => h('li', { 'data-nav-li': g.key },
+      h('a', { href: '#sec-' + g.key, class: 'a-nav-l' + (i ? '' : ' on'), 'aria-current': i ? null : 'true', 'data-nav': g.key,
+        onclick: e => { e.preventDefault(); go(g.key); } }, icon(g.icon), h('span', { text: g.label }))))));
+    put(sh.body, ...nodes);
+    if (S.dashObs) { S.dashObs.disconnect(); S.dashObs = null; }
+    if (S.dashMo) { S.dashMo.disconnect(); S.dashMo = null; }
+    // a section whose cards are all hidden (nothing to show yet) leaves the page and the menu until one appears
+    const sync = () => nodes.forEach(s => {
+      const empty = !Array.from(s.querySelector('.a-grid').children).some(c => !c.hidden);
+      if (s.hidden !== empty) s.hidden = empty;
+      const li = sh.nav.querySelector(`[data-nav-li="${s.dataset.sec}"]`);
+      if (li && li.hidden !== empty) li.hidden = empty;
+    });
+    sync();
+    if (window.MutationObserver) {
+      S.dashMo = new MutationObserver(sync);
+      nodes.forEach(s => S.dashMo.observe(s.querySelector('.a-grid'), { attributes: true, attributeFilter: ['hidden'], childList: true, subtree: true }));
+    }
+    if (window.IntersectionObserver) {
+      S.dashObs = new IntersectionObserver(es => {
+        const v = es.filter(e => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+        if (v) mark(v.target.dataset.sec);
+      }, { rootMargin: '-96px 0px -55% 0px' });
+      nodes.forEach(s => S.dashObs.observe(s));
+    }
+  }
+  // a summary tile; value undefined = loading (filled later with .set)
+  function tile(label, ic, value, sub, tone) {
+    const v = h('b', { class: 'a-kpi-v', text: value === undefined ? '…' : value === null ? '—' : String(value) });
+    const s = h('small', { class: 'a-kpi-s', text: sub || '' });
+    const el = h('div', { class: 'a-kpi' + (tone ? ' t-' + tone : ''), role: 'group', 'aria-label': label, 'data-kpi': label },
+      h('span', { class: 'a-kpi-i', 'aria-hidden': 'true' }, icon(ic)), h('span', { class: 'a-kpi-l', text: label }), v, s);
+    el.set = (val, sb, tn) => {
+      v.textContent = val === null || val === undefined ? '—' : String(val);
+      s.textContent = sb || '';
+      el.className = 'a-kpi' + (tn ? ' t-' + tn : '');
+    };
+    return el;
+  }
+  const kpis = (...t) => h('div', { class: 'a-kpis', 'data-kpis': '' }, t.filter(Boolean));
+  // the published board, read once per screen
+  function boardOnce() {
+    if (!S.boardP) S.boardP = Promise.resolve().then(() => YB.getState()).catch(() => null);
+    return S.boardP;
+  }
+  async function teamOnBoard(teamId, teamName) {
+    const g = await boardOnce();
+    const st = g && g.state;
+    if (!st || !window.YTour) return null;
+    const t = (st.teams || []).find(x => x.id === teamId) || (st.teams || []).find(x => x.name === teamName);
+    if (!t) return null;
+    try { return { st, v: window.YTour.teamView(st, t.id) }; } catch (e) { return null; }
+  }
+  function fillMatchTiles(tNext, tPos, teamId, teamName) {
+    teamOnBoard(teamId, teamName).then(r => {
+      if (!r || r.v.group === null) { tNext.set('—', 'تظهر بعد القرعة'); if (tPos) tPos.set('—', 'تظهر بعد القرعة'); return; }
+      const n = r.v.next;
+      tNext.set(n ? 'ضد ' + nameOf(r.st, n.opponent) : '—', n ? ([n.date, n.time].filter(Boolean).join(' · ') || `${STAGE[n.stage] || ''} · الجولة ${n.round}`) : 'لا مباريات متبقية', n ? 'brand' : '');
+      if (tPos) {
+        const size = ((r.st.groups || [])[r.v.group] || []).length || 4;
+        tPos.set(r.v.position ? `${r.v.position} من ${size}` : '—', `المجموعة ${r.v.groupName || ''} · ${FOOT[r.v.status] || ''}`, r.v.position === 1 ? 'ok' : '');
+      }
+    });
+  }
+  function resultTile(t) {
+    YB.rpc('yb_my_scores', {}).then(r => {
+      const d = r.ok && r.data;
+      const mine = d && d.published && Array.isArray(d.teams) ? d.teams[0] : null;
+      if (mine) t.set(`${fmtPts(mine.total)} من 100`, `المركز ${mine.rank}`, 'ok'); else t.set('—', 'بعد إعلان النتائج');
+    });
+    return t;
+  }
+  function leaderTiles(t) {
+    const ms = L.members, minors = ms.filter(m => isMinor(m.age)), got = minors.filter(m => m.consent_status === 'received').length;
+    const tNext = tile('المباراة القادمة', 'calendar'), tPos = tile('ترتيب المجموعة', 'trophy');
+    const tSubs = tile('المشاريع المقبولة', 'image'), tChat = tile('رسائل جديدة', 'bell');
+    fillMatchTiles(tNext, tPos, t.team_id, t.team_name);
+    // projects open after approval (as in the projects card): no read before that
+    if (t.status !== 'approved') tSubs.set('—', 'بعد اعتماد الفريق');
+    else read('yb_submissions', { select: 'id,status', filter: { team_id: 'eq.' + t.team_id } }).then(r => {
+      const rows = r.ok && Array.isArray(r.data) ? r.data : null;
+      tSubs.set(rows ? rows.filter(x => x.status === 'accepted').length : '—', rows ? `من ${rows.length} أُرسلت` : '');
+    });
+    YB.rpc('yb_chat_unread', {}).then(r => { const n = r.ok && typeof r.data === 'number' ? r.data : null; tChat.set(n, 'في غرفة القادة', n ? 'ok' : ''); });
+    return kpis(
+      tile('حالة الفريق', 'flag', STATUS[t.status] || t.status, t.status === 'approved' ? 'مشارك في المسابقة' : 'قبل الاعتماد', t.status === 'approved' ? 'ok' : t.status === 'returned' ? 'sun' : ''),
+      tile('الأعضاء', 'users', `${ms.length} من ${MAX}`, ms.length < MIN ? `الحد الأدنى ${MIN}` : 'العدد مكتمل', ms.length < MIN ? 'sun' : ''),
+      tile('موافقات الأهل', 'user-check', minors.length ? `${got} من ${minors.length}` : '—', minors.length && got < minors.length ? 'تنقص موافقات' : 'مكتملة', minors.length && got < minors.length ? 'sun' : 'ok'),
+      tNext, tPos, tSubs, resultTile(tile('نتيجة الفريق', 'award')), tChat);
+  }
+  function memberTiles(row) {
+    const tNext = tile('المباراة القادمة', 'calendar'), tPos = tile('ترتيب المجموعة', 'trophy');
+    fillMatchTiles(tNext, tPos, row.team_id, row.team_name);
+    return kpis(tile('الفريق', 'flag', STATUS[row.status] || row.status, row.team_name, row.status === 'approved' ? 'ok' : ''), tNext, tPos, resultTile(tile('نتيجة الفريق', 'award')));
+  }
+  function parentTiles(kids) {
+    const got = kids.filter(k => k.consent_status === 'received').length;
+    const first = kids[0];
+    const tNext = tile('المباراة القادمة', 'calendar'), tPos = tile('ترتيب المجموعة', 'trophy');
+    if (first) fillMatchTiles(tNext, tPos, first.team_id, first.team_name); else { tNext.set('—', 'اربط ابنك أولًا'); tPos.set('—', ''); }
+    return kpis(tile('الأبناء المرتبطون', 'users', kids.length, kids.length ? kids.map(k => k.full_name.split(' ')[0]).join('، ') : 'لا أحد بعد'),
+      tile('الموافقات', 'user-check', kids.length ? `${got} من ${kids.length}` : '—', kids.length && got < kids.length ? 'تنتظر موافقتك' : '', kids.length && got < kids.length ? 'sun' : 'ok'),
+      tNext, tPos, resultTile(tile('نتيجة الفريق', 'award')));
+  }
+  function officerTiles() {
+    const ts = [tile('مسابقاتك', 'flag', O.comps.length, O.comps.map(k => COMPS[k] || k).join('، ') || 'لم تُسند بعد')];
+    if (O.comps.includes('registration')) { const w = O.teams.filter(t => t.status === 'submitted').length; ts.push(tile('طلبات بانتظارك', 'users', w, 'تسجيل الفرق', w ? 'sun' : 'ok')); }
+    if (O.comps.some(k => k === 'football' || k === 'chess')) {
+      const t = tile('نتائج للاعتماد', 'flag');
+      YB.rpc('yb_results_queue', {}).then(r => { const rows = r.ok && Array.isArray(r.data) ? r.data : null; t.set(rows ? rows.filter(x => x.status === 'live').length : '—', 'مباريات جارية الآن'); });
+      ts.push(t);
+    }
+    if (O.comps.includes('projects')) {
+      const t = tile('مشاريع للمراجعة', 'image');
+      YB.rpc('yb_submissions_queue', {}).then(r => { const rows = r.ok && Array.isArray(r.data) ? r.data : null; const n = rows ? rows.filter(x => x.status === 'submitted').length : null; t.set(n, 'بانتظار قرارك', n ? 'sun' : ''); });
+      ts.push(t);
+    }
+    const tChat = tile('رسائل جديدة', 'bell');
+    YB.rpc('yb_chat_unread', {}).then(r => { const n = r.ok && typeof r.data === 'number' ? r.data : null; tChat.set(n, 'في غرفة القادة', n ? 'ok' : ''); });
+    ts.push(tChat);
+    return kpis(...ts);
+  }
 
   /* ------------------------------------------------------------------ notifications (in-app inbox) */
   // rows carry a kind + data (ids, the team name, status words); the Arabic sentence is made here
@@ -513,7 +671,7 @@
       count.textContent = String(unread);
       count.hidden = !unread;
       bell.setAttribute('aria-label', unread ? `الإشعارات: ${unread} غير مقروء` : 'الإشعارات');
-      list.replaceChildren(...(rows.length ? rows.map(n => h('li', { class: 'a-inbox-i' + (n.read_at ? '' : ' new') },
+      put(list, ...(rows.length ? rows.map(n => h('li', { class: 'a-inbox-i' + (n.read_at ? '' : ' new') },
         h('p', { text: noteText(n) }),
         n.data && n.data.note ? h('p', { class: 'a-note' }, h('b', { text: 'الملاحظة: ' }), String(n.data.note)) : null,
         h('small', { class: 'a-hint', text: fmtDate(n.created_at) }))) : [h('li', { class: 'a-empty', text: 'لا توجد إشعارات بعد.' })]));
@@ -657,10 +815,10 @@
     }
     function paint(focusKey) {
       const head = h('h3', { id: 'evm-h-' + fk }, icon('calendar'), h('span', { text: 'المواعيد: ' + comps.map(c => COMPS[c] || c).join('، ') }));
-      if (!M.loaded) { el.replaceChildren(head, skeleton()); return; }
-      if (M.err) { el.replaceChildren(head, errorBlock(M.err, () => refresh())); return; }
+      if (!M.loaded) { put(el, head, skeleton()); return; }
+      if (M.err) { put(el, head, errorBlock(M.err, () => refresh())); return; }
       const up = M.events.filter(e => !isPast(e)), past = M.events.filter(isPast);
-      el.replaceChildren(head,
+      put(el, head,
         h('p', { class: 'a-lead', text: 'يصل تنبيه للفرق المعنية عند إضافة موعد أو تغيير وقته أو مكانه أو إلغائه. يظهر الموعد للجميع في «الجدول» بلوحة البطولة.' }),
         M.editing === 'new' ? form(null) : h('div', { class: 'a-actions' }, btn('أضف موعدًا', 'calendar', 'btn-primary', () => { M.editing = 'new'; paint(); const f = el.querySelector('.a-evform input'); if (f) f.focus(); }, { 'data-fk': 'evadd-' + fk })),
         up.length ? h('ul', { class: 'a-evlist' }, up.map(evItem)) : h('p', { class: 'a-empty', text: 'لا توجد مواعيد قادمة.' }),
@@ -701,10 +859,10 @@
           h('p', { class: 'a-ev-m', text: [KINDS[ev.kind], COMPS[ev.competition], ev.category].filter(Boolean).join(' · ') }),
           ev.note ? h('p', { class: 'a-hint', text: ev.note }) : null, acts);
       });
-      el.replaceChildren(h('h3', {}, icon('calendar'), h('span', { text: 'المواعيد القادمة' })),
+      put(el, ...[h('h3', {}, icon('calendar'), h('span', { text: 'المواعيد القادمة' })),
         canRsvp && rows.length ? h('p', { class: 'a-lead', text: 'أكّد حضور فريقك قبل كل موعد. يصلك تنبيه هنا عند أي تغيير.' }) : null,
         rows.length ? h('ul', { class: 'a-evlist' }, rows) : h('p', { class: 'a-empty', text: 'لا توجد مواعيد قادمة لفريقك الآن.' }),
-        h('p', { class: 'a-hint' }, h('a', { href: 'tournament.html#schedule', text: 'الجدول الكامل في لوحة البطولة' })));
+        h('p', { class: 'a-hint' }, h('a', { href: 'tournament.html#schedule', text: 'الجدول الكامل في لوحة البطولة' }))].filter(Boolean));
       if (focusKey) { const f = el.querySelector(`[data-fk="${CSS.escape(focusKey)}"]`); if (f) f.focus({ preventScroll: true }); }
       if (msg) say(msg);
     }
@@ -727,7 +885,7 @@
         const key = row === null ? 'none' : (row && row.updated_at) || 'x';
         if (key === last && last !== '') return;
         last = key;
-        body.replaceChildren(drawSchedule(row, team));
+        put(body, drawSchedule(row, team));
       },
       fail() { if (!body.querySelector('.a-sched-err')) body.append(h('p', { class: 'a-sched-err a-hint', text: 'تعذّر تحديث الجدول الآن، وسنعيد المحاولة تلقائيًا.' })); }
     };
@@ -816,7 +974,7 @@
     if (seq !== S.seq) return;
     if (!r.ok) {
       if (sessionLost(r.error)) return;
-      sh.body.replaceChildren(errorBlock(YB.errorText(r.error), () => { sh.body.replaceChildren(skeleton()); route(); }));
+      put(sh.body, errorBlock(YB.errorText(r.error), () => { put(sh.body, skeleton()); route(); }));
       return;
     }
     A.body = sh.body;
@@ -877,8 +1035,9 @@
       panel.append(A.evm.el);
     }
     else drawAdminExport(panel);
-    A.body.replaceChildren(counters(), adminTabs(), panel);
-    if (keep) { const f = A.body.querySelector(`[data-fk="${CSS.escape(keep)}"]`); if (f) f.focus({ preventScroll: true }); }
+    if (S.sh) put(S.sh.nav, adminTabs());
+    put(A.body, counters(), ...(S.sh ? [] : [adminTabs()]), panel);
+    if (keep) { const f = root.querySelector(`[data-fk="${CSS.escape(keep)}"]`); if (f) f.focus({ preventScroll: true }); }
   }
 
   /* --- teams */
@@ -888,7 +1047,7 @@
       const q = lower(A.q.trim());
       const rows = A.teams.filter(t => (A.filter === 'all' || t.status === A.filter)
         && (!q || lower(t.name).includes(q) || lower(t.area).includes(q) || lower(leaderName(t)).includes(q)));
-      list.replaceChildren(...(rows.length ? rows.map(adminTeamCard) : [h('p', { class: 'a-empty', text: A.teams.length ? 'لا توجد فرق تطابق البحث.' : 'لم يُسجَّل أي فريق بعد.' })]));
+      put(list, ...(rows.length ? rows.map(adminTeamCard) : [h('p', { class: 'a-empty', text: A.teams.length ? 'لا توجد فرق تطابق البحث.' : 'لم يُسجَّل أي فريق بعد.' })]));
     };
     const search = h('input', { type: 'search', class: 'a-search', placeholder: 'ابحث باسم الفريق أو القائد أو الحي', 'aria-label': 'ابحث باسم الفريق أو القائد أو الحي', value: A.q, autocomplete: 'off', 'data-fk': 'search',
       oninput: e => { A.q = e.target.value; fill(); } });
@@ -995,7 +1154,7 @@
       if (!r.ok) { if (!sessionLost(r)) say(errMsg(r)); return; }
       const d = r.data || {};
       const row = (k, v) => h('div', {}, h('dt', { text: k }), h('dd', {}, v || '—'));
-      out.replaceChildren(h('dl', { class: 'a-dl' },
+      put(out, h('dl', { class: 'a-dl' },
         row('هاتف القائد', d.phone ? h('a', { href: telHref(d.phone), dir: 'ltr', text: d.phone }) : null),
         row('البريد الإلكتروني', d.email ? h('span', { dir: 'ltr', text: d.email }) : null),
         row('المرشح الأساسي للتسميع', d.reciter1), row('المرشح الاحتياطي للتسميع', d.reciter2),
@@ -1060,7 +1219,7 @@
     const fill = () => {
       const q = lower(A.pq.trim());
       const rows = A.profiles.filter(p => !q || lower(p.full_name).includes(q) || lower(p.email).includes(q));
-      list.replaceChildren(...(rows.length ? rows.map(personRow) : [h('p', { class: 'a-empty', text: 'لا توجد حسابات تطابق البحث.' })]));
+      put(list, ...(rows.length ? rows.map(personRow) : [h('p', { class: 'a-empty', text: 'لا توجد حسابات تطابق البحث.' })]));
     };
     const search = h('input', { type: 'search', class: 'a-search', placeholder: 'ابحث بالاسم أو البريد', 'aria-label': 'ابحث بالاسم أو البريد', value: A.pq, autocomplete: 'off', oninput: e => { A.pq = e.target.value; fill(); } });
     panel.append(
@@ -1157,7 +1316,7 @@
     const rows = exportRows();
     const printArea = h('div', { class: 'a-print', 'aria-hidden': 'true' });
     const buildPrint = () => {
-      printArea.replaceChildren(h('h2', { text: 'مشروع ينابيع · كشف الفرق والأعضاء' }), h('p', { text: stamp() }),
+      put(printArea, h('h2', { text: 'مشروع ينابيع · كشف الفرق والأعضاء' }), h('p', { text: stamp() }),
         h('table', { class: 'a-ptable' }, h('thead', {}, h('tr', {}, EXPORT_HEAD().map(x => h('th', { scope: 'col', text: x })))),
           h('tbody', {}, rows.map(r => h('tr', {}, r.map(c => h('td', { text: String(c) })))))));
     };
@@ -1208,36 +1367,30 @@
     if (seq !== S.seq) return;
     if (!r.ok) {
       if (sessionLost(r)) return;
-      sh.body.replaceChildren(errorBlock(errMsg(r), () => { sh.body.replaceChildren(skeleton()); route(); }));
+      put(sh.body, errorBlock(errMsg(r), () => { put(sh.body, skeleton()); route(); }));
       return;
     }
     O.body = sh.body;
     drawOfficer();
   }
   function drawOfficer(focusKey) {
-    const nodes = [h('section', { class: 'a-card' }, h('h3', {}, icon('flag'), h('span', { text: 'مسابقاتك' })),
+    const comps = h('section', { class: 'a-card' }, h('h3', {}, icon('flag'), h('span', { text: 'مسابقاتك' })),
       O.comps.length ? h('ul', { class: 'a-chips' }, O.comps.map(k => h('li', {}, chip(COMPS[k] || k, 'brand'))))
-        : h('p', { class: 'a-lead', text: 'لم تُسند إليك مسابقة بعد. يسندها المشرف العام من قسم «الأشخاص».' }))];
-    nodes.push(announceFeed());
+        : h('p', { class: 'a-lead', text: 'لم تُسند إليك مسابقة بعد. يسندها المشرف العام من قسم «الأشخاص».' }));
     if (!O.chat) { O.chat = chatRoom(false, 'ochat'); O.chat.start(); }
-    nodes.push(O.chat.el);
-    if (O.comps.includes('registration')) nodes.push(reviewQueue());
-    if (O.roles) nodes.push(roleListCard());
     const games = O.comps.filter(k => k === 'football' || k === 'chess');
-    if (games.length) {
-      if (!O.res) { O.res = resultsDesk(games, false, 'ores'); O.res.start(); }
-      nodes.push(O.res.el);
-    }
-    if (O.comps.includes('projects')) {
-      if (!O.proj) { O.proj = projectsDesk(false, 'oprj'); O.proj.start(); }
-      nodes.push(O.proj.el);
-    }
+    if (games.length && !O.res) { O.res = resultsDesk(games, false, 'ores'); O.res.start(); }
+    if (O.comps.includes('projects') && !O.proj) { O.proj = projectsDesk(false, 'oprj'); O.proj.start(); }
     const others = O.comps.filter(k => k !== 'registration');
-    if (others.length) {
-      if (!O.evm) O.evm = eventManager(others, () => O.pub, 'off');
-      nodes.push(O.evm.el);
-    }
-    O.body.replaceChildren(...nodes);
+    if (others.length && !O.evm) O.evm = eventManager(others, () => O.pub, 'off');
+    if (!O.tiles) O.tiles = officerTiles();
+    dashLayout([
+      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [O.tiles, comps, announceFeed()] },
+      { key: 'review', label: 'طلبات التسجيل', icon: 'users', one: true, nodes: [O.comps.includes('registration') ? reviewQueue() : null, O.roles ? roleListCard() : null] },
+      { key: 'results', label: 'النتائج', icon: 'flag', one: true, nodes: [games.length ? O.res.el : null] },
+      { key: 'projects', label: 'المشاريع', icon: 'image', one: true, nodes: [O.proj ? O.proj.el : null] },
+      { key: 'dates', label: 'المواعيد', icon: 'calendar', one: true, nodes: [O.evm ? O.evm.el : null] },
+      { key: 'room', label: 'غرفة القادة', icon: 'bell', one: true, nodes: [O.chat.el] }]);
     if (focusKey) { const f = O.body.querySelector(`[data-fk="${CSS.escape(focusKey)}"]`); if (f) f.focus({ preventScroll: true }); }
   }
   function reviewQueue() {
@@ -1550,9 +1703,9 @@
       }
       kids.push(h('div', { class: 'a-actions' }, btn('تحديث', 'repeat', 'btn-ghost', () => refresh('تم التحديث.', fk + '-res-refresh'), { 'data-fk': fk + '-res-refresh' }),
         h('a', { class: 'btn btn-ghost btn-sm', href: 'tournament.html?screen=1', target: '_blank', rel: 'noopener' }, h('span', { text: 'شاشة العرض' }))));
-      el.replaceChildren(...kids);
+      put(el, ...kids);
     }
-    return { el, start: async () => { el.replaceChildren(skeleton()); await load(); paint(); } };
+    return { el, start: async () => { put(el, skeleton()); await load(); paint(); } };
   }
 
   /* ------------------------------------------------------------------ ANNOUNCEMENTS AND THE LEADERS ROOM (migration 0009) */
@@ -1574,7 +1727,7 @@
       const r = await read('yb_announcements', { select: ANN_COLS, filter: { published: 'eq.true' }, order: 'created_at.desc', limit: 10 });
       const rows = r.ok && Array.isArray(r.data) ? r.data : [];
       if (!rows.length) return;
-      el.replaceChildren(h('h3', { id: 'ann-feed-h' }, icon('bell'), h('span', { text: 'الإعلانات' })),
+      put(el, h('h3', { id: 'ann-feed-h' }, icon('bell'), h('span', { text: 'الإعلانات' })),
         h('ul', { class: 'a-ann-l' }, rows.map(a => h('li', { class: 'a-ann-i' },
           h('div', { class: 'a-ann-top' }, h('b', { text: a.title }), a.audience !== 'all' ? chip(`إلى ${AUD[a.audience] || a.audience}`, 'brand') : null),
           h('p', { class: 'a-pj-txt', text: a.body }),
@@ -1644,13 +1797,13 @@
           }, { 'data-fk': 'atog-' + a.id }), del));
     }
     function paint() {
-      el.replaceChildren(h('h3', { id: fk + '-h' }, icon('bell'), h('span', { text: 'الإعلانات' })),
+      put(el, h('h3', { id: fk + '-h' }, icon('bell'), h('span', { text: 'الإعلانات' })),
         h('p', { class: 'a-lead', text: 'إعلان «الجميع» يظهر في الصفحة الرئيسية ولوحة البطولة، وإعلان القادة أو الأعضاء أو الأهل يظهر في حساباتهم فقط.' }),
         D.err ? h('p', { class: 'a-live-msg', role: 'alert', text: D.err }) : null,
         D.editing ? form(D.editing) : h('div', { class: 'a-actions' }, btn('إعلان جديد', 'send', 'btn-primary', () => { D.editing = { audience: 'all' }; paint(); focusFk('atitle'); }, { 'data-fk': fk + '-new' })),
         D.rows.length ? h('ul', { class: 'a-ann-l' }, D.rows.map(item)) : h('p', { class: 'a-empty', text: 'لا إعلانات بعد.' }));
     }
-    return { el, start: async () => { el.replaceChildren(skeleton()); await load(); paint(); } };
+    return { el, start: async () => { put(el, skeleton()); await load(); paint(); } };
   }
 
   // the leaders room: leaders, officers and the admin (admin = moderation tools)
@@ -1739,12 +1892,12 @@
         acts.length ? h('div', { class: 'a-chat-acts' }, acts) : null);
     }
     function paintList() {
-      listEl.replaceChildren(...(C.rows.length ? C.rows.map(msgItem) : [h('li', { class: 'a-empty', text: 'لا رسائل بعد. ابدأ بالسلام.' })]));
+      put(listEl, ...(C.rows.length ? C.rows.map(msgItem) : [h('li', { class: 'a-empty', text: 'لا رسائل بعد. ابدأ بالسلام.' })]));
     }
     const mutesBox = h('div', { class: 'a-chat-mutes', hidden: true });
     function paintMutes() {
       if (!admin) return;
-      mutesBox.replaceChildren(h('h4', { class: 'a-sub', text: 'الموقوفون عن المشاركة' }),
+      put(mutesBox, h('h4', { class: 'a-sub', text: 'الموقوفون عن المشاركة' }),
         C.mutes.length ? h('ul', { class: 'a-roles' }, C.mutes.map(x => h('li', {}, h('b', { text: x.full_name || '—' }),
           chip(x.until ? `حتى ${hm(x.until)}` : 'حتى إشعار آخر', 'sun'),
           btn('أعد مشاركته', 'repeat', 'btn-ghost', async () => {
@@ -1760,7 +1913,7 @@
     }
     const head = h('div', { class: 'a-chat-h' });
     function paintHead() {
-      head.replaceChildren(h('h3', { id: fk + '-h' }, icon('users'), h('span', { text: 'غرفة القادة' })),
+      put(head, h('h3', { id: fk + '-h' }, icon('users'), h('span', { text: 'غرفة القادة' })),
         C.unread && !C.open ? chip(`${C.unread} ${C.unread === 1 ? 'رسالة جديدة' : 'رسائل جديدة'}`, 'ok') : null,
         btn(C.open ? 'أغلق الغرفة' : 'افتح الغرفة', C.open ? 'x' : 'arrow-left', C.open ? 'btn-ghost' : 'btn-primary', () => openRoom(!C.open),
           { 'data-fk': fk + '-open', 'aria-expanded': String(C.open) }));
@@ -1785,7 +1938,7 @@
       paintHead();
       const kids = [head, h('p', { class: 'a-lead', text: 'للقادة ومسؤولي المسابقات والإدارة فقط؛ لا يراها الأعضاء ولا أولياء الأمور.' })];
       if (C.open) kids.push(listEl, msgEl, sendForm, admin ? mutesBox : null);
-      el.replaceChildren(...kids.filter(Boolean));
+      put(el, ...kids.filter(Boolean));
     }
     return { el, start: async () => { paint(); await loadUnread(); paintHead(); if (admin) { await loadMutes(); paintMutes(); } } };
   }
@@ -1919,7 +2072,7 @@
     async function refresh(msg, focus) { await load(); paint(); if (msg) say(msg); if (focus) focusFk(focus); }
     function paint() {
       if (team.status !== 'approved') {
-        el.replaceChildren(...head(), h('p', { class: 'a-empty', text: 'يُفتح توثيق المشاريع والمبادرات بعد اعتماد الفريق.' }));
+        put(el, ...head(), h('p', { class: 'a-empty', text: 'يُفتح توثيق المشاريع والمبادرات بعد اعتماد الفريق.' }));
         return;
       }
       const kids = head();
@@ -1931,7 +2084,7 @@
       else kids.push(h('p', { class: 'a-hint', text: 'بلغ الفريق الحد الأقصى: 12 مشروعًا ومبادرة.' }));
       kids.push(T.rows.length ? h('div', { class: 'a-list' }, T.rows.map(x => subItem(x, { actions: T.editing ? [] : actions(x) })))
         : h('p', { class: 'a-empty', text: 'لم يرسل الفريق مشروعًا أو مبادرة بعد. وثّقوا كل عمل بعد تنفيذه: ماذا فعلتم، وأين، ومن استفاد، وما الذي تعلّمتموه.' }));
-      el.replaceChildren(...kids);
+      put(el, ...kids);
     }
     function actions(x) {
       if (x.status !== 'submitted' && x.status !== 'returned') return [];
@@ -1968,7 +2121,7 @@
       const n = () => ed.photos.length + ed.adds.length;
       function paintStrip() {
         const items = ed.photos.map(path => ({ path })).concat(ed.adds.map(a => ({ url: a.url })));
-        strip.replaceChildren(items.length ? photoStrip(items, i => {
+        put(strip, items.length ? photoStrip(items, i => {
           if (i < ed.photos.length) ed.photos.splice(i, 1);
           else { const a = ed.adds.splice(i - ed.photos.length, 1)[0]; if (a && a.url) URL.revokeObjectURL(a.url); }
           paintStrip(); say('حُذفت الصورة من القائمة.'); pick.focus();
@@ -2033,7 +2186,7 @@
       });
       return form;
     }
-    return { el, start: async () => { el.replaceChildren(...head(), skeleton()); if (team.status === 'approved') await load(); paint(); } };
+    return { el, start: async () => { put(el, ...head(), skeleton()); if (team.status === 'approved') await load(); paint(); } };
   }
 
   // a member or a parent: the team's work, read only (only the team's own people can read it)
@@ -2045,7 +2198,7 @@
       if (!rows.length) return;
       const acc = rows.filter(x => x.status === 'accepted').length;
       const tn = /^فريق\s/.test(teamName || '') ? teamName : 'فريق ' + (teamName || '');
-      el.replaceChildren(h('h3', {}, icon('image'), h('span', { text: `مشاريع ${tn} ومبادراته` })),
+      put(el, h('h3', {}, icon('image'), h('span', { text: `مشاريع ${tn} ومبادراته` })),
         h('p', { class: 'a-lead', text: `${rows.length} من الأعمال الموثقة${acc ? `، قُبل منها ${acc}` : ''}. يرسلها قائد الفريق، ولا يراها إلا الفريق ومسؤول المشاريع.` }),
         h('div', { class: 'a-list' }, rows.map(x => subItem(x))));
       el.hidden = false;
@@ -2090,7 +2243,7 @@
       const tab = (k, label) => h('button', { type: 'button', class: 'btn btn-sm ' + (R.filter === k ? 'btn-primary' : 'btn-ghost'), 'aria-pressed': String(R.filter === k), 'data-fk': fk + '-f-' + k,
         onclick: () => { R.filter = k; paint(); focusFk(fk + '-f-' + k); } }, h('span', { text: label }));
       const teams = new Set(accepted.map(x => x.team_id)).size;
-      el.replaceChildren(h('h3', { id: fk + '-h' }, icon('image'), h('span', { text: 'مراجعة المشاريع والمبادرات' })),
+      put(el, h('h3', { id: fk + '-h' }, icon('image'), h('span', { text: 'مراجعة المشاريع والمبادرات' })),
         h('p', { class: 'a-lead', text: waiting ? `${waiting} من الأعمال بانتظار مراجعتك.` : 'لا أعمال بانتظار المراجعة الآن.' }),
         R.rows.length ? h('p', { class: 'a-hint', text: `كل الأعمال: ${R.rows.length} · المقبولة: ${accepted.length}${teams ? ` من ${teams} ${teams === 1 ? 'فريق' : 'فرق'}` : ''}` }) : null,
         R.err ? h('p', { class: 'a-live-msg', role: 'alert', text: R.err }) : null,
@@ -2100,7 +2253,7 @@
           : h('p', { class: 'a-empty', text: R.rows.length ? 'لا شيء هنا. اختر «كل الأعمال» لرؤية ما رُوجع.' : 'لم ترسل الفرق مشاريع أو مبادرات بعد.' }),
         h('p', { class: 'a-hint', text: 'الصور خاصة: تُفتح بروابط مؤقتة لك وللفريق صاحب العمل فقط. لا تُنشر صورة فيها قاصر قبل التأكد من موافقة وليّ أمره.' }));
     }
-    return { el, start: async () => { el.replaceChildren(skeleton()); await load(); paint(); } };
+    return { el, start: async () => { put(el, skeleton()); await load(); paint(); } };
   }
 
   /* ------------------------------------------------------------------ JUDGING AND FINAL RESULTS (migration 0010) */
@@ -2166,7 +2319,7 @@
       box.dataset.ready = '1';
       const r = await read('yb_submissions', { select: SUB_COLS, filter: { team_id: 'eq.' + t.team_id, status: 'eq.accepted' }, order: 'created_at.desc' });
       const rows = r.ok && Array.isArray(r.data) ? r.data : [];
-      box.replaceChildren(h('h4', { class: 'a-sub', text: 'مشاريع الفريق ومبادراته المقبولة' }),
+      put(box, h('h4', { class: 'a-sub', text: 'مشاريع الفريق ومبادراته المقبولة' }),
         rows.length ? h('div', { class: 'a-list' }, rows.map(x => subItem(x))) : h('p', { class: 'a-hint', text: 'لا مشاريع مقبولة لهذا الفريق بعد.' }));
     }
     function teamBox(t) {
@@ -2185,7 +2338,7 @@
     }
     function paint(focus) {
       if (!J.data || !Array.isArray(J.data.axes) || !J.data.axes.length) { el.hidden = true; return; }
-      el.replaceChildren(h('h3', { id: fk + '-h' }, icon('scale'), h('span', { text: 'التحكيم' })),
+      put(el, h('h3', { id: fk + '-h' }, icon('scale'), h('span', { text: 'التحكيم' })),
         h('p', { class: 'a-lead', text: `اختارتك الإدارة حكمًا في: ${J.data.axes.map(a => AXIS[a]).join('، ')}. اكتب سبب كل درجة؛ يقرؤه الفريق بعد إعلان النتائج دون اسمك.` }),
         J.data.published ? h('p', { class: 'a-note', text: 'أُعلنت النتائج، فالدرجات مقفلة الآن.' }) : null,
         (J.data.teams || []).length ? h('div', { class: 'a-list' }, J.data.teams.map(teamBox)) : h('p', { class: 'a-empty', text: 'لا فرق معتمدة للتحكيم بعد.' }));
@@ -2311,9 +2464,9 @@
     let desk = null;
     function paint() {
       if (!desk) { desk = judgeDesk(fk + '-me'); desk.start(); }
-      el.replaceChildren(...[G.err ? h('p', { class: 'a-live-msg', role: 'alert', text: G.err }) : null, msgEl, desk.el, judgesCard(), boardCard()].filter(Boolean));
+      put(el, ...[G.err ? h('p', { class: 'a-live-msg', role: 'alert', text: G.err }) : null, msgEl, desk.el, judgesCard(), boardCard()].filter(Boolean));
     }
-    return { el, start: async () => { el.replaceChildren(skeleton()); await load(); paint(); } };
+    return { el, start: async () => { put(el, skeleton()); await load(); paint(); } };
   }
 
   // the team's people, after publication: the result and the reasons (no judges' names)
@@ -2335,7 +2488,7 @@
             x.reasons.length ? h('ul', { class: 'a-why' }, x.reasons.map(rs => h('li', { text: rs }))) : null))),
           h('p', { class: 'a-hint', text: 'الأسباب كما كتبها الحكّام، دون أسمائهم. للتظلم راجع إدارة المسابقة خلال المدة المعلنة.' }));
       });
-      el.replaceChildren(...kids);
+      put(el, ...kids);
       el.hidden = false;
     })();
     return el;
@@ -2368,7 +2521,7 @@
     if (seq !== S.seq) return;
     if (!r.ok) {
       if (sessionLost(r.error)) return;
-      sh.body.replaceChildren(errorBlock(YB.errorText(r.error), () => { sh.body.replaceChildren(skeleton()); route(); }));
+      put(sh.body, errorBlock(YB.errorText(r.error), () => { put(sh.body, skeleton()); route(); }));
       return;
     }
     L.boxes = { body: sh.body };
@@ -2411,7 +2564,7 @@
       h('p', { class: 'a-lead', text: 'اكتب رقم الطلب ورقم هاتف القائد، فيصبح الفريق تحت حسابك: تدير الأعضاء وتصلك التنبيهات.' }), cform);
     const createCard = h('section', { class: 'a-card' }, h('h3', {}, icon('users'), h('span', { text: 'أنشئ فريقك' })),
       h('p', { class: 'a-lead', text: 'ليس لديك فريق بعد. اكتب اسم الفريق والحي، وبعدها تضيف الأعضاء وتحصل على رمز الانضمام.' }), form);
-    body.replaceChildren(...(qref ? [claimCard, createCard] : [createCard, claimCard]));
+    put(body, ...(qref ? [claimCard, createCard] : [createCard, claimCard]));
   }
 
   function drawLeader(focus) {
@@ -2430,7 +2583,12 @@
     L.boxes.marks = h('section', { class: 'a-card', 'aria-labelledby': 'l-marks-h', 'data-marks': '', hidden: true });
     L.subs = leaderSubs({ id: t.team_id, name: t.team_name, status: t.status }, 'lsub');
     if (!L.chat) { L.chat = chatRoom(false, 'lchat'); L.chat.start(); }
-    body.replaceChildren(L.boxes.top, L.boxes.check, scoresCard(), announceFeed(), L.dates, L.boxes.marks, L.subs.el, L.chat.el, L.boxes.roster, L.boxes.roles, L.boxes.code, L.sched.node, L.printBox);
+    dashLayout([
+      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [leaderTiles(t), L.boxes.top, L.boxes.check, scoresCard(), announceFeed()] },
+      { key: 'matches', label: 'المباريات والمواعيد', icon: 'trophy', one: true, nodes: [L.dates, L.sched.node, L.boxes.marks] },
+      { key: 'team', label: 'الفريق', icon: 'users', nodes: [L.boxes.roster, L.boxes.roles, L.boxes.code, L.printBox] },
+      { key: 'projects', label: 'المشاريع والمبادرات', icon: 'image', one: true, nodes: [L.subs.el] },
+      { key: 'room', label: 'غرفة القادة', icon: 'bell', one: true, nodes: [L.chat.el] }]);
     L.subs.start();
     paintLeader();
     startSchedule([L.sched]);
@@ -2453,7 +2611,7 @@
     };
     const goals = tally('goal', true), spirit = tally('spirit', true), waiting = rows.filter(x => x.status !== 'approved').length;
     const list = (pairs, unit) => h('ul', { class: 'a-roles' }, pairs.map(([n, c]) => h('li', {}, h('b', { text: n }), chip(`${c} ${unit}`, unit === 'هدف' ? 'ok' : 'role'))));
-    box.replaceChildren(h('h3', { id: 'l-marks-h' }, icon('trophy'), h('span', { text: 'هدّافو فريقنا و«روح الفريق»' })),
+    put(box, h('h3', { id: 'l-marks-h' }, icon('trophy'), h('span', { text: 'هدّافو فريقنا و«روح الفريق»' })),
       goals.length ? list(goals, 'هدف') : h('p', { class: 'a-hint', text: 'لا أهداف معتمدة بأسماء أصحابها بعد.' }),
       spirit.length ? [h('h4', { class: 'a-sub', text: '«روح الفريق»' }), list(spirit, 'مرة')] : null,
       waiting ? h('p', { class: 'a-hint', text: `${waiting} من التسجيلات في مباريات لم تُعتمد نتيجتها بعد، وتُحتسب بعد الاعتماد.` }) : null,
@@ -2468,7 +2626,7 @@
     const holder = k => ms.find(m => Array.isArray(m.roles) && m.roles.includes(k));
     const head = h('h3', { id: 'l-roles-h' }, icon('flag'), h('span', { text: 'المرشحون والأدوار' }));
     if (!editable()) {
-      box.replaceChildren(head, h('ul', { class: 'a-roles' }, ROLE_ORDER.map(k => { const m = holder(k); return h('li', {}, h('b', { text: ROLE_W[k] + ': ' }), m ? m.full_name : '—'); })),
+      put(box, head, h('ul', { class: 'a-roles' }, ROLE_ORDER.map(k => { const m = holder(k); return h('li', {}, h('b', { text: ROLE_W[k] + ': ' }), m ? m.full_name : '—'); })),
         h('p', { class: 'a-hint', text: 'تُعدَّل الأدوار بعد الاعتماد عن طريق مسؤول التسجيل.' }));
       return;
     }
@@ -2490,7 +2648,7 @@
       if (!r.ok) { if (sessionLost(r)) return; msg.textContent = errMsg(r); msg.hidden = false; say(msg.textContent); return; }
       await reloadLeader('حُفظت الأدوار.');
     }, { 'data-fk': 'roles-save' });
-    box.replaceChildren(head,
+    put(box, head,
       h('p', { class: 'a-lead', text: 'اختر من أعضاء الفريق من يمثّله في تسميع سورة الصف وفي بطولة الشطرنج، ومن ينسّق ويوثّق. تراها إدارة المسابقة ومسؤولو المسابقات فقط.' }),
       h('div', { class: 'a-grid2' }, rows), msg, h('div', { class: 'a-actions' }, save));
   }
@@ -2516,7 +2674,7 @@
     const r = await YB.rpc('yb_team_checklist', { team_id: team.team_id });
     if (L.team !== team || L.boxes.check !== box) return;
     if (!r.ok || !r.data || typeof r.data !== 'object') { box.hidden = true; return; }
-    box.replaceChildren(h('h3', { id: 'l-check-h' }, icon('check'), h('span', { text: 'خطوات اعتماد فريقك' })), YBChecklist.render(r.data));
+    put(box, h('h3', { id: 'l-check-h' }, icon('check'), h('span', { text: 'خطوات اعتماد فريقك' })), YBChecklist.render(r.data));
     box.hidden = false;
   }
 
@@ -2565,7 +2723,7 @@
       if (acts.length) nodes.push(h('div', { class: 'a-actions' }, acts));
       nodes.push(h('div', { class: 'a-live-msg', role: 'alert', hidden: true, 'data-msg': 'top' }));
     }
-    box.replaceChildren(...nodes);
+    put(box, ...nodes);
   }
   const topMsg = msg => { const m = L.boxes.top && L.boxes.top.querySelector('[data-msg=top]'); if (m) { m.textContent = msg; m.hidden = !msg; } if (msg) say(msg); };
   async function setStatus(st) {
@@ -2602,7 +2760,7 @@
     const box = L.boxes.roster;
     const ed = editable();
     const list = h('ul', { class: 'a-roster' }, L.members.map(m => L.editing === m.id ? memberEdit(m) : memberCard(m, ed)));
-    box.replaceChildren(
+    put(box, 
       h('h3', { id: 'l-roster-h' }, icon('users'), h('span', { text: W.membersTitle || 'أعضاء الفريق' })),
       countLine(), W.countRule ? h('p', { class: 'a-hint', text: W.countRule }) : null, list);
     if (ed) {
@@ -2706,7 +2864,7 @@
       if (!r.ok) { if (!sessionLost(r)) say(errMsg(r)); return; }
       await reloadLeader('أُنشئ رمز جديد، وتوقف الرمز القديم.');
     });
-    L.boxes.code.replaceChildren(
+    put(L.boxes.code, 
       h('h3', { id: 'l-code-h' }, icon('lock'), h('span', { text: 'رمز الانضمام' })),
       h('p', { class: 'a-code', dir: 'ltr', 'aria-label': 'رمز الفريق: ' + code.split('').join(' '), 'data-code': '', text: code }),
       h('p', { class: 'a-lead', text: 'أعطِ هذا الرمز لأعضاء فريقك ولأولياء أمورهم. يدخله العضو مع اسمه كما كتبته في القائمة ليربط حسابه بالفريق، ويدخله ولي الأمر مع اسم ابنه ليتابعه. لا تنشره علنًا.' }),
@@ -2716,7 +2874,7 @@
   /* --- print the registration form pre-filled */
   function paintPrint() {
     const msg = h('p', { class: 'a-err', role: 'alert', hidden: true });
-    L.printBox.replaceChildren(
+    put(L.printBox, 
       h('h3', {}, icon('printer'), h('span', { text: 'استمارة التسجيل جاهزة' })),
       h('p', { class: 'a-lead', text: 'نملأ لك استمارة التسجيل بما أدخلته هنا، فتراجعها وتطبعها مع موافقات أولياء الأمور. تُحفظ المسودة على هذا الجهاز فقط.' }),
       h('div', { class: 'a-actions' }, btn('اطبع الاستمارة جاهزة', 'printer', 'btn-primary', () => {
@@ -2776,10 +2934,10 @@
     mount(sh.el, S.focusNext);
     const r = await YB.rpc('my_team');
     if (seq !== S.seq) return;
-    if (!r.ok) { if (sessionLost(r)) return; sh.body.replaceChildren(errorBlock(YB.errorText(r), () => { sh.body.replaceChildren(skeleton()); route(); })); return; }
+    if (!r.ok) { if (sessionLost(r)) return; put(sh.body, errorBlock(YB.errorText(r), () => { put(sh.body, skeleton()); route(); })); return; }
     const row = (Array.isArray(r.data) ? r.data : []).find(x => x.my_role === 'member');
     if (!row) {
-      sh.body.replaceChildren(h('section', { class: 'a-card' }, h('h3', {}, icon('users'), h('span', { text: 'انضم إلى فريقك' })),
+      put(sh.body, h('section', { class: 'a-card' }, h('h3', {}, icon('users'), h('span', { text: 'انضم إلى فريقك' })),
         h('p', { class: 'a-lead', text: 'اطلب من قائد فريقك رمز الفريق، ثم اكتبه هنا مع اسمك كما كتبه في قائمة الفريق.' }), joinForm('member')));
       return;
     }
@@ -2788,7 +2946,7 @@
     const roster = ro.ok ? (ro.data || []) : [];
     const me = roster.find(x => x.is_me);
     const box = scheduleBox({ id: row.team_id, name: row.team_name });
-    sh.body.replaceChildren(...[
+    const mv = [
       announceFeed(),
       scoresCard(),
       h('section', { class: 'a-card a-teamcard' }, h('div', { class: 'a-team-top' }, h('div', {}, h('h3', { text: row.team_name }), row.area ? h('small', { class: 'a-hint', text: row.area }) : null), statusChip(row.status)),
@@ -2800,7 +2958,12 @@
         me ? consentBlock(me.consent_status) : h('p', { class: 'a-empty', text: 'لا تتوفر حالة الموافقة الآن.' })),
       teamDates(row.team_id, row.status, false),
       row.status === 'approved' ? teamSubsView(row.team_id, row.team_name) : null,
-      box.node].filter(Boolean));
+      box.node];
+    dashLayout([
+      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [memberTiles(row), mv[2], mv[0], mv[1], mv[4]] },
+      { key: 'matches', label: 'المباريات والمواعيد', icon: 'trophy', one: true, nodes: [mv[5], mv[7]] },
+      { key: 'team', label: 'الفريق', icon: 'users', nodes: [mv[3]] },
+      { key: 'projects', label: 'المشاريع والمبادرات', icon: 'image', one: true, nodes: [mv[6]] }]);
     startSchedule([box]);
   }
 
@@ -2811,11 +2974,12 @@
     mount(sh.el, S.focusNext);
     const r = await read('my_children', { select: 'member_id,full_name,consent_status,team_id,team_name,team_area,team_status', order: 'full_name.asc' });
     if (seq !== S.seq) return;
-    if (!r.ok) { if (sessionLost(r.error)) return; sh.body.replaceChildren(errorBlock(YB.errorText(r.error), () => { sh.body.replaceChildren(skeleton()); route(); })); return; }
+    if (!r.ok) { if (sessionLost(r.error)) return; put(sh.body, errorBlock(YB.errorText(r.error), () => { put(sh.body, skeleton()); route(); })); return; }
     const kids = r.data || [];
     const jd = judgeDesk('pjdg');
     jd.start();
-    const nodes = [announceFeed(), jd.el, scoresCard()];
+    const home = [parentTiles(kids), announceFeed(), scoresCard()];
+    const nodes = home, games = [];
     const boxes = [];
     if (!kids.length) nodes.push(h('p', { class: 'a-empty a-card', text: 'لم تربط أي ابن أو ابنة بعد. اكتب رمز الفريق واسم الطفل أدناه.' }));
     kids.forEach(k => {
@@ -2829,11 +2993,15 @@
       seen[k.team_id] = 1;
       const b = scheduleBox({ id: k.team_id, name: k.team_name });
       boxes.push(b);
-      nodes.push(teamDates(k.team_id, k.team_status, false), k.team_status === 'approved' ? teamSubsView(k.team_id, k.team_name) : null, b.node);
+      games.push(teamDates(k.team_id, k.team_status, false), k.team_status === 'approved' ? teamSubsView(k.team_id, k.team_name) : null, b.node);
     });
-    nodes.push(h('section', { class: 'a-card' }, h('h3', {}, icon('user-check'), h('span', { text: kids.length ? 'اربط ابنًا أو ابنة آخر' : 'اربط ابنك أو ابنتك' })),
-      h('p', { class: 'a-lead', text: 'اطلب من قائد الفريق رمز الفريق، واكتب اسم الطفل كما كتبه في القائمة.' }), joinForm('parent')));
-    sh.body.replaceChildren(...nodes.filter(Boolean));
+    const link = h('section', { class: 'a-card' }, h('h3', {}, icon('user-check'), h('span', { text: kids.length ? 'اربط ابنًا أو ابنة آخر' : 'اربط ابنك أو ابنتك' })),
+      h('p', { class: 'a-lead', text: 'اطلب من قائد الفريق رمز الفريق، واكتب اسم الطفل كما كتبه في القائمة.' }), joinForm('parent'));
+    dashLayout([
+      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: home },
+      { key: 'judge', label: 'التحكيم', icon: 'scale', one: true, nodes: [jd.el] },
+      { key: 'matches', label: 'المباريات والمشاريع', icon: 'trophy', one: true, nodes: games },
+      { key: 'link', label: 'ربط ابن أو ابنة', icon: 'user-check', nodes: [link] }]);
     startSchedule(boxes);
   }
 
@@ -2844,11 +3012,15 @@
     stopPoll();
     if (S.stopInbox) { S.stopInbox(); S.stopInbox = null; }
     if (S.stopChat) S.stopChat();
+    if (S.dashObs) { S.dashObs.disconnect(); S.dashObs = null; }
+    if (S.dashMo) { S.dashMo.disconnect(); S.dashMo = null; }
+    S.boardP = null; S.sh = null;
+    document.documentElement.classList.remove('is-dash');
     S.modeSet = null;
     S.focusNext = !!opts.focus;
     if (!YB || !YB.configured) { S.rendered = 'unconfigured'; viewUnconfigured(); return; }
     root.setAttribute('aria-busy', 'true');
-    if (S.rendered !== 'signedout' || opts.focus) root.replaceChildren(skeleton());
+    if (S.rendered !== 'signedout' || opts.focus) put(root, skeleton());
     try { await YB.ready; } catch (e) { /* the link error is read below */ }
     if (seq !== S.seq) return;
     let sess = YB.session();
@@ -2864,7 +3036,7 @@
     }
     let profile = sess.profile;
     if (!profile) {
-      root.replaceChildren(skeleton());
+      put(root, skeleton());
       profile = await YB.loadProfile();
       if (seq !== S.seq) return;
     }
