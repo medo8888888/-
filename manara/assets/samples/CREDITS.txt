@@ -1,0 +1,105 @@
+MANARA detector sample images — credits and licences
+====================================================
+
+All images come from Wikimedia Commons. Licences were checked with the Commons API
+(imageinfo / extmetadata: LicenseShortName, Artist, Credit) on 2026-10-07.
+Modifications for every image: downscaled (longest side <= 640 px) and recompressed as JPEG;
+samples-data.js holds the same images downscaled again to 320 px wide (data URIs).
+Public-domain and CC0 images need no attribution; it is given anyway.
+
+fire-1.jpg
+  Title:   2025 Southern California fires and the United States Forest Service (USFS) - Eaton Fire Initial Attack (54263442283).jpg
+  Author:  Pacific Southwest Forest Service, USDA
+  Licence: Public domain (work of the U.S. federal government)
+  Source:  https://commons.wikimedia.org/wiki/File:2025_Southern_California_fires_and_the_United_States_Forest_Service_(USFS)_-_Eaton_Fire_Initial_Attack_(54263442283).jpg
+
+fire-2.jpg
+  Title:   MPOTY 2015 No More - car on fire.jpg
+  Author:  U.S. Air Force photo by Staff Sgt. Kenny Holston
+  Licence: Public domain (work of the U.S. federal government)
+  Source:  https://commons.wikimedia.org/wiki/File:MPOTY_2015_No_More_-_car_on_fire.jpg
+
+fire-3.jpg
+  Title:   Woolsey Flames (54811019352).jpg
+  Author:  Santa Monica Mountains National Recreation Area (U.S. National Park Service)
+  Licence: Public domain (work of the U.S. federal government)
+  Source:  https://commons.wikimedia.org/wiki/File:Woolsey_Flames_(54811019352).jpg
+
+fire-4.jpg
+  Title:   A campfire in the mountains.jpg
+  Author:  Dudley
+  Licence: Public domain (released by the copyright holder)
+  Source:  https://commons.wikimedia.org/wiki/File:A_campfire_in_the_mountains.jpg
+
+fire-5.jpg
+  Title:   Fire engine passes through the wildfire flames (53721560610).jpg
+  Author:  Bureau of Land Management California (blmcalifornia)
+  Licence: Public domain (work of the U.S. federal government)
+  Source:  https://commons.wikimedia.org/wiki/File:Fire_engine_passes_through_the_wildfire_flames_(53721560610).jpg
+
+fire-6.jpg
+  Title:   House fire in Waikanae, 16 May 2026, P 36.jpg
+  Author:  Panamitsu
+  Licence: CC BY-SA 4.0 — https://creativecommons.org/licenses/by-sa/4.0/
+  Source:  https://commons.wikimedia.org/wiki/File:House_fire_in_Waikanae,_16_May_2026,_P_36.jpg
+  Note:    Attribution required. The resized copy is shared under the same licence (CC BY-SA 4.0).
+
+smoke-1.jpg
+  Title:   Wolverine Fire smoke plume (19692555814).jpg
+  Author:  United States Forest Service
+  Licence: Public domain (work of the U.S. federal government)
+  Source:  https://commons.wikimedia.org/wiki/File:Wolverine_Fire_smoke_plume_(19692555814).jpg
+
+smoke-2.jpg
+  Title:   Pagami creek smoke plume.jpeg
+  Author:  Superior National Forest (U.S. Forest Service)
+  Licence: Public domain (work of the U.S. federal government)
+  Source:  https://commons.wikimedia.org/wiki/File:Pagami_creek_smoke_plume.jpeg
+
+none-1.jpg
+  Title:   Yellow-orange sunset with clouds.jpg
+  Author:  dimitrisvetsikas1969
+  Licence: CC0 1.0 — https://creativecommons.org/publicdomain/zero/1.0/
+  Source:  https://commons.wikimedia.org/wiki/File:Yellow-orange_sunset_with_clouds.jpg
+
+none-2.jpg
+  Title:   Tree silhouettes against orange sky (Unsplash).jpg
+  Author:  freestocks.org
+  Licence: CC0 1.0 — https://creativecommons.org/publicdomain/zero/1.0/
+  Source:  https://commons.wikimedia.org/wiki/File:Tree_silhouettes_against_orange_sky_(Unsplash).jpg
+
+none-3.jpg
+  Title:   Red Smart Car Side View Driveway.jpg
+  Author:  TudorTulok
+  Licence: CC0 1.0 — https://creativecommons.org/publicdomain/zero/1.0/
+  Source:  https://commons.wikimedia.org/wiki/File:Red_Smart_Car_Side_View_Driveway.jpg
+
+none-4.jpg
+  Title:   Fire truck at Lajes Field.JPG
+  Author:  Guido Melo, U.S. Air Force (ID 140311-F-OS357-041)
+  Licence: Public domain (work of the U.S. federal government)
+  Source:  https://commons.wikimedia.org/wiki/File:Fire_truck_at_Lajes_Field.JPG
+
+none-5.jpg
+  Title:   Great Holm Milton Keynes at night.jpg
+  Author:  John Chryslar
+  Licence: CC0 1.0 — https://creativecommons.org/publicdomain/zero/1.0/
+  Source:  https://commons.wikimedia.org/wiki/File:Great_Holm_Milton_Keynes_at_night.jpg
+
+none-6.jpg
+  Title:   Herastrau park leaves (Unsplash).jpg
+  Author:  Rula Sibai
+  Licence: CC0 1.0 — https://creativecommons.org/publicdomain/zero/1.0/
+  Source:  https://commons.wikimedia.org/wiki/File:Herastrau_park_leaves_(Unsplash).jpg
+
+none-7.jpg
+  Title:   Misty Morning in Mysuru.jpg
+  Author:  Pradyumnakp
+  Licence: CC0 1.0 — https://creativecommons.org/publicdomain/zero/1.0/
+  Source:  https://commons.wikimedia.org/wiki/File:Misty_Morning_in_Mysuru.jpg
+
+none-8.jpg
+  Title:   Dunes in the Dubai Desert Conservation.jpg
+  Author:  Mlewis114
+  Licence: CC0 1.0 — https://creativecommons.org/publicdomain/zero/1.0/
+  Source:  https://commons.wikimedia.org/wiki/File:Dunes_in_the_Dubai_Desert_Conservation.jpg

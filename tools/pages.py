@@ -332,7 +332,8 @@ def build_about():
 def build_initiatives():
     s3 = section(3, f'''<div class="grid g2">
       <article class="init-card tilt rv yanabee" id="s3-1"><span class="ic big">{ic('droplet')}</span>
-        <h3>{L(76)}</h3><p class="focus">{L(77)}</p>{ul(LS(78, 81))}</article>
+        <h3>{L(76)}</h3><p class="focus">{L(77)}</p>{ul(LS(78, 81))}
+        <a class="init-link" href="yanabee/index.html">{ic('droplet')}<span>موقع مشروع «ينابيع»</span>{ic('arrow-left')}</a></article>
       <article class="init-card tilt rv manafea" id="s3-2"><span class="ic big">{ic('coins')}</span>
         <h3>{L(82)}</h3><p class="focus">{L(83)}</p>{ul(LS(84, 87), 'diamond')}</article>
     </div>

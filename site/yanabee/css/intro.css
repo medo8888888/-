@@ -1,0 +1,21 @@
+/* Launch-screen splash: home page, first visit per session (js/intro.js). About 1.3 s: a drop, one ripple, the logo, then the overlay
+   fades away to the app underneath. Always dark: it is a night-time drop of water.
+   It never locks scrolling and ignores pointer input (the page below stays usable); the hero holds its entrance in home.css. */
+.intro{display:none}
+html.intro-on .intro,.intro.out{display:block;position:fixed;inset:0;z-index:500;pointer-events:none;
+  background:radial-gradient(120% 90% at 50% 62%,#08414a 0%,#04222b 48%,#020d14 100%)}
+.intro-canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.intro-mark,.intro-word{position:absolute;left:50%;translate:-50% 0;pointer-events:none;opacity:0}
+.intro-mark{top:var(--iy,54%);translate:-50% -100%;transform-origin:50% 100%;filter:drop-shadow(0 0 22px rgba(47,211,198,.5))}
+.intro-logo{display:block;width:clamp(88px,15vmin,140px);height:auto}
+.intro-word{top:calc(var(--iy,54%) + clamp(22px,4vmin,40px));font-family:var(--font-h);font-weight:700;font-size:clamp(2.4rem,8.5vmin,4.6rem);line-height:1.2;
+  color:#c8fff7;white-space:nowrap}
+/* the logo springs in (450 ms, a little overshoot), the name fades in behind it */
+.intro.pop .intro-mark{animation:intro-pop 450ms cubic-bezier(.2,1.35,.35,1) both}
+.intro.pop .intro-word{animation:intro-word 300ms ease-out 120ms both}
+/* the overlay leaves with opacity alone */
+.intro.out{opacity:0;transition:opacity 280ms ease-out}
+@keyframes intro-pop{from{opacity:0;transform:translateY(22px) scale(.55)}to{opacity:1;transform:none}}
+@keyframes intro-word{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.intro{display:none!important}}
+@media print{.intro{display:none!important}}

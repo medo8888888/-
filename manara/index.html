@@ -1,0 +1,781 @@
+<!doctype html>
+<html lang="ar" dir="rtl" data-lang="ar">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title data-en="MANARA — The drone sees. No one is left behind.">منارة — المسيّرة ترى، ولا أحدَ يُترك خلفنا</title>
+<meta name="description" content="منارة: مسيّرة ترى الخطر (دخان، حريق، غاز، سيول، غبار، حرارة، أو شخص يحتاج مساعدة) وتُنبّه غرفة التحكم؛ مفتاحان مستقلان وموافقة إنسان قبل أي إنذار عام؛ ثم تُوصي بالوحدة الأسرع بحسب المرور في قطر كلها، وتُرشد الناس في آخر مئة متر، ويبحث روبوت الإنقاذ عمّن لا يستطيع الخروج. مفهوم بنموذج أولي محاكى لمسابقة الابتكار.">
+<meta property="og:title" content="منارة · MANARA">
+<meta property="og:description" content="المسيّرة ترى… غرفة التحكم تُثبت… الأسرع يصل… والروبوت يجد مَن لا يقدر على الخروج — The drone sees. The control room proves. The fastest unit arrives. The robot finds those who cannot get out.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#0a0e15">
+<meta name="color-scheme" content="light dark">
+<script>(function(){var d=document.documentElement,t,l;try{t=localStorage.getItem('manara-theme');l=localStorage.getItem('manara-lang')}catch(e){}var q=/[?&]lang=(ar|en)/.exec(location.search);if(q)l=q[1];if(t!=='light'&&t!=='dark')t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';if(l!=='en')l='ar';d.dataset.theme=t;d.dataset.lang=l;d.lang=l;d.dir=l==='ar'?'rtl':'ltr';d.classList.add('js');setTimeout(function(){if(!window.__manaraReady)d.classList.remove('js')},2500)})();</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/home.css">
+<script src="js/core.js" defer></script>
+<script src="data/test-counts.js" defer></script>
+<script src="js/fire.js" defer></script>
+<script src="js/drone-scene.js" defer></script>
+<script src="js/home.js" defer></script>
+<script src="data/qatar-geo.js" defer></script>
+<script src="data/qatar-facilities.js" defer></script>
+<script src="data/qatar-roads.js" defer></script>
+<script src="js/national.js" defer></script>
+<script src="js/mission-national-map.js" defer></script>
+<script src="js/home-map.js" defer></script>
+</head>
+<body data-page="index.html">
+<a class="skip" href="#main">تخطَّ إلى المحتوى</a>
+<header class="nav" data-nav></header>
+<main id="main">
+<noscript><div class="wrap"><p class="note warn ns-note"><span data-l="ar">المشاهد الحيّة (المسيّرة والخريطة والروبوت) تحتاج جافاسكربت؛ النصوص والأرقام والمصادر كلها ظاهرة بدونه.</span><span data-l="en">The live scenes (drone, map, robot) need JavaScript; all the text, numbers and sources are visible without it.</span></p></div></noscript>
+
+<!-- ============================================================ HERO: the drone sees → alerts the control room -->
+<section class="hero" id="top" aria-labelledby="hero-title">
+  <div class="hero-bg" aria-hidden="true"><i class="beam"></i><i class="grid-bg"></i></div>
+  <div class="wrap wide hero-grid">
+
+    <div class="hero-head">
+      <span class="eyebrow" data-icon="shield"><span data-l="ar">نموذج أولي لمسابقة الابتكار · قطر كلها</span><span data-l="en">Innovation-competition prototype · all of Qatar</span></span>
+      <h1 id="hero-title" class="hero-title"><span class="hero-logo" data-logo aria-hidden="true"></span><span data-l="ar">منارة</span><span data-l="en">MANARA</span></h1>
+      <p class="hero-tag"><span data-l="ar">المسيّرة ترى… غرفة التحكم تُثبت… الأسرع يصل… والروبوت يجد مَن لا يقدر على الخروج.</span><span data-l="en">The drone sees. The control room proves. The fastest unit arrives. The robot finds those who cannot get out.</span></p>
+    </div>
+
+    <!-- the live drone camera: a procedurally generated aerial scene (SIM) analysed in this page by the real rule-based detector -->
+    <div class="cam dv" id="cam" role="group" data-aria-ar="بثّ مسيّرة محاكى: مشهد جوي يُنتَج بالشيفرة وعليه نتائج الكاشف" data-aria-en="Simulated drone feed: an aerial scene generated in code with the detector's results on it" aria-label="بثّ مسيّرة محاكى: مشهد جوي يُنتَج بالشيفرة وعليه نتائج الكاشف">
+      <div class="cam-bar">
+        <span class="cam-live"><i class="rec" aria-hidden="true"></i><b class="num" dir="ltr">DR-07</b><span class="cam-sector"><span data-l="ar">قطاع الدوحة</span><span data-l="en">Doha sector</span></span></span>
+        <span class="tag warn cam-sim">SIM</span>
+        <span class="cam-tele num" dir="ltr" id="cam-tele" aria-hidden="true">ALT 80 m · 18 m/s · BAT 86%</span>
+      </div>
+      <div class="cam-view" id="cam-view" data-view="cam">
+        <canvas id="cam-rgb" class="cam-rgb" width="576" height="360" role="img" aria-label="مشهد جوي محاكى لحريق ودخان في حيّ عمراني، وعليه مربعات الكشف" data-aria-ar="مشهد جوي محاكى لحريق ودخان في حيّ عمراني، وعليه مربعات الكشف" data-aria-en="Simulated aerial view of fire and smoke in an urban block, with the detection boxes on it">Simulated aerial view</canvas>
+        <canvas id="cam-ovl" class="cam-ovl" aria-hidden="true"></canvas>
+        <svg id="cam-story" class="cam-story" viewBox="0 0 160 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false"></svg>
+        <span class="cam-state" id="cam-state" data-s="watch" aria-hidden="true"></span>
+        <span class="cam-clock num" id="cam-clock" dir="ltr" aria-hidden="true">00:00</span>
+        <div class="cam-pip" aria-hidden="true"><canvas id="cam-th" width="192" height="120"></canvas><span class="cam-pip-l">THERMAL</span></div>
+        <div class="cam-keys" id="cam-keys" aria-hidden="true">
+          <span class="cam-key" id="cam-k1" data-on="0"><i class="ck"></i><span class="ck-t"><b data-l="ar">مفتاح 1 · رؤية</b><b data-l="en">Key 1 · vision</b><small class="num" dir="ltr" id="cam-k1v">—</small></span></span>
+          <span class="cam-key" id="cam-k2" data-on="0"><i class="ck"></i><span class="ck-t"><b data-l="ar">مفتاح 2 · حرارة</b><b data-l="en">Key 2 · thermal</b><small class="num" dir="ltr" id="cam-k2v">—</small></span></span>
+        </div>
+        <div class="cam-alert" id="cam-alert" data-on="0" aria-hidden="true">
+          <i class="pkt"></i>
+          <span class="ca-t"><b><span data-l="ar">إنذار المسيّرة → غرفة التحكم</span><span data-l="en">DRONE ALERT → CONTROL ROOM</span></b><small id="cam-alert-s"></small></span>
+        </div>
+        <i class="cam-c tl" aria-hidden="true"></i><i class="cam-c tr" aria-hidden="true"></i><i class="cam-c bl" aria-hidden="true"></i><i class="cam-c br" aria-hidden="true"></i>
+      </div>
+      <ol class="cam-steps" id="cam-steps" data-aria-ar="مراحل القصة" data-aria-en="Story stages" aria-label="مراحل القصة">
+        <li data-k="sense"><span class="cs-n num">1</span><b><span data-l="ar">ترى</span><span data-l="en">Sense</span></b></li>
+        <li data-k="prove"><span class="cs-n num">2</span><b><span data-l="ar">تتحقق</span><span data-l="en">Prove</span></b></li>
+        <li data-k="reach"><span class="cs-n num">3</span><b><span data-l="ar">يصل الأسرع</span><span data-l="en">Reach</span></b></li>
+        <li data-k="guide"><span class="cs-n num">4</span><b><span data-l="ar">تُرشد</span><span data-l="en">Guide</span></b></li>
+        <li data-k="count"><span class="cs-n num">5</span><b><span data-l="ar">تعدّ</span><span data-l="en">Count</span></b></li>
+        <li data-k="hand"><span class="cs-n num">6</span><b><span data-l="ar">تُسلّم</span><span data-l="en">Hand off</span></b></li>
+      </ol>
+      <div class="cam-ctl">
+        <button class="icon-btn" type="button" id="cam-play" aria-pressed="true"  aria-label="إيقاف المشهد مؤقتًا"></button>
+        <button class="icon-btn" type="button" id="cam-restart" data-aria-ar="أعد المشهد من البداية" data-aria-en="Restart the scene" aria-label="أعد المشهد من البداية" data-icon="reset"></button>
+        <div class="cam-capw" id="cam-capw"><p class="cam-cap" id="cam-cap" aria-live="off"></p></div>
+      </div>
+      <p class="cam-note"><span data-l="ar">مشهد جوي يُولَّد بالشيفرة (SIM) وليس لقطة حقيقية؛ أمّا الكاشف فقواعد رؤية حاسوبية حقيقية (ليست ذكاءً اصطناعيًا) تعمل الآن في صفحتك. لم تحلّق مسيّرة حقيقية، ولا إنذار عامًّا قبل مفتاحين وموافقة إنسان.</span><span data-l="en">An aerial scene generated in code (SIM), not real footage; the detector is real rule-based computer vision (not AI) running in this page right now. No real drone has flown, and no public alert leaves before two keys and a human Approve.</span></p>
+      <p class="sr-only sr-story"><span data-l="ar">وصف نصي للقصة (تتكرر في حلقة): مسيّرة تدور فوق حيّ عمراني، ثم يظهر دخان ولهب. الكاشف المبني على قواعد الرؤية الحاسوبية يعطي «اشتباهًا»، ثم تؤكد الكاميرا الحرارية بؤرة ساخنة، فيتوفر مفتاحان مستقلان، وتُرسل المسيّرة إنذارًا إلى غرفة التحكم الذي ينتظر موافقة إنسان؛ وصافرة الموقع المحلية لا تنتظر. بعد الموافقة تُرسم على خريطة تخطيطية مسارات الوحدات الأسرع وصولًا فتتحرك نحو الحادث؛ ثم تضيء المسيّرة مسارًا إلى المخرج فيخرج الناس ويُعدّون؛ ثم يدخل الروبوت ويجد شخصين لا يستطيعان الخروج، فيكتمل العدّ وتُسلَّم البطاقة لقائد الإنقاذ.</span><span data-l="en">Text description (it loops): a drone patrols above an urban block, then smoke and flames appear. The rule-based computer-vision detector reports SUSPECT, then the thermal camera confirms a hot spot, so two independent keys are in; the drone sends an alert to the control room, which waits for a human Approve; the local siren never waits. After Approve, routes of the fastest-arriving units are drawn on a schematic map and the units move to the incident; then the drone lights a path to the exit, people walk out and are counted; then the robot enters and finds two people who cannot get out, the count completes and the card goes to the rescue lead.</span></p>
+    </div>
+
+    <div class="hero-body">
+      <p class="hero-lead"><span data-l="ar">تحلّق مسيّرة فترى الدخان أو الحريق أو الغاز أو السيل أو الغبار أو الإجهاد الحراري أو شخصًا يحتاج مساعدة، فتُنبّه غرفة التحكم. لا إنذار عامًّا قبل <b>مفتاحين مستقلين وموافقة إنسان</b> (وصافرة الموقع المحلية لا تنتظر أحدًا). ثم تُوصي منارة بالوحدة <b>الأسرع وصولًا</b> بحسب المرور في قطر كلها، وتُرشد المسيّرة الناس في «آخر مئة متر»، ويبحث روبوت الإنقاذ في المبنى عمّن لا يستطيع الخروج وحده، ويُحصى الجميع ويُسلَّمون للفرق. <b>الفرق تواجه الخطر… ومنارة تُخرج الجميع.</b></span><span data-l="en">A drone flies, sees smoke, fire, gas, flood water, dust, heat stress or someone who needs help, and alerts the control room. No public alert leaves before <b>two independent keys and a human Approve</b> (the local siren never waits). Then MANARA recommends the <b>fastest-arriving</b> unit given traffic across the whole of Qatar, the drone guides people in the “last 100 metres”, a rescue robot searches the building for anyone who cannot get out alone, and everyone is counted and handed to the crews. <b>Responders fight the hazard. MANARA gets everyone out.</b></span></p>
+      <p class="hero-slogan"><span data-l="ar">لا نائمَ يُنسى، ولا أحدَ يُترك خلفنا</span><span data-l="en">No one asleep is forgotten, no one is left behind</span></p>
+      <div class="btns hero-cta">
+        <a class="btn btn-primary" href="control.html#demo" data-icon="radar"><span data-l="ar">ادخل غرفة التحكم</span><span data-l="en">Enter the Control Room</span></a>
+        <a class="btn btn-ghost" href="robot.html" data-icon="robot"><span data-l="ar">تعرّف على الروبوت</span><span data-l="en">Meet the rescue robot</span></a>
+        <a class="btn btn-ghost" href="#how" data-icon="route"><span data-l="ar">كيف تعمل</span><span data-l="en">How it works</span></a>
+      </div>
+      <ul class="hero-facts">
+        <li><span class="dot"></span><span data-l="ar">الدليل قبل الذعر: مفتاحان مستقلان ثم موافقة إنسان</span><span data-l="en">Proof before panic: two independent keys, then a human Approve</span></li>
+        <li><span class="dot" style="--sc:var(--accent)"></span><span data-l="ar">قطر كلها: <bdi class="num" data-nat="munis">8</bdi> بلديات و<bdi class="num" data-nat="fac">138</bdi> منشأة على خريطة OpenStreetMap حقيقية</span><span data-l="en">All of Qatar: <bdi class="num" data-nat="munis">8</bdi> municipalities and <bdi class="num" data-nat="fac">138</bdi> facilities on a real OpenStreetMap snapshot</span></li>
+        <li><span class="dot" style="--sc:var(--safe)"></span><span data-l="ar">كل ما هو محاكى موسوم SIM، ويعمل دون إنترنت</span><span data-l="en">Everything simulated is marked SIM · works offline</span></li>
+      </ul>
+      <p class="hero-pos"><b><span data-l="ar">تكمّل ولا تنافس:</span><span data-l="en">Complements, never competes:</span></b> <span data-l="ar">«صقر» السعودية و«شاهين» دبي و«سُهيل» أبوظبي و«حصّانتك» الإماراتية. و<b>999 يبقى المرسِل.</b></span><span data-l="en">Saudi “Saqr/Falcon”, Dubai “Shaheen”, Abu Dhabi “Suhail”, UAE “Hassantuk”. And <b>999 stays the dispatcher.</b></span></p>
+    </div>
+  </div>
+</section>
+
+<nav class="subnav" id="subnav" aria-label="أقسام الصفحة" data-aria-ar="أقسام الصفحة" data-aria-en="Page sections">
+  <div class="wrap wide"><div class="subnav-row scroll-x">
+    <a href="#why"><span data-l="ar">لماذا</span><span data-l="en">Why</span></a>
+    <a href="#how"><span data-l="ar">كيف تعمل</span><span data-l="en">How it works</span></a>
+    <a href="#room"><span data-l="ar">غرفة التحكم</span><span data-l="en">Control room</span></a>
+    <a href="#robot"><span data-l="ar">الروبوت</span><span data-l="en">Robot</span></a>
+    <a href="#hazards"><span data-l="ar">كل الأخطار</span><span data-l="en">All hazards</span></a>
+    <a href="#qatar"><span data-l="ar">قطر كلها</span><span data-l="en">All of Qatar</span></a>
+    <a href="#numbers"><span data-l="ar">الأرقام</span><span data-l="en">Numbers</span></a>
+    <a href="#trust"><span data-l="ar">الثقة والحدود</span><span data-l="en">Trust &amp; limits</span></a>
+    <a href="#criteria"><span data-l="ar">المعايير</span><span data-l="en">Criteria</span></a>
+    <a href="#team"><span data-l="ar">الفريق</span><span data-l="en">Team</span></a>
+  </div></div>
+</nav>
+
+<!-- ============================================================ 01 WHY -->
+<section class="sec" id="why" aria-labelledby="why-t">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <span class="eyebrow"><span class="idx num">01</span><span data-l="ar">لماذا</span><span data-l="en">Why</span></span>
+      <h2 class="sec-title" id="why-t"><span data-l="ar">بين رنين الإنذار ووصول الفرق… مَن يتولّى الناس؟</span><span data-l="en">Between the alarm and the crew… who looks after the people?</span></h2>
+      <p class="sec-lead"><span data-l="ar">الأنظمة الوطنية قوية في الرصد وفي إرسال الفرق. الذي ما زال ينقص هو <b>آخر مئة متر</b>: أن يرى أحدٌ ما يحدث قبل أن تصل الفرق، وأن يخرج كل إنسان، وبخاصة النائم ومَن لا يستطيع المشي. المسيّرة تُقدّم «العين الأولى»؛ والروبوت يصل إلى حيث لا ينبغي أن يدخل الناس أولًا.</span><span data-l="en">National systems are strong at detecting and sending crews. What is still missing is <b>the last 100 metres</b>: someone to see what is happening before the crews arrive, and every person getting out, above all those asleep or unable to walk. The drone gives the “first eyes”; the robot goes where people should not go first.</span></p>
+    </div>
+
+    <figure class="gap rv" id="gap" aria-labelledby="gap-cap">
+      <figcaption class="gap-h"><b><span data-l="ar">الدقائق التي يتصرّف فيها الناس وحدهم</span><span data-l="en">The minutes when people act on their own</span></b></figcaption>
+      <div class="gap-plot" dir="ltr" role="img" data-aria-ar="مخطط زمني بالدقائق: مهلة الهروب من دقيقة إلى دقيقتين، والمسيّرة على الموقع نحو أربع دقائق في المحاكاة، ووصول الدفاع المدني من سبع إلى عشر دقائق عام 2017" data-aria-en="Timeline in minutes: the escape window of one to two minutes, the drone on station at about four minutes in the simulation, and Civil Defence arrival of seven to ten minutes in 2017" aria-label="مخطط زمني بالدقائق: مهلة الهروب من دقيقة إلى دقيقتين، والمسيّرة على الموقع نحو أربع دقائق في المحاكاة، ووصول الدفاع المدني من سبع إلى عشر دقائق عام 2017">
+        <div class="gap-row">
+          <div class="gap-label" dir="auto"><span data-l="ar">مهلة الهروب بعد رنين الإنذار (NFPA، S3)</span><span data-l="en">Escape window after the alarm sounds (NFPA, S3)</span></div>
+          <div class="gap-track"><span class="gap-bar warn" style="--from:0;--to:1"></span><span class="gap-bar warn hatch" style="--from:1;--to:2"></span></div>
+        </div>
+        <div class="gap-row">
+          <div class="gap-label" dir="auto"><span data-l="ar">المسيّرة على الموقع: الوسيط <bdi class="num">244</bdi> ث ≈ 4 د (محاكاة SIM)</span><span data-l="en">Drone on station: median <bdi class="num">244</bdi> s ≈ 4 min (simulation, SIM)</span></div>
+          <div class="gap-track"><span class="gap-bar cool" style="--from:0;--to:4.07"></span></div>
+        </div>
+        <div class="gap-row">
+          <div class="gap-label" dir="auto"><span data-l="ar">وصول الدفاع المدني إلى الموقع (قطر، 2017، S26)</span><span data-l="en">Civil Defence reaches the scene (Qatar, 2017, S26)</span></div>
+          <div class="gap-track"><span class="gap-bar info hatch" style="--from:7;--to:10"></span><span class="gap-gap" style="--from:2;--to:7"><i dir="auto"><span data-l="ar">الناس وحدهم</span><span data-l="en">people alone</span></i></span></div>
+        </div>
+        <div class="gap-axis" aria-hidden="true"><span style="--p:0">0</span><span style="--p:2">2</span><span style="--p:4">4</span><span style="--p:6">6</span><span style="--p:8">8</span><span style="--p:10">10</span><span style="--p:12"><span data-l="ar">د</span><span data-l="en">min</span></span></div>
+      </div>
+      <p class="small muted" id="gap-cap"><span data-l="ar">ثلاثة مصادر مختلفة لا حادثة واحدة، نضعها معًا لنشرح الفكرة فقط: لا نقول إن أي حريق بعينه استغرق هذه الأزمنة. الجزء المخطّط: مدى الأرقام المنشورة. شريط المسيّرة نتيجة محاكاة (SIM) بافتراضات ظاهرة، وليس قياسًا لمسيّرة حقيقية.</span><span data-l="en">Three different sources, not one event; we show them together only to explain the idea. We do not say any particular fire took these times. Hatched part: the published ranges. The drone bar is a simulation result (SIM) with visible assumptions, not a measurement of a real drone.</span></p>
+    </figure>
+
+    <div class="grid g3 why-kpis" data-stagger>
+      <div class="kpi rv"><b class="num" dir="ltr">49%</b><span><span data-l="ar">من وفيات الحرائق السكنية (الولايات المتحدة، 2017–2019) وقعت بين 11 ليلًا و7 صباحًا — بحث دولي (USFA، S7). لهذا يهمّنا النائم.</span><span data-l="en">of US residential fire deaths (2017–2019) happened 11 p.m.–7 a.m. — international research (USFA, S7). This is why the sleeper matters.</span></span></div>
+      <div class="kpi rv"><b class="num" dir="ltr">1,636 / 2,473</b><span><span data-l="ar">حرائق عام 2023 في الإمارات وقعت في البيوت (الدفاع المدني الإماراتي عبر ذا ناشيونال، S11): في الخليج تقع الحرائق حيث ينام الناس.</span><span data-l="en">UAE fires in 2023 that were in homes (UAE civil defence via The National, S11): in the Gulf fires happen where people sleep.</span></span></div>
+      <div class="kpi rv"><b class="num" dir="ltr">67%</b><span><span data-l="ar">من الحالات الحقيقية في السويد وصلت فيها مسيّرة جهاز الصدمات قبل الإسعاف، بوسيط 3 دقائق و14 ثانية أبكر — بحث دولي (S15). المسيّرات تصل أولًا.</span><span data-l="en">of real cases in Sweden where a drone-delivered AED arrived before the ambulance, a median 3 min 14 s earlier — international research (S15). Drones arrive first.</span></span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ 02 HOW: Sense → Prove → Reach → Guide → Count → Hand off -->
+<section class="sec alt" id="how" aria-labelledby="how-t">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <span class="eyebrow"><span class="idx num">02</span><span data-l="ar">كيف تعمل</span><span data-l="en">How it works</span></span>
+      <h2 class="sec-title" id="how-t"><span data-l="ar">ست خطوات… من العين الأولى إلى آخر إنسان</span><span data-l="en">Six steps, from the first eyes to the last person</span></h2>
+      <p class="sec-lead"><span data-l="ar">السلسلة نفسها تعمل لكل خطر؛ الذي يتغيّر هو «كتيّب» الخطر. كل خطوة تقودك إلى صفحتها الحقيقية في المشروع، وفيها ما يمكنك تجربته بنفسك.</span><span data-l="en">The same chain runs for every hazard; only the hazard's playbook changes. Each step takes you to its real page in the project, with something you can try yourself.</span></p>
+    </div>
+
+    <div class="flow-rail rv" id="flow-rail" aria-hidden="true"><i class="fr-fill"></i><b class="fr-d"></b><b class="fr-d"></b><b class="fr-d"></b><b class="fr-d"></b><b class="fr-d"></b><b class="fr-d"></b></div>
+    <ol class="flow" id="flow" data-stagger>
+      <li class="step rv" data-step="1" style="--sc:var(--accent)">
+        <span class="step-n num" aria-hidden="true">1</span>
+        <span class="step-ico" data-icon="drone" aria-hidden="true"></span>
+        <h3><span data-l="ar">ترى</span><span data-l="en">Sense</span><small>Sense</small></h3>
+        <p><span data-l="ar">مسيّرة (أو حارس ثابت) تدور في قطاعها وتُقلع للتحقق عند أي بلاغ: ترى دخانًا أو لهبًا أو سحابة غاز (حراريًّا) أو سيلًا أو غبارًا أو شخصًا منهارًا.</span><span data-l="en">A drone (or a fixed sentinel) patrols its sector and launches to verify any report: it sees smoke or flames, a gas cloud (thermal), flood water, dust or a person who has collapsed.</span></p>
+        <p class="rule"><span data-l="ar">تُرسل إلى غرفة التحكم: صورة عادية وحرارية، والإحداثيات، والبطارية، والريح.</span><span data-l="en">It sends the control room: an RGB and a thermal frame, position, battery and wind.</span></p>
+        <p class="step-links"><a href="control.html#demo" data-icon="radar"><span data-l="ar">جدار البثّ</span><span data-l="en">Feed wall</span></a><a href="build.html" data-icon="wrench"><span data-l="ar">العتاد</span><span data-l="en">Hardware</span></a></p>
+      </li>
+      <li class="step rv" data-step="2" style="--sc:var(--warn)">
+        <span class="step-n num" aria-hidden="true">2</span>
+        <span class="step-ico" data-icon="shield" aria-hidden="true"></span>
+        <h3><span data-l="ar">تتحقق</span><span data-l="en">Prove</span><small>Prove</small></h3>
+        <p><span data-l="ar">مفتاحان مستقلان (فيزياء مختلفة: رؤية حاسوبية بقواعد + حرارة)، ثم يضغط المشغّل «موافق». مستشعر واحد لا يتجاوز «اشتباه».</span><span data-l="en">Two independent keys (different physics: rule-based computer vision + thermal), then the operator taps Approve. One sensor alone never goes beyond SUSPECT.</span></p>
+        <p class="rule"><span data-l="ar">صافرة الموقع المحلية لا تنتظر أحدًا؛ الإنذار العام وحده ينتظر.</span><span data-l="en">The local siren never waits; only the public alert does.</span></p>
+        <p class="step-links"><a href="detect.html" data-icon="eye"><span data-l="ar">مختبر الأدلة</span><span data-l="en">Evidence Lab</span></a></p>
+      </li>
+      <li class="step rv" data-step="3" style="--sc:var(--brand)">
+        <span class="step-n num" aria-hidden="true">3</span>
+        <span class="step-ico" data-icon="route" aria-hidden="true"></span>
+        <h3><span data-l="ar">يصل الأسرع</span><span data-l="en">Reach</span><small>Reach</small></h3>
+        <p><span data-l="ar">بعد الموافقة تُوصي منارة، لكل نوع (إطفاء وإنقاذ، شرطة، إسعاف ومستشفى)، بالوحدة التي تصل أولًا في ظل المرور على خريطة قطر الحقيقية، لا الأقرب بخط مستقيم.</span><span data-l="en">After Approve, MANARA recommends, for each type (fire &amp; rescue, police, ambulance &amp; hospital), the unit that arrives first given traffic on the real map of Qatar, not the nearest in a straight line.</span></p>
+        <p class="rule"><span data-l="ar">999 يبقى المرسِل؛ والتوصية محاكاة (SIM) بمرور وتوفّر وحدات افتراضيين.</span><span data-l="en">999 stays the dispatcher; the recommendation is a simulation (SIM) with assumed traffic and unit availability.</span></p>
+        <p class="step-links"><a href="mission.html" data-icon="radar"><span data-l="ar">غرفة العمليات</span><span data-l="en">Mission Control</span></a><a href="#qatar" data-icon="globe"><span data-l="ar">الخريطة هنا</span><span data-l="en">Map below</span></a></p>
+      </li>
+      <li class="step rv" data-step="4" style="--sc:var(--safe)">
+        <span class="step-n num" aria-hidden="true">4</span>
+        <span class="step-ico" data-icon="bell" aria-hidden="true"></span>
+        <h3><span data-l="ar">تُرشد</span><span data-l="en">Guide</span><small>Guide</small></h3>
+        <p><span data-l="ar">في «آخر مئة متر» تُرشد المسيّرة (مكبّر صوت وضوء ودود) والهواتف كل إنسان بلغته وصيغته إلى مخرج مفتوح فعلًا: صوت واهتزاز، ووميض بموافقة الصمّ، وبطاقات مصوّرة للأطفال.</span><span data-l="en">In the “last 100 metres” the drone (a loudspeaker and a friendly light) and the phones guide each person, in their own language and format, to an exit that is really open: sound and vibration, opt-in strobe for Deaf people, picture cards for children.</span></p>
+        <p class="rule"><span data-l="ar">مخرج مقفل أو غارق يخرج من المسار؛ وكرسي متحرك لا يُرسَل إلى الدرج.</span><span data-l="en">A locked or flooded exit leaves the route; a wheelchair user is never sent to the stairs.</span></p>
+        <p class="step-links"><a href="alert.html" data-icon="phone"><span data-l="ar">هواتف السكان</span><span data-l="en">Resident phones</span></a></p>
+      </li>
+      <li class="step rv" data-step="5" style="--sc:var(--danger)">
+        <span class="step-n num" aria-hidden="true">5</span>
+        <span class="step-ico" data-icon="robot" aria-hidden="true"></span>
+        <h3><span data-l="ar">تعدّ</span><span data-l="en">Count</span><small>Count</small></h3>
+        <p><span data-l="ar">روبوت الإنقاذ يبحث في المبنى بالأولوية (غير المُحصَين ومَن يحتاج مساعدة أولًا) ويجد مَن لا يستطيع الخروج؛ والسكان يضغطون «أنا بخير»؛ وعدّاد حيّ مقابل السجلّ.</span><span data-l="en">The rescue robot searches the building in priority order (the unaccounted and those who need help first) and finds anyone who cannot get out; residents tap “I'm safe”; a live headcount against the register.</span></p>
+        <p class="rule"><span data-l="ar">لا يكسر بابًا مقفلًا؛ يُبلغ، ورجال الإطفاء هم مَن يقرّر.</span><span data-l="en">It never breaks a locked door; it reports, and the firefighters decide.</span></p>
+        <p class="step-links"><a href="robot.html" data-icon="robot"><span data-l="ar">مختبر الروبوت</span><span data-l="en">Robot Lab</span></a></p>
+      </li>
+      <li class="step rv" data-step="6" style="--sc:var(--info)">
+        <span class="step-n num" aria-hidden="true">6</span>
+        <span class="step-ico" data-icon="external" aria-hidden="true"></span>
+        <h3><span data-l="ar">تُسلّم</span><span data-l="en">Hand off</span><small>Hand off</small></h3>
+        <p><span data-l="ar">بطاقة موثّقة لقائد الإنقاذ: أين الخطر، وحال المخارج، ومَن لم يُحصَ وأين، ومَن يحتاج مساعدة. وتصدير بصيغة OASIS CAP 1.2 بحالة «تمرين» يمكن لنظام وطني أن يحمله.</span><span data-l="en">A verified card for whoever leads the rescue: where the danger is, exit states, who is unaccounted and where, who needs help. Plus an OASIS CAP 1.2 export with status “Exercise” that a national system could carry.</span></p>
+        <p class="rule"><span data-l="ar">منارة تُرسل حزمة جاهزة ولا تتصل بالنيابة عن أحد.</span><span data-l="en">MANARA sends a ready package and never calls on anyone's behalf.</span></p>
+        <p class="step-links"><a href="control.html#demo" data-icon="radar"><span data-l="ar">بطاقة التسليم</span><span data-l="en">Hand-off card</span></a></p>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<!-- ============================================================ 03 THE CONTROL ROOM -->
+<section class="sec" id="room" aria-labelledby="room-t">
+  <div class="wrap wide">
+    <div class="sec-head rv">
+      <span class="eyebrow"><span class="idx num">03</span><span data-l="ar">غرفة التحكم</span><span data-l="en">The control room</span></span>
+      <h2 class="sec-title" id="room-t"><span data-l="ar">ماذا ترى غرفة التحكم؟</span><span data-l="en">What does the control room see?</span></h2>
+      <p class="sec-lead"><span data-l="ar">ليست خريطة عرض بل وحدة عمليات: طابور إنذارات بأولويتها، وجدار بثّ المسيّرات، وأسطول، وخريطة قطر الوطنية، وإرسال الأسرع، وروبوت، وسجلّ اتصالات، وبطاقة تسليم. هذا مصغَّر منها (SIM) يعمل الآن؛ اضغط «موافق» كما يفعل المشغّل. <b>القرار للإنسان.</b></span><span data-l="en">Not a demo map but an operations console: a priority alert queue, the drone feed wall, a fleet board, the national map of Qatar, fastest-unit dispatch, a robot, a comms log and a hand-off card. This is a miniature of it (SIM), running now; press Approve as the operator does. <b>The decision is the human's.</b></span></p>
+    </div>
+
+    <div class="con dv rv" id="con" data-stage="2" role="group" data-aria-ar="مصغّر محاكى لغرفة التحكم" data-aria-en="Simulated miniature of the control room" aria-label="مصغّر محاكى لغرفة التحكم">
+      <div class="con-top">
+        <span class="con-title"><i class="rec" aria-hidden="true"></i><b><span data-l="ar">منارة · غرفة التحكم</span><span data-l="en">MANARA · Control Room</span></b></span>
+        <span class="tag warn">SIM</span>
+        <span class="con-clock num" dir="ltr"><span id="con-clock">07:31</span> <small><span data-l="ar">الأحد</span><span data-l="en">Sun</span></small></span>
+        <span class="con-role"><span data-l="ar">الدور: مشغّل</span><span data-l="en">Role: operator</span></span>
+        <span class="con-kpi"><b class="num" dir="ltr" id="con-k-eyes">1:09</b><small><span data-l="ar">أول عين على الموقع (SIM)</span><span data-l="en">first eyes on scene (SIM)</span></small></span>
+        <span class="con-kpi"><b class="num" dir="ltr" id="con-k-ground">2:48</b><small><span data-l="ar">أول وحدة أرضية (SIM)</span><span data-l="en">first ground unit (SIM)</span></small></span>
+      </div>
+
+      <div class="con-grid">
+        <section class="con-col con-queue" aria-labelledby="con-q-h">
+          <h3 id="con-q-h" class="con-h"><span data-l="ar">طابور الإنذارات</span><span data-l="en">Alert queue</span></h3>
+          <ul class="alerts" id="con-alerts">
+            <li class="alert a-main" data-st="confirmed" id="al-main">
+              <span class="al-src" data-icon="drone" title="drone"><span class="sr-only"><span data-l="ar">المصدر: مسيّرة</span><span data-l="en">Source: drone</span></span></span>
+              <span class="al-body"><b class="al-t"><span data-l="ar">حريق ودخان · الدوحة</span><span data-l="en">Fire &amp; smoke · Doha</span></b><small class="al-s"><bdi class="num">AL-1</bdi> · DR-04 · <span class="al-state" id="al-main-st"><span data-l="ar">مؤكَّد · مفتاحان</span><span data-l="en">CONFIRMED · 2 keys</span></span></small></span>
+              <span class="al-age num" dir="ltr" id="al-main-age">01:40</span>
+            </li>
+            <li class="alert" data-st="suspect">
+              <span class="al-src" data-icon="signal" title="sentinel"><span class="sr-only"><span data-l="ar">المصدر: حارس ثابت</span><span data-l="en">Source: sentinel</span></span></span>
+              <span class="al-body"><b class="al-t"><span data-l="ar">اشتباه غاز · مسيعيد</span><span data-l="en">Gas suspect · Mesaieed</span></b><small class="al-s"><bdi class="num">AL-2</bdi> · <span class="al-state"><span data-l="ar">اشتباه · مفتاح واحد</span><span data-l="en">SUSPECT · 1 key</span></span></small></span>
+              <span class="al-age num" dir="ltr">00:35</span>
+            </li>
+            <li class="alert" data-st="suspect">
+              <span class="al-src" data-icon="users" title="citizen"><span class="sr-only"><span data-l="ar">المصدر: بلاغ مواطن</span><span data-l="en">Source: citizen</span></span></span>
+              <span class="al-body"><b class="al-t"><span data-l="ar">شخص يحتاج مساعدة · لوسيل</span><span data-l="en">Someone needs help · Lusail</span></b><small class="al-s"><bdi class="num">AL-3</bdi> · <span class="al-state"><span data-l="ar">اشتباه · بلاغ</span><span data-l="en">SUSPECT · report</span></span></small></span>
+              <span class="al-age num" dir="ltr">00:12</span>
+            </li>
+          </ul>
+          <p class="con-tip small muted"><span data-l="ar">الصفوف الثلاثة محاكاة؛ أمّا الأولى فتتقدّم مع المشهد.</span><span data-l="en">All three rows are simulated; the first moves with the scene.</span></p>
+        </section>
+
+        <section class="con-col con-mapcol" aria-labelledby="con-m-h">
+          <h3 id="con-m-h" class="sr-only"><span data-l="ar">الخريطة الوطنية</span><span data-l="en">National map</span></h3>
+          <div class="con-map" id="con-map">
+            <canvas id="con-canvas" width="640" height="420" role="img" data-aria-ar="خريطة الدوحة الحقيقية (OpenStreetMap) عليها الحادث ومسار المسيّرة ومسارات الوحدات الموصى بها" data-aria-en="The real map of Doha (OpenStreetMap) with the incident, the drone's path and the recommended unit routes" aria-label="خريطة الدوحة الحقيقية (OpenStreetMap) عليها الحادث ومسار المسيّرة ومسارات الوحدات الموصى بها">Map</canvas>
+            <canvas id="con-ovl" class="con-ovl" aria-hidden="true"></canvas>
+            <i class="con-radar" aria-hidden="true"></i>
+            <p class="map-loading" id="con-loading" role="status"><span data-l="ar">نجهّز الخريطة الحقيقية…</span><span data-l="en">Preparing the real map…</span></p>
+          </div>
+          <div class="con-stages" id="con-stages" aria-hidden="true">
+            <span data-s="0"><span data-l="ar">إنذار</span><span data-l="en">Alert</span></span>
+            <span data-s="1"><span data-l="ar">تحقق</span><span data-l="en">Verify</span></span>
+            <span data-s="2"><span data-l="ar">مفتاحان</span><span data-l="en">Two keys</span></span>
+            <span data-s="3"><span data-l="ar">موافقة</span><span data-l="en">Approve</span></span>
+            <span data-s="4"><span data-l="ar">إرسال</span><span data-l="en">Dispatch</span></span>
+          </div>
+          <p class="con-cap" id="con-cap" aria-live="off"></p>
+        </section>
+
+        <section class="con-col con-right" aria-labelledby="con-f-h">
+          <h3 id="con-f-h" class="con-h"><span data-l="ar">جدار البثّ</span><span data-l="en">Feed wall</span></h3>
+          <div class="feeds">
+            <figure class="feed"><canvas id="con-f-rgb" width="288" height="180" role="img" data-aria-ar="بثّ المسيّرة العادي" data-aria-en="The drone's RGB feed" aria-label="بثّ المسيّرة العادي"></canvas><figcaption class="num" dir="ltr">RGB</figcaption></figure>
+            <figure class="feed"><canvas id="con-f-th" width="288" height="180" role="img" data-aria-ar="بثّ المسيّرة الحراري" data-aria-en="The drone's thermal feed" aria-label="بثّ المسيّرة الحراري"></canvas><figcaption class="num" dir="ltr">THERMAL</figcaption></figure>
+          </div>
+          <h3 class="con-h"><span data-l="ar">الأسطول (SIM)</span><span data-l="en">Fleet (SIM)</span></h3>
+          <ul class="fleet" id="con-fleet">
+            <li><b class="num" dir="ltr">DR-04</b><span class="fl-s" id="fl-s1"><span data-l="ar">على الموقع</span><span data-l="en">on station</span></span><span class="fl-b num" dir="ltr">72%</span></li>
+            <li><b class="num" dir="ltr">DR-11</b><span class="fl-s"><span data-l="ar">راسية</span><span data-l="en">docked</span></span><span class="fl-b num" dir="ltr">100%</span></li>
+            <li><b class="num" dir="ltr">RB-01</b><span class="fl-s" id="fl-s2"><span data-l="ar">روبوت: ينتظر قائد الإنقاذ</span><span data-l="en">robot: awaiting the commander</span></span><span class="fl-b num" dir="ltr">96%</span></li>
+          </ul>
+          <h3 class="con-h"><span data-l="ar">سجلّ الاتصالات</span><span data-l="en">Comms log</span></h3>
+          <ol class="comms" id="con-comms" aria-live="off"></ol>
+        </section>
+      </div>
+
+      <div class="con-dispatch" aria-labelledby="con-d-h">
+        <h3 id="con-d-h" class="con-h"><span data-l="ar">الإرسال: الأسرع بحسب المرور</span><span data-l="en">Dispatch: fastest given traffic</span></h3>
+        <ul class="units" id="con-units">
+          <li data-k="fire"><span class="u-i" data-icon="fire"></span><span class="u-t"><b data-nm="fire"><span data-l="ar">مركز إطفاء — الجسرة</span><span data-l="en">Fire station — Al Jasra</span></b><small><span data-l="ar">إطفاء وإنقاذ</span><span data-l="en">fire &amp; rescue</span></small></span><span class="u-e num" dir="ltr" data-eta="fire">2:48</span></li>
+          <li data-k="police"><span class="u-i" data-icon="shield"></span><span class="u-t"><b data-nm="police"><span data-l="ar">منشأة شرطة — الجسرة</span><span data-l="en">Police facility — Al Jasra</span></b><small><span data-l="ar">شرطة</span><span data-l="en">police</span></small></span><span class="u-e num" dir="ltr" data-eta="police">3:21</span></li>
+          <li data-k="ambulance"><span class="u-i" data-icon="heart"></span><span class="u-t"><b data-nm="ambulance"><span data-l="ar">إسعاف (مُنمذَج في مستشفى الرميلة)</span><span data-l="en">Ambulance (modelled at Rumailah Hospital)</span></b><small><span data-l="ar">إسعاف</span><span data-l="en">ambulance</span></small></span><span class="u-e num" dir="ltr" data-eta="ambulance">6:06</span></li>
+          <li data-k="rescue"><span class="u-i" data-icon="alert"></span><span class="u-t"><b data-nm="rescue"><span data-l="ar">مجمّع الدفاع المدني — فريج كليب</span><span data-l="en">Wadi Al-Sali Civil Defense</span></b><small><span data-l="ar">إنقاذ</span><span data-l="en">rescue</span></small></span><span class="u-e num" dir="ltr" data-eta="rescue">9:43</span></li>
+        </ul>
+        <div class="con-act">
+          <button class="icon-btn" type="button" id="con-play" aria-pressed="true" aria-label="إيقاف المشهد مؤقتًا"></button>
+          <button class="btn btn-primary btn-sm" type="button" id="con-approve" data-icon="check"><span data-l="ar">موافقة (مفتاح الإنسان)</span><span data-l="en">Approve (the human key)</span></button>
+          <button class="btn btn-ghost btn-sm" type="button" id="con-restart" data-icon="reset"><span data-l="ar">أعد</span><span data-l="en">Replay</span></button>
+          <p class="con-siren small"><span class="dot" style="--sc:var(--danger)"></span><span data-l="ar">صافرة الموقع المحلية تعمل منذ الثانية الأولى ولا تنتظر الموافقة.</span><span data-l="en">The local siren has been sounding since second one; it never waits for Approve.</span></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="room-foot rv">
+      <ul class="room-points" data-stagger>
+        <li><b data-icon="check"><span data-l="ar">الموافقة للإنسان</span><span data-l="en">Approve is human</span></b><span><span data-l="ar">المسيّرة قد تُقلع وحدها لتتحقق؛ الإنذار العام وإرسال الوحدات لا يخرجان قبل «موافق».</span><span data-l="en">A drone may launch on its own to verify; the public alert and the dispatch never leave before Approve.</span></span></li>
+        <li><b data-icon="eye"><span data-l="ar">كل بثّ يقول مصدره</span><span data-l="en">Every feed says what it is</span></b><span><span data-l="ar">عاديّ أو حراري أو مدمج، وكل مربّع كشف يحمل مفتاحه وثقته، وكل شيء محاكى موسوم SIM.</span><span data-l="en">RGB, thermal or fused; every detection box carries its key and confidence; everything simulated is marked SIM.</span></span></li>
+        <li><b data-icon="users"><span data-l="ar">أدوار</span><span data-l="en">Roles</span></b><span><span data-l="ar">مشاهد، ومشغّل (يوافق)، وقائد حادث (يوافق على الروبوت): محاكاة بلا مصادقة حقيقية.</span><span data-l="en">viewer, operator (approves), incident commander (approves the robot): simulated, no real authentication.</span></span></li>
+      </ul>
+      <div class="btns"><a class="btn btn-primary" href="control.html#demo" data-icon="radar"><span data-l="ar">افتح غرفة التحكم كاملة</span><span data-l="en">Open the full Control Room</span></a><a class="btn btn-ghost" href="mission.html" data-icon="globe"><span data-l="ar">غرفة العمليات الوطنية</span><span data-l="en">National Mission Control</span></a></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ 04 THE ROBOT -->
+<section class="sec alt" id="robot" aria-labelledby="robot-t">
+  <div class="wrap wide">
+    <div class="rob-grid">
+      <div class="rob-copy">
+        <div class="sec-head rv">
+          <span class="eyebrow"><span class="idx num">04</span><span data-l="ar">روبوت الإنقاذ</span><span data-l="en">The rescue robot</span></span>
+          <h2 class="sec-title" id="robot-t"><span data-l="ar">يدخل حيث لا ينبغي أن يدخل الناس أولًا</span><span data-l="en">It goes in where people should not go first</span></h2>
+          <p class="sec-lead"><span data-l="ar">المسيّرة تُخرج مَن يستطيع المشي. فماذا عمّن ينام في غرفة ملأها الدخان، أو على كرسي متحرك في الطابق الثالث، أو لا يردّ؟ هنا يأتي روبوت الإنقاذ: <b>مفهوم بنموذج أولي محاكى</b>، لم يُبنَ ولم يُجرَّب.</span><span data-l="en">The drone guides those who can walk. What about someone asleep in a smoke-filled room, in a wheelchair on the third floor, or not answering? That is the rescue robot: <b>a concept with a simulated prototype</b>, not built and not tested.</span></p>
+        </div>
+        <ul class="rob-list rv" data-stagger>
+          <li data-icon="target"><span><b><span data-l="ar">يبحث بالأولوية:</span><span data-l="en">Searches by priority:</span></b> <span data-l="ar">غرف غير المُحصَين ومَن يحتاج مساعدة أولًا، ثم الباقي.</span><span data-l="en">rooms of the unaccounted and those who need help first, then the rest.</span></span></li>
+          <li data-icon="thermo"><span><b><span data-l="ar">يجد الناس بالحرارة والصوت:</span><span data-l="en">Finds people by heat and sound:</span></b> <span data-l="ar">كاميرا حرارية وأخرى عادية بمصباحها وميكروفون.</span><span data-l="en">a thermal camera, an RGB camera with its own lamp, and a microphone.</span></span></li>
+          <li data-icon="speaker"><span><b><span data-l="ar">يُحدّث ويرشد:</span><span data-l="en">Talks and guides:</span></b> <span data-l="ar">«أنا روبوت الدفاع المدني، اتبع الضوء الأخضر» بلغة الشخص وصيغته، ويترك منارات لمسار آمن.</span><span data-l="en">“I am a Civil Defence robot, follow the green light” in the person's language and format, and drops beacons for a safe route.</span></span></li>
+          <li data-icon="shield"><span><b><span data-l="ar">يُبلغ ولا يقرّر:</span><span data-l="en">Reports, never decides:</span></b> <span data-l="ar">لا يكسر بابًا مقفلًا، ولا يتحرك قبل موافقة قائد الحادث؛ ورجال الإطفاء هم مَن يقرّر.</span><span data-l="en">never breaks a locked door, never moves before the incident commander approves; the firefighters decide.</span></span></li>
+        </ul>
+        <div class="rob-lim rv" role="group" data-aria-ar="حدود الروبوت" data-aria-en="The robot's limits" aria-label="حدود الروبوت">
+          <span class="chip lim"><span class="tag warn">SIM</span><span data-l="ar">بعجلات لا يصعد الدرج؛ المجنزر يصعد أبطأ وببطارية أكثر</span><span data-l="en">wheeled cannot climb stairs; tracked climbs slower and drains more</span></span>
+          <span class="chip lim"><span class="tag warn">SIM</span><span data-l="ar">في غرفة حارّة ينعدم التباين الحراري فلا يرى بالحرارة وحدها</span><span data-l="en">in a hot room thermal contrast vanishes, so thermal alone sees nobody</span></span>
+          <span class="chip lim"><span class="tag warn">SIM</span><span data-l="ar">الدخان والحرارة والبطارية وشبكة الاتصال تحدّ مداه</span><span data-l="en">smoke, heat, battery and the mesh link limit its reach</span></span>
+        </div>
+        <div class="btns rv"><a class="btn btn-primary" href="robot.html" data-icon="robot"><span data-l="ar">افتح مختبر الروبوت</span><span data-l="en">Open the Robot Lab</span></a><a class="btn btn-ghost" href="robot.html#rl-limits" data-icon="alert"><span data-l="ar">ما لا يستطيعه</span><span data-l="en">What it cannot do</span></a></div>
+      </div>
+
+      <div class="rob-stagewrap rv">
+        <div class="rob dv" id="rob" role="group" data-aria-ar="مشهد محاكى لروبوت الإنقاذ يبحث في مبنى من ثلاثة طوابق" data-aria-en="Simulated scene of the rescue robot searching a three-storey building" aria-label="مشهد محاكى لروبوت الإنقاذ يبحث في مبنى من ثلاثة طوابق">
+          <div class="rob-top"><span class="tag warn">SIM</span><b class="rob-t"><span data-l="ar">مبنى افتراضي · 04:00 · حريق في الغرفة 303</span><span data-l="en">Fictional building · 04:00 · fire in room 303</span></b><span class="rob-clock num" dir="ltr" id="rob-clock">00:00</span></div>
+          <div class="rob-svgwrap"><svg id="rob-svg" viewBox="0 0 640 344" role="img" data-aria-ar="مقطع في مبنى من ثلاثة طوابق: الروبوت يصعد ويبحث في الغرف ويجد شخصين ويُبلغ عن باب مقفل" data-aria-en="Cross-section of a three-storey building: the robot climbs, searches rooms, finds two people and reports a locked door" aria-label="مقطع في مبنى من ثلاثة طوابق: الروبوت يصعد ويبحث في الغرف ويجد شخصين ويُبلغ عن باب مقفل"></svg></div>
+          <ol class="rob-feed" id="rob-feed" aria-live="off"></ol>
+          <div class="rob-ctl">
+            <button class="icon-btn" type="button" id="rob-play" aria-pressed="true" aria-label="إيقاف المشهد مؤقتًا"></button>
+            <label class="scrub"><span class="sr-only"><span data-l="ar">الخط الزمني لمشهد الروبوت</span><span data-l="en">Robot scene timeline</span></span><input type="range" id="rob-scrub" min="0" max="100" step="1" value="0"></label>
+            <span class="rob-count num" dir="ltr" id="rob-count" aria-hidden="true">0 / 2</span>
+          </div>
+          <p class="rob-note small"><span data-l="ar">مشهد توضيحي مكتوب بالسيناريو (SIM) لنموذج الروبوت المحاكى؛ الأرقام المقاسة في المحاكاة نفسها أدناه في «الأرقام».</span><span data-l="en">A scripted illustration (SIM) of the simulated robot prototype; the numbers measured in the simulation itself are under “Numbers” below.</span></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ 05 ALL HAZARDS -->
+<section class="sec" id="hazards" aria-labelledby="hz-t">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <span class="eyebrow"><span class="idx num">05</span><span data-l="ar">كل الأخطار</span><span data-l="en">All hazards</span></span>
+      <h2 class="sec-title" id="hz-t"><span data-l="ar">ليس الحريق وحده: ستة أخطار على مسار واحد</span><span data-l="en">Not only fire: six hazards on one pipeline</span></h2>
+      <p class="sec-lead"><span data-l="ar">لكل خطر كتيّب: ماذا ترى المسيّرة، وما المفتاح الثاني، وما الإجراء الواقي. هذه صور جوية تُولَّد الآن بالشيفرة (SIM) ويحلّلها الكاشف نفسه. بدّل بين العادي والحراري لترى ما تراه كل كاميرا وما لا تراه.</span><span data-l="en">Each hazard has a playbook: what the drone sees, what the second key is, what the protective action is. These aerial frames are generated in code now (SIM) and analysed by the same detector. Switch between RGB and thermal to see what each camera sees and what it cannot.</span></p>
+    </div>
+
+    <div class="grid g3 hz-grid" id="hz-grid" data-stagger>
+
+      <article class="card hz rv" data-hz="fire" style="--sc:var(--danger)">
+        <div class="hz-shot"><canvas class="hz-cv" width="320" height="200" role="img" aria-label="" data-aria-ar="حريق ودخان في حيّ عمراني، كما تراه المسيّرة (محاكاة)" data-aria-en="Fire and smoke in an urban block as the drone sees it (simulation)"></canvas><span class="hz-badge tag warn">SIM</span></div>
+        <h3 data-icon="fire"><span data-l="ar">حريق ودخان</span><span data-l="en">Fire &amp; smoke</span></h3>
+        <div class="hz-seg" role="group" data-aria-ar="الكاميرا" data-aria-en="Camera" aria-label="الكاميرا"><button type="button" class="chip" data-cam="rgb" aria-pressed="true"><span data-l="ar">عادي</span><span data-l="en">RGB</span></button><button type="button" class="chip" data-cam="th" aria-pressed="false"><span data-l="ar">حراري</span><span data-l="en">Thermal</span></button></div>
+        <p class="hz-res" aria-live="off"></p>
+        <dl class="hz-dl">
+          <dt><span data-l="ar">مفتاحان</span><span data-l="en">Two keys</span></dt><dd><span data-l="ar">رؤية حاسوبية بقواعد ترى لهبًا يومض، <b>و</b> بقعة حرارية أسخن من محيطها. ثم المشغّل.</span><span data-l="en">Rule-based vision sees flickering flames <b>and</b> thermal sees a spot hotter than its surroundings. Then the operator.</span></dd>
+          <dt><span data-l="ar">الإجراء</span><span data-l="en">Action</span></dt><dd><span data-l="ar">الخروج من مخرج مفتوح فعلًا بعيدًا عن النار؛ والجيران في اتجاه الريح يحتمون.</span><span data-l="en">Leave by an exit that is really open, away from the fire; downwind neighbours shelter.</span></dd>
+          <dt><span data-l="ar">حدّ</span><span data-l="en">Limit</span></dt><dd><span data-l="ar">الزجاج يحجب الأشعة تحت الحمراء؛ وشاحنة حمراء أو وهج غروب يعطي «اشتباهًا» فقط.</span><span data-l="en">Glass blocks long-wave infrared; a red truck or sunset glare gives SUSPECT only.</span></dd>
+        </dl>
+        <p class="hz-links"><a class="btn btn-ghost btn-sm" href="mission.html#scenario=fire-night" data-icon="radar"><span data-l="ar">شغّل السيناريو</span><span data-l="en">Run the scenario</span></a></p>
+      </article>
+
+      <article class="card hz rv" data-hz="gas" style="--sc:var(--warn)">
+        <div class="hz-shot"><canvas class="hz-cv" width="320" height="200" role="img" aria-label="" data-aria-ar="سحابة غاز باردة في منطقة صناعية، كما تراها المسيّرة (محاكاة)" data-aria-en="A cold gas cloud in an industrial area as the drone sees it (simulation)"></canvas><span class="hz-badge tag warn">SIM</span></div>
+        <h3 data-icon="alert"><span data-l="ar">تسرّب غاز</span><span data-l="en">Gas leak</span></h3>
+        <div class="hz-seg" role="group" data-aria-ar="الكاميرا" data-aria-en="Camera" aria-label="الكاميرا"><button type="button" class="chip" data-cam="rgb" aria-pressed="false"><span data-l="ar">عادي</span><span data-l="en">RGB</span></button><button type="button" class="chip" data-cam="th" aria-pressed="true"><span data-l="ar">حراري</span><span data-l="en">Thermal</span></button></div>
+        <p class="hz-res" aria-live="off"></p>
+        <dl class="hz-dl">
+          <dt><span data-l="ar">مفتاحان</span><span data-l="en">Two keys</span></dt><dd><span data-l="ar">سحابة باردة في الصورة الحرارية فقط، <b>و</b> قراءة ثانية صاعدة من حسّاس غاز. ثم المشغّل.</span><span data-l="en">A cold cloud in the thermal image only <b>and</b> a second rising reading from a gas sensor. Then the operator.</span></dd>
+          <dt><span data-l="ar">الإجراء</span><span data-l="en">Action</span></dt><dd><span data-l="ar">الابتعاد بعرض اتجاه الريح، بلا مفاتيح ولا لهب، وتجنّب الأماكن المنخفضة.</span><span data-l="en">Move across the wind, no switches or flames, avoid low ground.</span></dd>
+          <dt><span data-l="ar">حدّ</span><span data-l="en">Limit</span></dt><dd><span data-l="ar">الحرارية ترى الحرارة لا الغاز نفسه، فما تراه «مرشَّح» يؤكّده حسّاس.</span><span data-l="en">Thermal sees temperature, not the gas itself, so what it sees is a candidate a sensor must confirm.</span></dd>
+        </dl>
+        <p class="hz-links"><a class="btn btn-ghost btn-sm" href="mission.html#scenario=gas-night" data-icon="radar"><span data-l="ar">شغّل السيناريو</span><span data-l="en">Run the scenario</span></a></p>
+      </article>
+
+      <article class="card hz rv" data-hz="flood" style="--sc:var(--info)">
+        <div class="hz-shot"><canvas class="hz-cv" width="320" height="200" role="img" aria-label="" data-aria-ar="مياه سيول تغطي الطرق، كما تراها المسيّرة (محاكاة)" data-aria-en="Flood water spreading over the roads as the drone sees it (simulation)"></canvas><span class="hz-badge tag warn">SIM</span></div>
+        <h3 data-icon="alert"><span data-l="ar">سيول وأمطار</span><span data-l="en">Flash flood</span></h3>
+        <div class="hz-seg" role="group" data-aria-ar="الكاميرا" data-aria-en="Camera" aria-label="الكاميرا"><button type="button" class="chip" data-cam="rgb" aria-pressed="true"><span data-l="ar">عادي</span><span data-l="en">RGB</span></button><button type="button" class="chip" data-cam="th" aria-pressed="false"><span data-l="ar">حراري</span><span data-l="en">Thermal</span></button></div>
+        <p class="hz-res" aria-live="off"></p>
+        <dl class="hz-dl">
+          <dt><span data-l="ar">مفتاحان</span><span data-l="en">Two keys</span></dt><dd><span data-l="ar">ماء يغطي الطريق في الصورة، <b>و</b> مسبار منسوب في نفق أو تحذير من الأرصاد. ثم المشغّل.</span><span data-l="en">Water over the road in the image <b>and</b> a level probe in an underpass or a Meteorology warning. Then the operator.</span></dd>
+          <dt><span data-l="ar">الإجراء</span><span data-l="en">Action</span></dt><dd><span data-l="ar">إلى مكان مرتفع أو طابق أعلى؛ لا مشي ولا قيادة عبر مياه جارية؛ يخرج النفق من خريطة الطرق.</span><span data-l="en">Go to higher ground or an upper floor; never walk or drive through moving water; the underpass leaves the road map.</span></dd>
+          <dt><span data-l="ar">حدّ</span><span data-l="en">Limit</span></dt><dd><span data-l="ar">الصورة لا تقيس العمق ولا سرعة الجريان؛ المسبار يقيس العمق الساكن.</span><span data-l="en">The image measures neither depth nor flow speed; the probe measures still depth.</span></dd>
+        </dl>
+        <p class="hz-links"><a class="btn btn-ghost btn-sm" href="mission.html#scenario=flood-day" data-icon="radar"><span data-l="ar">شغّل السيناريو</span><span data-l="en">Run the scenario</span></a></p>
+      </article>
+
+      <article class="card hz rv" data-hz="dust" style="--sc:var(--warn)">
+        <div class="hz-shot"><canvas class="hz-cv" width="320" height="200" role="img" aria-label="" data-aria-ar="غبار كثيف يخفض الرؤية، كما تراه المسيّرة (محاكاة)" data-aria-en="Heavy dust lowering visibility as the drone sees it (simulation)"></canvas><span class="hz-badge tag warn">SIM</span></div>
+        <h3 data-icon="wind"><span data-l="ar">عاصفة غبارية</span><span data-l="en">Dust storm</span></h3>
+        <div class="hz-seg" role="group" data-aria-ar="الكاميرا" data-aria-en="Camera" aria-label="الكاميرا"><button type="button" class="chip" data-cam="rgb" aria-pressed="true"><span data-l="ar">عادي</span><span data-l="en">RGB</span></button><button type="button" class="chip" data-cam="th" aria-pressed="false"><span data-l="ar">حراري</span><span data-l="en">Thermal</span></button></div>
+        <p class="hz-res" aria-live="off"></p>
+        <dl class="hz-dl">
+          <dt><span data-l="ar">مفتاحان</span><span data-l="en">Two keys</span></dt><dd><span data-l="ar">تباين منخفض وحجاب غباري في الصورة، <b>و</b> مستشعر جسيمات أو تحذير الأرصاد. ثم المشغّل.</span><span data-l="en">Low contrast and a dust veil in the image <b>and</b> a particle sensor or a weather warning. Then the operator.</span></dd>
+          <dt><span data-l="ar">الإجراء</span><span data-l="en">Action</span></dt><dd><span data-l="ar">البقاء في مبنى مغلق بنوافذ مغلقة وكمامة؛ مرضى الربو والمسنّون والأطفال أولًا.</span><span data-l="en">Stay in a closed building, windows shut, mask on; people with asthma, older adults and children first.</span></dd>
+          <dt><span data-l="ar">حدّ</span><span data-l="en">Limit</span></dt><dd><span data-l="ar">الحرارية لا تراه، والرياح العاتية تمنع الإقلاع (حدّ في النموذج).</span><span data-l="en">Thermal does not see it, and strong wind stops launches (a limit in the model).</span></dd>
+        </dl>
+        <p class="hz-links"><a class="btn btn-ghost btn-sm" href="mission.html#scenario=dust-day" data-icon="radar"><span data-l="ar">شغّل السيناريو</span><span data-l="en">Run the scenario</span></a></p>
+      </article>
+
+      <article class="card hz rv" data-hz="heat" style="--sc:var(--brand)">
+        <div class="hz-shot"><canvas class="hz-cv" width="320" height="200" role="img" aria-label="" data-aria-ar="عامل منهار في موقع عمل مكشوف، كما تراه المسيّرة (محاكاة)" data-aria-en="A worker collapsed at an open work site as the drone sees it (simulation)"></canvas><span class="hz-badge tag warn">SIM</span></div>
+        <h3 data-icon="thermo"><span data-l="ar">إجهاد حراري</span><span data-l="en">Extreme heat</span></h3>
+        <div class="hz-seg" role="group" data-aria-ar="الكاميرا" data-aria-en="Camera" aria-label="الكاميرا"><button type="button" class="chip" data-cam="rgb" aria-pressed="false"><span data-l="ar">عادي</span><span data-l="en">RGB</span></button><button type="button" class="chip" data-cam="th" aria-pressed="true"><span data-l="ar">حراري</span><span data-l="en">Thermal</span></button></div>
+        <div class="hz-seg hz-time" role="group" data-aria-ar="الساعة (يوليو)" data-aria-en="Time of day (July)" aria-label="الساعة (يوليو)"><button type="button" class="chip" data-hour="13" aria-pressed="true"><bdi class="num">13:00</bdi></button><button type="button" class="chip" data-hour="2" aria-pressed="false"><bdi class="num">02:00</bdi></button></div>
+        <p class="hz-res" aria-live="off"></p>
+        <dl class="hz-dl">
+          <dt><span data-l="ar">مفتاحان</span><span data-l="en">Two keys</span></dt><dd><span data-l="ar">شخص منهار في الصورة، <b>و</b> تقدير WBGT فوق حدّ العمل مع تقويم حظر الظهيرة. ثم المشرف.</span><span data-l="en">A collapsed person in the image <b>and</b> a WBGT estimate above the work limit with the midday-ban calendar. Then the supervisor.</span></dd>
+          <dt><span data-l="ar">الإجراء</span><span data-l="en">Action</span></dt><dd><span data-l="ar">أوقف العمل، اذهب إلى التبريد، اشرب ماءً؛ والإسعاف إن لم يستجب.</span><span data-l="en">Stop work, go to the cool shelter, drink water; the ambulance if there is no response.</span></dd>
+          <dt><span data-l="ar">حدّ</span><span data-l="en">Limit</span></dt><dd><span data-l="ar">في الظهيرة الأرض أسخن من الجسم، فتفقد الحرارية الشخص: جرّب 13:00 مقابل 02:00.</span><span data-l="en">At midday the ground is hotter than a body, so thermal loses the person: try 13:00 against 02:00.</span></dd>
+        </dl>
+        <p class="hz-links"><a class="btn btn-ghost btn-sm" href="mission.html#scenario=heat-day" data-icon="radar"><span data-l="ar">شغّل السيناريو</span><span data-l="en">Run the scenario</span></a></p>
+      </article>
+
+      <article class="card hz rv" data-hz="sos" style="--sc:var(--danger)">
+        <div class="hz-shot"><canvas class="hz-cv" width="320" height="200" role="img" aria-label="" data-aria-ar="شخص ممدّد على الأرض يحتاج مساعدة، كما تراه المسيّرة (محاكاة)" data-aria-en="A person lying on the ground who needs help as the drone sees it (simulation)"></canvas><span class="hz-badge tag warn">SIM</span></div>
+        <h3 data-icon="heart"><span data-l="ar">شخص يحتاج مساعدة</span><span data-l="en">Someone needs help</span></h3>
+        <div class="hz-seg" role="group" data-aria-ar="الكاميرا" data-aria-en="Camera" aria-label="الكاميرا"><button type="button" class="chip" data-cam="rgb" aria-pressed="false"><span data-l="ar">عادي</span><span data-l="en">RGB</span></button><button type="button" class="chip" data-cam="th" aria-pressed="true"><span data-l="ar">حراري</span><span data-l="en">Thermal</span></button></div>
+        <div class="hz-seg hz-time" role="group" data-aria-ar="الساعة (يوليو)" data-aria-en="Time of day (July)" aria-label="الساعة (يوليو)"><button type="button" class="chip" data-hour="13" aria-pressed="false"><bdi class="num">13:00</bdi></button><button type="button" class="chip" data-hour="2" aria-pressed="true"><bdi class="num">02:00</bdi></button></div>
+        <p class="hz-res" aria-live="off"></p>
+        <dl class="hz-dl">
+          <dt><span data-l="ar">مفتاحان</span><span data-l="en">Two keys</span></dt><dd><span data-l="ar">زرّ استغاثة أو سقوط أو شخص ممدّد في الصورة، <b>و</b> لا ردّ على «هل أنت بخير؟». 999 هو الذي يقرّر.</span><span data-l="en">An SOS button, a fall or a person lying in the image <b>and</b> no answer to “are you OK?”. 999 decides.</span></dd>
+          <dt><span data-l="ar">الإجراء</span><span data-l="en">Action</span></dt><dd><span data-l="ar">إحضار المساعدة <b>إلى</b> الشخص: أسرع إسعاف؛ وجهاز صدمات بمسيّرة مفهوم فقط تشغّله جهة مختصة.</span><span data-l="en">Bring help <b>to</b> the person: the fastest ambulance; a drone-borne AED is a concept only, operated by an authority.</span></dd>
+          <dt><span data-l="ar">حدّ</span><span data-l="en">Limit</span></dt><dd><span data-l="ar">ليست جهازًا طبيًا؛ وبالنهار في الصيف تُخفي الأرض الحارّة الإنسان عن الحرارية.</span><span data-l="en">Not a medical device; and on a summer day the hot ground hides the person from thermal.</span></dd>
+        </dl>
+        <p class="hz-links"><a class="btn btn-ghost btn-sm" href="mission.html#scenario=sos-day" data-icon="radar"><span data-l="ar">شغّل السيناريو</span><span data-l="en">Run the scenario</span></a></p>
+      </article>
+
+    </div>
+    <p class="small muted hz-foot rv"><span data-l="ar">الزلازل خطر منخفض في قطر بحسب إدارة الأرصاد (2013، مصدر ثانوي، S41)، فلا نبني لها كتيّبًا الآن؛ والمنصة تقبل خطرًا سابعًا بكتيّب جديد دون تغيير المسار.</span><span data-l="en">Earthquakes are low-risk in Qatar according to the Meteorology Department (2013, a secondary source, S41), so we do not build a playbook for them now; the platform accepts a seventh hazard with a new playbook without changing the pipeline.</span></p>
+  </div>
+</section>
+
+<!-- ============================================================ 06 ALL OF QATAR -->
+<section class="sec alt" id="qatar" aria-labelledby="qa-t">
+  <div class="wrap wide">
+    <div class="sec-head rv">
+      <span class="eyebrow"><span class="idx num">06</span><span data-l="ar">قطر كلها</span><span data-l="en">All of Qatar</span></span>
+      <h2 class="sec-title" id="qa-t"><span data-l="ar">من مسيعيد إلى رأس لفان: الأسرع يصل، لا الأقرب</span><span data-l="en">From Mesaieed to Ras Laffan: the fastest arrives, not the nearest</span></h2>
+      <p class="sec-lead"><span data-l="ar">الخريطة حقيقية (لقطة من OpenStreetMap: الطرق والبلديات الثماني ومواقع المستشفيات والشرطة والدفاع المدني). أمّا المسيّرات الراسية والمرور وتوفّر الوحدات والحوادث فمحاكاة (SIM). اختر خطرًا وشاهد: مسيّرة تُقلع لتتحقق، ثم موافقة الإنسان، ثم تنطلق الوحدة الأسرع بحسب المرور. <b>999 يبقى المرسِل.</b></span><span data-l="en">The map is real (an OpenStreetMap snapshot: roads, the eight municipalities, the positions of hospitals, police and Civil Defence). The docked drones, traffic, unit availability and incidents are simulated (SIM). Pick a hazard and watch: a drone launches to verify, then the human approves, then the fastest unit by traffic rolls. <b>999 stays the dispatcher.</b></span></p>
+    </div>
+
+    <div class="qd rv" id="qd">
+      <div class="qd-main card">
+        <div class="qd-ctl">
+          <span class="qd-lab" id="qd-hz-l"><span data-l="ar">اختر خطرًا</span><span data-l="en">Pick a hazard</span></span>
+          <div class="chips" id="qd-hz" role="group" aria-labelledby="qd-hz-l">
+            <button class="chip" type="button" data-hz="fire" aria-pressed="true" data-icon="fire"><span data-l="ar">حريق</span><span data-l="en">Fire</span></button>
+            <button class="chip" type="button" data-hz="gas" aria-pressed="false" data-icon="alert"><span data-l="ar">غاز</span><span data-l="en">Gas</span></button>
+            <button class="chip" type="button" data-hz="flood" aria-pressed="false" data-icon="alert"><span data-l="ar">سيول</span><span data-l="en">Flood</span></button>
+            <button class="chip" type="button" data-hz="dust" aria-pressed="false" data-icon="wind"><span data-l="ar">غبار</span><span data-l="en">Dust</span></button>
+            <button class="chip" type="button" data-hz="heat" aria-pressed="false" data-icon="thermo"><span data-l="ar">حرارة</span><span data-l="en">Heat</span></button>
+            <button class="chip" type="button" data-hz="sos" aria-pressed="false" data-icon="heart"><span data-l="ar">استغاثة</span><span data-l="en">SOS</span></button>
+          </div>
+        </div>
+        <div class="qd-canvas" id="qd-stage">
+          <canvas id="qd-map" width="800" height="560" role="img" data-aria-ar="خريطة قطر الحقيقية (OpenStreetMap) عليها حادث محاكى ومسار المسيّرة والوحدات الموصى بها" data-aria-en="The real map of Qatar (OpenStreetMap) with a simulated incident, the drone's path and the recommended units" aria-label="خريطة قطر الحقيقية (OpenStreetMap) عليها حادث محاكى ومسار المسيّرة والوحدات الموصى بها">The map of Qatar</canvas>
+          <canvas id="qd-ovl" class="qd-ovl" aria-hidden="true"></canvas>
+          <div class="qd-badges" aria-hidden="true"><span class="badge-verdict" id="qd-verdict"></span><span class="badge-clock num" id="qd-clock" dir="ltr"></span></div>
+          <p class="map-loading" id="qd-loading" role="status"><span data-l="ar">نجهّز الخريطة الحقيقية…</span><span data-l="en">Preparing the real map…</span></p>
+        </div>
+        <ol class="qd-steps" id="qd-steps" data-aria-ar="مراحل الحادث" data-aria-en="Incident stages" aria-label="مراحل الحادث"></ol>
+        <p class="qd-cap" id="qd-cap" aria-live="off"></p>
+        <div class="qd-actions">
+          <button class="icon-btn" type="button" id="qd-play" aria-pressed="true"></button>
+          <button class="btn btn-ghost btn-sm" type="button" id="qd-restart" data-icon="reset"><span data-l="ar">أعد المشهد</span><span data-l="en">Replay</span></button>
+          <a class="btn btn-ghost btn-sm" href="mission.html" data-icon="radar"><span data-l="ar">افتح العرض الوطني كاملًا</span><span data-l="en">Open the full national view</span></a>
+        </div>
+        <p class="stage-note small muted"><span data-l="ar">محاكاة (SIM): الخريطة لقطة حقيقية، أما الحوادث والمرور وتوفّر الوحدات ومواقع المسيّرات الراسية فمحاكاة بافتراضات ظاهرة. 999 يبقى هو المرسِل في الواقع.</span><span data-l="en">Simulation (SIM): the map is a real snapshot; the incidents, traffic, unit availability and the docked drones' positions are simulated with visible assumptions. In real life 999 stays the dispatcher.</span></p>
+      </div>
+
+      <div class="qd-side">
+        <div class="grid g2 qd-kpis" id="qd-kpis">
+          <div class="kpi safe"><b class="num" dir="ltr" data-nat="munis">8</b><span><span data-l="ar">بلديات، ومعها <bdi class="num" data-nat="places">135</bdi> مكانًا مسمّى</span><span data-l="en">municipalities, with <bdi class="num" data-nat="places">135</bdi> named places</span></span></div>
+          <div class="kpi safe"><b class="num" dir="ltr" data-nat="fac">138</b><span><span data-l="ar">منشأة: مستشفيات وطوارئ، وشرطة، ودفاع مدني، وإسعاف</span><span data-l="en">facilities: hospitals &amp; EDs, police, Civil Defence, ambulance</span></span></div>
+          <div class="kpi safe"><b class="num" dir="ltr"><span data-nat="roadkm">6,116</span> <small>km</small></b><span><span data-l="ar">من الطرق الرئيسية بوسومها</span><span data-l="en">of major roads with their tags</span></span></div>
+          <div class="kpi cool"><b class="num" dir="ltr" id="qd-k-drones">26</b><span><span data-l="ar">مسيّرة راسية في الإعداد الافتراضي (SIM)</span><span data-l="en">docked drones in the default set-up (SIM)</span></span></div>
+        </div>
+        <div class="card qd-why">
+          <h3 data-icon="route" id="qd-why-h"><span data-l="ar">لماذا هذه الوحدة؟</span><span data-l="en">Why this unit?</span></h3>
+          <ul class="units" id="qd-units" aria-live="off"></ul>
+          <p class="small muted" id="qd-why"></p>
+        </div>
+        <div class="note warn qd-gaps">
+          <b><span data-l="ar">النواقص التي نقولها بأنفسنا</span><span data-l="en">The gaps we state ourselves</span></b>
+          <ul class="plain-list small">
+            <li><span data-l="ar"><b>الإطفاء:</b> <bdi class="num" data-nat="fire">21</bdi> مدخلًا في OSM مقابل 23 مركزًا في خبر صحفي (2021، مصدر ثانوي): فجوات الخريطة هي فجوات البيانات لا الخدمة.</span><span data-l="en"><b>Fire:</b> <bdi class="num" data-nat="fire">21</bdi> entries in OSM against 23 centres in a press report (2021, a secondary source): gaps on the map are gaps of the data, not of the service.</span></li>
+            <li><span data-l="ar"><b>المستشفيات:</b> قسم الطوارئ مؤكَّد في <bdi class="num" data-nat="ed">18</bdi> فقط من <bdi class="num" data-nat="hosp">72</bdi>؛ والسعة افتراض (SIM).</span><span data-l="en"><b>Hospitals:</b> an emergency department is verified for only <bdi class="num" data-nat="ed">18</bdi> of <bdi class="num" data-nat="hosp">72</bdi>; capacity is an assumption (SIM).</span></li>
+            <li><span data-l="ar"><b>الطرق:</b> الرئيسية فقط، بلا إشارات ولا قيود دوران. لقطة لا بثّ حيّ.</span><span data-l="en"><b>Roads:</b> major roads only, no signals or turn restrictions. A snapshot, not a live feed.</span></li>
+          </ul>
+        </div>
+        <details class="card qd-munis">
+          <summary><span data-l="ar">البلديات الثماني بالأرقام</span><span data-l="en">The eight municipalities in numbers</span></summary>
+          <div class="table-wrap"><table class="table small" id="qd-table">
+            <caption class="sr-only"><span data-l="ar">البلديات: المساحة وعدد المنشآت</span><span data-l="en">Municipalities: area and facility counts</span></caption>
+            <thead><tr><th><span data-l="ar">البلدية</span><span data-l="en">Municipality</span></th><th><span data-l="ar">كم²</span><span data-l="en">km²</span></th><th><span data-l="ar">مستشفى</span><span data-l="en">Hosp.</span></th><th><span data-l="ar">شرطة</span><span data-l="en">Police</span></th><th><span data-l="ar">إطفاء</span><span data-l="en">Fire</span></th></tr></thead>
+            <tbody></tbody>
+          </table></div>
+          <p class="small muted"><span data-l="ar">المساحات محسوبة من مضلعات OSM المبسّطة (±100 م) لا إحصاءات رسمية.</span><span data-l="en">Areas are computed from the simplified OSM polygons (±100 m), not official statistics.</span></p>
+        </details>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ 07 HONEST NUMBERS -->
+<section class="sec" id="numbers" aria-labelledby="num-t">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <span class="eyebrow"><span class="idx num">07</span><span data-l="ar">الأرقام</span><span data-l="en">Numbers</span></span>
+      <h2 class="sec-title" id="num-t"><span data-l="ar">أرقامنا كما هي… بما فيها المحرجة</span><span data-l="en">Our numbers as they are, including the awkward ones</span></h2>
+      <p class="sec-lead"><span data-l="ar">كل رقم هنا خرج من اختبارات المشروع نفسه ويمكن إعادة تشغيلها، وموسوم <b>MEASURED</b> (مقيس في اختبار) أو <b>SIM</b> (نتيجة محاكاة بافتراضات ظاهرة، فحص آلية لا برهان أثر). ومعه حدّه. لا نعرض رقمًا لم نقِسه.</span><span data-l="en">Every number here came out of the project's own tests, which can be re-run, and is tagged <b>MEASURED</b> (measured in a test) or <b>SIM</b> (a simulation result with visible assumptions: a mechanism check, not proof of impact), with its limit beside it. We show no number we did not measure.</span></p>
+    </div>
+    <div class="chips num-filter rv" id="num-filter" role="group" data-aria-ar="تصفية الأرقام" data-aria-en="Filter the numbers" aria-label="تصفية الأرقام">
+      <button class="chip" type="button" data-f="all" aria-pressed="true"><span data-l="ar">الكل</span><span data-l="en">All</span></button>
+      <button class="chip" type="button" data-f="measured" aria-pressed="false"><span class="dot" style="--sc:var(--safe)"></span>MEASURED</button>
+      <button class="chip" type="button" data-f="sim" aria-pressed="false"><span class="dot" style="--sc:var(--warn)"></span>SIM</button>
+    </div>
+
+    <div class="nums" id="nums" data-stagger>
+      <article class="num-card rv" data-k="measured">
+        <header><span class="tag safe">MEASURED</span><span class="nc-src small muted"><span data-l="ar">اختبارنا الآلي</span><span data-l="en">our automated tests</span></span></header>
+        <b class="num-big num" dir="ltr" data-tc="total">1,348</b>
+        <p class="nc-what"><span data-l="ar">فحصًا آليًا ناجحًا في <bdi class="num" data-tc="suites">7</bdi> مجموعات (محرّكات المحاكاة والكاشف والبيانات والرسائل).</span><span data-l="en">automated checks pass across <bdi class="num" data-tc="suites">7</bdi> suites (the simulation engines, the detector, the data and the messages).</span></p>
+        <p class="nc-lim"><b><span data-l="ar">الحدّ:</span><span data-l="en">Limit:</span></b> <span data-l="ar">اختباراتنا نحن لا إحصائية عن العالم؛ تُثبت أن الشيفرة تفعل ما نقوله لا أن النظام ينفع في الميدان. الرقم يُقرأ من ملف يولّده المشروع.</span><span data-l="en">our own tests, not a statistic about the world; they show the code does what we say, not that the system works in the field. The number is read from a file the project generates.</span></p>
+      </article>
+      <article class="num-card rv" data-k="measured">
+        <header><span class="tag safe">MEASURED</span><span class="nc-src small muted"><span data-l="ar">صور محجوزة، مختبر الأدلة</span><span data-l="en">held-out photos, Evidence Lab</span></span></header>
+        <b class="num-big num" dir="ltr"><span data-ev="det.test">66.7</span>%</b>
+        <p class="nc-what"><span data-l="ar">دقة الرؤية الحاسوبية بقواعد على <bdi class="num">18</bdi> صورة ثابتة لم تُستعمل في الضبط (<bdi class="num">12 / 18</bdi>).</span><span data-l="en">accuracy of the rule-based computer vision on <bdi class="num">18</bdi> still photos never used for tuning (<bdi class="num">12 / 18</bdi>).</span></p>
+        <p class="nc-lim"><b><span data-l="ar">الحدّ:</span><span data-l="en">Limit:</span></b> <span data-l="ar">عيّنة صغيرة؛ والمجموعتان اللتان ضُبطتا عليهما (<bdi class="num" data-ev="det.sample">87.5</bdi>% و<bdi class="num" data-ev="det.tuning">81.3</bdi>%) متفائلتان. لهذا لا تكفي الرؤية وحدها أبدًا: المفتاح الثاني حراري.</span><span data-l="en">a small sample; the two sets it was tuned on (<bdi class="num" data-ev="det.sample">87.5</bdi>% and <bdi class="num" data-ev="det.tuning">81.3</bdi>%) are optimistic. This is why vision alone is never enough: the second key is thermal.</span></p>
+      </article>
+      <article class="num-card rv" data-k="sim">
+        <header><span class="tag warn">SIM</span><span class="nc-src small muted"><span data-l="ar">أسطول المسيّرات، بذرة 7، 150 حادثًا</span><span data-l="en">drone fleet, seed 7, 150 incidents</span></span></header>
+        <b class="num-big num" dir="ltr"><span data-ev="fe.first">90</span>%</b>
+        <p class="nc-what"><span data-l="ar">من الحوادث التي تستطيع مسيّرة بلوغها تكون فيها المسيّرة على الموقع قبل أول وحدة أرضية: وسيط <bdi class="num" data-ev="fe.d50">244</bdi> ث مقابل <bdi class="num" data-ev="fe.g50">440.5</bdi> ث.</span><span data-l="en">of the incidents a drone can reach, where the drone is on station before the first ground unit: median <bdi class="num" data-ev="fe.d50">244</bdi> s against <bdi class="num" data-ev="fe.g50">440.5</bdi> s.</span></p>
+        <p class="nc-lim"><b><span data-l="ar">الحدّ:</span><span data-l="en">Limit:</span></b> <span data-l="ar">افتراضات (سرعة الطيران، الحرارة، الإطلاق) وفحص آلية لا برهان أثر؛ لم تحلّق مسيّرة حقيقية.</span><span data-l="en">assumptions (flight speed, heat, launch time) and a mechanism check, not proof of impact; no real drone has flown.</span></p>
+      </article>
+      <article class="num-card rv" data-k="sim">
+        <header><span class="tag warn">SIM</span><span class="nc-src small muted"><span data-l="ar">المدى، النموذج نفسه</span><span data-l="en">range, the same model</span></span></header>
+        <b class="num-big num" dir="ltr"><span data-ev="fe.out">33.3</span>%</b>
+        <p class="nc-what"><span data-l="ar">من الحوادث خارج مدى كل المسيّرات الراسية: لا تحصل على مسيّرة أصلًا.</span><span data-l="en">of the incidents are out of range of every docked drone: they get no drone at all.</span></p>
+        <p class="nc-lim"><b><span data-l="ar">الحدّ:</span><span data-l="en">Limit:</span></b> <span data-l="ar">يتغيّر بعدد الأرصفة والمدى وحرارة الخليج؛ نعرض الفجوة ولا نخفيها، والوحدات الأرضية والحارس الثابت تغطي ما تعجز عنه المسيّرة.</span><span data-l="en">it moves with the number of docks, the range and Gulf heat; we show the gap, never hide it, and ground units and the fixed sentinel cover what the drone cannot.</span></p>
+      </article>
+      <article class="num-card rv" data-k="sim">
+        <header><span class="tag warn">SIM</span><span class="nc-src small muted"><span data-l="ar">شخص ممدّد، مفتاح الحرارة، يوليو</span><span data-l="en">a person lying down, thermal key, July</span></span></header>
+        <b class="num-big num" dir="ltr"><span data-ev="th.noon">2</span>% <small class="vs">vs</small> <span data-ev="th.night">70</span>%</b>
+        <p class="nc-what"><span data-l="ar">نسبة نجاح المفتاح الحراري في رؤية الشخص عند 13:00 مقابل 02:00.</span><span data-l="en">how often the thermal key sees the person at 13:00 against 02:00.</span></p>
+        <p class="nc-lim"><b><span data-l="ar">الحدّ:</span><span data-l="en">Limit:</span></b> <span data-l="ar">الأرض الحارّة بالظهيرة أسخن من الجسم فتُخفيه؛ نهارًا نعتمد مفتاحًا آخر (بلاغ مواطن أو حارس) ولا نعتمد الحرارة وحدها.</span><span data-l="en">midday ground is hotter than a body and hides it; by day we rely on another key (a citizen report or a sentinel), never on thermal alone.</span></p>
+      </article>
+      <article class="num-card rv" data-k="sim">
+        <header><span class="tag warn">SIM</span><span class="nc-src small muted"><span data-l="ar">يوم محاكى من الدوريات</span><span data-l="en">one simulated day of patrols</span></span></header>
+        <b class="num-big num" dir="ltr"><span data-ev="fa.pct">96.6</span>%</b>
+        <p class="nc-what"><span data-l="ar">من الإنذارات الكاذبة التي رفعتها المسيّرات (<bdi class="num" data-ev="fa.raised">233</bdi>: وهج غروب وشاحنة حمراء وآلات ساخنة) رفضتها غرفة التحكم بالأدلة؛ و<bdi class="num" data-ev="fa.disp">8</bdi> أُرسلت خطأً.</span><span data-l="en">of the false alerts the drones raised (<bdi class="num" data-ev="fa.raised">233</bdi>: sunset glare, a red truck, hot machinery) were dismissed by the control room on evidence; <bdi class="num" data-ev="fa.disp">8</bdi> were dispatched in error.</span></p>
+        <p class="nc-lim"><b><span data-l="ar">الحدّ:</span><span data-l="en">Limit:</span></b> <span data-l="ar">معدّل الأشباه المرتفع افتراض متعمَّد لاختبار الضغط؛ والخطأ له ثمن ظاهر: وحدات تتحرك إلى لا شيء.</span><span data-l="en">the high rate of look-alikes is a deliberate stress-test assumption; and an error has a visible cost: units that roll to nothing.</span></p>
+      </article>
+      <article class="num-card rv" data-k="sim">
+        <header><span class="tag warn">SIM</span><span class="nc-src small muted"><span data-l="ar">الإرسال الوطني، بذرة 7، أحد 07:30</span><span data-l="en">national dispatch, seed 7, Sunday 07:30</span></span></header>
+        <b class="num-big num" dir="ltr"><span data-ev="nab.differs">35.9</span>% <small class="vs">·</small> <span data-ev="nab.saved.mean">63</span> <small><span data-l="ar">ث</span><span data-l="en">s</span></small></b>
+        <p class="nc-what"><span data-l="ar">من اختيارات الوحدات تغيّر (الأسرع غير الأقرب)، ومتوسط الزمن الموفَّر لكل حادث 63 ثانية.</span><span data-l="en">of unit choices changed (the fastest was not the nearest), and the mean time saved per incident is 63 seconds.</span></p>
+        <p class="nc-lim"><b><span data-l="ar">الحدّ:</span><span data-l="en">Limit:</span></b> <span data-l="ar">في أكثر من نصف الحوادث لا يتغيّر شيء (الوسيط صفر)؛ الفائدة في الذيل، وتتغيّر مع افتراضات المرور وتوفّر الوحدات.</span><span data-l="en">in more than half of the incidents nothing changes (the median is zero); the benefit sits in the tail and moves with the traffic and availability assumptions.</span></p>
+      </article>
+      <article class="num-card rv" data-k="sim">
+        <header><span class="tag warn">SIM</span><span class="nc-src small muted"><span data-l="ar">الروبوت، بذرة 1، مبنى افتراضي</span><span data-l="en">the robot, seed 1, a fictional building</span></span></header>
+        <b class="num-big num" dir="ltr"><span data-ev="rb.first">6</span> <small class="vs">·</small> <span data-ev="rb.saved">542</span> <small><span data-l="ar">ث</span><span data-l="en">s</span></small></b>
+        <p class="nc-what"><span data-l="ar">مقيمون وجدهم الروبوت قبل غيره، وبمتوسط 542 ثانية أبكر من العالم بلا روبوت.</span><span data-l="en">residents the robot located before anyone else, a mean 542 seconds earlier than in the world without it.</span></p>
+        <p class="nc-lim"><b><span data-l="ar">الحدّ:</span><span data-l="en">Limit:</span></b> <span data-l="ar">حدّ أدنى لمن لم يُعثر عليه أبدًا بلا روبوت؛ والمبنى والبطارية والكاشف افتراضات؛ لم يُبنَ روبوت.</span><span data-l="en">a lower bound for anyone never located without the robot; the building, battery and detector are assumptions; no robot has been built.</span></p>
+      </article>
+      <article class="num-card rv" data-k="sim">
+        <header><span class="tag warn">SIM</span><span class="nc-src small muted"><span data-l="ar">مجنزر مقابل بعجلات</span><span data-l="en">tracked against wheeled</span></span></header>
+        <b class="num-big num" dir="ltr"><span data-ev="rb.tracked">100</span>% <small class="vs">vs</small> <span data-ev="rb.wheeled">0</span>%</b>
+        <p class="nc-what"><span data-l="ar">من المحتاجين إلى مساعدة وصل إليهم الروبوت قبل أن يُخرجهم الإنقاذ: المجنزر مقابل ذي العجلات الذي لا يصعد الدرج.</span><span data-l="en">of the residents who needed help were reached by the robot before the crews brought them out: the tracked one against the wheeled one, which cannot climb stairs.</span></p>
+        <p class="nc-lim"><b><span data-l="ar">الحدّ:</span><span data-l="en">Limit:</span></b> <span data-l="ar">المجنزر يصعد أبطأ ويستهلك بطارية أكثر؛ وكل ما في المبنى الافتراضي من درج وأبواب افتراض.</span><span data-l="en">the tracked one climbs slower and drains more battery; every stair and door of the fictional building is an assumption.</span></p>
+      </article>
+      <article class="num-card rv" data-k="sim">
+        <header><span class="tag warn">SIM</span><span class="nc-src small muted"><span data-l="ar">تباين حراري، ثابت النموذج</span><span data-l="en">thermal contrast, a model constant</span></span></header>
+        <b class="num-big num" dir="ltr">≥ <span data-ev="rb.body">34</span> °C</b>
+        <p class="nc-what"><span data-l="ar">حرارة هواء الغرفة التي ينعدم عندها التباين: يصير الروبوت الحراري وحده لا يرى أحدًا (34 °م حرارة الجلد في النموذج).</span><span data-l="en">the room air temperature at which contrast vanishes: a thermal-only robot then sees nobody (34 °C is the skin temperature in the model).</span></p>
+        <p class="nc-lim"><b><span data-l="ar">الحدّ:</span><span data-l="en">Limit:</span></b> <span data-l="ar">لذا يجمع الروبوت كاميرا عادية بمصباحها والصوت؛ وحرارة الخليج تجعل هذا واقعيًّا لا نظريًّا.</span><span data-l="en">which is why the robot also carries an RGB camera with its lamp and a microphone; Gulf heat makes this real, not theoretical.</span></p>
+      </article>
+      <article class="num-card rv" data-k="sim">
+        <header><span class="tag warn">SIM</span><span class="nc-src small muted"><span data-l="ar">حريق ليلي في سكن عمال افتراضي، بذرة 1</span><span data-l="en">a night fire in a fictional workers' residence, seed 1</span></span></header>
+        <b class="num-big num" dir="ltr"><span data-ev="ab.p90.ord">626</span> <small class="vs">→</small> <span data-ev="ab.p90.man">317</span> <small><span data-l="ar">ث</span><span data-l="en">s</span></small></b>
+        <p class="nc-what"><span data-l="ar">زمن وصول 90% من الناس إلى الأمان: إنذار عادي ثم منارة، في العشرين دقيقة المحاكاة نفسها.</span><span data-l="en">time for 90% of people to reach safety: an ordinary alarm, then MANARA, in the same simulated twenty minutes.</span></p>
+        <p class="nc-lim"><b><span data-l="ar">الحدّ:</span><span data-l="en">Limit:</span></b> <span data-l="ar">مقايضة صريحة: صفّارة المبنى تُسمع بعد <bdi class="num" data-ev="ab.siren">14</bdi> ث في العالمين، أما أول رسالة شخصية من منارة فبعد <bdi class="num" data-ev="ab.personal">39</bdi> ث لأن التحقق والموافقة يستغرقان ثواني؛ والنتيجة تتغيّر مع نسبة السكان الذين لديهم الصفحة.</span><span data-l="en">an honest trade-off: the building siren sounds at <bdi class="num" data-ev="ab.siren">14</bdi> s in both worlds, but MANARA's first personal message arrives at <bdi class="num" data-ev="ab.personal">39</bdi> s because proof and approval take seconds; and the result moves with the share of residents who have the page.</span></p>
+      </article>
+      <article class="num-card rv" data-k="measured">
+        <header><span class="tag safe">MEASURED</span><span class="nc-src small muted"><span data-l="ar">مختبر الخدع، 12 مدخلًا محجوزًا</span><span data-l="en">the Decoy Lab, 12 held-out inputs</span></span></header>
+        <b class="num-big num" dir="ltr"><span data-ev="dl.col">6 / 7</span> <small class="vs">→</small> <span data-ev="dl.full">1 / 7</span></b>
+        <p class="nc-what"><span data-l="ar">إنذارات كاذبة على المدخلات المضلِّلة: اللون وحده ثم المنظومة الكاملة (فيديو وحرارة)، مع كشف الحرائق الحقيقية <bdi class="num" data-ev="dl.det">4 / 4</bdi>.</span><span data-l="en">false alarms on the look-alike inputs: colour alone, then the full stack (video and thermal), while real fires are still detected <bdi class="num" data-ev="dl.det">4 / 4</bdi>.</span></p>
+        <p class="nc-lim"><b><span data-l="ar">الحدّ:</span><span data-l="en">Limit:</span></b> <span data-l="ar">عيّنة صغيرة وبذرة ثابتة وقصاصات كتبها مؤلف الكاشف نفسه: فحص آلية لا دقة ميدانية.</span><span data-l="en">a small sample, a fixed seed and clips written by the detector's own author: a mechanism check, not field accuracy.</span></p>
+      </article>
+    </div>
+    <div class="note rv num-notrun"><span data-l="ar"><b>ما لم نقِسه بعد:</b> الدقة الميدانية للكاشف خارج هذه الصور، وفهم الناس للرسائل (اختبار الفهم يحتاج موافقة الأخلاقيات ولم يُجرَ)، وأي أثر حقيقي على الأرواح أو أزمنة الاستجابة، وأي طيران أو بناء حقيقي لمسيّرة أو روبوت. لا نقول «ننقذ أرواحًا»؛ نقول إن الآلية تعمل في نموذج، ونعرض افتراضاتها.</span><span data-l="en"><b>What we have not measured yet:</b> the detector's field accuracy beyond these photos, how well people understand the messages (the comprehension test needs ethics approval and has not been run), any real effect on lives or response times, and any real flight or build of a drone or robot. We do not say “we save lives”; we say the mechanism works in a model, and we show its assumptions.</span></div>
+  </div>
+</section>
+
+<!-- ============================================================ 08 TRUST, SAFETY, ETHICS -->
+<section class="sec alt" id="trust" aria-labelledby="trust-t">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <span class="eyebrow"><span class="idx num">08</span><span data-l="ar">الثقة والسلامة والأخلاقيات</span><span data-l="en">Trust, safety &amp; ethics</span></span>
+      <h2 class="sec-title" id="trust-t"><span data-l="ar">ما نلتزم به… وما لا نستطيعه</span><span data-l="en">What we commit to, and what we cannot do</span></h2>
+    </div>
+    <div class="grid g2 trust-cols">
+      <article class="card rv">
+        <h3 data-icon="shield"><span data-l="ar">التزامات</span><span data-l="en">Commitments</span></h3>
+        <ul class="plain-list">
+          <li><span data-l="ar"><b>الدليل قبل الذعر:</b> لا إنذار عامًّا ولا إرسال وحدات قبل مفتاحين مستقلين وموافقة إنسان. وصافرة الموقع المحلية لا تنتظر أحدًا.</span><span data-l="en"><b>Proof before panic:</b> no public alert and no dispatch before two independent keys and a human Approve. The local siren never waits.</span></li>
+          <li><span data-l="ar"><b>المسيّرة مفهوم لجهة مرخَّصة:</b> كالدفاع المدني الذي يملك أصلًا مسيّرات إطفاء. القانون رقم 10 لسنة 2026 يضع التسجيل والترخيص تحت هيئة الطيران المدني (S34). لا نحلّق نحن، وعرضنا لا يمرّ فوق أحد، ولا شيفرة طيران في المستودع.</span><span data-l="en"><b>The drone is a concept for a licensed agency:</b> such as Civil Defence, which already operates firefighting drones. Law No. 10 of 2026 puts registration and licensing under the Civil Aviation Authority (S34). We fly nothing, our demo flies over nobody, and the repository holds no flight code.</span></li>
+          <li><span data-l="ar"><b>الروبوت يساعد ورجال الإطفاء يقرّرون:</b> لا يتحرك قبل موافقة قائد الحادث، ولا يكسر بابًا مقفلًا، ولا يشخّص: «حالة الشخص» تخمين بقواعد لا تشخيص.</span><span data-l="en"><b>The robot assists, firefighters decide:</b> it never moves before the incident commander approves, never breaks a locked door and never diagnoses: a person's “condition” is a rule-based guess, not a diagnosis.</span></li>
+          <li><span data-l="ar"><b>الخصوصية:</b> المسيّرة تبحث عن حرارة وأشكال لا عن هويات؛ لا نتعرّف على الوجوه ولا نحتفظ بلقطات. والتسجيل بالغرفة والحالة بلا أسماء؛ وسكان العرض افتراضيون.</span><span data-l="en"><b>Privacy:</b> the drone looks for heat and shapes, not identities; we do not recognise faces or keep footage. Check-in is room and status, no names; the demo residents are fictional.</span></li>
+          <li><span data-l="ar"><b>الأخلاقيات:</b> لا اختبارات على بشر إلا بموافقة أخلاقيات المدرسة وموافقة المشاركين. ولا نقلّد نغمة الإنذار الوطني؛ تنبيهاتنا بنغمتها الخاصة وعليها «تمرين».</span><span data-l="en"><b>Ethics:</b> no tests on people without school ethics approval and consent. We never copy the national alert tone; our alerts use their own tone and say EXERCISE.</span></li>
+          <li><span data-l="ar"><b>الإتاحة:</b> الوميض بموافقة المستخدم وبحدّ أقصى 3 وميضات في الثانية، وضوء ثابت لمن يفضّل تقليل الحركة؛ وكل مشهد متحرك هنا له زر إيقاف.</span><span data-l="en"><b>Accessibility:</b> strobe is opt-in and at most 3 flashes a second, with a steady light for people who prefer reduced motion; every moving scene here has a pause button.</span></li>
+        </ul>
+      </article>
+      <article class="card rv">
+        <h3 data-icon="alert"><span data-l="ar">حدود نذكرها بأنفسنا</span><span data-l="en">Limits we state ourselves</span></h3>
+        <ul class="plain-list">
+          <li><span data-l="ar">منارة <b>ليست</b> كاشف غاز ولا إنذار حريق معتمدًا. حسّاسات الغاز الرخيصة (MQ) تستجيب لأكثر من غاز وتنجرف، وورقات بياناتها تطلب تسخينًا 48 ساعة؛ قراءاتنا استرشادية.</span><span data-l="en">MANARA is <b>not</b> a certified gas detector or fire alarm. Cheap gas sensors (MQ) respond to more than one gas and drift, and their datasheets ask for 48 hours of burn-in; our readings are indicative.</span></li>
+          <li><span data-l="ar">الكاشف رؤية حاسوبية بقواعد: الغبار والوهج ووميض الكاميرا تسبب إنذارات كاذبة، والزجاج يحجب الأشعة تحت الحمراء الطويلة، والومض يحتاج كاميرا ثابتة (المسيّرة تحوم).</span><span data-l="en">The detector is rule-based computer vision: dust, glare and camera flicker cause false alarms, glass blocks long-wave infrared, and flicker needs a steady camera (the drone hovers).</span></li>
+          <li><span data-l="ar">العتبات إرشادات دولية للبالغين الأصحاء (وقانون قطر للحرارة)؛ قد يتأذى الأطفال والمرضى دونها. WBGT من حسّاس حرارة ورطوبة تقدير.</span><span data-l="en">Thresholds are international guidance for healthy adults (and Qatar law for heat); children and sick people may be harmed below them. A WBGT from a temperature and humidity sensor is an estimate.</span></li>
+          <li><span data-l="ar">حرارة الخليج: القطع مصنَّفة من 40 °م (البطاريات) إلى 85 °م، وعلبة مغلقة تحت الشمس تتجاوز ذلك؛ والمسيّرة تفقد مدىً بالحرارة.</span><span data-l="en">Gulf heat: the parts are rated from about 40 °C (batteries) to 85 °C, and a closed box in the sun exceeds that; the drone loses range to heat.</span></li>
+          <li><span data-l="ar">الإرسال بمرور وتوفّر وحدات محاكيَين على خريطة حقيقية ناقصة؛ والربط مع 999 والدفاع المدني والإسعاف ونظام التحذير العام <b>غير موصول</b> ويحتاج اتفاقات.</span><span data-l="en">Dispatch uses simulated traffic and unit availability on a real but incomplete map; links to 999, Civil Defence, the ambulance service and the public warning system are <b>not connected</b> and need agreements.</span></li>
+          <li><span data-l="ar">ست لغات مسودات لم يراجعها متحدث أصلي بعد؛ والعربية والإنجليزية كاملتان. لا ترجمة آلية حيّة أبدًا.</span><span data-l="en">Six languages are drafts no native speaker has reviewed yet; Arabic and English are complete. Never live machine translation.</span></li>
+        </ul>
+      </article>
+    </div>
+    <article class="card rv trust-regional">
+      <h3 data-icon="globe"><span data-l="ar">منارة تحيط بالمنظومات القائمة ولا تنافسها</span><span data-l="en">MANARA surrounds the systems that exist and competes with none</span></h3>
+      <div class="reg-grid">
+        <p><b><span data-l="ar">الصقور تكافح النار، والمنارة تُخرج الجميع.</span><span data-l="en">The falcons fight the fire; the lighthouse gets everyone out.</span></b> <span data-l="ar">الدفاع المدني السعودي نشر مسيّرة «صقر» في حج 2025 (S13)، وفي دبي «شاهين» وفي أبوظبي «سُهيل»، وعرض الدفاع المدني القطري مسيّرتَي إطفاء في ميليبول 2024 (S39)، و«حصّانتك» تربط المباني بمركز إنذار مركزي، ومشروع طلاب قطر في آيسف 2025 لكشف تسرّب H₂S بمسيّرة نال المركز الرابع عالميًا (S43). كلها الأرض التي نقف عليها. هذه المنظومات تكافح وترصد؛ ومنارة هي طبقة «آخر مئة متر» حولها: التحقق، والإرشاد بلغة كل إنسان، والبحث عمّن لا يخرج، والإحصاء، والتسليم.</span><span data-l="en">Saudi Civil Defense deployed the “Saqr/Falcon” drone at Hajj 2025 (S13), Dubai has “Shaheen” and Abu Dhabi “Suhail”, Qatar Civil Defence showed two firefighting drones at Milipol 2024 (S39), Hassantuk links buildings to a central alarm centre, and the Qatari students' ISEF 2025 drone project for H₂S leak detection won fourth place globally (S43). They are the ground we stand on. Those systems fight and detect; MANARA is the “last 100 metres” layer around them: proving, guiding each person in their own language, searching for those who cannot get out, counting, and handing off.</span></p>
+        <p><b>999</b> <span data-l="ar">يبقى المرسِل. منارة تُرسل حزمة موثّقة جاهزة (وCAP بحالة «تمرين») ولا تتصل بالنيابة عن أحد، ولا تدّعي أي ربط قائم، وليست خدمة رسمية.</span><span data-l="en">stays the dispatcher. MANARA sends a ready verified package (and a CAP file with status “Exercise”), never calls on anyone's behalf, claims no existing link, and is not an official service.</span></p>
+      </div>
+    </article>
+  </div>
+</section>
+
+<!-- ============================================================ 09 CRITERIA -->
+<section class="sec" id="criteria" aria-labelledby="crit-t">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <span class="eyebrow"><span class="idx num">09</span><span data-l="ar">معايير المسابقة</span><span data-l="en">Competition criteria</span></span>
+      <h2 class="sec-title" id="crit-t"><span data-l="ar">أين يجد المحكّم كل معيار؟</span><span data-l="en">Where a judge finds each criterion</span></h2>
+      <p class="sec-lead"><span data-l="ar">لم نجد معايير تحكيم المسابقة الرسمية على صفحة يمكن قراءتها، فنربط بمعايير ISEF الهندسية المنشورة (S44) بديلًا، ريثما يؤكّد منسّق المدرسة المعايير الرسمية. <b>اسأل المنسّق قبل التقديم.</b></span><span data-l="en">We could not find the official competition's judging criteria on a readable page, so we map to the published ISEF engineering criteria (S44) as a stand-in until the school coordinator confirms the official ones. <b>Ask the coordinator before submitting.</b></span></p>
+    </div>
+    <div class="table-wrap rv">
+      <table class="table crit" id="crit-table">
+        <caption class="sr-only"><span data-l="ar">معايير ISEF الهندسية (S44) وأين يظهر كل منها في منارة</span><span data-l="en">ISEF engineering criteria (S44) and where each appears in MANARA</span></caption>
+        <thead><tr><th><span data-l="ar">المعيار (ISEF، S44)</span><span data-l="en">Criterion (ISEF, S44)</span></th><th><span data-l="ar">النقاط</span><span data-l="en">Points</span></th><th><span data-l="ar">أين تجده</span><span data-l="en">Where to find it</span></th></tr></thead>
+        <tbody>
+          <tr><th scope="row"><span data-l="ar">مشكلة البحث</span><span data-l="en">Research problem</span></th><td class="num" dir="ltr">10</td><td><span data-l="ar">«آخر مئة متر» وأخطار قطر المتعددة، بمصادرها:</span><span data-l="en">the “last 100 metres” and Qatar's several hazards, with sources:</span> <a href="#why"><span data-l="ar">لماذا</span><span data-l="en">Why</span></a> · <a href="report.html"><span data-l="ar">التقرير</span><span data-l="en">Report</span></a></td></tr>
+          <tr><th scope="row"><span data-l="ar">التصميم والمنهج</span><span data-l="en">Design and methodology</span></th><td class="num" dir="ltr">15</td><td><span data-l="ar">مسار من ست خطوات، ومفتاحان وإنسان، ومحاكاة بافتراضات ظاهرة:</span><span data-l="en">a six-step pipeline, two keys and a human, a simulation with visible assumptions:</span> <a href="#how"><span data-l="ar">كيف تعمل</span><span data-l="en">How it works</span></a> · <a href="build.html"><span data-l="ar">بناء النموذج</span><span data-l="en">Build It</span></a></td></tr>
+          <tr><th scope="row"><span data-l="ar">التنفيذ: البناء والاختبار</span><span data-l="en">Execution: construction and testing</span></th><td class="num" dir="ltr">20</td><td><span data-l="ar">كاشف مُختبَر على صور محجوزة، ولوحة توأم، وفحوص آلية، وأرقام ناقصة معروضة:</span><span data-l="en">a detector tested on held-out photos, a twin board, automated checks, awkward numbers shown:</span> <a href="detect.html"><span data-l="ar">مختبر الأدلة</span><span data-l="en">Evidence Lab</span></a> · <a href="robot.html"><span data-l="ar">مختبر الروبوت</span><span data-l="en">Robot Lab</span></a> · <a href="#numbers"><span data-l="ar">الأرقام</span><span data-l="en">Numbers</span></a></td></tr>
+          <tr><th scope="row"><span data-l="ar">الإبداع والأثر المحتمل</span><span data-l="en">Creativity and potential impact</span></th><td class="num" dir="ltr">20</td><td><span data-l="ar">مسيّرة تُنبّه، وروبوت يبحث، وقطر كلها، وكل الأخطار؛ بلا ادّعاء أثر لم يُقَس:</span><span data-l="en">a drone that alerts, a robot that searches, all of Qatar, every hazard; with no claim of impact we did not measure:</span> <a href="control.html#demo"><span data-l="ar">غرفة التحكم</span><span data-l="en">Control Room</span></a> · <a href="#qatar"><span data-l="ar">قطر كلها</span><span data-l="en">All of Qatar</span></a></td></tr>
+          <tr><th scope="row"><span data-l="ar">العرض (لوحة 10 + مقابلة 25)</span><span data-l="en">Presentation (poster 10 + interview 25)</span></th><td class="num" dir="ltr">35</td><td><span data-l="ar">هذه الصفحة، والعرض التقديمي، ولوحة العرض، والتقرير؛ ولكل معادلة شرح مكتوب للمقابلة:</span><span data-l="en">this page, the pitch, the display board and the report; every formula has a written explanation for the interview:</span> <a href="pitch.html"><span data-l="ar">العرض التقديمي</span><span data-l="en">Pitch</span></a> · <a href="poster.html"><span data-l="ar">لوحة العرض</span><span data-l="en">Display board</span></a></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card rv judge-path">
+      <h3 data-icon="clock"><span data-l="ar">ثلاث دقائق للمحكّم</span><span data-l="en">Three minutes for a judge</span></h3>
+      <ol class="path" data-stagger>
+        <li><span data-l="ar">شاهد المسيّرة ترى وتُنبّه، في أعلى هذه الصفحة.</span><span data-l="en">Watch the drone see and alert, at the top of this page.</span></li>
+        <li><a href="control.html#demo"><span data-l="ar">غرفة التحكم:</span><span data-l="en">Control Room:</span></a> <span data-l="ar">اضغط «موافق» كما يفعل المشغّل.</span><span data-l="en">press Approve as the operator does.</span></li>
+        <li><a href="detect.html#fool"><span data-l="ar">مختبر الأدلة:</span><span data-l="en">Evidence Lab:</span></a> <span data-l="ar">حاوِل خداع الكاشف.</span><span data-l="en">try to fool the detector.</span></li>
+        <li><a href="mission.html"><span data-l="ar">غرفة العمليات:</span><span data-l="en">Mission Control:</span></a> <span data-l="ar">الوحدة الأسرع ليست الأقرب.</span><span data-l="en">the fastest unit is not the nearest.</span></li>
+        <li><a href="robot.html#rl-limits"><span data-l="ar">مختبر الروبوت:</span><span data-l="en">Robot Lab:</span></a> <span data-l="ar">ما لا يستطيعه.</span><span data-l="en">what it cannot do.</span></li>
+        <li><a href="alert.html"><span data-l="ar">هواتف السكان:</span><span data-l="en">Resident phones:</span></a> <span data-l="ar">رسالة لكل إنسان.</span><span data-l="en">a message for each person.</span></li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ 10 TEAM -->
+<section class="sec alt" id="team" aria-labelledby="team-t">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <span class="eyebrow"><span class="idx num">10</span><span data-l="ar">الفريق والملكية</span><span data-l="en">Team &amp; ownership</span></span>
+      <h2 class="sec-title" id="team-t"><span data-l="ar">مَن بنى ماذا، وبمساعدة مَن</span><span data-l="en">Who built what, and with whose help</span></h2>
+      <p class="sec-lead"><span data-l="ar">الحقول الملوّنة بين أقواس مزدوجة <b>يملؤها الطالب</b> قبل التقديم (القائمة في أسفل هذا القسم تذكرها كلها). لا نخترع أسماء ولا جهات.</span><span data-l="en">The highlighted fields in double braces are <b>for the student to fill in</b> before submission (the list below names every one). We invent no names or institutions.</span></p>
+      <p class="ph-status print-hide" id="ph-status" role="status"></p>
+    </div>
+    <div class="grid g2 team-cols">
+      <article class="card rv">
+        <h3 data-icon="users"><span data-l="ar">البطاقة</span><span data-l="en">Project card</span></h3>
+        <dl class="team-dl">
+          <dt><span data-l="ar">الطالب</span><span data-l="en">Student</span></dt><dd><bdi class="ph" data-ph="STUDENT_NAME">{{STUDENT_NAME}}</bdi></dd>
+          <dt><span data-l="ar">المدرسة</span><span data-l="en">School</span></dt><dd><bdi class="ph" data-ph="SCHOOL_NAME">{{SCHOOL_NAME}}</bdi></dd>
+          <dt><span data-l="ar">الصف</span><span data-l="en">Grade</span></dt><dd><bdi class="ph" data-ph="GRADE_CLASS">{{GRADE_CLASS}}</bdi></dd>
+          <dt><span data-l="ar">المرشد / المعلّم</span><span data-l="en">Mentor / teacher</span></dt><dd><bdi class="ph" data-ph="MENTOR_NAME">{{MENTOR_NAME}}</bdi></dd>
+          <dt><span data-l="ar">منسّق المسابقة في المدرسة</span><span data-l="en">School competition coordinator</span></dt><dd><bdi class="ph" data-ph="COORDINATOR_NAME">{{COORDINATOR_NAME}}</bdi></dd>
+          <dt><span data-l="ar">تاريخ التقديم</span><span data-l="en">Submission date</span></dt><dd><bdi class="ph" data-ph="SUBMISSION_DATE">{{SUBMISSION_DATE}}</bdi></dd>
+          <dt><span data-l="ar">رقم موافقة الأخلاقيات</span><span data-l="en">Ethics approval reference</span></dt><dd><bdi class="ph" data-ph="ETHICS_APPROVAL_REF">{{ETHICS_APPROVAL_REF}}</bdi></dd>
+          <dt><span data-l="ar">مراجعو اللغات (متحدثون أصليون)</span><span data-l="en">Language reviewers (native speakers)</span></dt><dd><bdi class="ph" data-ph="NATIVE_REVIEWERS">{{NATIVE_REVIEWERS}}</bdi></dd>
+        </dl>
+      </article>
+      <article class="card rv">
+        <h3 data-icon="check"><span data-l="ar">الملكية وإفصاح الذكاء الاصطناعي</span><span data-l="en">Ownership &amp; AI disclosure</span></h3>
+        <p class="small"><span data-l="ar">تمّت الاستعانة بأدوات ذكاء اصطناعي في صياغة أجزاء من الشيفرة والنصوص ومراجعتها، ونفصح عن ذلك. الهدف أن يشرح الطالب كل معادلة ويدافع عن كل قرار تصميم (قائمة «اشرحها» في التقرير)، وأن يكون كل مصدر رقم ظاهرًا إلى جانبه.</span><span data-l="en">AI tools were used to help draft and review parts of the code and text, and we disclose it. The aim is that the student can explain every formula and defend every design decision (the “explain it” checklist in the report), and that every number shows its source next to it.</span></p>
+        <dl class="team-dl own">
+          <dt><span data-l="ar">بنيتُه بنفسي</span><span data-l="en">I built</span></dt><dd><bdi class="ph" data-ph="BUILT_BY_STUDENT">{{BUILT_BY_STUDENT}}</bdi></dd>
+          <dt><span data-l="ar">اشتريتُه أو أعدتُ استعماله</span><span data-l="en">Bought or reused</span></dt><dd><bdi class="ph" data-ph="BOUGHT_OR_REUSED">{{BOUGHT_OR_REUSED}}</bdi></dd>
+          <dt><span data-l="ar">ساعدني فيه</span><span data-l="en">Helped by</span></dt><dd><bdi class="ph" data-ph="HELPED_BY">{{HELPED_BY}}</bdi></dd>
+        </dl>
+        <p class="small"><span data-l="ar">أدوات الذكاء الاصطناعي المستعملة وفيمَ استُعملت:</span><span data-l="en">AI tools used, and what for:</span> <bdi class="ph" data-ph="AI_TOOLS_USED">{{AI_TOOLS_USED}}</bdi></p>
+        <p class="small muted"><span data-l="ar">الجدول الكامل في <a href="report.html">التقرير العلمي</a>، والقصة في <a href="pitch.html">الشرائح</a> وعلى <a href="poster.html">لوحة العرض</a>.</span><span data-l="en">The full table is in the <a href="report.html">scientific report</a>, with the story in the <a href="pitch.html">pitch</a> and on the <a href="poster.html">display board</a>.</span></p>
+      </article>
+    </div>
+    <div class="card rv ph-card">
+      <h3 data-icon="pin"><span data-l="ar">قائمة الحقول التي تنتظر الطالب</span><span data-l="en">The fields waiting for the student</span></h3>
+      <ul class="ph-list" id="ph-list"></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ CLOSING -->
+<section class="closing" aria-labelledby="close-t">
+  <div class="wrap center rv">
+    <p class="closing-slogan" id="close-t"><span data-l="ar">لا نائمَ يُنسى، ولا أحدَ يُترك خلفنا</span><span data-l="en">No one asleep is forgotten, no one is left behind</span></p>
+    <div class="btns closing-cta">
+      <a class="btn btn-primary" href="control.html#demo" data-icon="radar"><span data-l="ar">غرفة التحكم</span><span data-l="en">Control Room</span></a>
+      <a class="btn btn-ghost" href="robot.html" data-icon="robot"><span data-l="ar">مختبر الروبوت</span><span data-l="en">Robot Lab</span></a>
+      <a class="btn btn-ghost" href="mission.html" data-icon="globe"><span data-l="ar">غرفة العمليات</span><span data-l="en">Mission Control</span></a>
+      <a class="btn btn-ghost" href="detect.html" data-icon="eye"><span data-l="ar">مختبر الأدلة</span><span data-l="en">Evidence Lab</span></a>
+      <a class="btn btn-ghost" href="alert.html" data-icon="phone"><span data-l="ar">هواتف السكان</span><span data-l="en">Resident Phones</span></a>
+      <a class="btn btn-ghost" href="build.html" data-icon="wrench"><span data-l="ar">بناء النموذج</span><span data-l="en">Build It</span></a>
+      <a class="btn btn-ghost" href="pitch.html" data-icon="slides"><span data-l="ar">العرض التقديمي</span><span data-l="en">Pitch</span></a>
+      <a class="btn btn-ghost" href="report.html" data-icon="chart"><span data-l="ar">التقرير</span><span data-l="en">Report</span></a>
+      <a class="btn btn-ghost" href="poster.html" data-icon="layers"><span data-l="ar">لوحة العرض</span><span data-l="en">Display board</span></a>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ CREDITS: the footer band -->
+<section class="credits dv" id="credits" aria-labelledby="cr-t">
+  <div class="wrap">
+    <h2 class="cr-h" id="cr-t"><span data-l="ar">مفهوم + نموذج أولي محاكى · مصادر البيانات</span><span data-l="en">Concept + simulated prototype · data credits</span></h2>
+    <div class="cr-cols">
+      <p class="cr-attr" dir="ltr" lang="en">Contains data © OpenStreetMap contributors, ODbL 1.0 — <a href="https://www.openstreetmap.org/copyright" rel="noopener noreferrer">https://www.openstreetmap.org/copyright</a></p>
+      <p data-credit><span data-l="ar">لقطة خريطة قطر بتاريخ <bdi class="num" dir="ltr" data-nat="snapshot">2026-10-08</bdi> (طابع قاعدة البيانات <bdi class="num" dir="ltr" data-nat="osmts">2026-10-08T13:13:36Z</bdi>)، ترخيص ODbL 1.0: الملفات المرفقة قاعدة بيانات مشتقة، يُبقى الإسناد وأي قاعدة مشتقة أخرى تُشارَك بالرخصة نفسها. تحتوي على بيانات © مساهمي OpenStreetMap.</span><span data-l="en">The map of Qatar is a snapshot dated <bdi class="num" dir="ltr" data-nat="snapshot">2026-10-08</bdi> (database timestamp <bdi class="num" dir="ltr" data-nat="osmts">2026-10-08T13:13:36Z</bdi>), licence ODbL 1.0: the bundled files are a derived database; keep the attribution, and share any further derived database under the same licence. Contains data © OpenStreetMap contributors.</span></p>
+      <p><b><span data-l="ar">حقيقي (لقطة):</span><span data-l="en">Real (a snapshot):</span></b> <span data-l="ar">الحدود والبلديات والأماكن ومواقع المنشآت كما رسمها المتطوعون وشبكة الطرق الرئيسية. <b>محاكى (SIM):</b> المسيّرات الراسية والمركبات والمرور وتوفّر الوحدات والحوادث وحقول الحرارة والغبار والأمطار. لا بيانات مرور حيّة ولا مركبة حقيقية ولا حادث حقيقي.</span><span data-l="en">the outline, municipalities, places, facility positions as mapped by volunteers, and the major-road network. <b>Simulated (SIM):</b> the docked drones, vehicles, traffic, unit availability, incidents and the heat, dust and rain fields. No live traffic, no real vehicle, no real incident.</span></p>
+      <p><span data-l="ar">منارة مفهوم ونموذج أولي محاكى لمسابقة ابتكار طلابية، <b>وليست خدمة رسمية</b>؛ 999 يبقى المرسِل. لم تحلّق مسيّرة حقيقية، ولم يُبنَ روبوت حقيقي، ولا تدّعي أي موافقة من جهة رسمية.</span><span data-l="en">MANARA is a concept and a simulated prototype for a student innovation competition, <b>not an official service</b>; 999 stays the dispatcher. No real drone has flown, no real robot has been built, and no approval from any authority is claimed.</span></p>
+    </div>
+  </div>
+</section>
+
+</main>
+<footer class="foot" data-footer></footer>
+</body>
+</html>

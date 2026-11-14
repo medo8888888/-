@@ -2,6 +2,7 @@
 import { readFileSync } from "node:fs";
 import worker from "../worker/index.js";
 import { KNOWLEDGE } from "../worker/knowledge.js";
+import { KNOWLEDGE_YANABEE } from "../worker/knowledge-yanabee.js";
 
 const ORIGIN = "https://takamul.example";
 const KEY = "test-key-SECRET-123";
@@ -244,6 +245,63 @@ const valid = { messages: [{ role: "user", text: "ما هي جمعية تكام�
   assetCalls = [];
   await run(new Request(`${ORIGIN}/apiary.html`));
   check("/apiary.html is not treated as API", assetCalls.length === 1);
+}
+
+// --- site selection: Takamul (default) vs Yanabee --------------------------------
+{
+  const sysOf = (call) => JSON.parse(call?.body || "{}").systemInstruction?.parts?.[0]?.text || "";
+  const q = [{ role: "user", text: "ما هي الفرق السبع في مشروع ينابيع؟" }];
+
+  captured = [];
+  const ry = await run(chatRequest({ site: "yanabee", messages: q }));
+  const by = await ry.text();
+  check("yanabee -> 200 stream", ry.status === 200 && (ry.headers.get("content-type") || "").startsWith("text/event-stream"), `${ry.status} ${by.slice(0, 120)}`);
+  check("yanabee -> one upstream call", captured.length === 1, String(captured.length));
+  const sy = sysOf(captured[0]);
+  check("yanabee prompt identifies «مساعد ينابيع»", sy.includes("«مساعد ينابيع»"));
+  check("yanabee prompt names the initiative", sy.includes("«حفظ، فهم، تطبيق»"));
+  check("yanabee systemInstruction ends with KNOWLEDGE_YANABEE", sy.endsWith("\n\n" + KNOWLEDGE_YANABEE));
+  check("yanabee prompt has no Takamul prompt/knowledge", !sy.includes("مساعد تكامل الذكي") && !sy.includes(KNOWLEDGE.slice(0, 200)));
+  check("KNOWLEDGE_YANABEE has both documents", KNOWLEDGE_YANABEE.includes("فرقة الكشافة والخدمة العامة") && KNOWLEDGE_YANABEE.includes("KPI 9"));
+  const sent = JSON.parse(captured[0]?.body || "{}");
+  check("yanabee contents mapped", sent.contents?.length === 1 && sent.contents[0].parts[0].text === q[0].text, JSON.stringify(sent.contents));
+  check("yanabee uses the same model URL", captured[0]?.url.endsWith(`/models/${DEFAULT_MODEL}:streamGenerateContent?alt=sse`), captured[0]?.url);
+
+  captured = [];
+  await (await run(chatRequest({ messages: q }))).text();
+  const st = sysOf(captured[0]);
+  check("no site -> Takamul prompt + knowledge", st.includes("مساعد تكامل الذكي") && st.endsWith("\n\n" + KNOWLEDGE) && !st.includes("مساعد ينابيع»،"));
+
+  captured = [];
+  await (await run(chatRequest({ site: "takamul", messages: q }))).text();
+  const st2 = sysOf(captured[0]);
+  check("site takamul -> identical Takamul request", st2 === st && captured.length === 1);
+
+  captured = [];
+  const bad = {
+    "unknown site": "other",
+    "empty site": "",
+    "site case-mismatch": "Yanabee",
+    "prototype key": "toString",
+    "site number": 1,
+    "site null": null,
+    "site object": { name: "yanabee" },
+    "site array": ["yanabee"],
+    "site boolean": true,
+  };
+  for (const [name, site] of Object.entries(bad)) {
+    const r = await run(chatRequest({ site, messages: q }));
+    const b = await r.json().catch(() => ({}));
+    check(`${name} -> 400 bad_request`, r.status === 400 && b.error === "bad_request", `${r.status} ${JSON.stringify(b)}`);
+  }
+  check("invalid site -> no upstream call", captured.length === 0, `${captured.length} calls`);
+
+  captured = [];
+  const rk = await run(chatRequest({ site: "yanabee", messages: q }), makeEnv({ GEMINI_API_KEY: "" }));
+  const bk = await rk.json();
+  check("yanabee without key -> 503 not_configured", rk.status === 503 && bk.error === "not_configured" && captured.length === 0);
+  const rx = await run(chatRequest({ site: "yanabee", messages: q }, { origin: "https://evil.example" }));
+  check("yanabee cross-origin -> 403", rx.status === 403 && captured.length === 0);
 }
 
 // --- summary -------------------------------------------------------------------

@@ -1,0 +1,92 @@
+/* ==========================================================================
+   publish-check — «قبل أن تنشر: افحص المادة» (method.html #m-impact, after #m-privacy).
+   Markup: tools/yanabee/feat_publish_check.py, behaviour: js/publish-check.js. Tokens only (both themes).
+   ========================================================================== */
+.pc [hidden]{display:none!important}
+.pc{margin-top:22px;padding:6px 20px 18px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow-sm)}
+.pc .dp-h3{margin-top:18px}
+.pc .dp-h3 .i{width:22px;height:22px;color:var(--brand)}
+.pc-intro{margin:0 0 14px;color:var(--ink-2);line-height:1.85;max-width:72ch}
+.pc-prog{margin:0 0 8px;color:var(--muted);font:600 .86rem/1.4 var(--font-h)}
+.pc-steps{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.pc-step{padding:14px 16px;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--surface-2);transition:opacity .25s,border-color .25s}
+.pc-q{display:flex;gap:10px;align-items:flex-start;margin:0;font:600 1.04rem/1.7 var(--font-h);color:var(--head)}
+.pc-q:focus{outline:none}
+.pc-q:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.pc-n{flex:none;display:grid;place-items:center;width:30px;height:30px;margin-top:2px;border-radius:50%;background:var(--surface);border:1px solid var(--line-2);color:var(--brand);font:700 .9rem/1 var(--font-h)}
+.pc-yn{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0 4px}
+.pc-b{min-width:88px;min-height:44px;padding:8px 20px;border-radius:999px;border:1px solid var(--line-2);background:var(--surface);color:var(--head);font:600 1rem/1.3 var(--font-h);cursor:pointer;transition:background-color .2s,border-color .2s,color .2s}
+.pc-b:hover:not(:disabled){border-color:var(--brand);color:var(--brand)}
+.pc-b[aria-pressed=true]{background:var(--brand);border-color:var(--brand);color:var(--on-brand)}
+.pc-b:disabled{opacity:.5;cursor:not-allowed}
+.pc-skip{color:var(--muted);font-size:.9rem}
+.pc-quotes{display:grid;gap:8px;margin-top:10px}
+.pc-quote{margin:0;padding:10px 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);border-inline-start:3px solid var(--sc,var(--brand))}
+.pc-quote p{margin:4px 0 0;color:var(--ink-2);line-height:1.85}
+.pc-quote b{color:var(--head)}
+.pc-sep{color:var(--muted)}
+.pc-src{display:inline-block;padding:1px 10px;border-radius:999px;background:color-mix(in oklab,var(--brand) 11%,transparent);color:var(--brand);font:600 .76rem/1.7 var(--font-h)}
+.pc-link{margin:4px 0 0}
+.pc-link .btn{min-height:44px}
+
+.pc-result:empty{display:none}
+.pc-res,.pc-static{margin-top:14px;padding:14px 16px;border-radius:var(--r-sm);display:grid;gap:8px;border:1px solid var(--line)}
+.pc-res-h{display:flex;gap:10px;align-items:flex-start;margin:0;font:700 1.08rem/1.6 var(--font-h);color:var(--head)}
+.pc-res-h:focus{outline:none}
+.pc-res-h:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.pc-res-h .i{flex:none;width:22px;height:22px;margin-top:3px}
+.pc-stop{background:color-mix(in oklab,var(--sun) 9%,var(--surface));border-color:color-mix(in oklab,var(--sun) 40%,var(--line))}
+.pc-stop .pc-res-h .i{color:var(--sun)}
+.pc-stop .pc-quote{--sc:var(--sun)}
+.pc-go,.pc-static{background:color-mix(in oklab,var(--brand) 7%,var(--surface));border-color:color-mix(in oklab,var(--brand) 35%,var(--line))}
+.pc-go .pc-res-h .i,.pc-static .pc-res-h .i{color:var(--brand)}
+.pc-hint{margin:4px 0 0;color:var(--muted);font-size:.92rem;line-height:1.8}
+
+.pc-warn{display:flex;gap:10px;align-items:flex-start;margin:16px 0 0;padding:12px 14px;border-radius:var(--r-sm);background:var(--surface-2);color:var(--ink-2);line-height:1.85;font-weight:600}
+.pc-warn .i{flex:none;width:20px;height:20px;margin-top:4px;color:var(--sun)}
+.pc-fold{margin-top:12px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface)}
+.pc-fold summary{display:flex;align-items:center;gap:10px;min-height:48px;padding:8px 14px;cursor:pointer;list-style:none;font:600 1rem/1.4 var(--font-h);color:var(--head)}
+.pc-fold summary::-webkit-details-marker{display:none}
+.pc-fold summary .i{width:20px;height:20px;color:var(--brand)}
+.pc-fold-c{margin-inline-start:auto;transition:transform .25s}
+.pc-fold[open] .pc-fold-c{transform:rotate(180deg)}
+.pc-fold>.pc-hint{margin:0;padding:0 14px}
+.pc-side{display:grid;gap:8px;padding:10px 14px 14px}
+.pc-again{margin:14px 0 0}
+.pc-again .btn{min-height:44px}
+
+/* phones: one question at a time; answered ones stay as a short trail you can still change */
+@media (max-width:899.98px){
+  .pc-on .pc-step[data-state=later],.pc-on .pc-step[data-state=skip]{display:none}
+  .pc-on .pc-step[data-state=done]{padding:10px 14px}
+  .pc-on .pc-step[data-state=done] .pc-quotes{display:none}
+  .pc-on .pc-step[data-state=done] .pc-q{font-size:.95rem}
+  .pc-on .pc-step[data-state=done] .pc-yn{margin-top:6px}
+  .pc-on .pc-step[data-state=done] .pc-b{min-width:72px}
+}
+/* wide screens: every step at once; the ones not asked (yet) are dimmed */
+@media (min-width:900px){
+  .pc{padding:8px 28px 24px}
+  .pc-on .pc-step[data-state=later],.pc-on .pc-step[data-state=skip]{opacity:.55}
+  .pc-on .pc-step[data-state=cur]{border-color:var(--brand)}
+  .pc-side{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .pc-side .pc-quote:last-child:nth-child(odd){grid-column:1/-1}
+}
+@media (prefers-reduced-motion:reduce){
+  .pc-step,.pc-b,.pc-fold-c{transition:none}
+}
+@media print{
+  .pc{box-shadow:none;break-inside:auto}
+  .pc-yn,.pc-again,.pc-prog,.pc-link,.pc-result{display:none!important}
+  .pc-step{display:block!important;opacity:1!important}
+  .pc-step .pc-quotes{display:grid!important}
+  .pc [data-pc-static]{display:grid!important}
+  .pc-fold:not([open])>.pc-side,.pc-fold:not([open])>.pc-hint{display:grid}
+}
+@media (max-width:420px){
+  .pc{padding:4px 12px 14px;margin-inline:-4px}
+  .pc-step{padding:12px}
+  .pc-quote{padding:8px 12px}
+  .pc-res,.pc-static{padding:12px}
+}
+.pc-qt{display:block}

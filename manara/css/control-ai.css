@@ -1,0 +1,172 @@
+/* ==========================================================================
+   MANARA — Control Room · COMMANDER tab   css/control-ai.css
+   The tab of js/control-ai.js: a rule-based decision-support assistant (not a language model): a live SITREP board, recommendation cards (why + inputs + confidence + Approve / Modify / Dismiss),
+   a command box, a what-if panel and the decision audit.
+   Tokens: --cai-* defined here on top of the --cr-* tokens of css/control.css (each with a base.css fallback) so it looks right in both themes.  Logical properties only; no letter-spacing (Arabic).
+   Motion (scan line, cards sliding in, confidence bars, typed lines) only while .cai[data-motion=on]; reduced motion, forced colours, wall mode and print are handled at the end.
+   ========================================================================== */
+
+.cai{--cai-bg:var(--cr-pane-2,var(--surface-2));--cai-bg2:var(--cr-pane,var(--surface));--cai-line:var(--cr-edge,var(--line));--cai-line2:var(--cr-edge-2,var(--line-2));
+  --cai-ink:var(--ink);--cai-ink2:var(--ink-2);--cai-mut:var(--muted);--cai-head:var(--head);--cai-r:var(--cr-r-sm,10px);
+  --cai-scan:color-mix(in oklab,var(--accent) 20%,transparent);--cai-glow:color-mix(in oklab,var(--accent) 16%,transparent);--cai-fillc:var(--accent);
+  flex:none;min-inline-size:0;font-size:.93rem;line-height:1.55;color:var(--cai-ink);container-type:inline-size;container-name:cai}
+html[data-theme="dark"] .cai{--cai-scan:color-mix(in oklab,var(--accent) 26%,transparent);--cai-glow:color-mix(in oklab,var(--accent) 22%,transparent)}
+html[data-theme="light"] .cai{--cai-scan:color-mix(in oklab,var(--accent) 16%,transparent);--cai-glow:color-mix(in oklab,var(--accent) 14%,transparent)}
+@media (prefers-color-scheme:dark){html:not([data-theme="light"]):not([data-theme="dark"]) .cai{--cai-scan:color-mix(in oklab,var(--accent) 26%,transparent);--cai-glow:color-mix(in oklab,var(--accent) 22%,transparent)}}
+html[data-lang=ar] .cai{line-height:1.8}
+.cai [hidden]{display:none!important}
+.cai .bi{display:contents}
+.cai h3,.cai h4{font-family:var(--font-h);color:var(--cai-head);line-height:1.4;margin:0}
+.cai p{margin:0}
+.cai ul,.cai ol,.cai dl,.cai dd{margin:0;padding:0}
+.cai li{list-style:none}
+.cai .cr-ltr{direction:ltr;unicode-bidi:isolate}
+.cai-fine{font-size:.82rem;color:var(--cai-ink2)}
+.cai-empty{display:flex;gap:8px;align-items:flex-start;color:var(--cai-mut);font-size:.88rem;padding:6px 2px}
+.cai-empty .i{margin-block-start:4px}
+
+/* ---------- banner ---------- */
+.cai{display:flex;flex-direction:column;gap:12px}
+.cai-banner{display:flex;flex-direction:column;gap:6px;padding:10px 12px;border:1px solid var(--cai-line);border-inline-start:4px solid var(--accent);border-radius:var(--cai-r);background:color-mix(in oklab,var(--accent) 7%,var(--cai-bg))}
+.cai-title{display:flex;align-items:center;gap:8px;font-family:var(--font-h);color:var(--cai-head);font-size:1.05rem}
+.cai-title .i{color:var(--accent-t,var(--accent));width:20px;height:20px}
+.cai-honest{color:var(--cai-ink);font-size:.88rem}
+.cai-banner .cai-fine.on{color:var(--warn-t,var(--warn))}
+
+/* ---------- sections ---------- */
+.cai-cols{display:flex;flex-direction:column;gap:12px;min-inline-size:0}
+.cai-sec{display:flex;flex-direction:column;gap:8px;min-inline-size:0;padding:10px 12px;border:1px solid var(--cai-line);border-radius:var(--cai-r);background:var(--cai-bg)}
+.cai-sec-h{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.cai-h{font-size:1rem}
+.cai-tools{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.cai-clock{font-family:var(--font-m);font-size:.78rem;color:var(--cai-mut);padding-inline:4px}
+.cai-count{font-family:var(--font-m)}
+.cai-opts{margin-block-end:2px}
+.cai-tg[aria-pressed=true]{background:color-mix(in oklab,var(--accent) 16%,var(--surface));border-color:var(--accent);color:var(--head)}
+
+/* ---------- the board: SITREP lines + the gentle scan line ---------- */
+.cai-boardbox{position:relative;overflow:hidden;border-radius:var(--cai-r-sm,8px);background:var(--cai-bg2);border:1px solid var(--cai-line);padding:8px 10px}
+.cai-sitrep{display:flex;flex-direction:column;gap:5px;position:relative;z-index:1}
+.cai-line{padding:3px 6px;border-radius:6px;border-inline-start:3px solid transparent;font-size:.88rem;color:var(--cai-ink);overflow-wrap:anywhere;min-block-size:1.5em}
+.cai-line.t-head{font-family:var(--font-h);font-weight:700;color:var(--cai-head);border-inline-start-color:var(--accent)}
+.cai-line.t-ok{border-inline-start-color:var(--safe)}
+.cai-line.t-warn{border-inline-start-color:var(--warn)}
+.cai-line.t-bad{border-inline-start-color:var(--danger)}
+.cai-line.t-fine{font-size:.78rem;color:var(--cai-mut)}
+.cai-line.cai-upd{animation:cai-glow 1.4s ease-out 1}
+@keyframes cai-glow{from{background:var(--cai-glow)}to{background:transparent}}
+.cai-scan{position:absolute;inset-inline:0;inset-block-start:-14%;block-size:34px;z-index:0;pointer-events:none;opacity:0;background:linear-gradient(to bottom,transparent,var(--cai-scan),transparent)}
+.cai[data-motion=on] .cai-scan{opacity:1;animation:cai-scan 7s linear infinite}
+@keyframes cai-scan{from{inset-block-start:-14%}to{inset-block-start:104%}}
+
+/* ---------- recommendation cards ---------- */
+.cai-recs{display:flex;flex-direction:column;gap:10px;min-inline-size:0}
+.cai-rec{display:flex;flex-direction:column;gap:8px;min-inline-size:0;padding:10px 12px;border:1px solid var(--cai-line);border-inline-start:5px solid var(--sev,var(--info));border-radius:var(--cai-r);background:var(--cai-bg2)}
+.cai-rec.cr-sev-critical,.cai-rec.cr-sev-high,.cai-rec.cr-sev-medium,.cai-rec.cr-sev-low{border-inline-start-color:var(--sev)}
+.cai-rec.is-proposed{outline:1px dashed var(--accent);outline-offset:2px}
+.cai-rec.cai-focus{box-shadow:0 0 0 3px color-mix(in oklab,var(--accent) 50%,transparent)}
+.cai-rec-b{display:flex;flex-direction:column;gap:8px;min-inline-size:0}
+.cai-rec-h{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.cai-sev{color:var(--sev-t,var(--cai-head));--sc:var(--sev)}
+.cai-sev .i{width:14px;height:14px}
+.cai-rec-t{font-size:.98rem;line-height:1.45}
+.cai-why{display:flex;flex-direction:column;gap:3px}
+.cai-why-h{font-size:.8rem;color:var(--cai-mut)}
+.cai-why ul{display:flex;flex-direction:column;gap:4px}
+.cai-why li{font-size:.86rem;color:var(--cai-ink2);padding-inline-start:12px;position:relative}
+.cai-why li::before{content:"";position:absolute;inset-inline-start:0;inset-block-start:.7em;inline-size:5px;block-size:5px;border-radius:50%;background:var(--sev,var(--accent))}
+.cai-inputs{display:flex;flex-wrap:wrap;gap:5px}
+.cai-in{display:inline-flex;gap:5px;align-items:baseline;padding:1px 8px;border:1px solid var(--cai-line);border-radius:99px;background:var(--cai-bg);font-size:.76rem;max-inline-size:100%}
+.cai-in dt{color:var(--cai-mut)}
+.cai-in dd{color:var(--cai-head);font-weight:600;overflow-wrap:anywhere}
+.cai-ex{display:none;flex-direction:column;gap:4px;padding:6px 8px;border-radius:8px;background:var(--cai-bg);border:1px dashed var(--cai-line2)}
+.cai.cai-explain .cai-ex{display:flex}
+.cai-term{white-space:normal}
+.cai-conf{display:flex;flex-direction:column;gap:4px}
+.cai-conf-t{font-size:.8rem;color:var(--cai-ink2)}
+.cai-conf-t b{color:var(--cai-head)}
+.cai-bar{block-size:8px;border-radius:4px;background:var(--line);overflow:hidden}
+.cai-fill{display:block;block-size:100%;inline-size:100%;background:var(--cai-fillc);transform:scaleX(var(--v,0));transform-origin:0 50%;transition:transform .7s cubic-bezier(.22,.8,.24,1)}
+html[dir=rtl] .cai-fill{transform-origin:100% 50%}
+.cai-acts{display:flex;flex-wrap:wrap;gap:6px}
+.cai-acts .cr-btn{white-space:normal;text-align:center}
+.cai-mod{display:flex;flex-direction:column;gap:8px;padding:8px 10px;border-radius:8px;background:var(--cai-bg);border:1px solid var(--cai-line)}
+.cai-modrow,.cai-wiform{display:flex;flex-wrap:wrap;gap:8px}
+.cai-fld{display:flex;flex-direction:column;gap:3px;min-inline-size:0}
+.cai-fld label{font-size:.78rem;color:var(--cai-mut)}
+.cai-fld .cr-sel{max-inline-size:100%}
+.cai-msg{font-size:.84rem;color:var(--cai-ink2)}
+.cai-msg:empty{display:none}
+.cai-msg.ok{color:var(--safe-t,var(--safe))}.cai-msg.bad{color:var(--danger-t,var(--danger))}.cai-msg.warn{color:var(--warn-t,var(--warn))}
+
+/* ---------- command box ---------- */
+.cai-form{display:flex;gap:6px;align-items:stretch}
+.cai-input{flex:1 1 0;min-inline-size:0;min-block-size:40px;padding:4px 12px;border:1px solid var(--cai-line2);border-radius:10px;background:var(--cai-bg2);color:var(--cai-ink);font:inherit}
+.cai-input::placeholder{color:var(--cai-mut)}
+.cai-convo{display:flex;flex-direction:column;gap:6px;max-block-size:260px;overflow-y:auto;padding:4px 2px;scrollbar-width:thin}
+.cai-msg-me,.cai-msg-bot{display:flex;flex-direction:column;gap:2px;padding:6px 10px;border-radius:10px;max-inline-size:100%;overflow-wrap:anywhere;font-size:.86rem}
+.cai-msg-me{align-self:flex-end;background:color-mix(in oklab,var(--accent) 12%,var(--cai-bg2));border:1px solid var(--cai-line)}
+.cai-msg-bot{align-self:flex-start;background:var(--cai-bg2);border:1px solid var(--cai-line);border-inline-start:3px solid var(--accent)}
+.cai-msg-bot.pending{opacity:.75}
+.cai-who{font-size:.72rem;color:var(--cai-mut)}
+.cai-items{display:flex;flex-direction:column;gap:2px;padding-inline-start:4px}
+.cai-items li{font-size:.82rem;color:var(--cai-ink2)}
+.cai-ext{align-self:flex-start}
+
+/* ---------- what-if ---------- */
+.cai-wiform{align-items:flex-end}
+.cai-wicard{margin-block-start:4px}
+.cai-table-wrap{overflow-x:auto;scrollbar-width:thin}
+.cai-table{inline-size:100%;border-collapse:collapse;font-size:.84rem}
+.cai-table th,.cai-table td{padding:4px 8px;border-block-end:1px dashed var(--cai-line);text-align:start;vertical-align:top;overflow-wrap:anywhere}
+.cai-table thead th{color:var(--cai-mut);font-weight:600;font-size:.76rem}
+.cai-verdict{font-weight:600;color:var(--cai-head);font-size:.9rem}
+
+/* ---------- audit ---------- */
+.cai-audit{display:flex;flex-direction:column;gap:6px;max-block-size:340px;overflow-y:auto;scrollbar-width:thin}
+.cai-au{padding:6px 10px;border:1px solid var(--cai-line);border-inline-start:3px solid var(--cai-line2);border-radius:8px;background:var(--cai-bg2);display:flex;flex-direction:column;gap:3px}
+.cai-au.ok{border-inline-start-color:var(--safe)}.cai-au.failed{border-inline-start-color:var(--danger)}
+.cai-au-h{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.cai-au-t{font-family:var(--font-m);font-size:.76rem;color:var(--cai-mut)}
+.cai-au-w,.cai-au-y{font-size:.84rem;color:var(--cai-ink2)}
+.cai-au-w b,.cai-au-y b{color:var(--cai-head)}
+.cai-auditbar{gap:6px}
+.cai-foot{padding-inline:2px}
+
+/* ---------- wide: two columns (the dock is narrow, wall mode and the tablet drawer are wide) ---------- */
+@container cai (min-width:760px){
+  .cai-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);align-items:start}
+  .cai-cols2{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+}
+@container cai (max-width:420px){
+  .cai-form{flex-wrap:wrap}.cai-acts .cr-btn{flex:1 1 auto}
+}
+
+/* ---------- wall mode: a projector reads the board and the cards, the typing controls are hidden ---------- */
+html.cr-wall .cai{font-size:1.12rem}
+html.cr-wall .cai-sec[data-sec=cmd],html.cr-wall .cai-sec[data-sec=whatif],html.cr-wall .cai-opts,html.cr-wall .cai-tools .cr-btn{display:none}
+html.cr-wall .cai-line{font-size:1.05em}
+html.cr-wall .cai-rec-t{font-size:1.15em}
+
+/* ---------- motion, contrast, print ---------- */
+@media (prefers-reduced-motion:reduce){
+  .cai-scan{animation:none!important;opacity:0!important}
+  .cai-line.cai-upd{animation:none}
+  .cai-fill{transition:none}
+}
+@media (forced-colors:active){
+  .cai-scan{display:none}
+  .cai-sec,.cai-rec,.cai-banner,.cai-boardbox,.cai-au,.cai-in,.cai-msg-me,.cai-msg-bot{border-color:CanvasText}
+  .cai-bar{border:1px solid CanvasText;background:Canvas}
+  .cai-fill{background:Highlight;forced-color-adjust:none}
+  .cai-line{border-inline-start-color:CanvasText}
+  .cai :focus-visible{outline:3px solid Highlight}
+}
+.cai-printdoc{display:none}
+@media print{
+  body.cai-printing>*:not(.cai-printdoc){display:none!important}
+  body.cai-printing .cai-printdoc{display:block!important;padding:14mm;color:CanvasText;background:Canvas;font:12pt/1.55 var(--font,system-ui)}
+  body.cai-printing .cai-printdoc h1{font-size:18pt;margin:0 0 6pt}
+  body.cai-printing .cai-printdoc h2{font-size:13pt;margin:14pt 0 4pt}
+  body.cai-printing .cai-printdoc li{margin-block:2pt}
+}
