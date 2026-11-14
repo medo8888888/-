@@ -58,6 +58,11 @@ revoke all on public.yb_invites from anon, authenticated;
 
 insert into public.yb_settings (key, value) values ('transfers_open', 'false'::jsonb) on conflict (key) do nothing;
 
+-- the leader's new dashboard section ('players') may be hidden in the personal settings, like the others (0011)
+alter table public.yb_profile_prefs drop constraint if exists yb_pp_hidden_chk;
+alter table public.yb_profile_prefs add constraint yb_pp_hidden_chk check (cardinality(hidden_sections) <= 12 and hidden_sections <@
+  array['matches', 'team', 'projects', 'room', 'review', 'results', 'dates', 'link', 'judge', 'feed', 'players']);
+
 -- ---------------------------------------------------------------- helpers
 create or replace function public.yb_transfers_open()
 returns boolean
@@ -326,7 +331,7 @@ begin
     return jsonb_build_object('ok', false, 'error', 'already_invited');
   end if;
   if (select count(*) from public.yb_invites i where i.team_id = t.id and i.status = 'pending') >= 10 then
-    return jsonb_build_object('ok', false, 'error', 'too_many');
+    return jsonb_build_object('ok', false, 'error', 'too_many_invites');
   end if;
   insert into public.yb_invites (team_id, seeker, created_by) values (t.id, s.user_id, me);
   perform public.yb_notify(array_remove(array[s.user_id, s.guardian_by], null), 'invite_new', jsonb_build_object('team_name', t.name));
@@ -433,6 +438,9 @@ revoke all on function public.yb_transfers_open(), public.yb_first_name(text), p
   public.yb_seek_stop(), public.yb_seek_guardian(text), public.yb_guardian_seekers(), public.yb_seek_guardian_revoke(uuid), public.yb_seek_pool(),
   public.yb_invite_send(uuid), public.yb_invite_cancel(uuid), public.yb_invite_answer(uuid, boolean), public.yb_set_transfers(boolean),
   public.yb_seek_stats() from public, anon;
+-- the helpers are for the functions above only (Supabase grants new functions to signed-in users by default)
+revoke all on function public.yb_transfers_open(), public.yb_first_name(text), public.yb_seek_guardian_ok(uuid), public.yb_seek_team(uuid),
+  public.yb_seek_new_code(), public.yb_led_team(uuid), public.yb_player_counts(uuid) from authenticated;
 grant execute on function public.yb_seek_me(), public.yb_seek_save(jsonb), public.yb_seek_stop(), public.yb_seek_guardian(text),
   public.yb_guardian_seekers(), public.yb_seek_guardian_revoke(uuid), public.yb_seek_pool(), public.yb_invite_send(uuid),
   public.yb_invite_cancel(uuid), public.yb_invite_answer(uuid, boolean), public.yb_set_transfers(boolean), public.yb_seek_stats() to authenticated;

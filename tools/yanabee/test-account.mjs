@@ -53,6 +53,7 @@ class Fake {
     this.events = []; this.att = [];
     this.live = []; this.marks = []; this.markSeq = 0;   // migration 0007
     this.subs = []; this.objects = new Map(); this.uploads = [];   // migration 0008 (submissions, private photos)
+    this.seekers = new Map(); this.invites = []; this.transfers = false;   // migration 0012 (players looking for a team)
     this.judges = new Map(); this.jscores = []; this.ascores = []; this.published = false;   // migration 0010
     this.ann = []; this.annSeq = 0; this.chat = []; this.chatSeq = 0; this.reports = []; this.mutes = new Map(); this.reads = new Map();   // migration 0009
     this.posts = []; this.cmts = []; this.cmtSeq = 0; this.creports = []; this.prefs = new Map(); this.tstyle = new Map(); this.membersComment = false;   // migration 0011
@@ -456,7 +457,9 @@ class Fake {
     if (!me) return err(401, '42501', `permission denied for function ${name}`);
     const raise = (key, code = 'P0001') => err(code === '42501' ? 403 : 400, code, key);
     const admin = c.role === 'admin';
-    const SIG = { my_team: [], join_team: ['code', 'member_name'], link_child: ['code', 'child_name'], approve_team: ['team_id', 'ok', 'note'], mark_consent: ['member_id', 'received'],
+    const SIG = { yb_seek_me: [], yb_seek_save: ['p'], yb_seek_stop: [], yb_seek_guardian: ['code'], yb_guardian_seekers: [], yb_seek_guardian_revoke: ['seeker'], yb_seek_pool: [],
+      yb_invite_send: ['seeker'], yb_invite_cancel: ['id'], yb_invite_answer: ['id', 'accept'], yb_set_transfers: ['allow'], yb_seek_stats: [],
+      my_team: [], join_team: ['code', 'member_name'], link_child: ['code', 'child_name'], approve_team: ['team_id', 'ok', 'note'], mark_consent: ['member_id', 'received'],
       unlink_member: ['member_id'], regenerate_join_code: ['team_id'], set_user_role: ['target', 'new_role'],
       yb_review_team: ['team_id', 'decision', 'note'], yb_review_list: [], yb_review_roster: ['team_id'], yb_my_competitions: [], yb_set_officer: ['target', 'competition', 'assign'],
       yb_mark_read: [], yb_my_team_roster_status: [], yb_rsvp: ['event_id', 'team_id', 'answer'], yb_mark_attendance: ['event_id', 'team_id', 'presence', 'late_minutes'],
@@ -743,6 +746,106 @@ class Fake {
       if (!this.subStaff(c)) return raise('permission_denied', '42501');
       const rank = { submitted: 0, returned: 1 };
       return { status: 200, body: this.subs.map(x => ({ ...x, team_name: (this.teams.find(t => t.id === x.team_id) || {}).name })).sort((a, b) => (rank[a.status] ?? 2) - (rank[b.status] ?? 2)) };
+    }
+    /* migration 0012: players looking for a team, the leaders' pool, invites, transfers */
+    if (/^yb_(seek_|invite_|guardian_seekers|set_transfers)/.test(name)) {
+      const me = c.uid, P = id => this.profiles.find(p => p.id === id) || {};
+      if (!me) return raise('not_authenticated', '42501');
+      const first = id => String(P(id).full_name || '').trim().split(/\s+/)[0] || null;
+      const teamOf = u => (this.members.find(m => m.user_id === u) || {}).team_id || null;
+      const gOk = s => s && (s.age_group === 'adult' || !!s.guardian_by || this.members.some(m => m.user_id === s.user_id && m.consent_status === 'received'));
+      const ok = d => ({ status: 200, body: d });
+      const led = () => this.teams.filter(t => t.leader_id === me).slice(-1)[0] || null;
+      const me2 = () => {
+        const s = this.seekers.get(me);
+        return { ok: true, can_seek: P(me).role === 'member', in_team: !!teamOf(me), transfers_open: this.transfers,
+          seeker: s ? { age_group: s.age_group, area: s.area, positions: s.positions, active: s.active, guardian_ok: gOk(s), guardian_code: gOk(s) ? null : s.guardian_code,
+            listed: s.active && gOk(s) && (!teamOf(me) || this.transfers) } : null,
+          invites: this.invites.filter(i => i.seeker === me).map(i => { const t = this.teams.find(x => x.id === i.team_id); return { id: i.id, team_name: t.name, team_area: t.area, leader: first(t.leader_id), status: i.status, player_ok: i.player_ok, guardian_ok: i.guardian_ok }; }) };
+      };
+      if (name === 'yb_seek_me') return ok(me2());
+      if (name === 'yb_seek_save') {
+        if (P(me).role !== 'member') return ok({ ok: false, error: 'members_only' });
+        const p = body.p || {};
+        if (!['u10', 'u13', 'u16', 'u18', 'adult'].includes(p.age_group)) return ok({ ok: false, error: 'invalid_data' });
+        if (p.area && /\d{7,}|@/.test(String(p.area).replace(/[\s-]/g, ''))) return ok({ ok: false, error: 'contact_not_allowed' });
+        const s = this.seekers.get(me) || { user_id: me, guardian_by: null, guardian_code: null };
+        Object.assign(s, { age_group: p.age_group, area: p.area || null, positions: p.positions || [], active: true, updated: ++this.tick });
+        if (s.age_group !== 'adult' && !s.guardian_by && !s.guardian_code) s.guardian_code = 'K7M2Q' + (this.seekers.size + 2);
+        this.seekers.set(me, s);
+        return ok(me2());
+      }
+      if (name === 'yb_seek_stop') { this.invites.filter(i => i.seeker === me && i.status === 'pending').forEach(i => { i.status = 'cancelled'; }); this.seekers.delete(me); return ok({ ok: true }); }
+      if (name === 'yb_seek_guardian') {
+        if (P(me).role !== 'parent') return ok({ ok: false, error: 'parents_only' });
+        const code = String(body.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+        const s = [...this.seekers.values()].find(x => x.guardian_code && x.guardian_code === code);
+        if (!s) return ok({ ok: false, error: 'code_not_found' });
+        Object.assign(s, { guardian_by: me, guardian_code: null });
+        this.notify([s.user_id], 'seek_approved', {});
+        return ok({ ok: true, first_name: first(s.user_id) });
+      }
+      if (name === 'yb_guardian_seekers') return ok([...this.seekers.values()].filter(s => s.guardian_by === me).map(s => ({ seeker: s.user_id, first_name: first(s.user_id), age_group: s.age_group, active: s.active,
+        invites: this.invites.filter(i => i.seeker === s.user_id).map(i => ({ id: i.id, team_name: this.teams.find(t => t.id === i.team_id).name, status: i.status, player_ok: i.player_ok, guardian_ok: i.guardian_ok })) })));
+      if (name === 'yb_seek_guardian_revoke') {
+        const s = this.seekers.get(body.seeker);
+        if (!s || s.guardian_by !== me) return raise('permission_denied', '42501');
+        this.invites.filter(i => i.seeker === s.user_id && i.status === 'pending').forEach(i => { i.status = 'cancelled'; });
+        Object.assign(s, { guardian_by: null, active: false });
+        return ok({ ok: true });
+      }
+      if (name === 'yb_seek_pool') {
+        const t = led();
+        if (!t || !['submitted', 'returned', 'approved'].includes(t.status)) return raise('permission_denied', '42501');
+        const n = this.members.filter(m => m.team_id === t.id).length;
+        return ok({ ok: true, team_status: t.status, room: Math.max(0, 7 - n), can_invite: ['submitted', 'returned'].includes(t.status) && n < 7, transfers_open: this.transfers,
+          players: [...this.seekers.values()].filter(s => s.active && gOk(s) && P(s.user_id).role === 'member' && (!teamOf(s.user_id) || (this.transfers && teamOf(s.user_id) !== t.id)))
+            .sort((a, b) => b.updated - a.updated).map(s => { const inv = this.invites.find(i => i.team_id === t.id && i.seeker === s.user_id && i.status === 'pending');
+              const st = this.stats && this.stats[s.user_id] || {};
+              return { id: s.user_id, first_name: first(s.user_id), age_group: s.age_group, area: s.area, positions: s.positions, on_team: !!teamOf(s.user_id), invited: !!inv, invite_id: inv ? inv.id : null,
+                goals: st.goals || 0, wins: st.wins || 0, spirit: st.spirit || 0 }; }) });
+      }
+      if (name === 'yb_invite_send') {
+        const t = led();
+        if (!t || !['submitted', 'returned', 'approved'].includes(t.status)) return raise('permission_denied', '42501');
+        if (t.status === 'approved') return ok({ ok: false, error: 'roster_locked' });
+        const s = this.seekers.get(body.seeker);
+        if (!s || !s.active || !gOk(s)) return ok({ ok: false, error: 'not_listed' });
+        if (this.members.filter(m => m.team_id === t.id).length >= 7) return ok({ ok: false, error: 'team_full' });
+        if (this.invites.some(i => i.team_id === t.id && i.seeker === s.user_id && i.status === 'pending')) return ok({ ok: false, error: 'already_invited' });
+        this.invites.push({ id: this.uid(), team_id: t.id, seeker: s.user_id, status: 'pending', player_ok: false, guardian_ok: false });
+        this.notify([s.user_id, s.guardian_by], 'invite_new', { team_name: t.name });
+        return ok({ ok: true });
+      }
+      if (name === 'yb_invite_cancel') {
+        const i = this.invites.find(x => x.id === body.id), t = led();
+        if (!i || !t || i.team_id !== t.id) return raise('permission_denied', '42501');
+        i.status = 'cancelled';
+        return ok({ ok: true });
+      }
+      if (name === 'yb_invite_answer') {
+        const i = this.invites.find(x => x.id === body.id);
+        const s = i && this.seekers.get(i.seeker);
+        const who = !i ? null : me === i.seeker ? 'player' : s && s.guardian_by === me ? 'guardian' : null;
+        if (!who) return raise('permission_denied', '42501');
+        if (i.status !== 'pending') return ok({ ok: false, error: 'not_pending' });
+        const t = this.teams.find(x => x.id === i.team_id);
+        if (!body.accept) { i.status = 'declined'; this.notify([t.leader_id], 'invite_answer', { accepted: false, first_name: first(i.seeker), team_name: t.name }); return ok({ ok: true, status: 'declined' }); }
+        if (who === 'player') i.player_ok = true; else i.guardian_ok = true;
+        const needG = s.age_group !== 'adult' && !!s.guardian_by;
+        if (!i.player_ok || (needG && !i.guardian_ok)) { this.notify([i.player_ok ? s.guardian_by : i.seeker], 'invite_waiting', { team_name: t.name }); return ok({ ok: true, status: 'pending', waiting: i.player_ok ? 'guardian' : 'player' }); }
+        this.members.push({ id: this.uid(), team_id: t.id, full_name: P(i.seeker).full_name, age: null, guardian_name: null, guardian_phone: null, is_leader: false, user_id: i.seeker, consent_status: 'pending', consent_at: null, created_at: this.now(), roles: [] });
+        i.status = 'accepted'; s.active = false;
+        this.notify([t.leader_id], 'invite_answer', { accepted: true, first_name: first(i.seeker), team_name: t.name });
+        return ok({ ok: true, status: 'accepted', team_name: t.name });
+      }
+      if (name === 'yb_set_transfers') { if (c.role !== 'admin') return raise('permission_denied', '42501'); this.transfers = !!body.allow; return ok({ ok: true, open: this.transfers }); }
+      if (name === 'yb_seek_stats') {
+        if (c.role !== 'admin') return raise('permission_denied', '42501');
+        const act = [...this.seekers.values()].filter(s => s.active);
+        return ok({ transfers_open: this.transfers, seekers: act.length, listed: act.filter(gOk).length, waiting_guardian: act.filter(s => !gOk(s)).length,
+          invites_open: this.invites.filter(i => i.status === 'pending').length, joined: this.invites.filter(i => i.status === 'accepted').length });
+      }
     }
     /* migration 0011: settings, team identity, the feed, the handover, the statistics */
     const prof = id => this.profiles.find(p => p.id === id) || {};
@@ -1743,7 +1846,7 @@ let memberEmail = 'sara@t.test', parentEmail = 'parent@t.test';
   check('member sees own consent status (received: set by the admin)', /استُلمت موافقة ولي الأمر/.test(mt));
   check('no admin / leader controls on the member screen', !(await M.locator('input[role=switch], form.a-add, button[data-fk=submit], .a-tabs-4').count()));
   const reqs = world.log.filter(l => l.who === world.profileByEmail(memberEmail).id).map(l => l.path.replace('/rest/v1/', ''));
-  check('member screen reads only my_team, my_roster, tournament_state and the own profile (never teams, team_members, profiles list)', reqs.every(r => /^(rpc\/(my_team|join_team|yb_mark_read|yb_my_scores|yb_my_prefs|yb_feed)|my_roster|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements)$/.test(r)), [...new Set(reqs)].join());
+  check('member screen reads only my_team, my_roster, tournament_state and the own profile (never teams, team_members, profiles list)', reqs.every(r => /^(rpc\/(my_team|join_team|yb_mark_read|yb_my_scores|yb_my_prefs|yb_feed|yb_seek_me)|my_roster|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements|yb_match_live)$/.test(r)), [...new Set(reqs)].join());
   const tour = await M.locator('.a-sched').innerText();
   check('schedule card shows the empty state before the tournament is published', /لم تُنشر بيانات البطولة بعد/.test(tour));
   // second account tries the same name
@@ -1798,7 +1901,7 @@ let memberEmail = 'sara@t.test', parentEmail = 'parent@t.test';
   const chips = await P.locator('.a-child .a-consent .a-chip').allInnerTexts();
   check('two children: one «استُلمت», one «لم تُستلم بعد»; ONE schedule card for the shared team', chips.some(c => /^استُلمت/.test(c)) && chips.some(c => /لم تُستلم/.test(c)) && (await P.locator('.a-sched').count()) === 1);
   const preqs = world.log.filter(l => l.who === world.profileByEmail(parentEmail).id).map(l => l.path.replace('/rest/v1/', ''));
-  check('parent screen reads only my_children, tournament_state and the own profile', preqs.every(r => /^(rpc\/(link_child|yb_mark_read|yb_my_scores|yb_my_judging|yb_my_prefs|yb_feed)|my_children|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements)$/.test(r)), [...new Set(preqs)].join());
+  check('parent screen reads only my_children, tournament_state and the own profile', preqs.every(r => /^(rpc\/(link_child|yb_mark_read|yb_my_scores|yb_my_judging|yb_my_prefs|yb_feed|yb_guardian_seekers)|my_children|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements|yb_match_live)$/.test(r)), [...new Set(preqs)].join());
   check('parent console clean', P.errs.length === 0, P.errs.join('|'));
   world.P = P;
 }
@@ -3599,6 +3702,109 @@ print(json.dumps({ws.title: {"rtl": bool(ws.sheet_view.rightToLeft), "rows": [[c
   }
 }
 
+/* ================================================================ players looking for a team (0012) */
+section('players looking for a team: the member opts in, a parent approves, the leader finds and invites, both say yes');
+{
+  const fake = new Fake();
+  fake.addUser({ email: 'boss@t.test', name: 'المشرف', role: 'member' }); fake.setAdmin('boss@t.test');
+  fake.addUser({ email: 'ls@t.test', name: 'قائد الشروق', role: 'leader' });
+  fake.addUser({ email: 'lap@t.test', name: 'قائد معتمد', role: 'leader' });
+  fake.addUser({ email: 'ldr@t.test', name: 'قائد مسودة', role: 'leader' });
+  const kid = fake.addUser({ email: 'yk@t.test', name: 'يوسف سامي الحربي', role: 'member' });
+  fake.addUser({ email: 'py@t.test', name: 'ولي يوسف', role: 'parent' });
+  const three = n => Array.from({ length: 3 }, (_, i) => ({ name: `${n} ${i + 1}`, age: 12 }));
+  const TS = fake.seedTeam({ leaderEmail: 'ls@t.test', name: 'الشروق', status: 'submitted', members: three('عضو الشروق') });
+  fake.seedTeam({ leaderEmail: 'lap@t.test', name: 'المعتمد', status: 'approved', members: three('عضو المعتمد').concat([{ name: 'عضو رابع', age: 12 }]) });
+  fake.seedTeam({ leaderEmail: 'ldr@t.test', name: 'المسودة', status: 'draft', members: [] });
+  fake.stats = { [kid.id]: { goals: 2, wins: 1, spirit: 1 } };
+  // the member, without a team, opts in
+  const K = await open(fake, { label: 'seek-kid', mobile: true });
+  await settle(K); await signInOk(K, 'yk@t.test');
+  await K.waitForSelector('[data-seek]:not([hidden]) form', { timeout: 8000 });
+  check('a member without a team sees «أبحث عن فريق» under «انضم إلى فريقك», with the privacy note', /أبحث عن فريق/.test(await K.locator('[data-seek]').innerText()) && /اسمك الأول وفئتك وحيّك/.test(await K.locator('[data-seek]').innerText()));
+  await K.locator('[data-seek] form button[type=submit]').click();
+  check('the age group is required', /اختر فئتك العمرية/.test(await K.locator('[data-seek] form').innerText()));
+  await K.locator('[data-seek] select[name=age_group]').selectOption('u13');
+  await K.locator('[data-seek] input[name=area]').fill('حي الروضة 0551234567');
+  await K.locator('[data-seek] form button[type=submit]').click();
+  await K.waitForFunction(() => /أرقام/.test(document.querySelector('[data-seek] form').innerText), null, { timeout: 4000 }).catch(() => {});
+  check('a phone number in the area is refused', !fake.seekers.has(kid.id));
+  await K.locator('[data-seek] input[name=area]').fill('حي الروضة');
+  await K.locator('[data-seek] label', { hasText: 'حارس مرمى' }).click();
+  await K.locator('[data-seek] label', { hasText: 'دفاع' }).click();
+  await K.locator('[data-seek] form button[type=submit]').click();
+  await K.waitForSelector('[data-seek-code]', { timeout: 6000 });
+  const code = (await K.locator('[data-seek-code]').innerText()).trim();
+  check('saved: the code for a parent and «بانتظار موافقة ولي الأمر»', /^[A-Z0-9]{6}$/.test(code) && /بانتظار موافقة ولي الأمر/.test(await K.locator('[data-seek]').innerText()) && fake.seekers.get(kid.id).positions.join() === 'goal,defense');
+  // the leader does not see the child yet
+  const L = await open(fake, { label: 'seek-leader' });
+  await settle(L); await signInOk(L, 'ls@t.test');
+  await L.waitForSelector('[data-pool]:not([hidden])', { timeout: 8000 });
+  check('the leader of a submitted team: «لاعبون يبحثون عن فريق» in the menu, empty before the parent approves', await L.locator('[data-nav=players]').count() === 1 && /لا يوجد لاعبون يبحثون عن فريق الآن/.test(await L.locator('[data-pool]').innerText()));
+  // the parent approves with the code
+  const PA = await open(fake, { label: 'seek-parent' });
+  await settle(PA); await signInOk(PA, 'py@t.test');
+  await PA.waitForSelector('[data-gseek] form', { timeout: 8000 });
+  await PA.locator('[data-gseek] input[name=code]').fill('WRONG1');
+  await PA.locator('[data-gseek] button[type=submit]').click();
+  await PA.waitForFunction(() => /الرمز غير صحيح/.test(document.querySelector('[data-gseek]').innerText), null, { timeout: 4000 }).catch(() => {});
+  check('a wrong code: «الرمز غير صحيح»', /الرمز غير صحيح/.test(await PA.locator('[data-gseek]').innerText()));
+  await PA.locator('[data-gseek] input[name=code]').fill(code.toLowerCase());
+  await PA.locator('[data-gseek] button[type=submit]').click();
+  await PA.waitForSelector('[data-gkid]', { timeout: 6000 });
+  check('the right code: the child appears with «في قائمة الباحثين»; only the first name', /يوسف/.test(await PA.locator('[data-gkid]').innerText()) && /في قائمة الباحثين/.test(await PA.locator('[data-gkid]').innerText()) && !/الحربي/.test(await PA.locator('[data-gkid]').innerText()));
+  check('the child is told', fake.notes.some(n => n.kind === 'seek_approved' && n.user_id === kid.id));
+  // the leader finds and invites
+  await reload(L); await L.waitForSelector('[data-pool] [data-player]', { timeout: 8000 });
+  const card = await L.locator(`[data-player="${kid.id}"]`).innerText();
+  check('the pool: first name, age group, area, positions and achievements, never the family name', /يوسف/.test(card) && /من 10 إلى 12/.test(card) && /حي الروضة/.test(card) && /حارس مرمى/.test(card) && /أهداف 2/.test(card) && /فوز 1/.test(card) && !/الحربي|@t\.test/.test(await L.locator('[data-pool]').innerText()));
+  check('«الأنسب» says why: goals, wins, team spirit, no team now', /لماذا يناسبك: سجّل هدفين، فاز مع فريقه مرة، نال «روح الفريق»، بلا فريق الآن/.test(card));
+  await L.locator('[data-pool] select[name=pool-pos]').selectOption('attack');
+  check('filter by position: nobody plays «هجوم»', /لا لاعبين يطابقون/.test(await L.locator('[data-pool]').innerText()) && /0 من 1/.test(await L.locator('[data-pool]').innerText()));
+  await L.locator('[data-pool] select[name=pool-pos]').selectOption('goal');
+  await L.locator('[data-pool] input[name=pool-goals]').fill('3');
+  check('filter by goals: at least 3 hides him', !(await L.locator(`[data-player="${kid.id}"]`).count()));
+  await L.locator('[data-pool] input[name=pool-goals]').fill('1');
+  await L.locator(`[data-fk="pool-inv-${kid.id}"]`).click();
+  await L.waitForFunction(id => /دُعي/.test((document.querySelector(`[data-player="${id}"]`) || {}).innerText || ''), kid.id, { timeout: 6000 });
+  check('«ادعُه إلى فريقك»: invited; the child and the parent are told', fake.invites.length === 1 && fake.notes.filter(n => n.kind === 'invite_new').length === 2);
+  check('leader console clean (pool)', L.errs.length === 0, L.errs.join('|'));
+  // both say yes
+  await reload(K); await K.waitForSelector('[data-seek] [data-invite]', { timeout: 8000 });
+  check('the child sees the invite: the team, the leader\'s first name, «أقبل» and «أعتذر»', /الشروق/.test(await K.locator('[data-invite]').innerText()) && /القائد: قائد/.test(await K.locator('[data-invite]').innerText()));
+  await K.locator('[data-seek] [data-fk^="seek-yes-"]').click();
+  await K.waitForFunction(() => /تنتظر الدعوة موافقة ولي أمرك/.test(document.querySelector('[data-seek]').innerText), null, { timeout: 6000 });
+  check('the child says yes: waiting for the parent; not on the roster yet', !fake.members.some(m => m.user_id === kid.id));
+  await reload(PA); await PA.waitForSelector('[data-gkid] [data-invite]', { timeout: 8000 });
+  await PA.locator('[data-gkid] [data-fk^="gseek-yes-"]').click();
+  await PA.waitForFunction(() => /قُبلت/.test(document.querySelector('[data-gkid]').innerText), null, { timeout: 6000 });
+  check('the parent says yes: the child joins the team; the leader is told', fake.members.some(m => m.user_id === kid.id && m.team_id === TS.id) && fake.notes.some(n => n.kind === 'invite_answer' && n.data.accepted));
+  check('member and parent consoles clean (pool)', K.errs.length === 0 && PA.errs.length === 0, K.errs.concat(PA.errs).join('|'));
+  await close(K); await close(PA); await close(L);
+  // an approved team: look only; a draft team: no pool
+  const LA = await open(fake, { label: 'seek-approved' });
+  await settle(LA); await signInOk(LA, 'lap@t.test');
+  await LA.waitForSelector('[data-pool]:not([hidden])', { timeout: 8000 });
+  check('an approved team\'s leader sees the pool, with «قائمته مقفلة» and no invite button', /قائمته مقفلة/.test(await LA.locator('[data-pool]').innerText()) && !(await LA.locator('[data-pool] [data-fk^="pool-inv-"]').count()));
+  await close(LA);
+  const LD = await open(fake, { label: 'seek-draft' });
+  await settle(LD); await signInOk(LD, 'ldr@t.test');
+  await LD.waitForSelector('[data-next]', { timeout: 8000 }); await sleep(500);
+  check('a draft team\'s leader has no pool (not yet seen by the admin)', !(await LD.locator('[data-pool]:not([hidden])').count()) && await LD.locator('[data-nav-li=players]').isHidden());
+  await close(LD);
+  // the admin
+  const A = await open(fake, { label: 'seek-admin' });
+  await settle(A); await signInOk(A, 'boss@t.test');
+  await A.locator('#at-people').click();
+  await A.waitForSelector('[data-transfers]:not([hidden])', { timeout: 8000 });
+  check('the admin: counts of seekers and invites', /انضموا عبر دعوة/.test(await A.locator('[data-transfers]').innerText()) && /1 انضموا/.test(await A.locator('[data-transfers]').innerText()));
+  await A.locator('[data-fk=transfers]').check();
+  await A.waitForFunction(() => document.querySelector('[data-fk=transfers]') && document.querySelector('[data-fk=transfers]').checked, null, { timeout: 4000 });
+  check('«فتح الانتقالات» opens transfers', fake.transfers === true);
+  check('admin console clean (transfers)', A.errs.length === 0, A.errs.join('|'));
+  await close(A);
+}
+
 /* ================================================================ match day */
 section('match day: «يوم المباراة» for the team, «مباريات اليوم» for the admin and on the board');
 {
@@ -3730,7 +3936,7 @@ section('the phone dashboard: a bottom bar like the apps, «المزيد», and 
   const sheet = P.locator('[data-more]');
   check('«المزيد» opens a dialog with the name and role', await sheet.isVisible() && (await sheet.getAttribute('aria-modal')) === 'true' && /قائد النجوم/.test(await sheet.innerText()) && /قائد الفريق/.test(await sheet.innerText()));
   const secs = await sheet.locator('.a-more-s').allInnerTexts();
-  check('…every section of the dashboard', secs.length === 6 && ['نظرة عامة', 'الأخبار', 'المباريات والمواعيد', 'الفريق', 'المشاريع والمبادرات', 'غرفة القادة'].every(s => secs.some(x => x.includes(s))), secs.join('|'));
+  check('…every section of the dashboard', secs.length === 7 && ['نظرة عامة', 'الأخبار', 'المباريات والمواعيد', 'الفريق', 'المشاريع والمبادرات', 'لاعبون يبحثون عن فريق', 'غرفة القادة'].every(s => secs.some(x => x.includes(s))), secs.join('|'));
   check('…and the account: تخصيص لوحتي, تغيير كلمة المرور, الموقع العام, تسجيل الخروج', ['تخصيص لوحتي', 'تغيير كلمة المرور', 'الموقع العام', 'تسجيل الخروج'].every(s => sheet.locator('.a-more-a', { hasText: s }).count().then(n => n === 1)) && (await sheet.locator('.a-more-a').count()) === 4);
   check('…no «ثبّت» while the phone offers no install', !(await sheet.locator('[data-fk=more-install]').count()));
   check('focus is inside the dialog', await P.evaluate(() => !!document.activeElement.closest('[data-more]')));
