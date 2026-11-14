@@ -4085,7 +4085,7 @@ section('the phone dashboard: a bottom bar like the apps, «المزيد», and 
   const sheet = P.locator('[data-more]');
   check('«المزيد» opens a dialog with the name and role', await sheet.isVisible() && (await sheet.getAttribute('aria-modal')) === 'true' && /قائد النجوم/.test(await sheet.innerText()) && /قائد الفريق/.test(await sheet.innerText()));
   const secs = await sheet.locator('.a-more-s').allInnerTexts();
-  check('…every section of the dashboard', secs.length === 7 && ['نظرة عامة', 'الأخبار', 'المباريات والمواعيد', 'الفريق', 'المشاريع والمبادرات', 'لاعبون يبحثون عن فريق', 'غرفة القادة'].every(s => secs.some(x => x.includes(s))), secs.join('|'));
+  check('…every section of the dashboard', secs.length === 8 && ['نظرة عامة', 'الأخبار', 'المباريات والمواعيد', 'الفريق', 'المشاريع والمبادرات', 'لاعبون يبحثون عن فريق', 'غرفة القادة', 'المسابقة والنقاط'].every(s => secs.some(x => x.includes(s))), secs.join('|'));
   check('…and the account: تخصيص لوحتي, تغيير كلمة المرور, الموقع العام, تسجيل الخروج', ['تخصيص لوحتي', 'تغيير كلمة المرور', 'الموقع العام', 'تسجيل الخروج'].every(s => sheet.locator('.a-more-a', { hasText: s }).count().then(n => n === 1)) && (await sheet.locator('.a-more-a').count()) === 4);
   check('…no «ثبّت» while the phone offers no install', !(await sheet.locator('[data-fk=more-install]').count()));
   check('focus is inside the dialog', await P.evaluate(() => !!document.activeElement.closest('[data-more]')));
@@ -4120,7 +4120,7 @@ section('the phone dashboard: a bottom bar like the apps, «المزيد», and 
   await settle(M); await signInOk(M, 'mx@t.test');
   await M.waitForSelector('[data-next]', { timeout: 8000 });
   check('member without consent: «موافقة ولي أمرك لم تصل بعد» and the form link', /موافقة ولي أمرك لم تصل بعد/.test(await M.locator('[data-next]').innerText()) && (await M.locator('[data-next] a[href="register.html#c-consent"]').count()) === 1);
-  check('member bar: الرئيسية · الأخبار · الفريق', (await M.locator('.a-dock .a-dock-b[data-dock]:not([data-dock=bell]):not([data-dock=more])').allInnerTexts()).join('|') === 'الرئيسية|الأخبار|الفريق');
+  check('member bar: الرئيسية · رحلتي · الأخبار', (await M.locator('.a-dock .a-dock-b[data-dock]:not([data-dock=bell]):not([data-dock=more])').allInnerTexts()).join('|') === 'الرئيسية|رحلتي|الأخبار');
   await close(M);
   fake.addUser({ email: 'px@t.test', name: 'ولي تجربة', role: 'parent' });
   const PA = await open(fake, { label: 'dock-parent', mobile: true });
@@ -4308,6 +4308,96 @@ section('dashboard 2: the welcome card, the team\'s mark and logo, who leads the
   check('then the logo is gone (the file too); the color stays', !fake.tstyle.get(TM.id).logo_path && fake.logos.size === 0 && fake.tstyle.get(TM.id).color === 'purple');
   check('admin console clean (dashboard 2)', A.errs.length === 0, A.errs.join('|'));
   await close(A);
+}
+
+section('«رحلتي»: the member\'s journey from the documents (dates, 100 points, the weekly promise, deeds, the surah, honors)');
+{
+  const fake = new Fake();
+  fake.addUser({ email: 'boss@t.test', name: 'المشرف', role: 'member' }); fake.setAdmin('boss@t.test');
+  fake.addUser({ email: 'lj@t.test', name: 'قائد الرحلة', role: 'leader' });
+  const kid = fake.addUser({ email: 'kj@t.test', name: 'ياسر عضو الرحلة', role: 'member' });
+  const par = fake.addUser({ email: 'pj@t.test', name: 'ولي أمر ياسر', role: 'parent' });
+  const TJ = fake.seedTeam({ leaderEmail: 'lj@t.test', name: 'الرحلة', status: 'approved', members: [{ name: 'ياسر عضو الرحلة', age: 14, consent: 'received' }, { name: 'عضو ثان', age: 14 }, { name: 'عضو ثالث', age: 14 }, { name: 'عضو رابع', age: 14 }] });
+  const row = fake.members.find(m => m.team_id === TJ.id && m.full_name === 'ياسر عضو الرحلة');
+  row.user_id = kid.id;
+  fake.links.push({ parent_id: par.id, member_id: row.id, created_at: fake.now() });
+  const K = await open(fake, { label: 'jr-member', mobile: true });
+  await settle(K); await signInOk(K, 'kj@t.test');
+  await K.waitForSelector('#sec-journey [data-journey]', { timeout: 8000 });
+  check('a member has «رحلتي» in the bottom bar, right after «الرئيسية»', (await K.locator('.a-dock .a-dock-b[data-dock]:not([data-dock=bell]):not([data-dock=more])').allInnerTexts()).join('|') === 'الرئيسية|رحلتي|الأخبار');
+  await K.locator('.a-dock [data-dock=journey]').click();
+  const jr = K.locator('[data-journey]');
+  const jt = (await jr.innerText()).replace(/\s+/g, ' ');
+  check('«مسار المسابقة»: the four announced dates and where today falls', /بداية التسجيل 1 نوفمبر 2026/.test(jt) && /انطلاق المسابقة 15 نوفمبر 2026/.test(jt) && /ختام المسابقة 25 يناير 2027/.test(jt) && /حفل توزيع الجوائز 31 يناير 2027/.test(jt)
+    && /(تنطلق المسابقة بعد|الأسبوع \d+ · بقي|انتهت المنافسات|اكتملت المسابقة)/.test(await K.locator('[data-journey-now]').innerText()), jt.slice(0, 200));
+  check('the three phases of the 12-week plan, as in the document', /التحضير والتأسيس الأسابيع 1 – 5/.test(jt) && /تطبيق القيم الأساسية الأسابيع 6 – 9/.test(jt) && /القيادة والترسيخ الأسابيع 10 – 12/.test(jt));
+  const pts = K.locator('[data-points]');
+  check('«كيف يجمع الفريق 100 نقطة؟»: five axes worth 10, 15, 45, 20 and 10', (await pts.locator('.a-pts-n').allInnerTexts()).join('|') === '10 نقطة|15 نقطة|45 نقطة|20 نقطة|10 نقطة' && (await pts.locator('.a-pts-r summary b').allInnerTexts()).join('|') === 'الحفظ|الفهم والتفسير|التطبيق السلوكي والمجتمعي|كرة القدم|الشطرنج');
+  await pts.locator('[data-axis=tatbiq] summary').click();
+  check('an axis opens to say what is asked (the 45 points: 10, 30 and 5)', /مشاركة أعضاء الفريق وتوزيع الأدوار 10، التنفيذ الفعلي للمشروع 30، توثيق النتائج والأثر 5/.test(await pts.locator('[data-axis=tatbiq]').innerText()));
+  check('before the results are announced no team points are shown', (await pts.locator('.a-pts-got:not([hidden])').count()) === 0 && (await pts.locator('[data-points-total]:not([hidden])').count()) === 0);
+  // the weekly promise
+  const pl = K.locator('[data-pledge]');
+  await pl.locator('[data-fk="plg-save"]').click();
+  check('an empty promise is not saved', /اكتب وعدك/.test(await pl.innerText()));
+  await pl.locator('[data-fk="plg-field"]').selectOption('home');
+  await pl.locator('[data-fk="plg-text"]').fill('أرتّب غرفتي كل يوم قبل النوم');
+  await pl.locator('[data-fk="plg-save"]').click();
+  await pl.locator('[data-pledge-text]').waitFor();
+  check('«وعدي هذا الأسبوع» is saved with its field', (await pl.locator('[data-pledge-text]').innerText()) === 'أرتّب غرفتي كل يوم قبل النوم' && /البيت والأسرة/.test(await pl.innerText()));
+  await pl.locator('[data-fk="plg-done"]').click();
+  check('«وفّيت بوعدي» marks it kept and counts it', /وفّيت بوعدك هذا الأسبوع/.test(await pl.innerText()) && /وعود وفّيت بها: 1/.test(await pl.locator('[data-pledge-kept]').innerText()) && (await pl.locator('[data-fk="plg-done"]').count()) === 0);
+  // the deed of the day
+  const dd = K.locator('[data-deed]');
+  const d1 = await dd.locator('[data-deed-text]').innerText();
+  await dd.locator('[data-fk="deed-next"]').click();
+  const d2 = await dd.locator('[data-deed-text]').innerText();
+  await dd.locator('[data-fk="deed-f-school"]').click();
+  const d3 = await dd.locator('[data-deed-text]').innerText();
+  check('«فكرة اليوم»: a deed from the document, another on request, and a field filter', d1 !== d2 && ['صيانة الممتلكات', 'الالتزام بالأنظمة', 'الاحترام والتعاون بين الطلاب والمعلمين'].includes(d3) && /المدرسة/.test(await dd.locator('.a-deed-b').innerText()), [d1, d2, d3].join('|'));
+  await dd.locator('[data-fk="deed-done"]').click();
+  check('ticking it counts today («طبّقت في 1 من آخر 7 أيام»)', /طبّقت في 1 من آخر 7 أيام/.test(await dd.locator('[data-deed-count]').innerText()) && (await dd.locator('.a-deed-days li.on').count()) === 1 && (await dd.locator('[data-fk="deed-done"]').getAttribute('aria-pressed')) === 'true');
+  // the surah
+  const hz = K.locator('[data-hifz]');
+  check('«حفظي لسورة الصف»: 14 ayah buttons, numbers only (no verse text is typed here)', (await hz.locator('.a-hifz-a').count()) === 14 && (await hz.locator('[data-hifz-n]').innerText()) === '0 من 14' && !/﴿/.test(await hz.innerText()));
+  for (const n of [1, 2, 3]) await hz.locator(`[data-fk="ayah-${n}"]`).click();
+  check('ticking ayahs counts them; each is a named toggle', (await hz.locator('[data-hifz-n]').innerText()) === '3 من 14' && (await hz.locator('[data-fk="ayah-2"]').getAttribute('aria-pressed')) === 'true' && (await hz.locator('[data-fk="ayah-2"]').getAttribute('aria-label')) === 'الآية 2');
+  const hon = (await K.locator('[data-honors]').innerText()).replace(/\s+/g, ' ');
+  check('«الجوائز والأوسمة»: 700, 500 and 300 dollars, and the four honors of the document', /المركز الأول 700 \$/.test(hon) && /المركز الثاني 500 \$/.test(hon) && /المركز الثالث 300 \$/.test(hon) && /رحلة المتميزين/.test(hon) && /أوسمة التميز الفردي/.test(hon) && /جائزة القائد المتميز/.test(hon) && /فرص تدريبية مستقبلية/.test(hon));
+  check('«أدواتي» links to the site\'s pages for a participant', (await K.locator('[data-tools] a').evaluateAll(a => a.map(x => x.getAttribute('href')).join())) === 'learn.html,quran.html,competition.html,tournament.html,method.html');
+  const sent = fake.log.filter(x => /أرتّب غرفتي/.test(JSON.stringify(x))).length;
+  const stored = await K.evaluate(() => JSON.parse(localStorage.getItem('yanabee-dash')));
+  check('what the member wrote and ticked stays on the device, under their own id; nothing was sent', sent === 0 && !!stored.j[kid.id] && stored.j[kid.id].hifz.join() === '1,2,3' && Object.values(stored.j[kid.id].pledges)[0].done === true && !/token|@/.test(JSON.stringify(stored)), JSON.stringify(stored).slice(0, 200));
+  await K.reload(); await settle(K);
+  await K.waitForSelector('[data-hifz]');
+  check('it is still there after a reload', (await K.locator('[data-hifz-n]').innerText()) === '3 من 14' && /وفّيت بوعدك/.test(await K.locator('[data-pledge]').innerText()));
+  check('«رحلتي» cannot be hidden by mistake (it is not in the list of sections to hide)', await (async () => { await K.locator('.a-dock [data-dock=more]').click(); await K.locator('[data-more] [data-fk=more-cust]').click(); await K.waitForSelector('[data-settings]:not([hidden])'); return (await K.locator('[data-fk="csec-journey"]').count()) === 0 && (await K.locator('[data-fk="csec-team"]').count()) === 1; })());
+  check('phone width: «رحلتي» does not overflow', (await overflow(K)) <= 0);
+  check('member console clean (journey)', K.errs.length === 0, K.errs.join('|'));
+  await close(K);
+  // the results are announced: the member sees the team's points per axis
+  fake.published = true;
+  fake.jscores.push({ team_id: TJ.id, criterion: 'hifz', points: 8, judge: 'x' }, { team_id: TJ.id, criterion: 'execution', points: 24, judge: 'x' });
+  fake.ascores.push({ team_id: TJ.id, axis: 'football', points: 15 });
+  const K2 = await open(fake, { label: 'jr-member2', mobile: true });
+  await settle(K2); await signInOk(K2, 'kj@t.test');
+  await K2.waitForSelector('[data-points-total]:not([hidden])', { timeout: 8000 });
+  check('after the announcement: the team\'s points on each axis and the total', /نال فريقك 8/.test(await K2.locator('[data-axis=hifz]').innerText()) && /نال فريقك 24/.test(await K2.locator('[data-axis=tatbiq]').innerText()) && /نال فريقك 15/.test(await K2.locator('[data-axis=football]').innerText())
+    && /مجموع فريقك: 47 من 100 · المركز 1/.test(await K2.locator('[data-points-total]').innerText()), await K2.locator('[data-points]').innerText());
+  check('another person on the same device starts empty (notes are kept per account)', (await K2.locator('[data-hifz-n]').innerText()) === '0 من 14');
+  await close(K2);
+  // the leader and the parent get the competition's map, not the personal trackers
+  const L = await open(fake, { label: 'jr-leader' });
+  await settle(L); await signInOk(L, 'lj@t.test');
+  await L.waitForSelector('#sec-guide [data-journey]', { timeout: 8000 });
+  check('a leader has «المسابقة والنقاط»: the dates, the points, the honors and the tools (with «إعداد القادة»), no personal trackers', (await L.locator('#sec-guide [data-points]').count()) === 1 && (await L.locator('#sec-guide [data-honors]').count()) === 1
+    && /leaders\.html/.test(await L.locator('[data-tools] a').evaluateAll(a => a.map(x => x.getAttribute('href')).join())) && (await L.locator('[data-pledge], [data-hifz], [data-deed]').count()) === 0);
+  await close(L);
+  const P = await open(fake, { label: 'jr-parent', mobile: true });
+  await settle(P); await signInOk(P, 'pj@t.test');
+  await P.waitForSelector('#sec-guide [data-journey]', { timeout: 8000 });
+  check('a parent sees the dates, the points and the honors', (await P.locator('#sec-guide [data-points]').count()) === 1 && (await P.locator('#sec-guide [data-honors]').count()) === 1 && (await P.locator('[data-pledge], [data-hifz]').count()) === 0 && P.errs.length === 0, P.errs.join('|'));
+  await close(P);
 }
 
 section('network hosts and console');
