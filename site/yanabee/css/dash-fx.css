@@ -463,6 +463,44 @@
 .a-home>.a-hfd{grid-column:1/-1}
 .a-print-sheet{display:none}
 
+/* ---------- the shared journey (0015): meters, the leader's follow-up, the parent's card, team activity, the log ---------- */
+.a-meter{display:grid;gap:5px;min-width:0}
+.a-meter>span{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:.86rem;color:var(--ink-2)}
+.a-meter>span>b{color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+.a-meter>i{display:block;height:8px;border-radius:99px;background:color-mix(in oklab,var(--k,var(--brand)) 15%,var(--surface));overflow:hidden}
+.a-meter>i>i{display:block;height:100%;width:var(--mw,0%);min-width:0;border-radius:inherit;background:var(--k,var(--brand));transition:width .7s cubic-bezier(.2,.8,.2,1)}
+.a-tb-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px 18px;margin:4px 0 14px}
+.a-tb-pact{margin:0 0 10px;padding:12px 14px;border-radius:var(--r-sm);background:color-mix(in oklab,var(--k,var(--brand)) 7%,var(--surface));border:1px solid var(--line)}
+.a-tb-pact p{margin:4px 0;overflow-wrap:anywhere}
+.a-mf .a-chips,.a-cj .a-chips{margin:0 0 12px}
+.a-mf-l{list-style:none;margin:0 0 10px;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:12px}
+.a-mf-l>li,.a-cj-c{min-width:0;padding:14px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);display:grid;gap:10px;align-content:start}
+.a-mf-l>li.kept{border-color:color-mix(in oklab,#16a36b 45%,var(--line))}
+.a-mf-l>li.none{border-style:dashed}
+.a-mf-h{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 10px}
+.a-mf-h>b{font-size:1.02rem;overflow-wrap:anywhere}
+.a-mf-l .a-plg-q,.a-cj-c .a-plg-q{margin:0;padding:10px 12px}
+.a-mf-l .a-plg-q p,.a-cj-c .a-plg-q p{font-size:1rem}
+.a-mf-m{display:grid;gap:8px}
+.a-mf-note{margin:0;display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border-radius:var(--r-sm);background:color-mix(in oklab,var(--sun) 12%,var(--surface));color:var(--ink);font-size:.92rem;overflow-wrap:anywhere}
+.a-mf-note>.i{flex:none;width:18px;height:18px;margin-top:3px}
+.a-cj-c{margin:0 0 12px}
+.a-cj-c .a-f{margin:0}
+.a-act-n{display:inline-flex;align-items:center;gap:8px;min-width:0}
+.a-act-t td,.a-act-t th{white-space:nowrap}
+.a-act-t tr.quiet>*{color:var(--ink-2)}
+.a-act-q{margin:10px 0 0;display:flex;gap:8px;align-items:flex-start;padding:10px 12px;border-radius:var(--r-sm);background:color-mix(in oklab,var(--sun) 12%,var(--surface));font-size:.92rem}
+.a-act-q>.i{flex:none;width:18px;height:18px;margin-top:3px}
+.a-log{list-style:none;margin:0 0 10px;padding:0;display:grid;gap:0}
+.a-log>li{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;padding:9px 2px;border-bottom:1px solid var(--line);font-size:.92rem}
+.a-log>li:last-child{border-bottom:0}
+.a-log time{flex:none;min-width:8.5em;color:var(--ink-2);font-variant-numeric:tabular-nums;font-size:.84rem}
+@media (min-width:1180px){
+  .a-app.dash .a-sec>.a-grid:not(.one)>.a-mf,.a-app.dash .a-home>.a-act,.a-app.dash .a-home>.a-logc,.a-app.dash .a-home>.a-cj,.a-app.dash .a-sec>.a-grid:not(.one)>.a-cj,.a-app.dash .a-sec>.a-grid:not(.one)>.a-act{grid-column:1/-1}
+  .a-app.dash .a-logc .a-log{grid-template-columns:1fr 1fr;column-gap:28px}
+}
+
+
 /* ==========================================================================
    The bento look (owner, 14 Nov 2026: "redesign the dashboard"): one tight grid of cards of different sizes, a
    feature tile for the first number, tinted cards, icon chips in the headings. Layout and paint only: the order in

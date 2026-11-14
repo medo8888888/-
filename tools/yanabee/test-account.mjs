@@ -55,6 +55,7 @@ class Fake {
     this.subs = []; this.objects = new Map(); this.uploads = [];   // migration 0008 (submissions, private photos)
     this.seekers = new Map(); this.invites = []; this.transfers = false;   // migration 0012 (players looking for a team)
     this.logos = new Map();   // migration 0014 (team logos: path -> uploader)
+    this.j15 = false; this.pledges = []; this.hifzMarks = new Map(); this.deedDays = []; this.pacts = new Map(); this.leadWeeks = new Map(); this.auditRows = [];   // migration 0015 (the journey on the account; off until a test turns it on)
     this.pushSubs = []; this.pushReady = true; this.pushKey = 'B' + 'x'.repeat(86);   // migration 0013 (phone notifications)
     this.judges = new Map(); this.jscores = []; this.ascores = []; this.published = false;   // migration 0010
     this.ann = []; this.annSeq = 0; this.chat = []; this.chatSeq = 0; this.reports = []; this.mutes = new Map(); this.reads = new Map();   // migration 0009
@@ -496,6 +497,94 @@ class Fake {
       yb_post_delete: ['id'], yb_post_moderate: ['id', 'action', 'note'], yb_react: ['post_id', 'kind'], yb_comments: ['post_id'], yb_comment_post: ['post_id', 'body'],
       yb_comment_delete: ['id'], yb_comment_report: ['id', 'reason'], yb_comment_moderate: ['id', 'action'], yb_comment_mute: ['id', 'hours', 'reason'], yb_feed_reports: [],
       yb_set_members_comment: ['allow'], yb_transfer_team: ['team_id', 'new_leader', 'old_stays', 'old_role'], yb_analytics: [] };
+    /* migration 0015: the journey on the account, and who sees what. Off (an older backend) unless a test sets j15. */
+    if (/^yb_(journey_me|pledge_save|pledge_done|hifz_set|deed_mark|team_journey|team_board|pact_save|lead_week_set|child_journey|pledge_note|activity_board|activity_log)$/.test(name)) {
+      if (!this.j15) return err(404, 'PGRST202', 'Could not find the function public.' + name);
+      const ok = d => ({ status: 200, body: d });
+      body = body || {};
+      const role = (this.profiles.find(p => p.id === me) || {}).role, staff = role === 'admin' || role === 'officer';
+      const myTeam = u => ((this.members.find(m => m.user_id === u) || {}).team_id) || ((this.teams.find(t => t.leader_id === u) || {}).id) || null;
+      const leads = t => this.teams.some(x => x.id === t && x.leader_id === me);
+      const contact = t => /[\w.+-]+@[\w-]+\.[\w.-]+/.test(t) || String(t).replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[\s\-()+]/g, '').match(/\d{7,}/);
+      const weekOk = w => { const d = new Date(w + 'T00:00:00'); return /^\d{4}-\d\d-\d\d$/.test(w || '') && d.getDay() === 6 && Math.abs(d - Date.now()) < 9 * 86400000; };
+      const trim = t => String(t || '').replace(/\s+/g, ' ').trim();
+      const pOf = (u, w) => this.pledges.find(x => x.user_id === u && x.week === w);
+      const pView = x => (x ? { field: x.field, body: x.body, done: x.done, parent_note: x.parent_note || null } : null);
+      const keptOf = u => this.pledges.filter(x => x.user_id === u && x.done).length;
+      const hifzOf = u => this.hifzMarks.get(u) || [];
+      const daysOf = (u, w) => this.deedDays.filter(x => x.user_id === u && x.day >= w).length;
+      const tm = t => this.members.filter(m => m.team_id === t);
+      const boardOf = (t, w) => { const ms = tm(t), us = ms.map(m => m.user_id).filter(Boolean); return { members: ms.length, joined: us.length,
+        pledged: this.pledges.filter(x => x.team_id === t && x.week === w).length, kept: this.pledges.filter(x => x.team_id === t && x.week === w && x.done).length,
+        hifz_sum: us.reduce((n, u) => n + hifzOf(u).length, 0), active: us.filter(u => daysOf(u, w) > 0).length }; };
+      if (name === 'yb_journey_me') return ok({ team_id: myTeam(me), pledge: pView(pOf(me, body.week)), kept: keptOf(me), hifz: [...hifzOf(me)], deed_days: this.deedDays.filter(x => x.user_id === me).map(x => x.day).sort() });
+      if (name === 'yb_pledge_save') {
+        const t = myTeam(me), b = trim(body.body);
+        if (!t) return ok({ ok: false, error: 'no_team' });
+        if (!weekOk(body.week) || !['home', 'hood', 'kin', 'school', 'friends'].includes(body.field) || b.length < 5 || b.length > 140) return ok({ ok: false, error: 'invalid_data' });
+        if (contact(b)) return ok({ ok: false, error: 'contact_not_allowed' });
+        const x = pOf(me, body.week);
+        if (x) { if (x.body !== b || x.field !== body.field) x.done = false; x.body = b; x.field = body.field; x.team_id = t; }
+        else this.pledges.push({ user_id: me, team_id: t, week: body.week, field: body.field, body: b, done: false, parent_note: null });
+        return ok({ ok: true });
+      }
+      if (name === 'yb_pledge_done') { const x = pOf(me, body.week); if (!x) return ok({ ok: false, error: 'not_found' }); x.done = !!body.done; return ok({ ok: true }); }
+      if (name === 'yb_hifz_set') {
+        const a = [...new Set((body.ayahs || []).map(Number))].sort((x, y) => x - y);
+        if (a.some(n => !(n >= 1 && n <= 14))) return ok({ ok: false, error: 'invalid_data' });
+        this.hifzMarks.set(me, a);
+        return ok({ ok: true, count: a.length });
+      }
+      if (name === 'yb_deed_mark') {
+        if (!/^\d{4}-\d\d-\d\d$/.test(body.day || '') || Math.abs(new Date(body.day + 'T12:00:00') - Date.now()) > 2 * 86400000) return ok({ ok: false, error: 'invalid_data' });
+        this.deedDays = this.deedDays.filter(x => !(x.user_id === me && x.day === body.day));
+        if (body.done) this.deedDays.push({ user_id: me, day: body.day });
+        return ok({ ok: true });
+      }
+      if (name === 'yb_team_journey') {
+        if (!(leads(body.team_id) || staff)) return raise('permission_denied', '42501');
+        return ok({ members: tm(body.team_id).map(m => ({ member_id: m.id, name: m.full_name, is_leader: !!m.is_leader, joined: !!m.user_id, pledge: pView(m.user_id && pOf(m.user_id, body.week)),
+          kept: m.user_id ? keptOf(m.user_id) : 0, hifz: m.user_id ? hifzOf(m.user_id).length : 0, deed_days: m.user_id ? daysOf(m.user_id, body.week) : 0 })) });
+      }
+      if (name === 'yb_team_board') {
+        const t = body.team_id, ms = tm(t);
+        if (!(leads(t) || staff || ms.some(m => m.user_id === me) || this.links.some(l => l.parent_id === me && ms.some(m => m.id === l.member_id)))) return raise('permission_denied', '42501');
+        return ok({ ...boardOf(t, body.week), pact: this.pacts.get(t) || null, lead_tasks: [...(this.leadWeeks.get(t + '|' + body.week) || [])] });
+      }
+      if (name === 'yb_pact_save') {
+        if (!leads(body.team_id)) return raise('permission_denied', '42501');
+        const how = trim(body.how), wn = trim(body.when_text) || null;
+        if (!['sidq', 'amana', 'taawun', 'ihtiram', 'nazafa'].includes(body.value) || !['all', 'leader', 'assistant', 'coord'].includes(body.who) || how.length < 5 || how.length > 160 || (wn || '').length > 60) return ok({ ok: false, error: 'invalid_data' });
+        if (contact(how) || contact(wn || '')) return ok({ ok: false, error: 'contact_not_allowed' });
+        this.pacts.set(body.team_id, { value: body.value, how, who: body.who, when: wn });
+        return ok({ ok: true });
+      }
+      if (name === 'yb_lead_week_set') {
+        if (!leads(body.team_id)) return raise('permission_denied', '42501');
+        const a = [...new Set(body.tasks || [])].sort();
+        if (!weekOk(body.week) || a.some(k => !['meet', 'cards', 'follow', 'summary', 'leaders'].includes(k))) return ok({ ok: false, error: 'invalid_data' });
+        this.leadWeeks.set(body.team_id + '|' + body.week, a);
+        return ok({ ok: true });
+      }
+      if (name === 'yb_child_journey') return ok(this.links.filter(l => l.parent_id === me).map(l => this.members.find(m => m.id === l.member_id)).filter(Boolean).map(m => ({ member_id: m.id, name: m.full_name, joined: !!m.user_id,
+        pledge: pView(m.user_id && pOf(m.user_id, body.week)), kept: m.user_id ? keptOf(m.user_id) : 0, hifz: m.user_id ? hifzOf(m.user_id).length : 0, deed_days: m.user_id ? daysOf(m.user_id, body.week) : 0 })));
+      if (name === 'yb_pledge_note') {
+        if (!this.links.some(l => l.parent_id === me && l.member_id === body.member_id)) return raise('permission_denied', '42501');
+        const n = trim(body.note) || null, m = this.members.find(x => x.id === body.member_id), x = m && m.user_id && pOf(m.user_id, body.week);
+        if ((n || '').length > 200) return ok({ ok: false, error: 'invalid_data' });
+        if (n && contact(n)) return ok({ ok: false, error: 'contact_not_allowed' });
+        if (!x) return ok({ ok: false, error: 'not_found' });
+        x.parent_note = n;
+        return ok({ ok: true });
+      }
+      if (name === 'yb_activity_board') {
+        if (!staff) return raise('permission_denied', '42501');
+        return ok(this.teams.filter(t => t.status === 'approved').map(t => ({ team_id: t.id, team_name: t.name, status: t.status, ...boardOf(t.id, body.week),
+          lead_tasks: (this.leadWeeks.get(t.id + '|' + body.week) || []).length, pact: this.pacts.has(t.id) })));
+      }
+      if (role !== 'admin') return raise('permission_denied', '42501');
+      return ok(this.auditRows.slice().sort((a, b) => (a.at < b.at ? 1 : -1)).slice(0, Math.min(Math.max(body.lim || 40, 1), 100)));
+    }
     if (!SIG[name]) return err(404, 'PGRST202', 'Could not find the function public.' + name);
     // 0011: optional arguments (SQL defaults)
     const DEF = { yb_feed: { before: null, lim: 15 }, yb_post_save: { photos: [] }, yb_post_moderate: { note: null }, yb_comment_report: { reason: null }, yb_comment_mute: { hours: null, reason: null }, yb_transfer_team: { old_role: 'parent' } };
@@ -1918,7 +2007,7 @@ let memberEmail = 'sara@t.test', parentEmail = 'parent@t.test';
   check('member sees own consent status (received: set by the admin)', /استُلمت موافقة ولي الأمر/.test(mt));
   check('no admin / leader controls on the member screen', !(await M.locator('input[role=switch], form.a-add, button[data-fk=submit], .a-tabs-4').count()));
   const reqs = world.log.filter(l => l.who === world.profileByEmail(memberEmail).id).map(l => l.path.replace('/rest/v1/', ''));
-  check('member screen reads only my_team, my_roster, tournament_state and the own profile (never teams, team_members, profiles list)', reqs.every(r => /^(rpc\/(my_team|join_team|yb_mark_read|yb_my_scores|yb_my_prefs|yb_feed|yb_seek_me|yb_team_staff)|my_roster|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements|yb_match_live|yb_team_style)$/.test(r)), [...new Set(reqs)].join());
+  check('member screen reads only my_team, my_roster, tournament_state and the own profile (never teams, team_members, profiles list)', reqs.every(r => /^(rpc\/(my_team|join_team|yb_journey_me|yb_team_board|yb_mark_read|yb_my_scores|yb_my_prefs|yb_feed|yb_seek_me|yb_team_staff)|my_roster|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements|yb_match_live|yb_team_style)$/.test(r)), [...new Set(reqs)].join());
   const tour = await M.locator('.a-sched').innerText();
   check('schedule card shows the empty state before the tournament is published', /لم تُنشر بيانات البطولة بعد/.test(tour));
   // second account tries the same name
@@ -1973,7 +2062,7 @@ let memberEmail = 'sara@t.test', parentEmail = 'parent@t.test';
   const chips = await P.locator('.a-child .a-consent .a-chip').allInnerTexts();
   check('two children: one «استُلمت», one «لم تُستلم بعد»; ONE schedule card for the shared team', chips.some(c => /^استُلمت/.test(c)) && chips.some(c => /لم تُستلم/.test(c)) && (await P.locator('.a-sched').count()) === 1);
   const preqs = world.log.filter(l => l.who === world.profileByEmail(parentEmail).id).map(l => l.path.replace('/rest/v1/', ''));
-  check('parent screen reads only my_children, tournament_state and the own profile', preqs.every(r => /^(rpc\/(link_child|yb_mark_read|yb_my_scores|yb_my_judging|yb_my_prefs|yb_feed|yb_guardian_seekers|yb_team_staff)|my_children|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements|yb_match_live|yb_team_style)$/.test(r)), [...new Set(preqs)].join());
+  check('parent screen reads only my_children, tournament_state and the own profile', preqs.every(r => /^(rpc\/(link_child|yb_child_journey|yb_mark_read|yb_my_scores|yb_my_judging|yb_my_prefs|yb_feed|yb_guardian_seekers|yb_team_staff)|my_children|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements|yb_match_live|yb_team_style)$/.test(r)), [...new Set(preqs)].join());
   check('parent console clean', P.errs.length === 0, P.errs.join('|'));
   world.P = P;
 }
@@ -4705,6 +4794,182 @@ section('memorisation (الحفظ): the officer\'s desk, the printed record, the
   await A.waitForSelector('[data-admin-home] [data-hifz-desk] [data-hifz-team]', { timeout: 8000 });
   check('the admin\'s home has the memorisation desk too (the same two teams)', (await A.locator('[data-admin-home] [data-hifz-team]').count()) === 2 && (await A.locator('[data-admin-home] [data-hifz-named]').innerText()) === '1 من 2' && (await overflow(A)) <= 0 && A.errs.length === 0, A.errs.join('|'));
   await close(A);
+}
+
+section('the journey on the account (0015): it is saved, and the right people see it');
+{
+  const fake = new Fake();
+  fake.j15 = true;
+  fake.addUser({ email: 'boss@t.test', name: 'محمود المشرف', role: 'member' }); fake.setAdmin('boss@t.test');
+  fake.addUser({ email: 'ls@t.test', name: 'قائد السنابل', role: 'leader' });
+  fake.addUser({ email: 'lq@t.test', name: 'قائد الهادئين', role: 'leader' });
+  const k1 = fake.addUser({ email: 'k1@t.test', name: 'أنس عضو السنابل', role: 'member' });
+  const k2 = fake.addUser({ email: 'k2@t.test', name: 'مالك عضو السنابل', role: 'member' });
+  const par = fake.addUser({ email: 'ps@t.test', name: 'والد أنس', role: 'parent' });
+  const off = fake.addUser({ email: 'os@t.test', name: 'مسؤول الحفظ', role: 'member' }); fake.setRole('os@t.test', 'officer');
+  fake.officers.push({ user_id: off.id, competition: 'hifz' });
+  const TS = fake.seedTeam({ leaderEmail: 'ls@t.test', name: 'السنابل', status: 'approved', members: [{ name: 'أنس عضو السنابل', age: 14, consent: 'received' }, { name: 'مالك عضو السنابل', age: 14, consent: 'received' }, { name: 'عضو بلا حساب', age: 14 }, { name: 'عضو رابع', age: 14 }] });
+  const TQ = fake.seedTeam({ leaderEmail: 'lq@t.test', name: 'الهادئون', status: 'approved', members: Array.from({ length: 4 }, (_, i) => ({ name: `هادئ ${i + 1}`, age: 14 })) });
+  fake.teams.forEach(t => { t.waitlist = false; });
+  const row = n => fake.members.find(m => m.full_name === n);
+  row('أنس عضو السنابل').user_id = k1.id; row('مالك عضو السنابل').user_id = k2.id;
+  fake.links.push({ parent_id: par.id, member_id: row('أنس عضو السنابل').id, created_at: fake.now() });
+  const acts = ['team_create', 'member_add', 'consent', 'team_status', 'judge_set', 'results_publish', 'push_on', 'invite_send', 'child_link', 'member_link', 'team_assistant', 'made_up_action'];
+  acts.forEach((a, i) => fake.auditRows.push({ at: new Date(Date.now() - i * 3600e3).toISOString(), action: a, actor: i % 2 ? 'قائد السنابل' : 'محمود المشرف', role: i % 2 ? 'leader' : 'admin' }));
+  const sat = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 1) % 7)); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })();
+  const mine = u => fake.pledges.find(x => x.user_id === u && x.week === sat);
+  const txt = async l => (await l.innerText()).replace(/\s+/g, ' ');
+
+  /* ---- the member writes; it lands in the account ---- */
+  const K = await open(fake, { label: 'j15-member', mobile: true });
+  await settle(K); await signInOk(K, 'k1@t.test');
+  await K.waitForSelector('#sec-journey [data-pledge]', { timeout: 8000 });
+  await K.locator('.a-dock [data-dock=journey]').click();
+  const pl = K.locator('[data-pledge]'), hz = K.locator('[data-hifz]'), dd = K.locator('[data-deed]');
+  await K.waitForFunction(() => /في حسابك/.test(document.querySelector('[data-pledge] [data-note]').textContent), null, { timeout: 8000 });
+  check('with the account journey on, each card says who can see it (no more "this device only")', /يراه قائد فريقك ووليّ أمرك/.test(await pl.locator('[data-note]').innerText()) && /عدد الآيات/.test(await hz.locator('[data-note]').innerText())
+    && /لا نوع الفعل/.test(await dd.locator('[data-note]').innerText()) && !/على هذا الجهاز فقط/.test(await K.locator('#sec-journey').innerText()));
+  await pl.locator('[data-fk="plg-text"]').fill('اتصل بي على 0791234567 لنرتب');
+  await pl.locator('[data-fk="plg-save"]').click();
+  await K.waitForFunction(() => /أرقام الهواتف/.test(document.querySelector('[data-pledge]').textContent), null, { timeout: 8000 });
+  check('a promise with a phone number is refused by the account, in words', !mine(k1.id) && (await pl.locator('[data-fk="plg-text"]').count()) === 1);
+  await pl.locator('[data-fk="plg-field"]').selectOption('kin');
+  await pl.locator('[data-fk="plg-text"]').fill('أزور جدتي وأساعدها يوم الجمعة');
+  await pl.locator('[data-fk="plg-save"]').click();
+  await pl.locator('[data-pledge-text]').waitFor();
+  check('the promise is saved to the account under the member\'s team', !!mine(k1.id) && mine(k1.id).body === 'أزور جدتي وأساعدها يوم الجمعة' && mine(k1.id).field === 'kin' && mine(k1.id).team_id === TS.id && mine(k1.id).done === false);
+  await hz.locator('[data-fk="ayah-1"]').click(); await hz.locator('[data-fk="ayah-2"]').click();
+  await dd.locator('[data-fk="deed-done"]').click();
+  await pl.locator('[data-fk="plg-done"]').click();
+  await K.waitForFunction(() => true); await K.waitForTimeout(150);
+  check('ticked ayahs, today\'s deed and "kept" reach the account too', (fake.hifzMarks.get(k1.id) || []).join(',') === '1,2' && fake.deedDays.filter(x => x.user_id === k1.id).length === 1 && mine(k1.id).done === true);
+  check('the account keeps that a deed was done today, not which deed', Object.keys(fake.deedDays[0]).sort().join(',') === 'day,user_id');
+  const tb = K.locator('[data-team-board]');
+  check('«فريقي هذا الأسبوع» shows the team in counts', (await tb.count()) === 1 && /فريقي هذا الأسبوع/.test(await txt(tb)) && (await tb.locator('[data-meter]').count()) === 4);
+
+  /* ---- another member; then the first one on a second phone ---- */
+  const K2 = await open(fake, { label: 'j15-member2', mobile: true });
+  await settle(K2); await signInOk(K2, 'k2@t.test');
+  await K2.waitForSelector('#sec-journey [data-pledge]', { timeout: 8000 });
+  await K2.locator('.a-dock [data-dock=journey]').click();
+  await K2.locator('[data-team-board] [data-meter=pledged]').waitFor();
+  const b2 = await txt(K2.locator('[data-team-board]'));
+  check('a teammate reads the numbers: one promise written, one kept, two ayahs', /كتبوا وعدهم 1 من 3/.test(b2) && /وفّوا بوعدهم 1 من 3/.test(b2) && /آيات عُلّمت في الفريق 2 من 42/.test(b2) && /طبّقوا فعلًا هذا الأسبوع 1 من 3/.test(b2), b2);
+  check('each meter draws its share (a third of the bar for 1 of 3)', await K2.locator('[data-team-board]').locator('[data-meter=pledged]>i').evaluate(t => { const r = t.firstElementChild.getBoundingClientRect().width / t.getBoundingClientRect().width; return r > 0.3 && r < 0.37; }));
+  check('and never the other member\'s name or promise', !/جدتي|أنس/.test(await txt(K2.locator('#sec-journey'))) && (await K2.locator('[data-members-follow], [data-activity], [data-log]').count()) === 0);
+  const KB = await open(fake, { label: 'j15-member-phone2', mobile: true });
+  await settle(KB); await signInOk(KB, 'k1@t.test');
+  await KB.waitForSelector('#sec-journey [data-pledge]', { timeout: 8000 });
+  await KB.locator('.a-dock [data-dock=journey]').click();
+  await KB.locator('[data-pledge] [data-pledge-text]').waitFor({ timeout: 8000 });
+  check('on a second phone the member finds the promise, kept, and the ayahs (it is in the account now)', (await KB.locator('[data-pledge-text]').innerText()) === 'أزور جدتي وأساعدها يوم الجمعة' && /وعود وفّيت بها: 1/.test(await txt(KB.locator('[data-pledge]')))
+    && (await KB.locator('[data-hifz-n]').innerText()) === '2 من 14' && /طبّقت في 1 من آخر 7 أيام/.test(await KB.locator('[data-deed-count]').innerText()));
+
+  /* ---- the leader follows the week ---- */
+  const L = await open(fake, { label: 'j15-leader' });
+  await settle(L); await signInOk(L, 'ls@t.test');
+  await L.waitForSelector('#sec-lead [data-members-follow] [data-mf]', { timeout: 8000 });
+  await L.locator('[data-fk="qa-lead"]').click();
+  const mf = L.locator('[data-members-follow]');
+  const r1 = await txt(mf.locator(`[data-mf="${row('أنس عضو السنابل').id}"]`)), r2 = await txt(mf.locator(`[data-mf="${row('مالك عضو السنابل').id}"]`)), r3 = await txt(mf.locator(`[data-mf="${row('عضو بلا حساب').id}"]`));
+  check('«متابعة الأعضاء»: the member\'s promise with its field, kept, 2 of 14 ayahs and one day of practice', /أنس عضو السنابل/.test(r1) && /وفّى بوعده/.test(r1) && /الأقارب والأرحام/.test(r1) && /أزور جدتي وأساعدها يوم الجمعة/.test(r1) && /آيات سورة الصف 2 من 14/.test(r1) && /أيام التطبيق هذا الأسبوع 1 من 7/.test(r1) && /وعود وفّى بها 1/.test(r1), r1);
+  check('a member who wrote nothing is flagged in words; one without an account is told apart', /لم يكتب وعده بعد/.test(r2) && /لم يدخل بحسابه بعد/.test(r3) && !/آيات/.test(r3), r2 + ' / ' + r3);
+  check('the summary counts the members, not the leader', /كتبوا وعدهم: 1 من 4/.test(await txt(mf.locator('[data-mf-sum]'))) && /وفّوا به: 1/.test(await txt(mf.locator('[data-mf-sum]'))) && /بلا وعد بعد: 1/.test(await txt(mf.locator('[data-mf-sum]'))) && /لم يدخلوا بحسابهم: 2/.test(await txt(mf.locator('[data-mf-sum]')))
+    && (await mf.locator('[data-mf]').count()) === 4);
+  const pc = L.locator('[data-pact]');
+  await pc.locator('[data-fk="pact-how"]').fill('راسلوني على 0791234567');
+  await pc.locator('[data-fk="pact-save"]').click();
+  await L.waitForFunction(() => /أرقام الهواتف/.test(document.querySelector('[data-pact]').textContent), null, { timeout: 8000 });
+  check('a pact with a phone number is refused', !fake.pacts.has(TS.id));
+  await pc.locator('[data-fk="pact-value"]').selectOption('التعاون');
+  await pc.locator('[data-fk="pact-how"]').fill('نساعد من يتأخر في الحفظ');
+  await pc.locator('[data-fk="pact-who"]').selectOption('مساعد القائد');
+  await pc.locator('[data-fk="pact-when"]').fill('كل لقاء');
+  await pc.locator('[data-fk="pact-save"]').click();
+  await pc.locator('[data-fk="pact-edit"]').waitFor();
+  const fp = fake.pacts.get(TS.id) || {};
+  check('the team pact is saved to the team\'s account (a role, never a name)', fp.value === 'taawun' && fp.who === 'assistant' && fp.how === 'نساعد من يتأخر في الحفظ' && fp.when === 'كل لقاء' && /يراه أعضاء الفريق/.test(await pc.locator('[data-note]').innerText()), JSON.stringify(fp));
+  await L.locator('[data-lead-week] [data-fk="lw-meet"]').check();
+  await L.waitForTimeout(150);
+  check('the leader\'s ticked duty reaches the account', (fake.leadWeeks.get(TS.id + '|' + sat) || []).join(',') === 'meet' && /مشرفو المسابقة/.test(await L.locator('[data-lead-week] [data-note]').innerText()));
+  await L.locator('[data-fk="sum-build"]').click();
+  check('the weekly summary for the supervisor counts the promises (numbers only, no names)', /وعود الأعضاء هذا الأسبوع: كتبها 1 من 4، ووفّى بها 1/.test(await L.locator('[data-lead-summary]').inputValue()) && /ميثاق الفريق: التعاون/.test(await L.locator('[data-lead-summary]').inputValue()) && !/أنس|جدتي/.test(await L.locator('[data-lead-summary]').inputValue()));
+  check('leader page: no overflow, console clean', (await overflow(L)) <= 0 && L.errs.length === 0, L.errs.join('|'));
+
+  /* ---- the parent reads and encourages ---- */
+  const P = await open(fake, { label: 'j15-parent', mobile: true });
+  await settle(P); await signInOk(P, 'ps@t.test');
+  const cj = P.locator('[data-child-journey]');
+  await cj.locator('[data-cj]').waitFor({ timeout: 8000 });
+  const ct = await txt(cj);
+  check('the parent sees their own child\'s week: the promise, kept, the ayahs', (await cj.locator('[data-cj]').count()) === 1 && /رحلة ابني هذا الأسبوع/.test(ct) && /أزور جدتي وأساعدها يوم الجمعة/.test(ct) && /وفّى بوعده/.test(ct) && /آيات سورة الصف 2 من 14/.test(ct) && !/مالك/.test(ct), ct);
+  await cj.locator('[data-fk="cj-note-0"]').fill('رقمي 0791234567');
+  await cj.locator('[data-fk="cj-save-0"]').click();
+  await P.waitForFunction(() => /أرقام الهواتف/.test(document.querySelector('[data-child-journey]').textContent), null, { timeout: 8000 });
+  check('a note with a phone number is refused', !mine(k1.id).parent_note);
+  await cj.locator('[data-fk="cj-note-0"]').fill('رأيتك تزور جدتك، بارك الله فيك');
+  await cj.locator('[data-fk="cj-save-0"]').click();
+  await P.waitForFunction(() => /حدّث كلمتي/.test(document.querySelector('[data-child-journey]').textContent), null, { timeout: 8000 });
+  check('the parent\'s word is saved on the child\'s promise', mine(k1.id).parent_note === 'رأيتك تزور جدتك، بارك الله فيك' && (await cj.locator('[data-fk="cj-note-0"]').inputValue()) === 'رأيتك تزور جدتك، بارك الله فيك');
+  check('the note field and its button are big enough to tap; no overflow; console clean', (await cj.locator('[data-fk="cj-save-0"]').evaluate(b => b.getBoundingClientRect().height)) >= 44 && (await overflow(P)) <= 0 && P.errs.length === 0, P.errs.join('|'));
+  await reload(K);
+  await K.waitForSelector('#sec-journey [data-pledge-note]', { state: 'attached', timeout: 8000 });
+  check('the child reads the parent\'s word under the promise', /كلمة من وليّ أمرك: رأيتك تزور جدتك، بارك الله فيك/.test(await K.locator('[data-pledge-note]').textContent()));
+  const tbk = (await K.locator('[data-team-board]').textContent()).replace(/\s+/g, ' ');
+  check('and the team\'s pact and the leader\'s week on «فريقي هذا الأسبوع»', /ميثاق الفريق: التعاون/.test(tbk) && /نساعد من يتأخر في الحفظ/.test(tbk) && /المسؤول: مساعد القائد · كل لقاء/.test(tbk) && /مهام القائد هذا الأسبوع: 1 من 5/.test(tbk), tbk);
+  await mf.locator('[data-fk="mf-refresh"]').click();
+  await mf.locator('[data-mf-note]').waitFor({ timeout: 8000 });
+  check('«حدّث» brings the parent\'s word to the leader, and focus stays on the button', /كلمة وليّ الأمر: رأيتك تزور جدتك/.test(await mf.locator('[data-mf-note]').innerText()) && await L.evaluate(() => document.activeElement && document.activeElement.getAttribute('data-fk') === 'mf-refresh'));
+  check('member phones: no overflow, console clean', (await overflow(K)) <= 0 && (await overflow(K2)) <= 0 && K.errs.length === 0 && K2.errs.length === 0 && KB.errs.length === 0, [...K.errs, ...K2.errs, ...KB.errs].join('|'));
+
+  /* ---- the admin and the officer ---- */
+  const A = await open(fake, { label: 'j15-admin' });
+  await settle(A); await signInOk(A, 'boss@t.test', undefined, { home: true });
+  const ac = A.locator('[data-activity]');
+  await ac.locator('[data-activity-team]').first().waitFor({ timeout: 8000 });
+  const a1 = await txt(ac.locator(`[data-activity-team="${TS.id}"]`)), a2 = await txt(ac.locator(`[data-activity-team="${TQ.id}"]`));
+  check('«نشاط الفرق هذا الأسبوع»: counts for each approved team, the active one first', (await ac.locator('[data-activity-team]').first().getAttribute('data-activity-team')) === TS.id && /السنابل 3 من 5 1 1 2 1 1 من 5 مكتوب/.test(a1) && /الهادئون 1 من 5 0 0 0 0 0 من 5 لم يُكتب/.test(a2), a1 + ' / ' + a2);
+  check('the quiet team is named in words, and no member\'s name or promise appears', /بلا نشاط هذا الأسبوع \(1\): الهادئون/.test(await txt(ac.locator('[data-activity-quiet]'))) && !/جدتي|أنس|مالك/.test(await txt(ac)));
+  const lg = A.locator('[data-log]');
+  await lg.locator('[data-log-row]').first().waitFor({ timeout: 8000 });
+  const l0 = await txt(lg.locator('[data-log-row]').first());
+  check('«سجل النشاط»: the ten newest actions, who did each and in which role, in Arabic', (await lg.locator('[data-log-row]').count()) === 10 && /محمود المشرف/.test(l0) && /الإدارة/.test(l0) && /أنشأ فريقًا/.test(l0), l0);
+  await lg.locator('[data-fk="log-more"]').click();
+  await A.waitForFunction(() => document.querySelectorAll('[data-log] [data-log-row]').length === 12, null, { timeout: 8000 });
+  check('«اعرض الكل» opens the rest; an action the page does not know still reads as words', /إجراء في النظام/.test(await txt(lg.locator('[data-log-row]').last())) && (await lg.locator('[data-fk="log-more"]').getAttribute('aria-expanded')) === 'true'
+    && await A.evaluate(() => document.activeElement && document.activeElement.getAttribute('data-fk') === 'log-more'));
+  check('admin home: no overflow, console clean', (await overflow(A)) <= 0 && A.errs.length === 0, A.errs.join('|'));
+  await A.setViewportSize({ width: 390, height: 800 }); await settle(A);
+  check('the activity table scrolls inside its card on a phone; the page does not', (await overflow(A)) <= 0);
+  const O = await open(fake, { label: 'j15-officer' });
+  await settle(O); await signInOk(O, 'os@t.test');
+  await O.locator('[data-activity] [data-activity-team]').first().waitFor({ timeout: 8000 });
+  check('an officer sees the teams\' activity, not the log', (await O.locator('[data-activity] [data-activity-team]').count()) === 2 && (await O.locator('[data-log]').count()) === 0 && O.errs.length === 0, O.errs.join('|'));
+
+  /* ---- an older backend, and the first sync ---- */
+  const fake2 = new Fake();
+  fake2.addUser({ email: 'lo@t.test', name: 'قائد قديم', role: 'leader' });
+  const ko = fake2.addUser({ email: 'ko@t.test', name: 'عضو قديم', role: 'member' });
+  const TO = fake2.seedTeam({ leaderEmail: 'lo@t.test', name: 'القدامى', status: 'approved', members: [{ name: 'عضو قديم', age: 14, consent: 'received' }, { name: 'ثان', age: 14 }, { name: 'ثالث', age: 14 }, { name: 'رابع', age: 14 }] });
+  fake2.members.find(m => m.full_name === 'عضو قديم').user_id = ko.id;
+  const Z = await open(fake2, { label: 'j15-old', mobile: true });
+  await settle(Z); await signInOk(Z, 'ko@t.test');
+  await Z.waitForSelector('#sec-journey [data-pledge]', { timeout: 8000 });
+  await Z.locator('.a-dock [data-dock=journey]').click();
+  await Z.locator('[data-hifz] [data-fk="ayah-3"]').click();
+  await Z.locator('[data-pledge] [data-fk="plg-text"]').fill('أرتّب غرفتي كل يوم');
+  await Z.locator('[data-pledge] [data-fk="plg-save"]').click();
+  await Z.locator('[data-pledge-text]').waitFor();
+  check('on a backend without the journey functions everything stays on the device, and says so', /على هذا الجهاز فقط/.test(await Z.locator('[data-pledge] [data-note]').innerText()) && (await Z.locator('[data-team-board]:not([hidden])').count()) === 0 && fake2.pledges.length === 0 && Z.errs.length === 0, Z.errs.join('|'));
+  fake2.j15 = true;
+  await reload(Z);
+  await Z.waitForFunction(() => /في حسابك/.test((document.querySelector('[data-pledge] [data-note]') || {}).textContent || ''), null, { timeout: 8000 });
+  await Z.waitForTimeout(200);
+  check('once the backend has them, what was written on the device is sent to the account once', (fake2.hifzMarks.get(ko.id) || []).join(',') === '3' && fake2.pledges.length === 1 && fake2.pledges[0].body === 'أرتّب غرفتي كل يوم' && fake2.pledges[0].team_id === TO.id);
+  fake2.hifzMarks.set(ko.id, []);
+  await reload(Z);
+  await Z.waitForFunction(() => (document.querySelector('[data-hifz-n]') || {}).textContent === '0 من 14', null, { timeout: 8000 }).catch(() => {});
+  check('after that the account is the source: cleared elsewhere, cleared here (no re-upload)', (await Z.locator('[data-hifz-n]').textContent()) === '0 من 14' && (fake2.hifzMarks.get(ko.id) || []).length === 0);
 }
 
 section('network hosts and console');

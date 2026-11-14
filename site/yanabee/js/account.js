@@ -1500,7 +1500,7 @@
       roles: A.members.reduce((m, x) => { const r = m[x.team_id] || (m[x.team_id] = {}); if (Array.isArray(x.roles) && x.roles.includes('reciter')) r.reciter = x.full_name; if (Array.isArray(x.roles) && x.roles.includes('reserve')) r.reserve = x.full_name; return m; }, {}) });
     const chd = chessDeskCard(A.members.reduce((m, x) => { if (Array.isArray(x.roles) && x.roles.includes('chess')) m[x.team_id] = x.full_name; return m; }, {}));
     if (!A.todayH) { A.todayH = todayCard(); A.todayH.start(); }
-    panel.append(h('div', { class: 'a-home', 'data-admin-home': '' }, hero, adminFindCard(), wait, followCard(5), nums, mix, cal, A.todayH, pulse, fbd, chd, hfd, wall));
+    panel.append(h('div', { class: 'a-home', 'data-admin-home': '' }, hero, adminFindCard(), wait, followCard(5), nums, activityCard(), mix, cal, A.todayH, pulse, fbd, chd, hfd, logCard(), wall));
     pulse.start(); cal.start(); fbd.start(); chd.start(); hfd.start();
   }
   // inside an open team card (admin): the assistant's title and the logo
@@ -1568,6 +1568,225 @@
     set(patch) { const st = dashStore.get(); st.j = st.j || {}; st.j[S.uid || '-'] = Object.assign({}, st.j[S.uid || '-'], patch); dashStore.set(st); }
   };
   const DEVICE_NOTE = 'يُحفظ على هذا الجهاز فقط، ولا يُرسل لأحد.';
+
+  /* --- the journey on the account (migration 0015). When the backend has the journey functions, the promise, the
+     ayahs, the deed days, the team pact and the leader's week are saved to the account, and the people who follow the
+     member can see them: the team's leader and the linked parent (and the competition's staff); the other members
+     see counts only. On an older backend everything stays on the device exactly as before. */
+  const NOTE15 = { pledge: 'يُحفظ في حسابك. يراه قائد فريقك ووليّ أمرك ومشرفو المسابقة، ولا يراه بقية الأعضاء.',
+    hifz: 'يُحفظ في حسابك. يرى قائد فريقك ووليّ أمرك عدد الآيات التي علّمتها.',
+    deed: 'يُحفظ في حسابك أنك طبّقت اليوم، لا نوع الفعل. يرى قائد فريقك ووليّ أمرك عدد الأيام.',
+    pact: 'يُحفظ في حساب الفريق، ويراه أعضاء الفريق وأولياء أمورهم.',
+    lw: 'تُحفظ في حساب الفريق، ويرى مشرفو المسابقة عدد ما أُنجز.' };
+  const note15 = k => (S.has15 ? NOTE15[k] : DEVICE_NOTE);
+  const no15 = r => !!r && (r.status === 404 || r.code === 'PGRST202' || r.code === '42883');
+  const PACT_KEYS = ['sidq', 'amana', 'taawun', 'ihtiram', 'nazafa'], WHO_KEYS = ['all', 'leader', 'assistant', 'coord'];
+  const J_ERR = { contact_not_allowed: 'لا تُكتب أرقام الهواتف أو عناوين البريد هنا. احذفها ثم احفظ.', no_team: 'تحتاج فريقًا ليُحفظ وعدك في حسابك.',
+    invalid_data: 'تحقق مما كتبته ثم حاول مرة أخرى.', not_found: 'لا وعد مكتوب لهذا الأسبوع بعد.' };
+  const J = {
+    subs: [],   // repaint hooks of the cards on screen
+    load() {
+      if (S.journeyP) return S.journeyP;
+      const wk = weekKey();
+      return (S.journeyP = YB.rpc('yb_journey_me', { week: wk }).then(r => {
+        if (!r.ok || !r.data || typeof r.data !== 'object') { if (no15(r) || S.has15 === undefined) S.has15 = false; return null; }
+        S.has15 = true;
+        const d = r.data, loc = mine.get(), first = !loc.synced, patch = { synced: 1, kept: Number(d.kept) || 0 };
+        const pl = Object.assign({}, loc.pledges || {});
+        if (d.pledge) pl[wk] = { field: d.pledge.field, text: d.pledge.body, done: !!d.pledge.done, note: d.pledge.parent_note || '' };
+        else if (pl[wk] && d.team_id) {
+          if (first) { const mineP = pl[wk]; J.send('yb_pledge_save', { week: wk, field: mineP.field, body: mineP.text }).then(ok => { if (ok && mineP.done) J.send('yb_pledge_done', { week: wk, done: true }); }); }   // written before the account kept it
+          else delete pl[wk];
+        }
+        patch.pledges = pl;
+        const sv = (Array.isArray(d.hifz) ? d.hifz : []).map(Number);
+        if (!sv.length && first && (loc.hifz || []).length) J.send('yb_hifz_set', { ayahs: loc.hifz }); else patch.hifz = sv;
+        const dd = Object.assign({}, loc.deeds || {}), have = new Set(Array.isArray(d.deed_days) ? d.deed_days : []);
+        for (let i = 0; i < 7; i++) {   // the device remembers which deed; the account only that the day was kept
+          const k = localDay(new Date(today0().getTime() - i * 86400000));
+          if (have.has(k)) { if (!(dd[k] || []).length) dd[k] = ['account']; }
+          else if ((dd[k] || []).length) { if (first) { if (i <= 1) J.send('yb_deed_mark', { day: k, done: true }); } else delete dd[k]; }
+        }
+        patch.deeds = dd;
+        mine.set(patch);
+        J.subs.forEach(f => { try { f(); } catch (e) { /* a card that left the screen */ } });
+        return d;
+      }));
+    },
+    send(fn, args) {
+      if (!S.has15) return Promise.resolve(false);
+      return YB.rpc(fn, args).then(r => { if (!r.ok && !J.warned) { J.warned = 1; say('تعذّر الحفظ في حسابك الآن. بقي ما سجّلته على هذا الجهاز.'); } return !!r.ok; });
+    },
+    // a card repaints when the account answers, unless the person is typing in it
+    watch(el, paint) { J.subs.push(() => { const a = document.activeElement; if (a && el.contains(a) && /^(TEXTAREA|SELECT|INPUT)$/.test(a.tagName)) return; paint(); }); J.load(); }
+  };
+  // the team's shared numbers this week (counts only, the pact and the leader's ticks), read once per screen
+  function teamBoard(teamId, fresh) {
+    S.tbP = S.tbP || {};
+    if (fresh) delete S.tbP[teamId];
+    return S.tbP[teamId] || (S.tbP[teamId] = YB.rpc('yb_team_board', { team_id: teamId, week: weekKey() }).then(r => {
+      if (!r.ok || !r.data) { if (no15(r) || S.has15 === undefined) S.has15 = false; return null; }
+      S.has15 = true;
+      return r.data;
+    }));
+  }
+  const meter = (label, n, of, key) => {
+    n = Number(n) || 0; of = Number(of) || 0;
+    const bar = h('i', {});
+    bar.style.setProperty('--mw', (of > 0 ? Math.min(100, Math.round(n / of * 100)) : 0) + '%');
+    return h('div', { class: 'a-meter', 'data-meter': key || '' }, h('span', {}, h('span', { text: label }), h('b', { text: of ? `${n} من ${of}` : String(n) })), of ? h('i', { 'aria-hidden': 'true' }, bar) : null);
+  };
+  const fieldName = k => (FIELDS.find(f => f[0] === k) || FIELDS[0])[1];
+  const pledgeQuote = pl => h('blockquote', { class: 'a-plg-q' + (pl.done ? ' done' : '') }, h('small', { text: fieldName(pl.field) }), h('p', { text: pl.body }));
+
+  // «فريقي هذا الأسبوع»: what the whole team did since Saturday, in counts — never a name and never a promise's text
+  function teamBoardCard(teamId) {
+    const el = h('section', { class: 'a-card a-tb', 'aria-labelledby': 'tb-h', 'data-team-board': '', hidden: true });
+    teamBoard(teamId).then(b => {
+      if (!b) return;
+      const joined = Number(b.joined) || 0, pc = b.pact, lt = Array.isArray(b.lead_tasks) ? b.lead_tasks.length : 0;
+      el.hidden = false;
+      put(el, h('h3', { id: 'tb-h' }, icon('users'), h('span', { text: 'فريقي هذا الأسبوع' })),
+        h('p', { class: 'a-lead', text: 'أرقام الفريق كله منذ السبت، بلا أسماء. كل وعد يُكتب ويُوفى به يرفع الفريق.' }),
+        h('div', { class: 'a-tb-g' }, meter('كتبوا وعدهم', b.pledged, joined, 'pledged'), meter('وفّوا بوعدهم', b.kept, joined, 'kept'),
+          meter('طبّقوا فعلًا هذا الأسبوع', b.active, joined, 'active'), meter('آيات عُلّمت في الفريق', b.hifz_sum, joined * AYAHS, 'hifz')),
+        pc ? h('div', { class: 'a-tb-pact', 'data-team-pact': '' }, h('b', { text: 'ميثاق الفريق: ' + (PACT_VALUES[PACT_KEYS.indexOf(pc.value)] || '') }), h('p', { text: pc.how }),
+          h('small', { class: 'a-hint', text: 'المسؤول: ' + (PACT_WHO[WHO_KEYS.indexOf(pc.who)] || PACT_WHO[0]) + (pc.when ? ` · ${pc.when}` : '') }))
+          : h('p', { class: 'a-hint', 'data-team-pact': '', text: 'لم يكتب الفريق ميثاقه بعد. اقترحوا قيمة في اللقاء الأسبوعي.' }),
+        h('small', { class: 'a-hint', 'data-team-lead': '', text: `مهام القائد هذا الأسبوع: ${lt} من ${LEAD_TASKS.length}` }));
+      FX.reveal(el);
+    });
+    return el;
+  }
+
+  // «متابعة الأعضاء»: the leader follows the week (leaders.txt: متابعة الإنجاز الأسبوعي للأعضاء). Each member's promise,
+  // whether it was kept, the ayahs ticked, the days of practice, and the parent's word when there is one.
+  function membersFollowCard(teamId) {
+    const el = h('section', { class: 'a-card a-mf', 'aria-labelledby': 'mf-h', 'data-members-follow': '', hidden: true });
+    function load(focus) {
+      YB.rpc('yb_team_journey', { team_id: teamId, week: weekKey() }).then(r => {
+        if (!r.ok || !r.data) { if (focus) say(errMsg(r)); return; }
+        S.has15 = true;
+        const kids = (Array.isArray(r.data.members) ? r.data.members : []).filter(m => !m.is_leader);
+        const joined = kids.filter(m => m.joined), pledged = kids.filter(m => m.pledge), kept = pledged.filter(m => m.pledge.done), quiet = joined.filter(m => !m.pledge);
+        el.hidden = false;
+        el.counts = { members: kids.length, joined: joined.length, pledged: pledged.length, kept: kept.length };
+        put(el, h('div', { class: 'a-bdgs-top' }, h('h3', { id: 'mf-h' }, icon('users'), h('span', { text: 'متابعة الأعضاء هذا الأسبوع' })),
+          btn('حدّث', 'repeat', 'btn-ghost', () => load('mf-refresh'), { 'data-fk': 'mf-refresh' })),
+          h('p', { class: 'a-lead', text: 'ما سجّله كل عضو في حسابه منذ السبت. راجعه معهم في اللقاء الأسبوعي، والتشجيع أولًا.' }),
+          h('div', { class: 'a-chips', 'data-mf-sum': '' }, chip(`كتبوا وعدهم: ${pledged.length} من ${kids.length}`), chip(`وفّوا به: ${kept.length}`, kept.length ? 'ok' : ''),
+            quiet.length ? chip(`بلا وعد بعد: ${quiet.length}`, 'warn') : null, kids.length - joined.length ? chip(`لم يدخلوا بحسابهم: ${kids.length - joined.length}`) : null),
+          kids.length ? h('ul', { class: 'a-mf-l' }, kids.map(m => h('li', { 'data-mf': m.member_id, class: m.pledge ? (m.pledge.done ? 'kept' : 'open') : 'none' },
+            h('div', { class: 'a-mf-h' }, h('b', { text: m.name }), !m.joined ? chip('لم يدخل بحسابه بعد') : m.pledge ? chip(m.pledge.done ? 'وفّى بوعده' : 'لم يوفِّ بعد', m.pledge.done ? 'ok' : 'warn') : chip('لم يكتب وعده بعد', 'warn')),
+            m.pledge ? pledgeQuote(m.pledge) : null,
+            m.pledge && m.pledge.parent_note ? h('p', { class: 'a-mf-note', 'data-mf-note': '' }, icon('hand-heart'), h('span', { text: 'كلمة وليّ الأمر: ' + m.pledge.parent_note })) : null,
+            m.joined ? h('div', { class: 'a-mf-m' }, meter('آيات سورة الصف', m.hifz, AYAHS, 'hifz'), meter('أيام التطبيق هذا الأسبوع', m.deed_days, 7, 'deeds'), meter('وعود وفّى بها', m.kept, 0, 'kept')) : null)))
+            : h('p', { class: 'a-empty', text: 'لا أعضاء في القائمة بعد.' }),
+          h('small', { class: 'a-hint', text: 'يرى كل عضو أرقام الفريق فقط، لا وعود زملائه.' }));
+        if (focus) { const f = el.querySelector(`[data-fk="${focus}"]`); if (f) f.focus({ preventScroll: true }); say('حُدّثت المتابعة.'); } else FX.reveal(el);
+      });
+    }
+    load();
+    return el;
+  }
+
+  // the parent's view of their own child's week, with a word of encouragement the child and the leader read
+  function childJourneyCard() {
+    const el = h('section', { class: 'a-card a-cj', 'aria-labelledby': 'cj-h', 'data-child-journey': '', hidden: true });
+    function load(focus) {
+      YB.rpc('yb_child_journey', { week: weekKey() }).then(r => {
+        if (!r.ok || !Array.isArray(r.data)) return;
+        S.has15 = true;
+        if (!r.data.length) return;
+        el.hidden = false;
+        put(el, h('h3', { id: 'cj-h' }, icon('route'), h('span', { text: r.data.length > 1 ? 'رحلة أبنائي هذا الأسبوع' : 'رحلة ابني هذا الأسبوع' })),
+          h('p', { class: 'a-lead', text: 'ما سجّله في حسابه منذ السبت. كلمة تشجيع منك تظهر له ولقائد فريقه.' }),
+          r.data.map((c, i) => {
+            const box = h('div', { class: 'a-cj-c', 'data-cj': c.member_id }, h('div', { class: 'a-mf-h' }, h('b', { text: c.name }),
+              !c.joined ? chip('لم يدخل بحسابه بعد') : c.pledge ? chip(c.pledge.done ? 'وفّى بوعده' : 'لم يوفِّ بعد', c.pledge.done ? 'ok' : 'warn') : chip('لم يكتب وعده بعد', 'warn')));
+            if (!c.joined) { box.append(h('p', { class: 'a-hint', text: 'حين يدخل بحسابه وينضم لفريقه برمز الفريق، يظهر هنا وعده وحفظه.' })); return box; }
+            if (c.pledge) box.append(pledgeQuote(c.pledge));
+            box.append(h('div', { class: 'a-mf-m' }, meter('آيات سورة الصف', c.hifz, AYAHS, 'hifz'), meter('أيام التطبيق هذا الأسبوع', c.deed_days, 7, 'deeds'), meter('وعود وفّى بها', c.kept, 0, 'kept')));
+            if (c.pledge) {
+              const id = uid('f'), ta = h('textarea', { id, rows: 2, maxLength: 200, 'data-fk': 'cj-note-' + i, placeholder: 'مثال: رأيتك تساعد أخاك اليوم، بارك الله فيك' });
+              ta.value = c.pledge.parent_note || '';
+              const msg = h('p', { class: 'a-live-msg', role: 'alert', hidden: true });
+              const b = btn(c.pledge.parent_note ? 'حدّث كلمتي' : 'أرسل كلمتي', 'check', 'btn-primary', () => {
+                b.disabled = true;
+                YB.rpc('yb_pledge_note', { member_id: c.member_id, week: weekKey(), note: ta.value.replace(/\s+/g, ' ').trim() }).then(x => {
+                  b.disabled = false;
+                  if (!x.ok) { msg.textContent = errMsg(x, J_ERR); msg.hidden = false; say(msg.textContent); ta.focus(); return; }
+                  say(ta.value.trim() ? 'وصلت كلمتك. يقرؤها ابنك وقائد فريقه.' : 'أُزيلت كلمتك.');
+                  load('cj-save-' + i);
+                });
+              }, { 'data-fk': 'cj-save-' + i });
+              box.append(h('div', { class: 'a-f' }, h('label', { for: id, class: 'a-l', text: 'كلمة تشجيع على وعده (اختياري)' }), ta), msg, h('div', { class: 'a-actions' }, b));
+            } else box.append(h('p', { class: 'a-hint', text: 'ذكّره أن يكتب وعد هذا الأسبوع في «رحلتي»: وعد واحد يقدر عليه.' }));
+            return box;
+          }),
+          h('small', { class: 'a-hint', text: 'ترى هذا لأنك وليّ أمره. لا يراه أولياء الأمور الآخرون.' }));
+        if (focus) { const f = el.querySelector(`[data-fk="${focus}"]`); if (f) f.focus({ preventScroll: true }); } else FX.reveal(el);
+      });
+    }
+    load();
+    return el;
+  }
+
+  // «نشاط الفرق هذا الأسبوع» (the admin and the officers): counts per approved team, the quiet ones named
+  function activityCard() {
+    const el = h('section', { class: 'a-card a-act', 'aria-labelledby': 'act-h', 'data-activity': '', hidden: true });
+    YB.rpc('yb_activity_board', { week: weekKey() }).then(r => {
+      if (!r.ok || !Array.isArray(r.data)) return;
+      S.has15 = true;
+      const live = t => (Number(t.pledged) || 0) + (Number(t.active) || 0) + (Number(t.lead_tasks) || 0);
+      const rows = r.data.slice().sort((a, b) => live(b) - live(a) || String(a.team_name).localeCompare(String(b.team_name), 'ar'));
+      const quiet = rows.filter(t => !live(t));
+      el.hidden = false;
+      put(el, h('h3', { id: 'act-h' }, icon('chart'), h('span', { text: 'نشاط الفرق هذا الأسبوع' })),
+        h('p', { class: 'a-lead', text: 'ما سجّله الأعضاء والقادة في حساباتهم منذ السبت. أعداد فقط، بلا أسماء الأعضاء.' }),
+        rows.length ? h('div', { class: 'a-tablewrap' }, h('table', { class: 'a-tbl a-act-t' },
+          h('thead', {}, h('tr', {}, ['الفريق', 'دخلوا بحسابهم', 'كتبوا وعدًا', 'وفّوا به', 'آيات عُلّمت', 'طبّقوا فعلًا', 'مهام القائد', 'الميثاق'].map(c => h('th', { scope: 'col', text: c })))),
+          h('tbody', {}, rows.map(t => h('tr', { 'data-activity-team': t.team_id, class: live(t) ? '' : 'quiet' },
+            h('th', { scope: 'row' }, h('span', { class: 'a-act-n' }, teamMark(t.team_id, 'sm'), h('span', { text: t.team_name }))),
+            h('td', { text: `${t.joined} من ${t.members}` }), h('td', { text: String(t.pledged) }), h('td', { text: String(t.kept) }), h('td', { text: String(t.hifz_sum) }),
+            h('td', { text: String(t.active) }), h('td', { text: `${t.lead_tasks} من ${LEAD_TASKS.length}` }), h('td', { text: t.pact ? 'مكتوب' : 'لم يُكتب' }))))))
+          : h('p', { class: 'a-empty', text: 'لا فرق معتمدة بعد.' }),
+        quiet.length ? h('p', { class: 'a-act-q', 'data-activity-quiet': '' }, icon('bell'), h('span', { text: `بلا نشاط هذا الأسبوع (${quiet.length}): ${quiet.map(t => t.team_name).join('، ')}. ذكّر قادتها في غرفة القادة.` })) : null);
+      refreshMarks(el);
+      FX.reveal(el);
+    });
+    return el;
+  }
+
+  // «سجل النشاط» (the admin only): who did what, newest first, from the audit log — the action and the actor, no details
+  const LOG_ACT = { team_create: 'أنشأ فريقًا', team_status: 'غيّر حالة فريق', team_delete: 'حذف فريقًا', team_claim: 'استلم فريقًا', team_fee: 'حدّث رسم الاشتراك', team_waitlist: 'نقل فريقًا إلى الانتظار',
+    team_seated: 'أدخل فريقًا من الانتظار', team_transfer: 'نقل قيادة فريق', team_assistant: 'سمّى مساعد القائد', member_add: 'أضاف عضوًا', member_remove: 'حذف عضوًا', member_link: 'انضم عضو بحسابه',
+    member_unlink: 'فُكّ ربط حساب عضو', consent: 'حدّث موافقة وليّ أمر', child_link: 'ربط ابنًا أو ابنة', child_unlink: 'فكّ ربط ابن', role_change: 'غيّر دور حساب', state_publish: 'نشر جدول المباريات',
+    results_publish: 'نشر النتائج', judge_set: 'عيّن محكّمًا', judge_removed: 'أزال محكّمًا', submission_review: 'راجع مشروعًا', submission_feature: 'اختار مشروعًا للعرض', post_delete: 'حذف خبرًا',
+    comment_mute: 'أوقف تعليقات عضو', chat_mute: 'كتم عضوًا في غرفة القادة', chat_unmute: 'رفع الكتم في غرفة القادة', chat_purge: 'حذف رسائل من غرفة القادة', push_on: 'فعّل تنبيهات الهاتف', push_off: 'أوقف تنبيهات الهاتف',
+    invite_send: 'دعا لاعبًا إلى فريقه', invite_accept: 'قبل دعوة فريق', invite_decline: 'اعتذر عن دعوة', invite_cancel: 'ألغى دعوة', seek_save: 'سجّل أنه يبحث عن فريق', seek_stop: 'أوقف البحث عن فريق',
+    seek_guardian: 'وافق وليّ أمر على البحث عن فريق', seek_guardian_revoke: 'سحب وليّ أمر موافقته', attendance: 'سجّل الحضور', members_comment: 'كتب ملاحظة على القائمة' };
+  function logCard() {
+    const el = h('section', { class: 'a-card a-logc', 'aria-labelledby': 'log-h', 'data-log': '', hidden: true });
+    let all = false;
+    function load(focus) {
+      YB.rpc('yb_activity_log', { lim: 60 }).then(r => {
+        if (!r.ok || !Array.isArray(r.data)) return;
+        const rows = r.data, show = all ? rows : rows.slice(0, 10);
+        const when = at => { try { return new Date(at).toLocaleString('ar-u-nu-latn', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } };
+        el.hidden = false;
+        put(el, h('div', { class: 'a-bdgs-top' }, h('h3', { id: 'log-h' }, icon('clock'), h('span', { text: 'سجل النشاط' })), btn('حدّث', 'repeat', 'btn-ghost', () => load('log-refresh'), { 'data-fk': 'log-refresh' })),
+          h('p', { class: 'a-lead', text: 'من فعل ماذا، الأحدث أولًا. يراه المشرف العام فقط.' }),
+          rows.length ? h('ol', { class: 'a-log' }, show.map(x => h('li', { 'data-log-row': x.action },
+            h('time', { datetime: x.at, text: when(x.at) }), h('b', { text: x.actor || 'النظام' }), x.role ? chip(ROLE[x.role] || x.role) : null, h('span', { text: LOG_ACT[x.action] || 'إجراء في النظام' }))))
+            : h('p', { class: 'a-empty', text: 'لا شيء في السجل بعد.' }),
+          rows.length > 10 ? h('div', { class: 'a-actions' }, btn(all ? 'اعرض الأحدث فقط' : `اعرض الكل (${rows.length})`, 'chevron-down', 'btn-ghost', () => { all = !all; load('log-more'); }, { 'data-fk': 'log-more', 'aria-expanded': String(all) })) : null);
+        if (focus) { const f = el.querySelector(`[data-fk="${focus}"]`); if (f) f.focus({ preventScroll: true }); } else FX.reveal(el);
+      });
+    }
+    load();
+    return el;
+  }
 
   // «مسار المسابقة»: the four dates, where today falls, and the phase of the 12-week plan
   function journeyCard() {
@@ -1645,6 +1864,7 @@
             l[tk] = did ? a.filter(k => k !== cur.key) : a.concat(cur.key);
             Object.keys(l).sort().slice(0, -60).forEach(k => delete l[k]);   // keep two months
             mine.set({ deeds: l });
+            J.send('yb_deed_mark', { day: tk, done: l[tk].length > 0 });
             if (!did) { say('أحسنت. سُجّل فعل اليوم.'); FX.pulse(el.querySelector('.a-deed-w'), 'fx-tick'); }
             paint('deed-done');
           }, { 'data-fk': 'deed-done', 'aria-pressed': String(did) }),
@@ -1652,10 +1872,11 @@
         h('div', { class: 'a-deed-w' }, h('ol', { class: 'a-deed-days', 'aria-label': 'آخر سبعة أيام' }, days.map(x => h('li', { class: x.on ? 'on' : '' },
           h('span', { 'aria-hidden': 'true', text: x.d.toLocaleDateString('ar', { weekday: 'narrow' }) }), h('span', { class: 'a-sr', text: `${x.d.toLocaleDateString('ar', { weekday: 'long' })}: ${x.on ? 'طبّقت' : 'لا شيء'}` })))),
           h('span', { 'data-deed-count': '', text: `طبّقت في ${n} من آخر 7 أيام` })),
-        h('small', { class: 'a-hint', text: DEVICE_NOTE }));
+        h('small', { class: 'a-hint', 'data-note': '', text: note15('deed') }));
       if (focus) { const f = el.querySelector(`[data-fk="${focus}"]`); if (f) f.focus({ preventScroll: true }); }
     }
     paint();
+    J.watch(el, () => paint());
     return el;
   }
 
@@ -1663,9 +1884,10 @@
   function pledgeCard() {
     const sat = (() => { const d = today0(); d.setDate(d.getDate() - ((d.getDay() + 1) % 7)); return localDay(d); })();   // the week starts on Saturday
     const el = h('section', { class: 'a-card a-plg', 'aria-labelledby': 'plg-h', 'data-pledge': '' });
+    let saveB = null;
     function paint(edit, focus) {
       const all = mine.get().pledges || {}, cur = all[sat] || null;
-      const kept = Object.keys(all).filter(k => all[k].done).length;
+      const kept = S.has15 ? Number(mine.get().kept) || 0 : Object.keys(all).filter(k => all[k].done).length;
       const head = h('div', { class: 'a-plg-top' }, h('h3', { id: 'plg-h' }, icon('star'), h('span', { text: 'وعدي هذا الأسبوع' })), kept ? h('span', { class: 'a-chip ok', 'data-pledge-kept': '', text: `وعود وفّيت بها: ${kept}` }) : null);
       if (!cur || edit) {
         const idF = uid('f'), idT = uid('f');
@@ -1676,33 +1898,46 @@
         put(el, head, h('p', { class: 'a-lead', text: 'اكتب وعدًا واحدًا تقدر أن تنفذه خلال هذا الأسبوع، وتابعه مع قائد فريقك في اللقاء الأسبوعي.' }),
           h('div', { class: 'a-f' }, h('label', { for: idF, class: 'a-l', text: 'في أي مجال؟' }), sel),
           h('div', { class: 'a-f' }, h('label', { for: idT, class: 'a-l', text: 'أعد هذا الأسبوع أن…' }), ta), msg,
-          h('div', { class: 'a-actions' }, btn('احفظ وعدي', 'check', 'btn-primary', () => {
-            const t = ta.value.replace(/\s+/g, ' ').trim();
+          h('div', { class: 'a-actions' }, (saveB = btn('احفظ وعدي', 'check', 'btn-primary', () => {
+            const t = ta.value.replace(/\s+/g, ' ').trim().slice(0, 140);
             if (t.length < 5) { msg.textContent = 'اكتب وعدك بجملة قصيرة واضحة.'; msg.hidden = false; say(msg.textContent); ta.focus(); return; }
-            all[sat] = { field: sel.value, text: t.slice(0, 140), done: false };
-            Object.keys(all).sort().slice(0, -16).forEach(k => delete all[k]);
-            mine.set({ pledges: all });
-            say('حُفظ وعدك لهذا الأسبوع.');
-            paint(false, 'plg-done');
-          }, { 'data-fk': 'plg-save' }), cur ? h('button', { type: 'button', class: 'a-link', text: 'إلغاء', onclick: () => paint(false, 'plg-edit') }) : null),
-          h('small', { class: 'a-hint', text: DEVICE_NOTE }));
+            const fin = () => {
+              const same = !!cur && S.has15 && cur.text === t && cur.field === sel.value;   // the account keeps "kept" when nothing changed
+              all[sat] = { field: sel.value, text: t, done: same ? !!cur.done : false, note: (cur && cur.note) || '' };
+              Object.keys(all).sort().slice(0, -16).forEach(k => delete all[k]);
+              mine.set({ pledges: all });
+              say(S.has15 ? 'حُفظ وعدك في حسابك. يراه قائد فريقك ووليّ أمرك.' : 'حُفظ وعدك لهذا الأسبوع.');
+              paint(false, 'plg-done');
+            };
+            if (!S.has15) { fin(); return; }
+            saveB.disabled = true;
+            YB.rpc('yb_pledge_save', { week: sat, field: sel.value, body: t }).then(r => {
+              saveB.disabled = false;
+              if (!r.ok) { msg.textContent = errMsg(r, J_ERR); msg.hidden = false; say(msg.textContent); ta.focus(); return; }
+              fin();
+            });
+          }, { 'data-fk': 'plg-save' })), cur ? h('button', { type: 'button', class: 'a-link', text: 'إلغاء', onclick: () => paint(false, 'plg-edit') }) : null),
+          h('small', { class: 'a-hint', 'data-note': '', text: note15('pledge') }));
         if (focus || edit) ta.focus();
         return;
       }
       const fname = (FIELDS.find(f => f[0] === cur.field) || FIELDS[0])[1];
       put(el, head, h('blockquote', { class: 'a-plg-q' + (cur.done ? ' done' : '') }, h('small', { text: fname }), h('p', { 'data-pledge-text': '', text: cur.text })),
         cur.done ? h('p', { class: 'a-plg-ok', role: 'status' }, icon('check'), h('span', { text: 'وفّيت بوعدك هذا الأسبوع. الكلمة أمانة يصدّقها العمل.' })) : null,
+        cur.note ? h('p', { class: 'a-mf-note', 'data-pledge-note': '' }, icon('hand-heart'), h('span', { text: 'كلمة من وليّ أمرك: ' + cur.note })) : null,
         h('div', { class: 'a-actions' },
           cur.done ? null : btn('وفّيت بوعدي', 'check', 'btn-primary', () => {
-            all[sat].done = true; mine.set({ pledges: all });
+            all[sat].done = true; mine.set({ pledges: all, kept: (Number(mine.get().kept) || 0) + 1 });
+            J.send('yb_pledge_done', { week: sat, done: true });
             FX.confetti({ count: 36 }); say('أحسنت! وفّيت بوعدك هذا الأسبوع.');
             paint(false, 'plg-edit');
           }, { 'data-fk': 'plg-done' }),
           btn(cur.done ? 'اكتب وعدًا جديدًا' : 'عدّل الوعد', 'repeat', 'btn-ghost', () => paint(true), { 'data-fk': 'plg-edit' })),
-        h('small', { class: 'a-hint', text: DEVICE_NOTE }));
+        h('small', { class: 'a-hint', 'data-note': '', text: note15('pledge') }));
       if (focus) { const f = el.querySelector(`[data-fk="${focus}"]`); if (f) f.focus({ preventScroll: true }); }
     }
     paint();
+    J.watch(el, () => paint());
     return el;
   }
 
@@ -1721,6 +1956,7 @@
           return h('button', { type: 'button', class: 'a-hifz-a' + (on ? ' on' : ''), 'aria-pressed': String(on), 'aria-label': `الآية ${n}`, 'data-fk': 'ayah-' + n, onclick: () => {
             const next = on ? done.filter(x => x !== n) : done.concat(n).sort((a, b) => a - b);
             mine.set({ hifz: next });
+            J.send('yb_hifz_set', { ayahs: next });
             if (!on && next.length === AYAHS) { FX.confetti(); say('ما شاء الله! علّمت آيات السورة كلها. راجعها مع قائد فريقك.'); } else say(on ? `أُزيلت علامة الآية ${n}` : `عُلّمت الآية ${n}`);
             paint('ayah-' + n);
           } }, String(n));
@@ -1728,10 +1964,11 @@
         done.length === AYAHS ? h('p', { class: 'a-plg-ok', role: 'status' }, icon('check'), h('span', { text: 'علّمت آيات السورة كلها. راجعها مع قائد فريقك قبل التسميع.' })) : null,
         h('div', { class: 'a-actions' }, h('a', { class: 'btn btn-ghost btn-sm', href: 'learn.html' }, icon('sparkles'), h('span', { text: 'تعلّم والعب' })),
           h('a', { class: 'btn btn-ghost btn-sm', href: 'quran.html' }, icon('file-text'), h('span', { text: 'حفظ، فهم، تطبيق' }))),
-        h('small', { class: 'a-hint', text: DEVICE_NOTE }));
+        h('small', { class: 'a-hint', 'data-note': '', text: note15('hifz') }));
       if (focus) { const f = el.querySelector(`[data-fk="${focus}"]`); if (f) f.focus({ preventScroll: true }); }
     }
     paint();
+    J.watch(el, () => paint());
     return el;
   }
 
@@ -1778,19 +2015,28 @@
       return h('li', {}, h('label', { class: 'a-check', for: id }, cb, h('span', {}, h('b', { text: it[1] }), it[2] ? h('small', { text: it[2] }) : null)));
     }));
     paint();
-    return { el: ul, done: () => items.filter(it => state()[it[0]]).length };
+    return { el: ul, done: () => items.filter(it => state()[it[0]]).length, paint, keys: () => items.map(it => it[0]).filter(k => state()[k]) };
   };
-  function leadWeekCard() {
+  function leadWeekCard(teamId) {
     const key = 'lw-' + weekKey();
     const n = h('b', {}), rg = FX.ring(0);
+    let hint = null;
     const ck = checklist(key, LEAD_TASKS, 'lw');
     const sync = () => { n.textContent = `${ck.done()} من ${LEAD_TASKS.length}`; rg.set(ck.done() / LEAD_TASKS.length * 100); };
-    ck.el.onchange2 = () => { sync(); if (ck.done() === LEAD_TASKS.length) { FX.confetti({ count: 30 }); say('أنجزت مهام القائد لهذا الأسبوع.'); } };
+    ck.el.onchange2 = () => { sync(); if (teamId) J.send('yb_lead_week_set', { team_id: teamId, week: weekKey(), tasks: ck.keys() }); if (ck.done() === LEAD_TASKS.length) { FX.confetti({ count: 30 }); say('أنجزت مهام القائد لهذا الأسبوع.'); } };
     sync();
     const el = h('section', { class: 'a-card a-lw', 'aria-labelledby': 'lw-h', 'data-lead-week': '' },
       h('div', { class: 'a-bdgs-top' }, h('h3', { id: 'lw-h' }, icon('check'), h('span', { text: 'مهامي هذا الأسبوع' })), h('span', { class: 'a-bdgs-n', 'data-lead-week-n': '' }, rg, n)),
-      ck.el, h('small', { class: 'a-hint', text: 'تبدأ قائمة جديدة كل سبت. ' + DEVICE_NOTE }));
+      ck.el, (hint = h('small', { class: 'a-hint', 'data-note': '', text: 'تبدأ قائمة جديدة كل سبت. ' + DEVICE_NOTE })));
     el.done = () => ck.done();
+    if (teamId) teamBoard(teamId).then(b => {
+      if (!b) return;
+      const sv = Array.isArray(b.lead_tasks) ? b.lead_tasks : [];
+      if (sv.length || !ck.done()) mine.set({ [key]: sv.reduce((m, k) => { m[k] = 1; return m; }, {}) });
+      else J.send('yb_lead_week_set', { team_id: teamId, week: weekKey(), tasks: ck.keys() });   // ticked before the account kept them
+      hint.textContent = 'تبدأ قائمة جديدة كل سبت. ' + note15('lw');
+      ck.paint(); sync();
+    });
     return el;
   }
   // the weekly meeting: the six parts of the 90 minutes, and a timer that walks through them
@@ -1837,10 +2083,13 @@
     return el;
   }
   // «ميثاق الفريق»: one value, how, who (a role, never a name) and when
-  function pactCard() {
+  function pactCard(teamId) {
     const el = h('section', { class: 'a-card a-pact', 'aria-labelledby': 'pact-h', 'data-pact': '' });
+    const args = p => ({ team_id: teamId, value: PACT_KEYS[Math.max(0, PACT_VALUES.indexOf(p.value))], how: p.how, who: WHO_KEYS[Math.max(0, PACT_WHO.indexOf(p.who))], when_text: p.when || null });
+    let editing = false, saveB = null;
     function paint(edit, focus) {
       const cur = mine.get().pact || null;
+      editing = !cur || !!edit;
       const head = h('h3', { id: 'pact-h' }, icon('hand-heart'), h('span', { text: 'ميثاق الفريق' }));
       if (!cur || edit) {
         const ids = [uid('f'), uid('f'), uid('f'), uid('f')];
@@ -1853,22 +2102,36 @@
         const f = (id, label, node) => h('div', { class: 'a-f' }, h('label', { for: id, class: 'a-l', text: label }), node);
         put(el, head, h('p', { class: 'a-lead', text: 'يختار الفريق قيمة واحدة، ويحدد طريقة تطبيقها، ومن المسؤول، ومتى تُنفَّذ.' }),
           f(ids[0], 'القيمة', val), f(ids[1], 'كيف نطبقها؟', how), f(ids[2], 'من المسؤول؟ (دور، لا اسم)', who), f(ids[3], 'متى؟', when), msg,
-          h('div', { class: 'a-actions' }, btn('احفظ الميثاق', 'check', 'btn-primary', () => {
+          h('div', { class: 'a-actions' }, (saveB = btn('احفظ الميثاق', 'check', 'btn-primary', () => {
             const t = how.value.replace(/\s+/g, ' ').trim();
             if (t.length < 5) { msg.textContent = 'اكتب طريقة التطبيق بجملة قصيرة واضحة.'; msg.hidden = false; say(msg.textContent); how.focus(); return; }
-            mine.set({ pact: { value: val.value, how: t.slice(0, 160), who: who.value, when: when.value.replace(/\s+/g, ' ').trim().slice(0, 60) } });
-            say('حُفظ ميثاق الفريق.');
-            paint(false, 'pact-edit');
-          }, { 'data-fk': 'pact-save' }), cur ? h('button', { type: 'button', class: 'a-link', text: 'إلغاء', onclick: () => paint(false, 'pact-edit') }) : null),
-          h('small', { class: 'a-hint', text: DEVICE_NOTE }));
+            const next = { value: val.value, how: t.slice(0, 160), who: who.value, when: when.value.replace(/\s+/g, ' ').trim().slice(0, 60) };
+            const fin = () => { mine.set({ pact: next }); say(S.has15 && teamId ? 'حُفظ ميثاق الفريق. يراه أعضاء الفريق الآن.' : 'حُفظ ميثاق الفريق.'); paint(false, 'pact-edit'); };
+            if (!S.has15 || !teamId) { fin(); return; }
+            saveB.disabled = true;
+            YB.rpc('yb_pact_save', args(next)).then(r => {
+              saveB.disabled = false;
+              if (!r.ok) { msg.textContent = errMsg(r, J_ERR); msg.hidden = false; say(msg.textContent); how.focus(); return; }
+              if (S.tbP) delete S.tbP[teamId];
+              fin();
+            });
+          }, { 'data-fk': 'pact-save' })), cur ? h('button', { type: 'button', class: 'a-link', text: 'إلغاء', onclick: () => paint(false, 'pact-edit') }) : null),
+          h('small', { class: 'a-hint', 'data-note': '', text: teamId ? note15('pact') : DEVICE_NOTE }));
         if (focus || edit) how.focus();
         return;
       }
       put(el, head, h('dl', { class: 'a-pact-d' }, [['القيمة', cur.value], ['كيف نطبقها؟', cur.how], ['من المسؤول؟', cur.who], ['متى؟', cur.when || '—']].map(r => h('div', {}, h('dt', { text: r[0] }), h('dd', { text: r[1] })))),
-        h('div', { class: 'a-actions' }, btn('عدّل الميثاق', 'repeat', 'btn-ghost', () => paint(true), { 'data-fk': 'pact-edit' })), h('small', { class: 'a-hint', text: DEVICE_NOTE }));
+        h('div', { class: 'a-actions' }, btn('عدّل الميثاق', 'repeat', 'btn-ghost', () => paint(true), { 'data-fk': 'pact-edit' })), h('small', { class: 'a-hint', 'data-note': '', text: teamId ? note15('pact') : DEVICE_NOTE }));
       if (focus) { const f2 = el.querySelector(`[data-fk="${focus}"]`); if (f2) f2.focus({ preventScroll: true }); }
     }
     paint();
+    if (teamId) teamBoard(teamId).then(b => {
+      if (!b) return;
+      const loc = mine.get().pact, a = document.activeElement;
+      if (b.pact) mine.set({ pact: { value: PACT_VALUES[PACT_KEYS.indexOf(b.pact.value)] || PACT_VALUES[0], how: b.pact.how, who: PACT_WHO[WHO_KEYS.indexOf(b.pact.who)] || PACT_WHO[0], when: b.pact.when || '' } });
+      else if (loc) J.send('yb_pact_save', args(loc));   // written before the account kept it
+      if (!(editing && a && el.contains(a))) paint();
+    });
     return el;
   }
   // «مبادرات الفريق»: three completed field initiatives a team (m-kpis), and how the 45 points are judged
@@ -1905,7 +2168,8 @@
       out.value = [`ملخص فريق ${d.team} — ${new Date().toLocaleDateString('ar-u-nu-latn', { day: 'numeric', month: 'long', year: 'numeric' })}`,
         `حالة الفريق: ${d.status}`, `الأعضاء: ${d.members} من ${MAX}`, `موافقات أولياء الأمور: ${d.minors ? `${d.got} من ${d.minors}` : 'لا قاصرين'}`,
         `المبادرات المقبولة: ${d.accepted} من 3`, `مهام القائد هذا الأسبوع: ${d.tasks} من ${LEAD_TASKS.length}`,
-        pact ? `ميثاق الفريق: ${pact.value}، ${pact.how} (${pact.who}${pact.when ? '، ' + pact.when : ''})` : 'ميثاق الفريق: لم يُكتب بعد'].join('\n');
+        d.follow ? `وعود الأعضاء هذا الأسبوع: كتبها ${d.follow.pledged} من ${d.follow.members}، ووفّى بها ${d.follow.kept}` : null,
+        pact ? `ميثاق الفريق: ${pact.value}، ${pact.how} (${pact.who}${pact.when ? '، ' + pact.when : ''})` : 'ميثاق الفريق: لم يُكتب بعد'].filter(Boolean).join('\n');
     };
     const el = h('section', { class: 'a-card a-sum', 'aria-labelledby': 'sum-h', 'data-lead-sum': '' }, h('h3', { id: 'sum-h' }, icon('file-text'), h('span', { text: 'ملخص الأسبوع للمشرف' })),
       h('p', { class: 'a-lead', text: 'أرقام فريقك في سطور، بلا أسماء الأعضاء. حدّثه ثم انسخه وأرسله للمشرف.' }), out,
@@ -3137,7 +3401,7 @@
         O.comps.includes('football') ? (O.today = todayCard()) : null, O.tiles,
         (O.fbd = O.comps.includes('football') ? footballDeskCard() : null), (O.chd = O.comps.includes('chess') ? chessDeskCard((O.roles || []).reduce((m, r) => { if ((r.roles || []).includes('chess')) m[r.team_id] = r.full_name; return m; }, {})) : null),
         (O.hfd = O.comps.some(k => k === 'hifz' || k === 'fahm') ? hifzDeskCard({ teams: O.pub, canSchedule: () => goSec('dates'), roles: (O.roles || []).reduce((m, r) => { const x = m[r.team_id] || (m[r.team_id] = {}); if ((r.roles || []).includes('reciter')) x.reciter = r.full_name; if ((r.roles || []).includes('reserve')) x.reserve = r.full_name; return m; }, {}) }) : null),
-        comps, (O.pulse = pulseCard()), announceFeed()] },
+        activityCard(), comps, (O.pulse = pulseCard()), announceFeed()] },
       feedGroup(),
       { key: 'review', label: 'طلبات التسجيل', icon: 'users', one: true, nodes: [O.comps.includes('registration') ? reviewQueue() : null, O.roles ? roleListCard() : null] },
       { key: 'results', label: 'النتائج', icon: 'flag', one: true, nodes: [games.length ? O.res.el : null] },
@@ -4367,16 +4631,16 @@
     L.opp = oppCard(t.team_id, t.team_name); L.cal = calCard({ teamId: t.team_id, teamName: t.team_name, teamStatus: t.status });
     L.badges = badgesCard({ teamId: t.team_id, teamName: t.team_name, status: t.status, roster: () => { const mn = L.members.filter(m => isMinor(m.age)); return { members: L.members.length, minors: mn.length, got: mn.filter(m => m.consent_status === 'received').length }; } });
     L.pulse = pulseCard();
-    L.lw = leadWeekCard(); L.init = initiativesCard(t);
+    L.lw = leadWeekCard(t.team_id); L.mf = membersFollowCard(t.team_id); L.init = initiativesCard(t);
     L.sum = leadSummaryCard(() => { const mn = L.members.filter(m => isMinor(m.age)); return { team: L.team.team_name, status: STATUS[L.team.status] || L.team.status, members: L.members.length, minors: mn.length,
-      got: mn.filter(m => m.consent_status === 'received').length, accepted: L.init.accepted || 0, tasks: L.lw.done() }; });
+      got: mn.filter(m => m.consent_status === 'received').length, accepted: L.init.accepted || 0, tasks: L.lw.done(), follow: L.mf.counts || null }; });
     dashLayout([
       { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [L.hero, (L.boxes.mday = matchDayCard(t.team_id, t.team_name, 'leader')), (L.boxes.next = nextCard(leaderNext())), leaderTiles(t), L.boxes.top, L.boxes.check, L.staff, L.run, L.opp, L.chs, L.hft, L.badges, L.cal, scoresCard(), L.pulse, announceFeed()] },
       feedGroup(),
       { key: 'matches', label: 'المباريات والمواعيد', icon: 'trophy', one: true, nodes: [L.dates, L.sched.node, L.boxes.marks] },
       { key: 'team', label: 'الفريق', icon: 'users', nodes: [L.boxes.roster, L.boxes.roles, L.boxes.code, (L.style || (L.style = teamStyleCard(t), L.style.start(), L.style)).el, L.printBox] },
       { key: 'projects', label: 'المشاريع والمبادرات', icon: 'image', one: true, nodes: [L.subs.el] },
-      { key: 'lead', label: 'قيادتي', icon: 'flag', nodes: [L.lw, meetingCard(), L.init, pactCard(), workshopCard(), L.sum] },
+      { key: 'lead', label: 'قيادتي', icon: 'flag', nodes: [L.mf, L.lw, meetingCard(), L.init, pactCard(t.team_id), workshopCard(), L.sum] },
       { key: 'players', label: 'لاعبون يبحثون عن فريق', icon: 'users', one: true, nodes: [poolCard('pool')] },
       { key: 'room', label: 'غرفة القادة', icon: 'bell', one: true, nodes: [L.chat.el] },
       { key: 'guide', label: 'المسابقة والنقاط', icon: 'route', nodes: [journeyCard(), (L.points = pointsCard()), honorsCard(), toolsCard(true)] }]);
@@ -4763,7 +5027,7 @@
       box.node];
     dashLayout([
       { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [mHero, mday, nextCard(memberNext(row, ro.ok ? me : null)), memberTiles(row), mv[2], mStaff, mRun, mOpp, mChs, mHft, mBadges, mCal, mv[1], mPulse, mv[0], mv[4]] },
-      { key: 'journey', label: 'رحلتي', icon: 'route', nodes: [journeyCard(), pledgeCard(), deedCard(), surahCard(), mPoints, honorsCard(), toolsCard(false)] },
+      { key: 'journey', label: 'رحلتي', icon: 'route', nodes: [journeyCard(), pledgeCard(), deedCard(), surahCard(), teamBoardCard(row.team_id), mPoints, honorsCard(), toolsCard(false)] },
       feedGroup(),
       { key: 'matches', label: 'المباريات والمواعيد', icon: 'trophy', one: true, nodes: [mv[5], mv[7]] },
       { key: 'team', label: 'الفريق', icon: 'users', nodes: [mv[3], seekCard('seek')] },
@@ -4792,7 +5056,7 @@
     const pExtra = k0 ? [staffCard(k0.team_id), runCard(k0.team_id, k0.team_name), oppCard(k0.team_id, k0.team_name), chessCard(k0.team_id, k0.team_name), hifzTeamCard(k0.team_id), badgesCard({ teamId: k0.team_id, teamName: k0.team_name, status: k0.team_status }),
       calCard({ teamId: k0.team_id, teamName: k0.team_name, teamStatus: k0.team_status })] : [];
     const pPulse = pulseCard(), pPoints = pointsCard();
-    const home = [pHero, mday, nextCard(parentNext(kids)), parentTiles(kids), ...pExtra, scoresCard(), pPulse, announceFeed()];
+    const home = [pHero, mday, nextCard(parentNext(kids)), parentTiles(kids), kids.length ? childJourneyCard() : null, ...pExtra, scoresCard(), pPulse, announceFeed()];
     const nodes = home, games = [];
     const boxes = [];
     if (!kids.length) nodes.push(h('p', { class: 'a-empty a-card', text: 'لم تربط أي ابن أو ابنة بعد. اكتب رمز الفريق واسم الطفل أدناه.' }));
@@ -5624,7 +5888,7 @@
     if (S.dashObs) { S.dashObs.disconnect(); S.dashObs = null; }
     if (S.dashMo) { S.dashMo.disconnect(); S.dashMo = null; }
     if (S.mdays) { Object.values(S.mdays).forEach(f => f()); S.mdays = null; }
-    S.boardP = null; S.stylesP = null; S.subsP = null; S.eventsP = null; S.sh = null; S.feed = null; S.lastGroups = null; S.myColor = null;
+    S.boardP = null; S.stylesP = null; S.subsP = null; S.eventsP = null; S.journeyP = null; S.tbP = null; J.subs = []; J.warned = 0; S.sh = null; S.feed = null; S.lastGroups = null; S.myColor = null;
     document.documentElement.classList.remove('is-dash');
     S.modeSet = null;
     S.focusNext = !!opts.focus;
