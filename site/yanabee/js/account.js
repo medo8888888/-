@@ -1495,10 +1495,10 @@
           teamMark(t.id), h('span', { class: 'a-tw-t' }, h('b', { text: t.name }), h('small', { text: `القائد: ${leaderName(t)}` }), h('small', { class: as ? '' : 'none', text: `المساعد: ${as ? as.full_name : 'لم يُحدَّد'}` })),
           h('span', { class: 'a-tw-m' }, chip(STATUS[t.status] || t.status, TEAM_TONE[t.status]), h('small', { text: `${membersOf(t.id).length} من ${MAX}` }))));
       })) : h('p', { class: 'a-empty', text: 'لم يُسجَّل أي فريق بعد.' }));
-    const pulse = pulseCard();
+    const pulse = pulseCard(), cal = calCard({ all: true });
     if (!A.todayH) { A.todayH = todayCard(); A.todayH.start(); }
-    panel.append(h('div', { class: 'a-home', 'data-admin-home': '' }, hero, wait, followCard(5), nums, mix, A.todayH, pulse, wall));
-    pulse.start();
+    panel.append(h('div', { class: 'a-home', 'data-admin-home': '' }, hero, adminFindCard(), wait, followCard(5), nums, mix, A.todayH, pulse, cal, wall));
+    pulse.start(); cal.start();
   }
   // inside an open team card (admin): the assistant's title and the logo
   function adminIdentity(t) {
@@ -2002,6 +2002,116 @@
       h('div', { class: 'a-bdgs-top' }, h('h3', { id: 'dec-h' }, icon('scale'), h('span', { text: 'القرارات العاجلة لإدارة المسابقة' })), h('span', { class: 'a-bdgs-n', 'data-decisions-n': '' }, dn)),
       ck.el, h('small', { class: 'a-hint', text: DEVICE_NOTE }));
     panel.append(h('div', { class: 'a-home', 'data-admin-plan': '' }, plan, tg, followCard(0), dec));
+  }
+
+  /* ------------------------------------------------------------------ more widgets: the next opponent, the month calendar, the admin's search */
+  const FORM = { W: ['ف', 'w', 'فوز'], D: ['ت', 'd', 'تعادل'], L: ['خ', 'l', 'خسارة'] };
+  // «الخصم القادم»: who the team meets next, side by side with us (the public board)
+  function oppCard(teamId, teamName) {
+    const el = h('section', { class: 'a-card a-opp', 'aria-labelledby': 'opp-h', 'data-opp': '', hidden: true });
+    el.start = async () => {
+      const r = await teamOnBoard(teamId, teamName);
+      if (!r || r.v.group === null || !r.v.row) { el.hidden = true; return; }
+      const head = h('h3', { id: 'opp-h' }, icon('flag'), h('span', { text: 'الخصم القادم' }));
+      const n = r.v.next;
+      if (!n) { put(el, head, h('p', { class: 'a-empty', text: 'لا مباريات متبقية لفريقك.' })); el.hidden = false; return; }
+      let ov = null;
+      try { ov = window.YTour.teamView(r.st, n.opponent); } catch (e) { ov = null; }
+      const us = r.v.row, them = (ov && ov.row) || { p: 0, pts: 0, gf: 0, ga: 0 };
+      const row = (label, a, b) => h('tr', {}, h('td', {}, h('b', { text: String(a) })), h('th', { scope: 'row', text: label }), h('td', {}, h('b', { text: String(b) })));
+      const form = ov ? ov.matches.filter(m => m.played).slice(-5) : [];
+      put(el, head, h('p', { class: 'a-opp-n' }, h('b', { 'data-opp-name': '', text: nameOf(r.st, n.opponent) }), h('small', { text: [n.date ? niceDay(n.date) : '', n.time].filter(Boolean).join(' · ') || 'يُعلن الموعد قريبًا' })),
+        h('table', { class: 'a-opp-t' }, h('caption', { class: 'a-sr', text: 'مقارنة بين فريقنا والخصم' }),
+          h('thead', {}, h('tr', {}, h('th', { scope: 'col', text: 'نحن' }), h('td', {}), h('th', { scope: 'col', text: 'هم' }))),
+          h('tbody', {}, row('المركز', r.v.position || '—', (ov && ov.position) || '—'), row('لعب', us.p, them.p), row('النقاط', us.pts, them.pts), row('له', us.gf, them.gf), row('عليه', us.ga, them.ga))),
+        form.length ? h('div', { class: 'a-run-form' }, h('small', { text: 'آخر نتائجهم' }), h('ol', { class: 'a-run-chips' }, form.map(m => h('li', { class: FORM[m.result.outcome][1] },
+          h('span', { 'aria-hidden': 'true', text: FORM[m.result.outcome][0] }), h('span', { class: 'a-sr', text: `${FORM[m.result.outcome][2]} ${m.result.gf} – ${m.result.ga}` }))))) : h('p', { class: 'a-hint', text: 'لم يلعبوا مباراة بعد.' }));
+      el.hidden = false;
+    };
+    return el;
+  }
+  // «تقويم المواعيد»: the month, with the meetings, the matches and the competition's dates; a day opens its list
+  function eventsOnce() { if (!S.eventsP) S.eventsP = read('yb_events', { select: EV_SELECT, order: 'starts_at.asc' }).then(r => (r.ok && Array.isArray(r.data) ? r.data : null)); return S.eventsP; }
+  // o: { teamId, teamName, teamStatus } for a team's own dates, or { all: true } for the admin
+  function calCard(o) {
+    const el = h('section', { class: 'a-card a-cal', 'aria-labelledby': 'cal-h', 'data-cal': '' });
+    const t = new Date();
+    let y = t.getFullYear(), mo = t.getMonth(), sel = localDay(t), items = [];
+    const two = n => String(n).padStart(2, '0');
+    async function load() {
+      const [evs, g] = await Promise.all([eventsOnce(), boardOnce()]);
+      const out = [];
+      (evs || []).forEach(ev => {
+        const ids = ev.team_ids || [];
+        if (!(o.all || ids.includes(o.teamId) || (!ids.length && o.teamStatus === 'approved'))) return;
+        const d = new Date(ev.starts_at);
+        if (!isNaN(d)) out.push({ day: localDay(d), time: `${two(d.getHours())}:${two(d.getMinutes())}`, title: ev.title, sub: ev.place || '', kind: ev.status === 'cancelled' ? 'x' : ev.kind === 'match' ? 'mt' : 'ev' });
+      });
+      const st = g && g.state;
+      try {
+        if (st && window.YTour && o.teamId) {
+          const tv = (st.teams || []).find(x => x.id === o.teamId) || (st.teams || []).find(x => x.name === o.teamName);
+          if (tv) window.YTour.teamView(st, tv.id).matches.forEach(m => { if (m.date && !out.some(x => x.day === m.date && x.kind === 'mt')) out.push({ day: m.date, time: m.time || '', title: `مباراة ضد ${nameOf(st, m.opponent)}`, sub: m.played ? `النتيجة ${m.result.gf} – ${m.result.ga}` : '', kind: 'mt' }); });
+        } else if (st && window.YTour && o.all) {
+          const fb = window.YTour.football(st);
+          const take = rounds => (rounds || []).forEach(rd => rd.matches.forEach(m => { const d = (m.res && m.res.date) || (m.sched && m.sched.date) || ''; if (d && m.a && m.b && !out.some(x => x.day === d && x.kind === 'mt' && x.title.includes(nameOf(st, m.a)))) out.push({ day: d, time: (m.res && m.res.time) || (m.sched && m.sched.time) || '', title: `${nameOf(st, m.a)} × ${nameOf(st, m.b)}`, sub: m.res ? `${m.sa} – ${m.sb}` : '', kind: 'mt' }); }));
+          if (fb.drawn) { fb.groups.forEach(x => take(x.rounds)); if (fb.final) take(fb.final.rounds); }
+        }
+      } catch (e) { /* no board yet */ }
+      [['start', 'انطلاق المسابقة'], ['end', 'ختام المسابقة'], ['gala', 'حفل توزيع الجوائز']].forEach(m => out.push({ day: SEASON[m[0]], time: '', title: m[1], sub: '', kind: 'ms' }));
+      items = out.sort((a, b) => (a.day + a.time).localeCompare(b.day + b.time));
+      paint();
+    }
+    function paint(focus) {
+      const first = new Date(y, mo, 1), days = new Date(y, mo + 1, 0).getDate(), lead = (first.getDay() + 1) % 7, today = localDay(new Date());
+      const key = d => `${y}-${two(mo + 1)}-${two(d)}`;
+      const of = k => items.filter(x => x.day === k);
+      const cells = Array.from({ length: lead }, () => h('span', { class: 'a-cal-e', 'aria-hidden': 'true' })).concat(Array.from({ length: days }, (_, i) => {
+        const k = key(i + 1), its = of(k);
+        const label = new Date(y, mo, i + 1).toLocaleDateString('ar-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'long' }) + (its.length ? `: ${its.length === 1 ? 'موعد واحد' : its.length === 2 ? 'موعدان' : its.length + ' مواعيد'}` : '');
+        return h('button', { type: 'button', class: 'a-cal-d' + (k === today ? ' today' : '') + (k === sel ? ' sel' : '') + (its.length ? ' has' : ''), 'aria-pressed': String(k === sel), 'aria-label': label, 'data-day': k, 'data-fk': 'cal-' + k,
+          onclick: () => { sel = k; paint('cal-' + k); } }, h('span', { text: String(i + 1) }), its.length ? h('i', { class: 'k-' + its[0].kind, 'aria-hidden': 'true' }) : null);
+      }));
+      const list = of(sel);
+      const next = items.find(x => x.day >= today && x.kind !== 'x');
+      const go = (dy, dm, fk) => () => { const d = new Date(y + dy, mo + dm, 1); y = d.getFullYear(); mo = d.getMonth(); paint(fk); };
+      const KIND = { ev: 'موعد', mt: 'مباراة', ms: 'المسابقة', x: 'أُلغي' };
+      put(el, h('div', { class: 'a-cal-top' }, h('h3', { id: 'cal-h' }, icon('calendar'), h('span', { text: 'تقويم المواعيد' })),
+        h('div', { class: 'a-cal-nav' }, h('button', { type: 'button', class: 'a-cal-b', 'aria-label': 'الشهر السابق', 'data-fk': 'cal-prev', onclick: go(0, -1, 'cal-prev') }, '‹'),
+          h('b', { 'data-cal-month': '', 'aria-live': 'polite', text: first.toLocaleDateString('ar-u-nu-latn', { month: 'long', year: 'numeric' }) }),
+          h('button', { type: 'button', class: 'a-cal-b', 'aria-label': 'الشهر التالي', 'data-fk': 'cal-next', onclick: go(0, 1, 'cal-next') }, '›'))),
+        h('div', { class: 'a-cal-w', 'aria-hidden': 'true' }, ['س', 'ح', 'ن', 'ث', 'ر', 'خ', 'ج'].map(d => h('span', { text: d }))),
+        h('div', { class: 'a-cal-g', role: 'group', 'aria-label': 'أيام الشهر' }, cells),
+        h('div', { class: 'a-cal-l', 'data-cal-list': '' }, h('small', { text: (() => { try { return dayOf(sel).toLocaleDateString('ar-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'long' }); } catch (e) { return sel; } })() }),
+          list.length ? h('ul', {}, list.map(x => h('li', { class: 'k-' + x.kind }, h('span', { class: 'a-cal-k', text: KIND[x.kind] }), h('div', {}, h('b', { text: x.title }), h('small', { text: [x.time, x.sub].filter(Boolean).join(' · ') }))))) : h('p', { class: 'a-hint', text: 'لا مواعيد في هذا اليوم.' }),
+          !list.length && next ? h('button', { type: 'button', class: 'a-link', 'data-fk': 'cal-jump', onclick: () => { const d = dayOf(next.day); y = d.getFullYear(); mo = d.getMonth(); sel = next.day; paint('cal-' + next.day); } }, `أقرب موعد: ${next.title}`) : null));
+      if (focus) { const f = el.querySelector(`[data-fk="${focus}"]`); if (f) f.focus({ preventScroll: true }); }
+    }
+    paint();
+    el.start = load;
+    return el;
+  }
+  // the admin's search: teams, members and accounts in one box
+  function adminFindCard() {
+    const out = h('ul', { class: 'a-find-l', 'data-find-list': '' });
+    const st = h('small', { class: 'a-hint', role: 'status' });
+    const openTeam = t => () => { A.open[t.id] = true; A.filter = 'all'; A.q = ''; A.tab = 'teams'; drawAdmin('th-' + t.id); const c = root.querySelector(`[data-team="${CSS.escape(t.id)}"]`); if (c) c.scrollIntoView({ block: 'start', behavior: smooth() }); };
+    const inp = h('input', { type: 'search', class: 'a-search', placeholder: 'ابحث عن فريق أو عضو أو حساب أو حي…', 'aria-label': 'ابحث في الفرق والأعضاء والحسابات', 'data-fk': 'find', autocomplete: 'off' });
+    let res = [];
+    const run = () => {
+      const q = lower(inp.value.trim());
+      res = [];
+      if (q.length >= 2) {
+        A.teams.forEach(t => { if (lower(t.name).includes(q) || lower(t.area || '').includes(q) || lower(leaderName(t)).includes(q)) res.push({ kind: 'فريق', title: t.name, sub: [t.area, `القائد: ${leaderName(t)}`, STATUS[t.status]].filter(Boolean).join(' · '), go: openTeam(t) }); });
+        A.members.forEach(m => { const t = A.teams.find(x => x.id === m.team_id); if (t && !m.is_leader && lower(m.full_name).includes(q)) res.push({ kind: 'عضو', title: m.full_name, sub: `فريق ${t.name}`, go: openTeam(t) }); });
+        A.profiles.forEach(p => { if (lower(p.full_name || '').includes(q) || lower(p.email || '').includes(q)) res.push({ kind: 'حساب', title: p.full_name || p.email, sub: [ROLE[p.role] || '', p.email].filter(Boolean).join(' · '), go: () => { A.pq = inp.value.trim(); A.tab = 'people'; drawAdmin('tab-people'); } }); });
+      }
+      put(out, res.slice(0, 8).map((r, i) => h('li', {}, h('button', { type: 'button', class: 'a-find-b', 'data-fk': 'find-' + i, onclick: r.go }, h('span', { class: 'a-chip brand', text: r.kind }), h('span', { class: 'a-find-t' }, h('b', { text: r.title }), h('small', { text: r.sub })), icon('arrow-left')))));
+      st.textContent = q.length < 2 ? '' : res.length ? `${res.length} ${res.length === 1 ? 'نتيجة' : 'نتائج'}${res.length > 8 ? '، تظهر أول 8' : ''}` : 'لا نتائج.';
+    };
+    inp.addEventListener('input', run);
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter' && res.length) { e.preventDefault(); res[0].go(); } });
+    return h('section', { class: 'a-card a-find', 'aria-labelledby': 'find-h', 'data-find': '' }, h('h3', { id: 'find-h', class: 'a-sr', text: 'بحث' }), h('span', { class: 'a-search-w' }, icon('search'), inp), st, out);
   }
 
   /* ------------------------------------------------------------------ notifications (in-app inbox) */
@@ -4110,13 +4220,14 @@
       ['قيادتي', 'flag', () => goSec('lead'), 'lead'], ['اكتب خبرًا', 'megaphone', () => goSec('feed'), 'feed'], ['المشاريع', 'image', () => goSec('projects'), 'projects']] });
     L.staff = staffCard(t.team_id, { members: () => L.members, after: msg => reloadLeader(msg) });
     L.run = runCard(t.team_id, t.team_name);
+    L.opp = oppCard(t.team_id, t.team_name); L.cal = calCard({ teamId: t.team_id, teamName: t.team_name, teamStatus: t.status });
     L.badges = badgesCard({ teamId: t.team_id, teamName: t.team_name, status: t.status, roster: () => { const mn = L.members.filter(m => isMinor(m.age)); return { members: L.members.length, minors: mn.length, got: mn.filter(m => m.consent_status === 'received').length }; } });
     L.pulse = pulseCard();
     L.lw = leadWeekCard(); L.init = initiativesCard(t);
     L.sum = leadSummaryCard(() => { const mn = L.members.filter(m => isMinor(m.age)); return { team: L.team.team_name, status: STATUS[L.team.status] || L.team.status, members: L.members.length, minors: mn.length,
       got: mn.filter(m => m.consent_status === 'received').length, accepted: L.init.accepted || 0, tasks: L.lw.done() }; });
     dashLayout([
-      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [L.hero, (L.boxes.mday = matchDayCard(t.team_id, t.team_name, 'leader')), (L.boxes.next = nextCard(leaderNext())), leaderTiles(t), L.boxes.top, L.boxes.check, L.staff, L.run, L.badges, scoresCard(), L.pulse, announceFeed()] },
+      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [L.hero, (L.boxes.mday = matchDayCard(t.team_id, t.team_name, 'leader')), (L.boxes.next = nextCard(leaderNext())), leaderTiles(t), L.boxes.top, L.boxes.check, L.staff, L.run, L.opp, L.badges, L.cal, scoresCard(), L.pulse, announceFeed()] },
       feedGroup(),
       { key: 'matches', label: 'المباريات والمواعيد', icon: 'trophy', one: true, nodes: [L.dates, L.sched.node, L.boxes.marks] },
       { key: 'team', label: 'الفريق', icon: 'users', nodes: [L.boxes.roster, L.boxes.roles, L.boxes.code, (L.style || (L.style = teamStyleCard(t), L.style.start(), L.style)).el, L.printBox] },
@@ -4127,7 +4238,7 @@
       { key: 'guide', label: 'المسابقة والنقاط', icon: 'route', nodes: [journeyCard(), (L.points = pointsCard()), honorsCard(), toolsCard(true)] }]);
     L.subs.start();
     L.boxes.mday.start();
-    L.hero.start(); L.staff.start(); L.run.start(); L.badges.start(); L.pulse.start(); L.points.start(); L.init.start(); L.sum.start();
+    L.hero.start(); L.staff.start(); L.run.start(); L.badges.start(); L.pulse.start(); L.points.start(); L.init.start(); L.sum.start(); L.opp.start(); L.cal.start();
     if (t.status === 'approved') celebrateOnce('ap-' + t.team_id, 'مبارك! فريقك معتمد في المسابقة.');
     paintLeader();
     startSchedule([L.sched]);
@@ -4491,7 +4602,7 @@
     const mday = matchDayCard(row.team_id, row.team_name, 'member');
     const mHero = heroCard({ name: profile.full_name, sub: `عضو في ${/^فريق\s/.test(row.team_name) ? '' : 'فريق '}${row.team_name}`, teamId: row.team_id, teamName: row.team_name, actions: [
       ['رحلتي', 'route', () => goSec('journey'), 'journey'], ['مباريات فريقي', 'trophy', () => goSec('matches'), 'matches'], ['الأخبار', 'megaphone', () => goSec('feed'), 'feed'], ['أعضاء فريقي', 'users', () => goSec('team'), 'team']] });
-    const mStaff = staffCard(row.team_id), mRun = runCard(row.team_id, row.team_name), mPulse = pulseCard(), mPoints = pointsCard();
+    const mStaff = staffCard(row.team_id), mRun = runCard(row.team_id, row.team_name), mPulse = pulseCard(), mPoints = pointsCard(), mOpp = oppCard(row.team_id, row.team_name), mCal = calCard({ teamId: row.team_id, teamName: row.team_name, teamStatus: row.status });
     const mBadges = badgesCard({ teamId: row.team_id, teamName: row.team_name, status: row.status, roster: () => ({ members: ro.ok ? roster.length : null, minors: null, got: null }) });
     const mv = [
       announceFeed(),
@@ -4507,7 +4618,7 @@
       row.status === 'approved' ? teamSubsView(row.team_id, row.team_name) : null,
       box.node];
     dashLayout([
-      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [mHero, mday, nextCard(memberNext(row, ro.ok ? me : null)), memberTiles(row), mv[2], mStaff, mRun, mBadges, mv[1], mPulse, mv[0], mv[4]] },
+      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [mHero, mday, nextCard(memberNext(row, ro.ok ? me : null)), memberTiles(row), mv[2], mStaff, mRun, mOpp, mBadges, mCal, mv[1], mPulse, mv[0], mv[4]] },
       { key: 'journey', label: 'رحلتي', icon: 'route', nodes: [journeyCard(), pledgeCard(), deedCard(), surahCard(), mPoints, honorsCard(), toolsCard(false)] },
       feedGroup(),
       { key: 'matches', label: 'المباريات والمواعيد', icon: 'trophy', one: true, nodes: [mv[5], mv[7]] },
@@ -4515,7 +4626,7 @@
       { key: 'projects', label: 'المشاريع والمبادرات', icon: 'image', one: true, nodes: [mv[6]] }]);
     startSchedule([box]);
     mday.start();
-    [mHero, mStaff, mRun, mBadges, mPulse, mPoints].forEach(x => x.start());
+    [mHero, mStaff, mRun, mBadges, mPulse, mPoints, mOpp, mCal].forEach(x => x.start());
   }
 
   /* ------------------------------------------------------------------ PARENT */
@@ -4534,7 +4645,8 @@
     const pHero = heroCard({ name: profile.full_name, sub: k0 ? `ولي أمر في ${/^فريق\s/.test(k0.team_name) ? '' : 'فريق '}${k0.team_name}` : 'اربط ابنك أو ابنتك لتتابع فريقه من هنا.', teamId: k0 && k0.team_id, teamName: k0 && k0.team_name, actions: [
       k0 ? ['موافقتي', 'user-check', () => goCard(root.querySelector('[data-child]')), 'consent'] : null, k0 ? ['المباريات', 'trophy', () => goSec('matches'), 'matches'] : null,
       ['الأخبار', 'megaphone', () => goSec('feed'), 'feed'], ['اربط ابنًا أو ابنة', 'users', () => goSec('link'), 'link']] });
-    const pExtra = k0 ? [staffCard(k0.team_id), runCard(k0.team_id, k0.team_name), badgesCard({ teamId: k0.team_id, teamName: k0.team_name, status: k0.team_status })] : [];
+    const pExtra = k0 ? [staffCard(k0.team_id), runCard(k0.team_id, k0.team_name), oppCard(k0.team_id, k0.team_name), badgesCard({ teamId: k0.team_id, teamName: k0.team_name, status: k0.team_status }),
+      calCard({ teamId: k0.team_id, teamName: k0.team_name, teamStatus: k0.team_status })] : [];
     const pPulse = pulseCard(), pPoints = pointsCard();
     const home = [pHero, mday, nextCard(parentNext(kids)), parentTiles(kids), ...pExtra, scoresCard(), pPulse, announceFeed()];
     const nodes = home, games = [];
@@ -5368,7 +5480,7 @@
     if (S.dashObs) { S.dashObs.disconnect(); S.dashObs = null; }
     if (S.dashMo) { S.dashMo.disconnect(); S.dashMo = null; }
     if (S.mdays) { Object.values(S.mdays).forEach(f => f()); S.mdays = null; }
-    S.boardP = null; S.stylesP = null; S.subsP = null; S.sh = null; S.feed = null; S.lastGroups = null; S.myColor = null;
+    S.boardP = null; S.stylesP = null; S.subsP = null; S.eventsP = null; S.sh = null; S.feed = null; S.lastGroups = null; S.myColor = null;
     document.documentElement.classList.remove('is-dash');
     S.modeSet = null;
     S.focusNext = !!opts.focus;

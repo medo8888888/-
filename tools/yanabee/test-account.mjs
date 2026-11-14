@@ -4497,6 +4497,85 @@ section('«قيادتي» for the team leader and «الخطة والمؤشرا�
   await close(A);
 }
 
+section('the bento look, «الخصم القادم», «تقويم المواعيد» and the admin\'s search');
+{
+  const fake = new Fake();
+  fake.addUser({ email: 'boss@t.test', name: 'محمود المشرف', role: 'member' }); fake.setAdmin('boss@t.test');
+  fake.addUser({ email: 'lz@t.test', name: 'زياد قائد الريح', role: 'leader' });
+  const TZ = fake.seedTeam({ leaderEmail: 'lz@t.test', name: 'الريح', status: 'approved', members: Array.from({ length: 4 }, (_, i) => ({ name: `لاعب الريح ${i + 1}`, age: 13, consent: 'received' })) });
+  const others = Array.from({ length: 11 }, (_, i) => ({ id: 'bz' + i, name: 'فريق ' + (i + 1) }));
+  let st = YT.setTeams(YT.emptyState(), [{ id: TZ.id, name: 'الريح' }, ...others]);
+  st = YT.drawGroups(st, () => 0.5);
+  const opps = st.groups.find(x => x.includes(TZ.id)).filter(x => x !== TZ.id);
+  const nm = id => (others.find(o => o.id === id) || {}).name;
+  st = YT.setResult(st, { a: TZ.id, b: opps[0], sa: 3, sb: 0, date: '2026-11-10', time: '16:00' });
+  st = YT.setResult(st, { a: opps[2], b: opps[1], sa: 2, sb: 1, date: '2026-11-11', time: '16:00' });
+  const pad = n => String(n).padStart(2, '0'), now = new Date();
+  const inMonth = d => `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(d)}`;
+  const last = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const matchDay = inMonth(now.getDate() === last ? last - 1 : last), meetDay = inMonth(now.getDate() === 1 ? 2 : 1);
+  st = YT.setSchedule(st, TZ.id, opps[2], { date: matchDay, time: '17:30' });
+  fake.setTournament(st);
+  fake.events.push({ id: fake.uid(), competition: 'hifz', kind: 'meeting', title: 'لقاء قادة الفرق', starts_at: new Date(`${meetDay}T16:00:00`).toISOString(), place: 'مقر الجمعية', team_ids: [], category: null, status: 'scheduled', note: null });
+
+  const L = await open(fake, { label: 'bento-leader', viewport: { width: 1440, height: 1000 } });
+  await settle(L); await signInOk(L, 'lz@t.test');
+  await L.waitForSelector('[data-opp]:not([hidden]) [data-opp-name]', { timeout: 8000 });
+  await L.waitForFunction(d => !!document.querySelector(`[data-cal] [data-day="${d}"].has`), matchDay, { timeout: 8000 });
+  const op = L.locator('[data-opp]');
+  check('«الخصم القادم»: the opponent, the date, and us beside them on five lines', (await op.locator('[data-opp-name]').innerText()) === nm(opps[2]) && /17:30/.test(await op.innerText()) && (await op.locator('.a-opp-t tbody tr').count()) === 5
+    && (await op.locator('.a-opp-t tbody tr').nth(2).innerText()).replace(/\s+/g, ' ').trim() === '3 النقاط 3' && /آخر نتائجهم/.test(await op.innerText()), await op.innerText());
+  const cal = L.locator('[data-cal]');
+  check('«تقويم المواعيد»: this month, every day a button, today marked', (await cal.locator('.a-cal-d').count()) === last && (await cal.locator('.a-cal-d.today').getAttribute('data-day')) === inMonth(now.getDate())
+    && (await cal.locator('[data-cal-month]').innerText()) === now.toLocaleDateString('ar-u-nu-latn', { month: 'long', year: 'numeric' }));
+  await cal.locator(`[data-day="${matchDay}"]`).click();
+  check('a day opens its list: the team\'s match with the hour', new RegExp(`مباراة ضد ${nm(opps[2])}`).test(await cal.locator('[data-cal-list]').innerText()) && /17:30/.test(await cal.locator('[data-cal-list]').innerText())
+    && (await cal.locator(`[data-day="${matchDay}"]`).getAttribute('aria-pressed')) === 'true' && /موعد واحد|موعدان|مواعيد/.test(await cal.locator(`[data-day="${matchDay}"]`).getAttribute('aria-label')));
+  await cal.locator(`[data-day="${meetDay}"]`).click();
+  check('a meeting for every approved team shows with its place', /لقاء قادة الفرق/.test(await cal.locator('[data-cal-list]').innerText()) && /مقر الجمعية/.test(await cal.locator('[data-cal-list]').innerText()));
+  await cal.locator('[data-fk="cal-next"]').click();
+  const nxt = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  check('«الشهر التالي» moves a month and keeps the keyboard on the button', (await cal.locator('[data-cal-month]').innerText()) === nxt.toLocaleDateString('ar-u-nu-latn', { month: 'long', year: 'numeric' }) && await L.evaluate(() => document.activeElement.dataset.fk === 'cal-next'));
+  // bento
+  const box = async sel => L.locator(sel).first().boundingBox();
+  const run = await box('[data-run]'), opb = await box('[data-opp]'), k1 = await box('[data-kpis] .a-kpi:nth-child(1)'), k2 = await box('[data-kpis] .a-kpi:nth-child(2)');
+  check('bento: «مشوار الفريق» (wide) and «الخصم القادم» (narrow) share a row, as tall as each other', Math.abs(run.y - opb.y) < 2 && run.width > opb.width * 1.6 && Math.abs(run.height - opb.height) < 2, JSON.stringify([run, opb]));
+  check('the first number is the feature tile (wider, white on a dark gradient)', k1.width > k2.width * 1.5 && await L.locator('[data-kpis] .a-kpi:nth-child(1) .a-kpi-v').evaluate(e => getComputedStyle(e).color === 'rgb(255, 255, 255)'));
+  check('the number tiles fill every row (no tile left beside a gap)', await L.locator('[data-kpis]').evaluate(g => { const W = g.getBoundingClientRect().width, rows = {}; [...g.children].forEach(c => { const r = c.getBoundingClientRect(); const k = Math.round(r.top); rows[k] = (rows[k] || 0) + r.width; }); const n = Object.keys(rows).length; return Object.values(rows).every(w => W - w < 12 * 8 && W - w >= 0) && Object.values(rows).every(w => w > W * 0.85) && n >= 1; }));
+  check('the reading order is the page order (the welcome card first, then the next step)', await L.evaluate(() => { const k = [...document.querySelector('#sec-home .a-grid').children].filter(c => !c.hidden); return k[0].matches('[data-hero]') && k[1].matches('[data-next]') && k[0].getBoundingClientRect().top < k[1].getBoundingClientRect().top; }));
+  check('card headings carry an icon chip; no overflow at 1440px', await L.locator('[data-run] h3 .i').evaluate(e => getComputedStyle(e).borderRadius === '12px' && e.getBoundingClientRect().width === 36) && (await overflow(L)) <= 0);
+  check('leader console clean (bento)', L.errs.length === 0, L.errs.join('|'));
+  await close(L);
+  const M = await open(fake, { label: 'bento-phone', mobile: true });
+  await settle(M); await signInOk(M, 'lz@t.test');
+  await M.waitForSelector('[data-cal] .a-cal-d');
+  check('phone: the feature tile takes the full row, the rest pair up, days are 44px, nothing overflows', await M.locator('[data-kpis]').evaluate(g => { const W = g.getBoundingClientRect().width, c = [...g.children].map(x => x.getBoundingClientRect().width); return c[0] > W - 2 && c[1] < W * 0.52 && c[1] > W * 0.45; })
+    && await M.locator('[data-cal] .a-cal-d').first().evaluate(e => e.getBoundingClientRect().height >= 44) && (await overflow(M)) <= 0);
+  await close(M);
+
+  const A = await open(fake, { label: 'bento-admin', viewport: { width: 1440, height: 1000 } });
+  await settle(A); await signInOk(A, 'boss@t.test', undefined, { home: true });
+  await A.waitForSelector('[data-admin-home] [data-find]', { timeout: 8000 });
+  await A.locator('[data-fk="find"]').fill('الريح');
+  const fr = (await A.locator('[data-find-list] li').allInnerTexts()).map(t => t.replace(/\s+/g, ' ').trim());
+  check('the admin\'s search finds the team, its members and the leader\'s account in one box', fr.length === 6 && /^فريق الريح .*القائد: زياد قائد الريح · معتمد/.test(fr[0]) && fr.filter(x => /^عضو لاعب الريح \d فريق الريح$/.test(x)).length === 4 && /^حساب زياد قائد الريح قائد الفريق · lz@t\.test$/.test(fr[5])
+    && /6 نتائج/.test(await A.locator('[data-find]').innerText()), fr.join(' || '));
+  await A.locator('[data-fk="find"]').press('Enter');
+  await A.waitForSelector(`#ap-teams [data-team="${TZ.id}"].open`);
+  check('Enter opens the first result (the team\'s card)', (await A.locator('#at-teams').getAttribute('aria-selected')) === 'true');
+  await A.locator('#at-home').click();
+  await A.locator('[data-fk="find"]').fill('lz@t');
+  await A.locator('[data-find-list] [data-fk="find-0"]').click();
+  await A.waitForSelector('#ap-people');
+  check('an account result opens «الأشخاص» with the search filled in', /زياد قائد الريح/.test(await A.locator('#ap-people').innerText()) && !/محمود المشرف/.test(await A.locator('#ap-people .a-list, #ap-people').first().innerText().then(t => t.split('زياد')[0].slice(-200))));
+  await A.locator('#at-home').click();
+  await A.waitForFunction(d => !!document.querySelector(`[data-admin-home] [data-cal] [data-day="${d}"].has`), matchDay, { timeout: 8000 });
+  await A.locator(`[data-admin-home] [data-cal] [data-day="${matchDay}"]`).click();
+  check('the admin\'s calendar shows every team\'s matches by name', new RegExp(`(الريح × ${nm(opps[2])}|${nm(opps[2])} × الريح)`).test(await A.locator('[data-admin-home] [data-cal-list]').innerText()));
+  check('admin console clean (bento)', A.errs.length === 0, A.errs.join('|'));
+  await close(A);
+}
+
 section('network hosts and console');
 check('no request to any host other than the page itself, the fake Supabase and the shell fonts', badHosts.size === 0, [...badHosts].join());
 check('no console error and no uncaught exception in any page', consoleErrors.length === 0, consoleErrors.slice(0, 5).join(' || '));

@@ -193,7 +193,6 @@
 .a-home{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));align-items:start}
 .a-home>*{min-width:0}
 .a-home>.a-kpis,.a-home>.a-wall,.a-home>.a-today{grid-column:1/-1}
-.a-home>.a-kpis{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
 .a-wait-n{display:grid;place-items:center;min-width:30px;height:30px;padding:0 9px;border-radius:99px;background:var(--sun);color:#fff;font-variant-numeric:tabular-nums;animation:fx-pop .5s cubic-bezier(.3,1.5,.5,1)}
 .a-wait-l{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .a-wait-l li{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--r-sm);background:var(--surface-2);border-inline-start:4px solid var(--sun);min-width:0}
@@ -364,7 +363,106 @@
 .a-fol-t{flex:1;display:grid;gap:4px;min-width:0}
 .a-fol-t b{overflow-wrap:anywhere}
 .a-fol-c{display:flex;flex-wrap:wrap;gap:4px}
-.a-home>.a-mix,.a-home>.a-ops{grid-column:1/-1}
+.a-home>.a-ops{grid-column:1/-1}
+
+/* ---------- more widgets: the next opponent, the calendar, the admin's search ---------- */
+.a-opp-n{display:grid;margin:0 0 10px}
+.a-opp-n b{font-size:1.3rem;overflow-wrap:anywhere}
+.a-opp-n small{color:var(--ink-2)}
+.a-opp-t{width:100%;border-collapse:collapse;margin-bottom:6px;table-layout:fixed}
+.a-opp-t th,.a-opp-t td{padding:7px 4px;text-align:center;border-bottom:1px solid var(--line)}
+.a-opp-t thead th{color:var(--ink-2);font-size:.82rem;font-weight:600}
+.a-opp-t tbody th{font-weight:500;color:var(--ink-2);font-size:.88rem}
+.a-opp-t td b{font:800 1.1rem var(--font-h);font-variant-numeric:tabular-nums}
+.a-opp-t tbody td:first-child b{color:var(--brand)}
+.a-opp-t tr:last-child th,.a-opp-t tr:last-child td{border-bottom:0}
+.a-cal-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.a-cal-top h3{margin:0}
+.a-cal-nav{display:flex;align-items:center;gap:8px}
+.a-cal-nav b{min-width:9ch;text-align:center}
+.a-cal-b{width:44px;height:44px;border-radius:14px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink);font:700 1.3rem/1 var(--font);cursor:pointer}
+.a-cal-b:hover{border-color:var(--brand);color:var(--brand)}
+.a-cal-w,.a-cal-g{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.a-cal-w span{text-align:center;color:var(--ink-2);font-size:.78rem;font-weight:700;padding:2px 0}
+.a-cal-d{position:relative;display:grid;place-items:center;min-height:44px;border-radius:12px;border:1px solid transparent;background:var(--surface-2);color:var(--ink);font:600 .95rem var(--font);font-variant-numeric:tabular-nums;cursor:pointer}
+.a-cal-d:hover{border-color:var(--line-2)}
+.a-cal-d.today{border-color:var(--brand);color:var(--brand);font-weight:800}
+.a-cal-d.has{background:color-mix(in oklab,var(--brand) 10%,var(--surface))}
+.a-cal-d.sel{background:var(--brand);border-color:var(--brand);color:var(--on-brand)}
+.a-cal-d i{position:absolute;inset-block-end:5px;width:6px;height:6px;border-radius:50%;background:var(--brand)}
+.a-cal-d i.k-mt{background:var(--sun)}
+.a-cal-d i.k-ms{background:#b8860b}
+.a-cal-d i.k-x{background:var(--muted)}
+.a-cal-d.sel i{background:var(--on-brand)}
+.a-cal-l{margin-top:12px;padding-top:12px;border-top:1px dashed var(--line);display:grid;gap:8px}
+.a-cal-l>small{color:var(--ink-2);font-weight:700}
+.a-cal-l ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.a-cal-l li{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border-radius:var(--r-sm);background:var(--surface-2)}
+.a-cal-l li>div{display:grid;min-width:0}
+.a-cal-l li b{overflow-wrap:anywhere}
+.a-cal-l li small{color:var(--ink-2)}
+.a-cal-l li.k-x b{text-decoration:line-through;color:var(--ink-2)}
+.a-cal-k{flex:none;font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:99px;background:color-mix(in oklab,var(--brand) 14%,var(--surface));color:color-mix(in oklab,var(--brand) 78%,var(--ink))}
+.a-cal-l li.k-mt .a-cal-k{background:color-mix(in oklab,var(--sun) 16%,var(--surface));color:color-mix(in oklab,var(--sun) 45%,var(--ink))}
+.a-cal-l li.k-ms .a-cal-k{background:color-mix(in oklab,#f2c14e 30%,var(--surface));color:var(--ink)}
+.a-cal-l .a-link{justify-self:start;min-height:44px}
+.a-find{grid-column:1/-1;padding-block:14px}
+.a-find .a-search-w{display:flex}
+.a-find-l{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:6px}
+.a-find-l:empty{display:none}
+.a-find-b{display:flex;align-items:center;gap:10px;width:100%;min-height:52px;padding:8px 12px;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;text-align:start;cursor:pointer}
+.a-find-b:hover{border-color:var(--brand)}
+.a-find-t{flex:1;display:grid;min-width:0}
+.a-find-t b{overflow-wrap:anywhere}
+.a-find-t small{color:var(--ink-2);font-size:.84rem;overflow-wrap:anywhere}
+.a-find-b>.i{width:16px;height:16px;color:var(--muted)}
+
+/* ==========================================================================
+   The bento look (owner, 14 Nov 2026: "redesign the dashboard"): one tight grid of cards of different sizes, a
+   feature tile for the first number, tinted cards, icon chips in the headings. Layout and paint only: the order in
+   the page (and so the reading and keyboard order) stays as written.
+   ========================================================================== */
+html.is-dash body{background-image:radial-gradient(900px 480px at 100% -8%,color-mix(in oklab,var(--brand) 10%,transparent),transparent 70%),radial-gradient(700px 420px at -6% 30%,color-mix(in oklab,var(--sky) 8%,transparent),transparent 70%);background-attachment:fixed}
+.a-app.dash .a-sec .a-card,.a-app.dash .a-home>.a-card{--k:var(--brand);border-radius:22px;background:linear-gradient(180deg,color-mix(in oklab,var(--k) 6%,var(--surface)) 0,var(--surface) 110px)}
+.a-app.dash .a-sec .a-card>h3>.i,.a-app.dash .a-sec .a-card>div>h3>.i,.a-app.dash .a-home>.a-card>h3>.i,.a-app.dash .a-home>.a-card>div>h3>.i{box-sizing:border-box;width:36px;height:36px;padding:8px;border-radius:12px;background:color-mix(in oklab,var(--k) 14%,var(--surface));color:color-mix(in oklab,var(--k) 85%,var(--ink))}
+.a-app.dash .a-card>h3,.a-app.dash .a-card>div>h3{display:flex;align-items:center;gap:10px}
+.a-app.dash .a-run,.a-app.dash .a-opp{--k:var(--sky)}
+.a-app.dash .a-bdgs,.a-app.dash .a-hon{--k:#b8860b}
+.a-app.dash .a-staff,.a-app.dash .a-lw,.a-app.dash .a-meet{--k:var(--sun)}
+.a-app.dash .a-cal,.a-app.dash .a-jr,.a-app.dash .a-ops{--k:var(--leaf)}
+.a-app.dash .a-plg,.a-app.dash .a-pact,.a-app.dash .a-deed{--k:var(--sun)}
+.a-app.dash .a-hifz,.a-app.dash .a-pts,.a-app.dash .a-tg{--k:var(--t6)}
+.a-app.dash .a-wait,.a-app.dash .a-fol{--k:var(--sun)}
+.a-app.dash .a-sec-h{font-size:1.4rem;padding-bottom:6px}
+.a-app.dash .a-sec-h::after{content:'';position:absolute;inset-block-end:0;inset-inline-start:0;width:46px;height:4px;border-radius:99px;background:var(--grad)}
+/* the numbers: the first tile is the feature tile */
+/* tiles stretch to fill each row, so no tile is ever left alone beside a gap */
+.a-app.dash .a-kpis{display:flex;flex-wrap:wrap}
+.a-app.dash .a-kpi{flex:1 1 150px;border-radius:20px;padding:16px}
+.a-app.dash .a-kpis>.a-kpi:first-child{flex:2 1 300px;border:0;color:#fff;background:linear-gradient(135deg,#075a62 0%,#0d6f8a 50%,#1b4aa8 100%);box-shadow:0 14px 30px -18px #075a62}
+.a-app.dash .a-kpis>.a-kpi:first-child .a-kpi-l,.a-app.dash .a-kpis>.a-kpi:first-child .a-kpi-s{color:rgba(255,255,255,.92)}
+.a-app.dash .a-kpis>.a-kpi:first-child .a-kpi-v{color:#fff;font-size:1.7rem}
+.a-app.dash .a-kpis>.a-kpi:first-child .a-kpi-i{background:rgba(255,255,255,.2);color:#fff}
+.a-app.dash .a-kpis>.a-kpi:first-child .fx-ring-t{stroke:rgba(255,255,255,.3)}
+.a-app.dash .a-kpis>.a-kpi:first-child .fx-ring-v{stroke:#fff}
+.a-app.dash .a-kpi-v{font-size:1.45rem}
+/* the side menu: the open section as a pill */
+.a-app.dash .a-nav-l.on,.a-app.dash .a-side-nav .a-tab[aria-selected=true]{background:var(--grad-soft);border-radius:14px;box-shadow:inset 0 0 0 1px color-mix(in oklab,var(--brand) 30%,transparent)}
+@media (min-width:1180px){
+  .a-app.dash .a-sec>.a-grid:not(.one){grid-template-columns:repeat(6,minmax(0,1fr));grid-auto-flow:dense;align-items:stretch}
+  .a-app.dash .a-sec>.a-grid:not(.one)>*{grid-column:span 3}
+  .a-app.dash .a-sec>.a-grid:not(.one)>.a-hero2,.a-app.dash .a-sec>.a-grid:not(.one)>.a-kpis,.a-app.dash .a-sec>.a-grid:not(.one)>.a-pulse,.a-app.dash .a-sec>.a-grid:not(.one)>.a-next,
+  .a-app.dash .a-sec>.a-grid:not(.one)>.a-mday,.a-app.dash .a-sec>.a-grid:not(.one)>.a-today,.a-app.dash .a-sec>.a-grid:not(.one)>.a-bdgs,.a-app.dash .a-sec>.a-grid:not(.one)>.a-checkcard{grid-column:1/-1}
+  .a-app.dash .a-sec>.a-grid:not(.one)>.a-run,.a-app.dash .a-sec>.a-grid:not(.one)>.a-cal,.a-app.dash .a-sec>.a-grid:not(.one)>.a-jr,.a-app.dash .a-sec>.a-grid:not(.one)>.a-meet,.a-app.dash .a-sec>.a-grid:not(.one)>.a-pts{grid-column:span 4}
+  .a-app.dash .a-sec>.a-grid:not(.one)>.a-opp,.a-app.dash .a-sec>.a-grid:not(.one)>.a-hon,.a-app.dash .a-sec>.a-grid:not(.one)>.a-lw,.a-app.dash .a-sec>.a-grid:not(.one)>.a-plg,.a-app.dash .a-sec>.a-grid:not(.one)>.a-hifz{grid-column:span 2}
+  .a-app.dash .a-bdgs-l{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+  .a-app.dash .a-home{grid-template-columns:repeat(6,minmax(0,1fr));grid-auto-flow:dense;align-items:stretch}
+  .a-app.dash .a-home>*{grid-column:span 3}
+  .a-app.dash .a-home>.a-hero2,.a-app.dash .a-home>.a-find,.a-app.dash .a-home>.a-kpis,.a-app.dash .a-home>.a-wall,.a-app.dash .a-home>.a-today,.a-app.dash .a-home>.a-pulse,.a-app.dash .a-home>.a-ops{grid-column:1/-1}
+  .a-app.dash .a-home>.a-cal,.a-app.dash .a-home>.a-tg{grid-column:span 4}
+  .a-app.dash .a-home>.a-mix,.a-app.dash .a-home>.a-dec{grid-column:span 2}
+  .a-app.dash .a-home>.a-mix .a-mix-leg{display:grid}
+}
 
 @media (max-width:560px){
   .a-hero2-top{align-items:flex-start}
@@ -375,6 +473,11 @@
   .a-wait-l li{flex-wrap:wrap}
   .a-wait-l .btn{margin-inline-start:auto}
   .a-kpi-r{width:28px;height:28px}
+  .a-app.dash .a-kpi{flex:1 1 calc(50% - 6px)}
+  .a-app.dash .a-kpis>.a-kpi:first-child{flex-basis:100%}
+  .a-cal-d{min-height:44px;border-radius:10px}
+  .a-cal-w,.a-cal-g{gap:2px}
+  .a-app.dash .a-cal{padding-inline:12px}
   .a-fol-l li{flex-wrap:wrap}
   .a-fol-l .btn{margin-inline-start:auto}
   .a-tg-t thead{display:none}
