@@ -61,6 +61,41 @@ check('the styles and scripts of the core pages are saved with them', ['css/base
 check('photos are not saved up front (they are saved when seen)', !core.some(f => /photos\//.test(f)));
 check('the worker only answers GET requests to this site', /req\.method !== 'GET'\) return/.test(sw) && /url\.origin !== self\.location\.origin \|\| !inScope\(url\)\) return/.test(sw) && /\\\/api\\\//.test(sw));
 
+section('sw.js: phone notifications (push, tap)');
+{
+  // run the worker in a sandbox with a fake «self», then hand it a push and a tap
+  const L = {}, shown = [], opened = [], focused = [];
+  const wins = [];
+  const self = {
+    location: new URL('https://example.test/yanabee/sw.js'),
+    addEventListener: (t, f) => { L[t] = f; },
+    registration: { showNotification: async (title, o) => { shown.push({ title, o }); } },
+    clients: { matchAll: async () => wins, openWindow: async u => { opened.push(u); }, claim: async () => {} },
+    skipWaiting: async () => {},
+  };
+  const ctx = vm.createContext({ self, URL, Response, Promise, caches: {}, fetch: async () => { throw new Error('no network'); }, setTimeout, console });
+  new vm.Script(sw).runInContext(ctx);
+  const run = async (type, ev) => { let w = null; L[type]({ ...ev, waitUntil: p => { w = p; } }); await w; };
+  check('the worker listens for push and notificationclick', typeof L.push === 'function' && typeof L.notificationclick === 'function');
+  await run('push', { data: { json: () => ({ title: 'ينابيع', body: 'إعلان جديد: موعد التسميع', url: 'account.html', tag: 'yb-announcement' }), text: () => '' } });
+  const n = shown[0] || { o: {} };
+  check('a push shows the Arabic message, right to left, with the app icon', n.title === 'ينابيع' && n.o.body === 'إعلان جديد: موعد التسميع' && n.o.dir === 'rtl' && n.o.lang === 'ar' && n.o.icon === 'https://example.test/yanabee/assets/icon-192.png' && n.o.tag === 'yb-announcement');
+  check('the tap target stays on this site', n.o.data && n.o.data.url === 'https://example.test/yanabee/account.html');
+  await run('push', { data: { json: () => ({ body: 'x', url: 'javascript:alert(1)' }), text: () => '' } });
+  await run('push', { data: { json: () => ({ body: 'x', url: 'https://evil.example/' }), text: () => '' } });
+  check('a foreign or script address is never opened (falls back to the account page)', shown[1].o.data.url === 'https://example.test/yanabee/account.html' && shown[2].o.data.url === 'https://example.test/yanabee/account.html');
+  await run('push', { data: { json: () => { throw new Error('not json'); }, text: () => 'نص' } });
+  await run('push', { data: null });
+  check('a plain-text or empty push still shows something sensible', shown[3].o.body === 'نص' && shown[4].title === 'ينابيع' && /إشعار جديد/.test(shown[4].o.body));
+  check('long words are cut (title 60, body 200)', (await (async () => { await run('push', { data: { json: () => ({ title: 'ع'.repeat(99), body: 'ب'.repeat(999) }), text: () => '' } }); const z = shown[5]; return z.title.length === 60 && z.o.body.length === 200; })()));
+  let closed = 0;
+  await run('notificationclick', { notification: { close: () => { closed++; }, data: { url: 'https://example.test/yanabee/account.html' } } });
+  check('a tap with the app closed opens the dashboard', closed === 1 && opened[0] === 'https://example.test/yanabee/account.html');
+  wins.push({ url: 'https://example.test/yanabee/index.html', focus: async () => { focused.push(1); }, navigate: async u => { focused.push(u); } });
+  await run('notificationclick', { notification: { close: () => {}, data: { url: 'https://example.test/yanabee/account.html' } } });
+  check('a tap with the app open brings it forward on the dashboard (no second window)', opened.length === 1 && focused[0] === 1 && focused[1] === 'https://example.test/yanabee/account.html');
+}
+
 section('js/pwa.js hygiene');
 const pj = read('js/pwa.js').replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
 check('no innerHTML, eval, console or network call of its own', !/innerHTML|insertAdjacentHTML|\beval\(|new Function|\bconsole\.|\bfetch\(|XMLHttpRequest/.test(pj));

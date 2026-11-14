@@ -3700,6 +3700,60 @@
     orange: ['برتقالي', '#b3461a'], red: ['أحمر', '#b3302f'], purple: ['بنفسجي', '#5b3fb5'], pink: ['وردي', '#a8326a'] };
   const BADGES = { star: ['نجمة', '⭐'], moon: ['هلال', '🌙'], sun: ['شمس', '☀️'], leaf: ['ورقة', '🌿'], book: ['كتاب', '📖'],
     ball: ['كرة', '⚽'], chess: ['شطرنج', '♟️'], bolt: ['برق', '⚡'], heart: ['قلب', '💚'], shield: ['درع', '🛡️'] };
+  // «تنبيهات على هذا الهاتف» (migration 0013): Web Push, chosen per phone. The same rows as «الإشعارات» (the groups
+  // above apply), sent by the yb-push edge function. On iPhone the browser offers it only inside the installed app.
+  const b64bytes = s => { const t = String(s).replace(/-/g, '+').replace(/_/g, '/'); const bin = atob(t + '='.repeat((4 - (t.length % 4)) % 4)); return Uint8Array.from(bin, c => c.charCodeAt(0)); };
+  function phonePushBox() {
+    const box = h('div', { class: 'a-push', 'data-push': '' });
+    const st = h('p', { class: 'a-hint', role: 'status', 'aria-live': 'polite', 'data-push-status': '' });
+    const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+    const ready = () => Promise.race([navigator.serviceWorker.ready, new Promise(res => setTimeout(() => res(null), 4000))]).catch(() => null);
+    const title = () => h('b', { class: 'a-l', text: 'تنبيهات على هذا الهاتف' });
+    const say2 = t => { st.textContent = t; if (t) say(t); };
+    async function paint() {
+      if (!supported) {
+        const ios = window.YBPWA && window.YBPWA.state() === 'ios';
+        put(box, title(), h('p', { class: 'a-hint', text: ios ? 'على iPhone وiPad: ثبّت ينابيع على الشاشة الرئيسية أولًا (من «المزيد» ← «ثبّت ينابيع على هاتفك»)، ثم افتحه من هناك وفعّل التنبيهات.' : 'هذا المتصفح لا يدعم التنبيهات على الهاتف.' }),
+          window.YBPWA && window.YBPWA.state() === 'ios' ? btn('كيف أثبّته؟', 'download', 'btn-ghost', () => window.YBPWA.install(), { 'data-fk': 'cpush-ios' }) : null);
+        return;
+      }
+      const reg = await ready();
+      const cur = reg && reg.pushManager ? await reg.pushManager.getSubscription().catch(() => null) : null;
+      const m = await YB.rpc('yb_push_mine', { endpoint: cur ? cur.endpoint : null });
+      const d = m.ok ? m.data : null;
+      if (!d) { put(box, title(), h('p', { class: 'a-hint', text: 'تعذّرت معرفة حالة التنبيهات الآن.' })); return; }
+      if (!d.ready) { put(box, title(), h('p', { class: 'a-hint', text: 'لم تُفعَّل تنبيهات الهاتف على الموقع بعد.' })); return; }
+      if (!d.allowed) { put(box, title(), h('p', { class: 'a-hint', text: 'تحتاج موافقة ولي أمرك أولًا (النموذج الورقي لدى قائد فريقك، أو موافقته من حسابه).' })); return; }
+      if (!reg) { put(box, title(), h('p', { class: 'a-hint', text: 'افتح الموقع من جديد (أو من التطبيق المثبّت) ثم فعّل التنبيهات.' })); return; }
+      const id = uid('f');
+      const on = !!(cur && d.this_phone);
+      const cb = h('input', { type: 'checkbox', id, role: 'switch', checked: on, 'data-fk': 'cpush' });
+      cb.addEventListener('change', async () => {
+        cb.disabled = true;
+        try {
+          if (cb.checked) {
+            const perm = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
+            if (perm !== 'granted') { cb.checked = false; say2(perm === 'denied' ? 'التنبيهات ممنوعة في إعدادات المتصفح لهذا الموقع. اسمح بها من الإعدادات ثم أعد المحاولة.' : 'لم تسمح بالتنبيهات.'); return; }
+            const k = await YB.rpc('yb_push_key', {});
+            if (!k.ok || !k.data) { cb.checked = false; say2('تعذّر تفعيل التنبيهات الآن.'); return; }
+            const sub = cur || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64bytes(k.data) });
+            const r = await YB.rpc('yb_push_subscribe', { sub: sub.toJSON() });
+            const bad = rpcFail(r);
+            if (bad) { cb.checked = false; if (!cur) sub.unsubscribe().catch(() => {}); if (sessionLost(bad)) return; say2(errMsg(bad)); return; }
+            say2('ستصلك التنبيهات على هذا الهاتف حتى والموقع مغلق.');
+          } else {
+            if (cur) { await YB.rpc('yb_push_unsubscribe', { endpoint: cur.endpoint }); await cur.unsubscribe().catch(() => {}); }
+            say2('أُوقفت التنبيهات على هذا الهاتف.');
+          }
+        } catch (e) { cb.checked = !cb.checked; say2('تعذّر تغيير التنبيهات على هذا الهاتف.'); }
+        finally { cb.disabled = false; paint(); }
+      });
+      put(box, title(), h('label', { class: 'a-check', for: id }, cb, h('span', { text: on ? 'مفعّلة: تصلك حتى والموقع مغلق' : 'شغّلها لتصلك والموقع مغلق' })),
+        d.phones > (on ? 1 : 0) ? h('p', { class: 'a-hint', text: `مفعّلة على ${d.phones} ${d.phones === 1 ? 'جهاز' : 'أجهزة'} لحسابك.` }) : null, st);
+    }
+    paint();
+    return box;
+  }
   const NOTE_GROUPS = [['matches', 'المباريات والنتائج والمواعيد'], ['projects', 'المشاريع والمبادرات'], ['announcements', 'الإعلانات'], ['feed', 'الأخبار والتعليقات على منشوراتي']];
   const SIZES = { m: 'عادي', l: 'كبير', xl: 'أكبر' };
   const THEMES = { auto: 'مثل جهازي', light: 'فاتح', dark: 'داكن' };
@@ -3800,7 +3854,7 @@
           });
           return h('label', { class: 'a-check' }, cb, h('span', { text: label }));
         })),
-        h('p', { class: 'a-hint', text: 'تصلك دائمًا التنبيهات المهمة: حالة الفريق، وموافقات الأهل، والتحكيم والنتائج، وقرارات الإدارة.' }));
+        h('p', { class: 'a-hint', text: 'تصلك دائمًا التنبيهات المهمة: حالة الفريق، وموافقات الأهل، والتحكيم والنتائج، وقرارات الإدارة.' }), phonePushBox());
       put(el, h('div', { class: 'a-cust-h' }, h('h3', { id: 'cust-h' }, icon('sparkles'), h('span', { text: 'تخصيص حسابي' })),
           h('button', { type: 'button', class: 'a-link', text: 'إغلاق', onclick: () => el.close() })),
         h('div', { class: 'a-cust-grid' }, h('div', {}, theme, accent, size), h('div', {}, pictureBox(), secBox, notes)), status);

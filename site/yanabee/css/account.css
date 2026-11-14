@@ -301,6 +301,9 @@
 .a-comps legend{font:600 .85rem/1.6 var(--font-h);padding:0 .3rem}
 .a-check{display:inline-flex;align-items:center;gap:.4rem;min-height:44px;cursor:pointer}
 .a-check input{width:1.15rem;height:1.15rem;accent-color:var(--brand)}
+/* phone notifications (0013): one switch per phone, inside «التنبيهات» */
+.a-push{display:grid;gap:6px;padding-top:10px;margin-top:4px;border-top:1px dashed var(--line)}
+.a-push .a-hint:empty{display:none}
 .a-chips{list-style:none;margin:.3rem 0 0;padding:0;display:flex;flex-wrap:wrap;gap:.4rem}
 .a-roster-ro{margin:.6rem 0}
 

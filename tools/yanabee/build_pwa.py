@@ -167,6 +167,29 @@ self.addEventListener('fetch', e => {
 self.addEventListener('message', e => {
   if (e.data === 'yb-version' && e.source) e.source.postMessage({ type: 'yb-version', version: VERSION });
 });
+
+// Phone notifications (migration 0013): the yb-push edge function sends {title, body, url, tag}, encrypted for this
+// phone only. A tap opens (or brings back) the dashboard.
+self.addEventListener('push', e => {
+  let m = {};
+  try { m = e.data ? e.data.json() : {}; } catch (err) { m = { body: e.data ? e.data.text() : '' }; }
+  const url = new URL(typeof m.url === 'string' && !/^[a-z]+:/i.test(m.url) ? m.url : 'account.html', BASE).href;
+  e.waitUntil(self.registration.showNotification(String(m.title || 'ينابيع').slice(0, 60), {
+    body: String(m.body || 'لديك إشعار جديد.').slice(0, 200), tag: String(m.tag || 'yb').slice(0, 40), renotify: true,
+    icon: new URL('assets/icon-192.png', BASE).href, badge: new URL('assets/icon-192.png', BASE).href,
+    lang: 'ar', dir: 'rtl', data: { url },
+  }));
+});
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || new URL('account.html', BASE).href;
+  e.waitUntil((async () => {
+    const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const mine = wins.find(c => c.url.startsWith(BASE));
+    if (mine) { await mine.focus(); if (!mine.url.startsWith(url) && 'navigate' in mine) await mine.navigate(url).catch(() => {}); return; }
+    await self.clients.openWindow(url);
+  })());
+});
 '''
 
 

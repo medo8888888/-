@@ -54,6 +54,7 @@ class Fake {
     this.live = []; this.marks = []; this.markSeq = 0;   // migration 0007
     this.subs = []; this.objects = new Map(); this.uploads = [];   // migration 0008 (submissions, private photos)
     this.seekers = new Map(); this.invites = []; this.transfers = false;   // migration 0012 (players looking for a team)
+    this.pushSubs = []; this.pushReady = true; this.pushKey = 'B' + 'x'.repeat(86);   // migration 0013 (phone notifications)
     this.judges = new Map(); this.jscores = []; this.ascores = []; this.published = false;   // migration 0010
     this.ann = []; this.annSeq = 0; this.chat = []; this.chatSeq = 0; this.reports = []; this.mutes = new Map(); this.reads = new Map();   // migration 0009
     this.posts = []; this.cmts = []; this.cmtSeq = 0; this.creports = []; this.prefs = new Map(); this.tstyle = new Map(); this.membersComment = false;   // migration 0011
@@ -459,6 +460,7 @@ class Fake {
     const admin = c.role === 'admin';
     const SIG = { yb_seek_me: [], yb_seek_save: ['p'], yb_seek_stop: [], yb_seek_guardian: ['code'], yb_guardian_seekers: [], yb_seek_guardian_revoke: ['seeker'], yb_seek_pool: [],
       yb_invite_send: ['seeker'], yb_invite_cancel: ['id'], yb_invite_answer: ['id', 'accept'], yb_set_transfers: ['allow'], yb_seek_stats: [],
+      yb_push_mine: ['endpoint'], yb_push_key: [], yb_push_subscribe: ['sub'], yb_push_unsubscribe: ['endpoint'],
       my_team: [], join_team: ['code', 'member_name'], link_child: ['code', 'child_name'], approve_team: ['team_id', 'ok', 'note'], mark_consent: ['member_id', 'received'],
       unlink_member: ['member_id'], regenerate_join_code: ['team_id'], set_user_role: ['target', 'new_role'],
       yb_review_team: ['team_id', 'decision', 'note'], yb_review_list: [], yb_review_roster: ['team_id'], yb_my_competitions: [], yb_set_officer: ['target', 'competition', 'assign'],
@@ -845,6 +847,24 @@ class Fake {
         const act = [...this.seekers.values()].filter(s => s.active);
         return ok({ transfers_open: this.transfers, seekers: act.length, listed: act.filter(gOk).length, waiting_guardian: act.filter(s => !gOk(s)).length,
           invites_open: this.invites.filter(i => i.status === 'pending').length, joined: this.invites.filter(i => i.status === 'accepted').length });
+      }
+    }
+    /* migration 0013: phone notifications (a child needs a parent's consent on record) */
+    if (/^yb_push_/.test(name)) {
+      const ok = d => ({ status: 200, body: d });
+      const P = this.profiles.find(p => p.id === me) || {};
+      const allowed = P.role !== 'member' || this.members.some(m => m.user_id === me && m.consent_status === 'received') || !!((this.seekers.get(me) || {}).guardian_by);
+      const mine = () => this.pushSubs.filter(x => x.user_id === me);
+      if (name === 'yb_push_key') return ok(this.pushReady ? this.pushKey : null);
+      if (name === 'yb_push_mine') return ok({ allowed, phones: mine().length, this_phone: !!body.endpoint && mine().some(x => x.endpoint === body.endpoint), ready: this.pushReady });
+      if (name === 'yb_push_unsubscribe') { this.pushSubs = this.pushSubs.filter(x => !(x.user_id === me && x.endpoint === body.endpoint)); return ok({ ok: true }); }
+      if (name === 'yb_push_subscribe') {
+        if (!allowed) return ok({ ok: false, error: 'consent_needed' });
+        const sub = body.sub || {}, ep = String(sub.endpoint || ''), k = sub.keys || {};
+        if (!/^https:\/\/(fcm\.googleapis\.com|updates\.push\.services\.mozilla\.com|web\.push\.apple\.com|[a-z0-9-]+\.notify\.windows\.com)\//.test(ep)) return ok({ ok: false, error: 'push_service_not_allowed' });
+        if (!/^[A-Za-z0-9_-]{80,100}$/.test(k.p256dh || '') || !/^[A-Za-z0-9_-]{16,32}$/.test(k.auth || '')) return ok({ ok: false, error: 'invalid_data' });
+        this.pushSubs = this.pushSubs.filter(x => x.endpoint !== ep).concat({ user_id: me, endpoint: ep, p256dh: k.p256dh, auth: k.auth });
+        return ok({ ok: true, phones: mine().length });
       }
     }
     /* migration 0011: settings, team identity, the feed, the handover, the statistics */
@@ -3878,6 +3898,82 @@ section('match day: «يوم المباراة» for the team, «مباريات �
 }
 
 /* ================================================================ the phone dashboard: bottom bar, «المزيد», «خطوتك التالية» */
+section('phone notifications: one switch per phone in «تخصيص» ← «التنبيهات»; a child needs a parent\'s consent');
+{
+  // The browser's push machinery is stubbed (the real one needs a push service): a registration whose pushManager
+  // hands out a subscription with real-looking keys, and Notification.requestPermission answering as told.
+  const stub = ({ perm = 'granted', noPush = false } = {}) => {
+    window.__pushCalls = [];
+    if (noPush) { try { delete window.PushManager; } catch (e) { /* */ } Object.defineProperty(window, 'PushManager', { value: undefined, configurable: true }); delete window.PushManager; return; }
+    let cur = null;
+    const mk = () => ({ endpoint: 'https://fcm.googleapis.com/fcm/send/phone-' + Math.random().toString(36).slice(2), toJSON() { return { endpoint: this.endpoint, keys: { p256dh: 'B' + 'q'.repeat(86), auth: 'a'.repeat(22) } }; },
+      unsubscribe: async () => { cur = null; window.__pushCalls.push('unsub'); return true; } });
+    const reg = { pushManager: { getSubscription: async () => cur, subscribe: async o => { window.__pushCalls.push('sub:' + (o.userVisibleOnly ? 'visible' : 'silent') + ':' + o.applicationServerKey.length); cur = mk(); return cur; } } };
+    Object.defineProperty(navigator, 'serviceWorker', { configurable: true, value: { ready: Promise.resolve(reg), controller: null, register: async () => reg, addEventListener() {} } });
+    const N = { permission: 'default', requestPermission: async () => { N.permission = perm; window.__pushCalls.push('ask'); return perm; } };
+    Object.defineProperty(window, 'Notification', { configurable: true, value: N });
+  };
+  const openPush = async (fake, email, opts, label) => {
+    const X = await open(fake, { label, mobile: true });
+    await X.addInitScript(stub, opts || {});
+    await X.reload();
+    await settle(X); await signInOk(X, email);
+    await X.waitForSelector('.a-dock [data-dock=more]', { timeout: 8000 });
+    await X.locator('.a-dock [data-dock=more]').click();
+    await X.locator('[data-more] [data-fk=more-cust]').click();
+    await X.waitForSelector('[data-settings]:not([hidden]) [data-push]');
+    await X.waitForFunction(() => document.querySelector('[data-push]').children.length > 0, null, { timeout: 6000 });
+    return X;
+  };
+  const fake = new Fake();
+  fake.addUser({ email: 'pl@t.test', name: 'قائد التنبيهات', role: 'leader' });
+  const kidA = fake.addUser({ email: 'pk@t.test', name: 'عضو بلا موافقة', role: 'member' });
+  const kidB = fake.addUser({ email: 'pk2@t.test', name: 'عضو بموافقة', role: 'member' });
+  const T = fake.seedTeam({ leaderEmail: 'pl@t.test', name: 'التنبيهات', status: 'approved', members: [{ name: 'عضو بلا موافقة' }, { name: 'عضو بموافقة', consent: 'received' }] });
+  const rows = fake.members.filter(m => m.team_id === T.id && !m.is_leader);
+  rows[0].user_id = kidA.id; rows[1].user_id = kidB.id;
+  const lid = fake.profileByEmail('pl@t.test').id;
+  // the leader turns it on, then off
+  const L = await openPush(fake, 'pl@t.test', {}, 'push-leader');
+  const box = () => L.locator('[data-push]').innerText();
+  check('«تنبيهات على هذا الهاتف» sits in «التنبيهات», off at first', /تنبيهات على هذا الهاتف/.test(await box()) && !(await L.locator('[data-fk="cpush"]').isChecked()));
+  check('the switch is a labelled switch (role=switch, 44px row)', (await L.locator('[data-fk="cpush"]').getAttribute('role')) === 'switch' && (await L.locator('[data-push] label.a-check').boundingBox()).height >= 44);
+  await L.locator('[data-fk="cpush"]').click();
+  await L.waitForFunction(() => /حتى والموقع مغلق/.test(document.querySelector('[data-push]').innerText) && document.querySelector('[data-fk="cpush"]').checked, null, { timeout: 6000 });
+  const calls = await L.evaluate(() => window.__pushCalls);
+  check('on: asks permission, subscribes with the public key (visible notifications only), and saves this phone', calls.join() === 'ask,sub:visible:65' && fake.pushSubs.length === 1 && fake.pushSubs[0].user_id === lid && /^https:\/\/fcm\.googleapis\.com\//.test(fake.pushSubs[0].endpoint), calls.join());
+  await L.locator('[data-fk="cpush"]').click();
+  await L.waitForFunction(() => /أُوقفت/.test(document.querySelector('[data-push]').innerText), null, { timeout: 6000 });
+  check('off: the phone is removed on the server and in the browser', fake.pushSubs.length === 0 && (await L.evaluate(() => window.__pushCalls)).includes('unsub'));
+  check('leader console clean (push)', L.errs.length === 0, L.errs.join('|'));
+  await close(L);
+  // permission refused in the browser
+  const D = await openPush(fake, 'pl@t.test', { perm: 'denied' }, 'push-denied');
+  await D.locator('[data-fk="cpush"]').click();
+  await D.waitForFunction(() => /ممنوعة في إعدادات المتصفح/.test(document.querySelector('[data-push]').innerText), null, { timeout: 6000 });
+  check('a refused permission says where to allow it, and nothing is saved', fake.pushSubs.length === 0 && !(await D.locator('[data-fk="cpush"]').isChecked()));
+  await close(D);
+  // a member without a parent's consent: no switch, the reason
+  const K = await openPush(fake, 'pk@t.test', {}, 'push-kid');
+  check('a member without consent sees why, and no switch', /موافقة ولي أمرك/.test(await K.locator('[data-push]').innerText()) && (await K.locator('[data-fk="cpush"]').count()) === 0);
+  await close(K);
+  // a member whose paper consent was received can turn it on
+  const K2 = await openPush(fake, 'pk2@t.test', {}, 'push-kid2');
+  await K2.locator('[data-fk="cpush"]').click();
+  await K2.waitForFunction(() => document.querySelector('[data-fk="cpush"]') && document.querySelector('[data-fk="cpush"]').checked && /حتى والموقع مغلق/.test(document.querySelector('[data-push]').innerText), null, { timeout: 6000 });
+  check('a member with the consent received turns it on', fake.pushSubs.length === 1 && fake.pushSubs[0].user_id === kidB.id);
+  await close(K2);
+  // a browser without Web Push (Safari on iPhone before installing)
+  const I = await openPush(fake, 'pl@t.test', { noPush: true }, 'push-ios');
+  check('without Web Push: a plain explanation instead of a switch', (await I.locator('[data-fk="cpush"]').count()) === 0 && /(ثبّت ينابيع على الشاشة الرئيسية|لا يدعم التنبيهات)/.test(await I.locator('[data-push]').innerText()));
+  await close(I);
+  // not switched on on the site yet
+  fake.pushReady = false;
+  const R = await openPush(fake, 'pl@t.test', {}, 'push-notready');
+  check('before the site is set up: «لم تُفعَّل تنبيهات الهاتف على الموقع بعد»', /لم تُفعَّل تنبيهات الهاتف/.test(await R.locator('[data-push]').innerText()) && (await R.locator('[data-fk="cpush"]').count()) === 0);
+  await close(R);
+}
+
 section('the phone dashboard: a bottom bar like the apps, «المزيد», and «خطوتك التالية» for each role');
 {
   const fake = new Fake();
