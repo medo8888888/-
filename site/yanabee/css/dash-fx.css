@@ -485,6 +485,22 @@
 .a-mf-note{margin:0;display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border-radius:var(--r-sm);background:color-mix(in oklab,var(--sun) 12%,var(--surface));color:var(--ink);font-size:.92rem;overflow-wrap:anywhere}
 .a-mf-note>.i{flex:none;width:18px;height:18px;margin-top:3px}
 .a-cj-c{margin:0 0 12px}
+.a-mf-note.cheer{background:color-mix(in oklab,#16a36b 11%,var(--surface))}
+.a-mf-nudge{margin:0 0 10px}
+.a-plg .a-mf-note{margin:0 0 10px}
+.a-plg-past{margin:12px 0 4px;border-top:1px solid var(--line);padding-top:10px}
+.a-plg-past>summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weight:700;color:var(--ink)}
+.a-plg-past ol{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:8px}
+.a-plg-past li{display:grid;gap:4px;justify-items:start;padding:10px 12px;border-radius:var(--r-sm);border:1px solid var(--line);overflow-wrap:anywhere}
+.a-plg-past li>small{color:var(--ink-2)}
+.a-race-l{list-style:none;margin:0 0 10px;padding:0;display:grid;gap:10px;counter-reset:race}
+.a-race-l>li{counter-increment:race;display:grid;grid-template-columns:minmax(0,1fr);gap:8px;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);min-width:0}
+.a-race-l>li.me{border-color:var(--k,var(--brand));box-shadow:0 0 0 2px color-mix(in oklab,var(--k,var(--brand)) 22%,transparent)}
+.a-race-n{display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-width:0}
+.a-race-n>b{overflow-wrap:anywhere}
+.a-race-n::before{content:counter(race);flex:none;min-width:1.7em;height:1.7em;display:grid;place-items:center;border-radius:99px;background:color-mix(in oklab,var(--k,var(--brand)) 12%,var(--surface));font-weight:700;font-size:.86rem;font-variant-numeric:tabular-nums}
+.a-race-m{display:grid;gap:6px}
+@media (min-width:760px){.a-race-l>li{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);align-items:center}}
 .a-cj-c .a-f{margin:0}
 .a-act-n{display:inline-flex;align-items:center;gap:8px;min-width:0}
 .a-act-t td,.a-act-t th{white-space:nowrap}

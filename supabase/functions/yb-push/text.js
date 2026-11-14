@@ -37,6 +37,10 @@ export function pushMessage(kind, data) {
     invite_waiting: () => `دعوة ${team} تنتظر ردّك.`,
     invite_answer: () => (d.accepted ? `انضم ${clip(d.first_name, 20) || 'لاعب'} إلى فريقك.` : `اعتذر ${clip(d.first_name, 20) || 'لاعب'} عن دعوتك.`),
     seek_approved: () => 'وافق ولي أمرك، وأصبحت في قائمة الباحثين عن فريق.',
+    pledge_note: () => 'كتب لك وليّ أمرك كلمة على وعدك هذا الأسبوع.',
+    pledge_cheer: () => 'شجّعك قائد فريقك على وعدك هذا الأسبوع.',
+    pledge_kept: () => `وفّى ${clip(d.first_name, 20) || 'ابنك'} بوعده هذا الأسبوع.`,
+    pledge_nudge: () => `يذكّرك قائد ${team}: اكتب وعد هذا الأسبوع.`,
   };
   const body = (T[kind] || (() => 'لديك إشعار جديد.'))();
   return { title: 'ينابيع', body, url: 'account.html', tag: 'yb-' + String(kind || 'note').replace(/[^a-z_]/g, '').slice(0, 30) };

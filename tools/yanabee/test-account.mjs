@@ -55,7 +55,7 @@ class Fake {
     this.subs = []; this.objects = new Map(); this.uploads = [];   // migration 0008 (submissions, private photos)
     this.seekers = new Map(); this.invites = []; this.transfers = false;   // migration 0012 (players looking for a team)
     this.logos = new Map();   // migration 0014 (team logos: path -> uploader)
-    this.j15 = false; this.pledges = []; this.hifzMarks = new Map(); this.deedDays = []; this.pacts = new Map(); this.leadWeeks = new Map(); this.auditRows = [];   // migration 0015 (the journey on the account; off until a test turns it on)
+    this.j15 = false; this.j16 = false; this.nudged = new Set(); this.pledges = []; this.hifzMarks = new Map(); this.deedDays = []; this.pacts = new Map(); this.leadWeeks = new Map(); this.auditRows = [];   // migration 0015 (the journey on the account; off until a test turns it on)
     this.pushSubs = []; this.pushReady = true; this.pushKey = 'B' + 'x'.repeat(86);   // migration 0013 (phone notifications)
     this.judges = new Map(); this.jscores = []; this.ascores = []; this.published = false;   // migration 0010
     this.ann = []; this.annSeq = 0; this.chat = []; this.chatSeq = 0; this.reports = []; this.mutes = new Map(); this.reads = new Map();   // migration 0009
@@ -498,8 +498,8 @@ class Fake {
       yb_comment_delete: ['id'], yb_comment_report: ['id', 'reason'], yb_comment_moderate: ['id', 'action'], yb_comment_mute: ['id', 'hours', 'reason'], yb_feed_reports: [],
       yb_set_members_comment: ['allow'], yb_transfer_team: ['team_id', 'new_leader', 'old_stays', 'old_role'], yb_analytics: [] };
     /* migration 0015: the journey on the account, and who sees what. Off (an older backend) unless a test sets j15. */
-    if (/^yb_(journey_me|pledge_save|pledge_done|hifz_set|deed_mark|team_journey|team_board|pact_save|lead_week_set|child_journey|pledge_note|activity_board|activity_log)$/.test(name)) {
-      if (!this.j15) return err(404, 'PGRST202', 'Could not find the function public.' + name);
+    if (/^yb_(journey_me|pledge_save|pledge_done|hifz_set|deed_mark|team_journey|team_board|pact_save|lead_week_set|child_journey|pledge_note|activity_board|activity_log|my_pledges|pledge_cheer|pledge_nudge|week_race)$/.test(name)) {
+      if (!this.j15 || (!this.j16 && /^yb_(my_pledges|pledge_cheer|pledge_nudge|week_race)$/.test(name))) return err(404, 'PGRST202', 'Could not find the function public.' + name);   // 0016 adds the last four
       const ok = d => ({ status: 200, body: d });
       body = body || {};
       const role = (this.profiles.find(p => p.id === me) || {}).role, staff = role === 'admin' || role === 'officer';
@@ -509,7 +509,7 @@ class Fake {
       const weekOk = w => { const d = new Date(w + 'T00:00:00'); return /^\d{4}-\d\d-\d\d$/.test(w || '') && d.getDay() === 6 && Math.abs(d - Date.now()) < 9 * 86400000; };
       const trim = t => String(t || '').replace(/\s+/g, ' ').trim();
       const pOf = (u, w) => this.pledges.find(x => x.user_id === u && x.week === w);
-      const pView = x => (x ? { field: x.field, body: x.body, done: x.done, parent_note: x.parent_note || null } : null);
+      const pView = x => (x ? { field: x.field, body: x.body, done: x.done, parent_note: x.parent_note || null, ...(this.j16 ? { cheered: !!x.cheered } : {}) } : null);
       const keptOf = u => this.pledges.filter(x => x.user_id === u && x.done).length;
       const hifzOf = u => this.hifzMarks.get(u) || [];
       const daysOf = (u, w) => this.deedDays.filter(x => x.user_id === u && x.day >= w).length;
@@ -524,11 +524,39 @@ class Fake {
         if (!weekOk(body.week) || !['home', 'hood', 'kin', 'school', 'friends'].includes(body.field) || b.length < 5 || b.length > 140) return ok({ ok: false, error: 'invalid_data' });
         if (contact(b)) return ok({ ok: false, error: 'contact_not_allowed' });
         const x = pOf(me, body.week);
-        if (x) { if (x.body !== b || x.field !== body.field) x.done = false; x.body = b; x.field = body.field; x.team_id = t; }
+        if (x) { if (x.body !== b || x.field !== body.field) { x.done = false; x.cheered = false; } x.body = b; x.field = body.field; x.team_id = t; }
         else this.pledges.push({ user_id: me, team_id: t, week: body.week, field: body.field, body: b, done: false, parent_note: null });
         return ok({ ok: true });
       }
-      if (name === 'yb_pledge_done') { const x = pOf(me, body.week); if (!x) return ok({ ok: false, error: 'not_found' }); x.done = !!body.done; return ok({ ok: true }); }
+      if (name === 'yb_pledge_done') {
+        const x = pOf(me, body.week); if (!x) return ok({ ok: false, error: 'not_found' });
+        const m0 = this.members.find(m => m.user_id === me);
+        if (this.j16 && body.done && !x.done && m0) this.notify(this.links.filter(l => l.member_id === m0.id).map(l => l.parent_id), 'pledge_kept', { first_name: m0.full_name.trim().split(/\s+/)[0] });
+        x.done = !!body.done; return ok({ ok: true });
+      }
+      if (name === 'yb_my_pledges') return ok(this.pledges.filter(x => x.user_id === me).sort((a, b) => (a.week < b.week ? 1 : -1)).slice(0, body.lim || 12).map(x => ({ week: x.week, ...pView(x) })));
+      if (name === 'yb_pledge_cheer') {
+        const m = this.members.find(x => x.id === body.member_id);
+        if (!m || !leads(m.team_id)) return raise('permission_denied', '42501');
+        const x = m.user_id && pOf(m.user_id, body.week);
+        if (!x) return ok({ ok: false, error: 'not_found' });
+        if (!x.cheered) { x.cheered = true; this.notify([m.user_id], 'pledge_cheer', {}); }
+        return ok({ ok: true });
+      }
+      if (name === 'yb_pledge_nudge') {
+        if (!leads(body.team_id)) return raise('permission_denied', '42501');
+        if (this.nudged.has(body.team_id)) return ok({ ok: false, error: 'too_soon' });
+        const ids = tm(body.team_id).filter(m => m.user_id && !m.is_leader && !pOf(m.user_id, body.week)).map(m => m.user_id);
+        if (!ids.length) return ok({ ok: true, sent: 0 });
+        this.nudged.add(body.team_id);
+        this.notify(ids, 'pledge_nudge', { team_name: this.teams.find(t => t.id === body.team_id).name });
+        return ok({ ok: true, sent: ids.length });
+      }
+      if (name === 'yb_week_race') {
+        if (!(staff || myTeam(me) || this.links.some(l => l.parent_id === me))) return raise('permission_denied', '42501');
+        return ok(this.teams.filter(t => t.status === 'approved').map(t => { const us = tm(t.id).filter(m => m.user_id && !m.is_leader).map(m => m.user_id); return { team_id: t.id, team_name: t.name, joined: us.length,
+          pledged: us.filter(u => pOf(u, body.week)).length, kept: us.filter(u => (pOf(u, body.week) || {}).done).length, hifz_sum: us.reduce((n, u) => n + hifzOf(u).length, 0) }; }));
+      }
       if (name === 'yb_hifz_set') {
         const a = [...new Set((body.ayahs || []).map(Number))].sort((x, y) => x - y);
         if (a.some(n => !(n >= 1 && n <= 14))) return ok({ ok: false, error: 'invalid_data' });
@@ -543,7 +571,7 @@ class Fake {
       }
       if (name === 'yb_team_journey') {
         if (!(leads(body.team_id) || staff)) return raise('permission_denied', '42501');
-        return ok({ members: tm(body.team_id).map(m => ({ member_id: m.id, name: m.full_name, is_leader: !!m.is_leader, joined: !!m.user_id, pledge: pView(m.user_id && pOf(m.user_id, body.week)),
+        return ok({ ...(this.j16 ? { can_lead: leads(body.team_id), nudged_today: this.nudged.has(body.team_id) } : {}), members: tm(body.team_id).map(m => ({ member_id: m.id, name: m.full_name, is_leader: !!m.is_leader, joined: !!m.user_id, pledge: pView(m.user_id && pOf(m.user_id, body.week)),
           kept: m.user_id ? keptOf(m.user_id) : 0, hifz: m.user_id ? hifzOf(m.user_id).length : 0, deed_days: m.user_id ? daysOf(m.user_id, body.week) : 0 })) });
       }
       if (name === 'yb_team_board') {
@@ -574,6 +602,7 @@ class Fake {
         if ((n || '').length > 200) return ok({ ok: false, error: 'invalid_data' });
         if (n && contact(n)) return ok({ ok: false, error: 'contact_not_allowed' });
         if (!x) return ok({ ok: false, error: 'not_found' });
+        if (this.j16 && n && n !== x.parent_note) this.notify([m.user_id], 'pledge_note', {});
         x.parent_note = n;
         return ok({ ok: true });
       }
@@ -2007,7 +2036,7 @@ let memberEmail = 'sara@t.test', parentEmail = 'parent@t.test';
   check('member sees own consent status (received: set by the admin)', /استُلمت موافقة ولي الأمر/.test(mt));
   check('no admin / leader controls on the member screen', !(await M.locator('input[role=switch], form.a-add, button[data-fk=submit], .a-tabs-4').count()));
   const reqs = world.log.filter(l => l.who === world.profileByEmail(memberEmail).id).map(l => l.path.replace('/rest/v1/', ''));
-  check('member screen reads only my_team, my_roster, tournament_state and the own profile (never teams, team_members, profiles list)', reqs.every(r => /^(rpc\/(my_team|join_team|yb_journey_me|yb_team_board|yb_mark_read|yb_my_scores|yb_my_prefs|yb_feed|yb_seek_me|yb_team_staff)|my_roster|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements|yb_match_live|yb_team_style)$/.test(r)), [...new Set(reqs)].join());
+  check('member screen reads only my_team, my_roster, tournament_state and the own profile (never teams, team_members, profiles list)', reqs.every(r => /^(rpc\/(my_team|join_team|yb_journey_me|yb_team_board|yb_my_pledges|yb_week_race|yb_mark_read|yb_my_scores|yb_my_prefs|yb_feed|yb_seek_me|yb_team_staff)|my_roster|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements|yb_match_live|yb_team_style)$/.test(r)), [...new Set(reqs)].join());
   const tour = await M.locator('.a-sched').innerText();
   check('schedule card shows the empty state before the tournament is published', /لم تُنشر بيانات البطولة بعد/.test(tour));
   // second account tries the same name
@@ -2062,7 +2091,7 @@ let memberEmail = 'sara@t.test', parentEmail = 'parent@t.test';
   const chips = await P.locator('.a-child .a-consent .a-chip').allInnerTexts();
   check('two children: one «استُلمت», one «لم تُستلم بعد»; ONE schedule card for the shared team', chips.some(c => /^استُلمت/.test(c)) && chips.some(c => /لم تُستلم/.test(c)) && (await P.locator('.a-sched').count()) === 1);
   const preqs = world.log.filter(l => l.who === world.profileByEmail(parentEmail).id).map(l => l.path.replace('/rest/v1/', ''));
-  check('parent screen reads only my_children, tournament_state and the own profile', preqs.every(r => /^(rpc\/(link_child|yb_child_journey|yb_mark_read|yb_my_scores|yb_my_judging|yb_my_prefs|yb_feed|yb_guardian_seekers|yb_team_staff)|my_children|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements|yb_match_live|yb_team_style)$/.test(r)), [...new Set(preqs)].join());
+  check('parent screen reads only my_children, tournament_state and the own profile', preqs.every(r => /^(rpc\/(link_child|yb_child_journey|yb_week_race|yb_mark_read|yb_my_scores|yb_my_judging|yb_my_prefs|yb_feed|yb_guardian_seekers|yb_team_staff)|my_children|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements|yb_match_live|yb_team_style)$/.test(r)), [...new Set(preqs)].join());
   check('parent console clean', P.errs.length === 0, P.errs.join('|'));
   world.P = P;
 }
@@ -4970,6 +4999,111 @@ section('the journey on the account (0015): it is saved, and the right people se
   await reload(Z);
   await Z.waitForFunction(() => (document.querySelector('[data-hifz-n]') || {}).textContent === '0 من 14', null, { timeout: 8000 }).catch(() => {});
   check('after that the account is the source: cleared elsewhere, cleared here (no re-upload)', (await Z.locator('[data-hifz-n]').textContent()) === '0 من 14' && (fake2.hifzMarks.get(ko.id) || []).length === 0);
+}
+
+section('the journey between people (0016): the leader cheers and reminds, notifications, past promises, the week across teams');
+{
+  const fake = new Fake();
+  fake.j15 = true; fake.j16 = true;
+  fake.addUser({ email: 'boss@t.test', name: 'محمود المشرف', role: 'member' }); fake.setAdmin('boss@t.test');
+  fake.addUser({ email: 'lr@t.test', name: 'قائد الرواد', role: 'leader' });
+  fake.addUser({ email: 'lz@t.test', name: 'قائد العزم', role: 'leader' });
+  const k1 = fake.addUser({ email: 'r1@t.test', name: 'حسن عضو الرواد', role: 'member' });
+  const k2 = fake.addUser({ email: 'r2@t.test', name: 'بشير عضو الرواد', role: 'member' });
+  const z1 = fake.addUser({ email: 'z1@t.test', name: 'نادر عضو العزم', role: 'member' });
+  const par = fake.addUser({ email: 'pr@t.test', name: 'والد حسن', role: 'parent' });
+  const TR = fake.seedTeam({ leaderEmail: 'lr@t.test', name: 'الرواد', status: 'approved', members: [{ name: 'حسن عضو الرواد', age: 14, consent: 'received' }, { name: 'بشير عضو الرواد', age: 14, consent: 'received' }, { name: 'ثالث', age: 14 }, { name: 'رابع', age: 14 }] });
+  const TZ = fake.seedTeam({ leaderEmail: 'lz@t.test', name: 'العزم', status: 'approved', members: [{ name: 'نادر عضو العزم', age: 14, consent: 'received' }, { name: 'ثان', age: 14 }, { name: 'ثالث', age: 14 }, { name: 'رابع', age: 14 }] });
+  const TN = fake.seedTeam({ leaderEmail: 'boss@t.test', name: 'بلا حسابات', status: 'approved', members: Array.from({ length: 4 }, (_, i) => ({ name: `اسم ${i + 1}`, age: 14 })) });
+  fake.teams.forEach(t => { t.waitlist = false; });
+  const row = n => fake.members.find(m => m.full_name === n);
+  row('حسن عضو الرواد').user_id = k1.id; row('بشير عضو الرواد').user_id = k2.id; row('نادر عضو العزم').user_id = z1.id;
+  fake.links.push({ parent_id: par.id, member_id: row('حسن عضو الرواد').id, created_at: fake.now() });
+  const day = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const satD = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 1) % 7)); return d; })();
+  const sat = day(satD), prev = day(new Date(satD.getTime() - 7 * 86400e3 + 3600e3)), old = day(new Date(satD.getTime() - 14 * 86400e3 + 3600e3));
+  fake.pledges.push({ user_id: k1.id, team_id: TR.id, week: sat, field: 'home', body: 'أرتّب غرفتي كل يوم', done: false, parent_note: null },
+    { user_id: k1.id, team_id: TR.id, week: prev, field: 'kin', body: 'أزور جدتي', done: true, parent_note: null },
+    { user_id: k1.id, team_id: TR.id, week: old, field: 'school', body: 'أحافظ على نظافة صفي', done: false, parent_note: null },
+    { user_id: z1.id, team_id: TZ.id, week: sat, field: 'home', body: 'أساعد أمي في المطبخ', done: true, parent_note: null });
+  fake.hifzMarks.set(z1.id, [1, 2, 3, 4, 5]);
+  const txt = async l => (await l.innerText()).replace(/\s+/g, ' ');
+  const got = (u, kind) => fake.notes.filter(n => n.user_id === u && n.kind === kind);
+
+  /* ---- the leader: cheer, remind ---- */
+  const L = await open(fake, { label: 'j16-leader' });
+  await settle(L); await signInOk(L, 'lr@t.test');
+  await L.waitForSelector('#sec-lead [data-members-follow] [data-mf]', { timeout: 8000 });
+  await L.locator('[data-fk="qa-lead"]').click();
+  const mf = L.locator('[data-members-follow]');
+  const cheerB = mf.locator(`[data-fk="mf-cheer-${row('حسن عضو الرواد').id}"]`);
+  check('the leader gets «شجّعه على وعده» on a written promise only, named for screen readers', (await cheerB.count()) === 1 && (await mf.locator('[data-fk^="mf-cheer-"]').count()) === 1 && (await cheerB.getAttribute('aria-label')) === 'شجّع حسن عضو الرواد على وعده'
+    && (await cheerB.evaluate(b => b.getBoundingClientRect().height)) >= 44);
+  await cheerB.click();
+  await mf.locator('[data-mf-cheered]').waitFor({ timeout: 8000 });
+  check('one tap cheers it: saved, the member is notified once, the button gives way to «شجّعته»', fake.pledges[0].cheered === true && got(k1.id, 'pledge_cheer').length === 1 && (await mf.locator('[data-fk^="mf-cheer-"]').count()) === 0
+    && await L.evaluate(() => document.activeElement && document.activeElement.getAttribute('data-fk') === 'mf-refresh'));
+  const nb = mf.locator('[data-fk="mf-nudge"]');
+  check('«ذكّر من لم يكتب وعده (1)» counts the joined members without a promise', (await nb.innerText()).trim() === 'ذكّر من لم يكتب وعده (1)');
+  await nb.click();
+  await mf.locator('[data-mf-nudged]').waitFor({ timeout: 8000 });
+  check('the reminder reaches that member only, once a day', got(k2.id, 'pledge_nudge').length === 1 && got(k1.id, 'pledge_nudge').length === 0 && (await mf.locator('[data-fk="mf-nudge"]').count()) === 0 && /مرة واحدة في اليوم/.test(await mf.locator('[data-mf-nudged]').innerText()));
+  const rcL = L.locator('#sec-lead [data-race]');
+  await rcL.locator('[data-race-team]').first().waitFor({ timeout: 8000 });
+  check('the leader sees the week across teams, own team marked', (await rcL.locator('[data-race-team].me').getAttribute('data-race-team')) === TR.id && /فريقك/.test(await txt(rcL.locator('[data-race-team].me'))));
+  check('leader page: no overflow, console clean', (await overflow(L)) <= 0 && L.errs.length === 0, L.errs.join('|'));
+
+  /* ---- the member: the cheer, the past promises, the reminder, the race ---- */
+  const K = await open(fake, { label: 'j16-member', mobile: true });
+  await settle(K); await signInOk(K, 'r1@t.test');
+  await K.waitForSelector('#sec-journey [data-pledge]', { timeout: 8000 });
+  await K.locator('.a-dock [data-dock=journey]').click();
+  const pl = K.locator('[data-pledge]');
+  await pl.locator('[data-pledge-cheer]').waitFor({ timeout: 8000 });
+  check('the member reads «شجّعك قائد فريقك على هذا الوعد»', /شجّعك قائد فريقك على هذا الوعد/.test(await pl.locator('[data-pledge-cheer]').innerText()));
+  await pl.locator('[data-pledge-past]').waitFor({ timeout: 8000 });
+  await pl.locator('[data-fk="plg-past"]').click();
+  const pastT = await txt(pl.locator('[data-pledge-past]'));
+  check('«وعودي السابقة (2)»: the earlier weeks with their field and whether each was kept, newest first', /وعودي السابقة \(2\)/.test(pastT) && /أزور جدتي وفّيت به/.test(pastT) && /أحافظ على نظافة صفي لم يكتمل/.test(pastT) && pastT.indexOf('جدتي') < pastT.indexOf('صفي') && /الأقارب والأرحام/.test(pastT) && !/أرتّب غرفتي/.test(pastT), pastT);
+  check('the list opens from the keyboard too (a summary of at least 44px)', (await pl.locator('[data-fk="plg-past"]').evaluate(e => e.getBoundingClientRect().height)) >= 44);
+  await pl.locator('[data-fk="plg-done"]').click();
+  await K.waitForTimeout(150);
+  check('keeping the promise tells the linked parent, by first name only', got(par.id, 'pledge_kept').length === 1 && got(par.id, 'pledge_kept')[0].data.first_name === 'حسن' && Object.keys(got(par.id, 'pledge_kept')[0].data).join() === 'first_name');
+  check('the past promises stay open after the card repaints', await pl.locator('[data-pledge-past]').evaluate(d => d.open));
+  const rc = K.locator('#sec-journey [data-race]');
+  await rc.locator('[data-race-team]').first().waitFor({ timeout: 8000 });
+  const order = await rc.locator('[data-race-team]').evaluateAll(a => a.map(x => x.getAttribute('data-race-team')));
+  const rz = await txt(rc.locator(`[data-race-team="${TZ.id}"]`)), rn = await txt(rc.locator(`[data-race-team="${TN.id}"]`));
+  check('«الوفاء بالوعود بين الفرق»: the team whose members kept more comes first; a team without accounts comes last', order[0] === TZ.id && order[order.length - 1] === TN.id && /وفّوا بوعدهم 1 من 1/.test(rz) && /كتبوا وعدهم: 1 من 1 · آيات عُلّمت: 5/.test(rz) && /لم يدخل أعضاؤه بحساباتهم بعد/.test(rn), order.join() + ' / ' + rz);
+  check('it says plainly that this is not part of the 100 points, and shows no member name or promise', /ليست من نقاط المسابقة المئة/.test(await rc.locator('[data-race-note]').innerText()) && !/نادر|المطبخ|بشير/.test(await txt(rc)) && (await rc.locator('[data-race-team].me').getAttribute('aria-current')) === 'true');
+  const K2 = await open(fake, { label: 'j16-member2', mobile: true });
+  await settle(K2); await signInOk(K2, 'r2@t.test');
+  await K2.locator('.a-dock [data-dock=bell]').click();
+  await K2.waitForFunction(() => /يذكّرك قائد فريق الرواد/.test(document.body.innerText), null, { timeout: 8000 });
+  check('the reminded member finds it in «الإشعارات», in words', /يذكّرك قائد فريق الرواد: اكتب وعد هذا الأسبوع في «رحلتي»/.test(await K2.locator('body').innerText()));
+  check('member phones: no overflow, console clean', (await overflow(K)) <= 0 && (await overflow(K2)) <= 0 && K.errs.length === 0 && K2.errs.length === 0, [...K.errs, ...K2.errs].join('|'));
+
+  /* ---- the parent ---- */
+  const P = await open(fake, { label: 'j16-parent', mobile: true });
+  await settle(P); await signInOk(P, 'pr@t.test');
+  const cj = P.locator('[data-child-journey]');
+  await cj.locator('[data-cj-cheered]').waitFor({ timeout: 8000 });
+  check('the parent sees that the leader cheered, and the week across teams with the child\'s team marked', /شجّعه قائد فريقه/.test(await cj.locator('[data-cj-cheered]').innerText()) && (await P.locator('[data-race] [data-race-team].me').getAttribute('data-race-team')) === TR.id);
+  await cj.locator('[data-fk="cj-note-0"]').fill('فخور بك يا حسن');
+  await cj.locator('[data-fk="cj-save-0"]').click();
+  await P.waitForFunction(() => /حدّث كلمتي/.test(document.querySelector('[data-child-journey]').textContent), null, { timeout: 8000 });
+  check('the parent\'s word notifies the child, without the text', got(k1.id, 'pledge_note').length === 1 && JSON.stringify(got(k1.id, 'pledge_note')[0].data) === '{}');
+  await P.locator('.a-dock [data-dock=bell]').click();
+  await P.waitForFunction(() => /وفّى حسن بوعده هذا الأسبوع/.test(document.body.innerText), null, { timeout: 8000 });
+  check('and the parent finds «وفّى حسن بوعده» in «الإشعارات»', P.errs.length === 0 && (await overflow(P)) <= 0, P.errs.join('|'));
+
+  /* ---- 0015 without 0016: nothing new shows, nothing breaks ---- */
+  fake.j16 = false;
+  const L2 = await open(fake, { label: 'j16-off-leader' });
+  await settle(L2); await signInOk(L2, 'lr@t.test');
+  await L2.waitForSelector('#sec-lead [data-members-follow] [data-mf]', { timeout: 8000 });
+  await L2.waitForTimeout(300);
+  check('with 0015 only: the follow-up works, with no cheer, no reminder and no race', (await L2.locator('[data-fk^="mf-cheer-"], [data-fk="mf-nudge"], [data-mf-cheered]').count()) === 0 && (await L2.locator('[data-race]:not([hidden])').count()) === 0 && L2.errs.length === 0, L2.errs.join('|'));
 }
 
 section('network hosts and console');

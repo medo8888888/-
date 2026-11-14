@@ -74,6 +74,8 @@ section('4. the words');
 ok(pushMessage('announcement', { title: 'موعد التسميع يوم الجمعة' }).body === 'إعلان جديد: موعد التسميع يوم الجمعة', 'an announcement shows its title');
 ok(pushMessage('invite_new', { team_name: 'الشروق' }).body === 'دعاك فريق الشروق للانضمام إليه.', 'an invite names the team');
 ok(pushMessage('result_returned', { note: 'سبب طويل '.repeat(30) }).body === 'أعادت الإدارة نتيجة مباراة للمراجعة.', 'notes stay in the account, not on the lock screen');
+ok(pushMessage('pledge_kept', { first_name: 'سالم' }).body === 'وفّى سالم بوعده هذا الأسبوع.' && pushMessage('pledge_nudge', { team_name: 'النور' }).body === 'يذكّرك قائد فريق النور: اكتب وعد هذا الأسبوع.'
+  && !/undefined/.test(pushMessage('pledge_note', {}).body + pushMessage('pledge_cheer', {}).body), 'the journey notes: a first name or a team name, never a promise');
 ok(pushMessage('something_new', {}).body === 'لديك إشعار جديد.' && pushMessage('x', {}).url === 'account.html', 'an unknown kind still says something and opens the account');
 ok(pushMessage('announcement', { title: 'ع'.repeat(200) }).body.length <= 80, 'long titles are cut');
 

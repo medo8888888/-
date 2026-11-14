@@ -132,6 +132,12 @@ offline with PGlite, then goes live in one apply (slice 20).
     - First sync: what was written on the device before is sent to the account once; after that the account is the source.
     - Not done: the demo mode has no journey functions (it stays device-only there). No push notification when a parent writes a word.
     - Tests: `supabase/tests/journey.test.mjs` 128; `test-account.mjs` 1006 (36 new).
+33. [x] **The journey between people: the leader cheers and reminds, notifications, past promises, the week across teams** (owner, 14 Nov 2026: "continue creating"). Migration `0016_yb_journey_social.sql`: **written and tested, NOT applied live** (it needs 0015 first; the owner applies them later). With 0015 only, none of this shows and nothing breaks.
+    - The leader: «شجّعه على وعده» (one tap; the member is told once) and «ذكّر من لم يكتب وعده» (to the joined members without a promise, at most once a day a team).
+    - Notifications (in the account's «الإشعارات»; essential, no promise text, no full names): `pledge_note` to the child, `pledge_cheer` to the member, `pledge_kept` to the linked parents (first name), `pledge_nudge` to members (team name). Phone-notification words added to `supabase/functions/yb-push/text.js`: **the edge function must be redeployed** for them; until then a phone shows the generic «لديك إشعار جديد».
+    - The member: «وعودي السابقة» under the promise (`yb_my_pledges`).
+    - Everyone inside the competition: «الوفاء بالوعود بين الفرق هذا الأسبوع» (`yb_week_race`): team names and counts, own team marked, the leader not counted, and a line saying it is not part of the 100 points.
+    - Tests: `supabase/tests/journey-social.test.mjs` 76; `test-account.mjs` 1025 (19 new).
 
 25. [ ] *(Optional)* Private chess labels, Arabic email templates, a custom domain (SPEC 4.9); 🔒 a live quiz with a buzzer for hifz and fahm, only if the owner wants it (SPEC 4.11).
 
