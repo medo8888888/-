@@ -5,8 +5,14 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>سجّل فريقك | مشروع «ينابيع»</title>
 <meta name="description" content="استمارة تسجيل فريق في المسابقة الأولى لمشروع ينابيع (سورة الصف) وموافقة ولي الأمر للمشارك القاصر.">
-<meta name="theme-color" content="#f3f8f7">
+<meta name="theme-color" content="#f3f8f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#04131a" media="(prefers-color-scheme: dark)">
 <meta name="color-scheme" content="light dark">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ينابيع">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ar_AR">
 <meta property="og:title" content="سجّل فريقك | مشروع «ينابيع»">
@@ -27,6 +33,7 @@
 <link rel="stylesheet" href="css/fx.css">
 <link rel="stylesheet" href="css/play.css">
 <link rel="stylesheet" href="css/wow.css">
+<link rel="stylesheet" href="css/pwa.css">
 <script src="data/kb.js" defer></script>
 <script src="js/main.js" defer></script>
 <script src="js/acct-nav.js" defer></script>
@@ -35,6 +42,7 @@
 <script src="js/fx.js" defer></script>
 <script src="js/play.js" defer></script>
 <script src="js/wow.js" defer></script>
+<script src="js/pwa.js" defer></script>
 <script src="js/comp.js" defer></script>
 <script src="js/yb-config.js" defer></script>
 <script src="js/yb-api.js" defer></script>
@@ -245,6 +253,7 @@
       <button type="button" class="sheet-wide theme-toggle"><svg class="i sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg><svg class="i moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg><span class="label-light">الوضع الليلي</span><span class="label-dark">الوضع النهاري</span></button>
       <button type="button" class="sheet-wide" data-open-search><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><span>بحث</span></button>
       <button type="button" class="sheet-wide ai" data-open-chat><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg><span>اسأل ينابيع</span></button>
+      <button type="button" class="sheet-wide" data-pwa-install hidden><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg><span>ثبّت ينابيع على هاتفك</span></button>
     </div>
   </div>
 </div>

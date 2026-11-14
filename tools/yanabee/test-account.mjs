@@ -2201,7 +2201,7 @@ const SHOTS = path.join(process.env.ACCOUNT_SHOTS || '', '');
           if (email) {
             const sess = JSON.parse(await P.evaluate(() => localStorage.getItem('yanabee-session-v1')));
             check(`${label}: tokens and password never appear in the DOM or the address bar`, !dom.includes(sess.access_token) && !dom.includes(sess.refresh_token) && !dom.includes('Passw0rd!') && !(await P.evaluate(() => location.href)).includes(sess.access_token));
-            check(`${label}: only the YB session (and theme) is in storage; no password anywhere`, !lsAll.includes('Passw0rd!') && Object.keys(JSON.parse(lsAll).l).every(k => ['yanabee-session-v1', 'yanabee-theme'].includes(k)) && !Object.keys(JSON.parse(lsAll).s).some(k => /token|pass/i.test(k)), lsAll.slice(0, 200));
+            check(`${label}: only the YB session (and theme, and the app's page count) is in storage; no password anywhere`, !lsAll.includes('Passw0rd!') && Object.keys(JSON.parse(lsAll).l).every(k => ['yanabee-session-v1', 'yanabee-theme', 'yanabee-pwa'].includes(k)) && !/token|@|pass/i.test(JSON.parse(lsAll).l['yanabee-pwa'] || '') && !Object.keys(JSON.parse(lsAll).s).some(k => /token|pass/i.test(k)), lsAll.slice(0, 200));
           }
           const kidsIn = kids.filter(k => dom.includes(k.name)).length;
           const expected = { signedout: 0, signup: 0, admin: 6, leader: 6, member: 6, parent: 2 }[name];
@@ -3517,10 +3517,130 @@ section('the news feed, customization, the handover and the statistics (0011): o
   await close(A2);
   const A3 = await open(fake, { label: 'soc-admin3', mobile: true });
   await settle(A3); await signInOk(A3, 'boss@t.test');
-  await A3.locator('#at-stats').click();
+  await A3.locator('.a-dock [data-dock=stats]').click();             // on a phone the admin's tabs live in the bottom bar
   await A3.waitForSelector('[data-stats] .a-viz-g', { timeout: 8000 });
   check('phone width: the statistics do not overflow', (await overflow(A3)) <= 0);
   await close(A3);
+}
+
+/* ================================================================ the phone dashboard: bottom bar, «المزيد», «خطوتك التالية» */
+section('the phone dashboard: a bottom bar like the apps, «المزيد», and «خطوتك التالية» for each role');
+{
+  const fake = new Fake();
+  fake.addUser({ email: 'boss@t.test', name: 'المشرف', role: 'member' }); fake.setAdmin('boss@t.test');
+  const lx = fake.addUser({ email: 'lx@t.test', name: 'قائد النجوم', role: 'leader' });
+  const kid = (n, c) => ({ name: n, age: 14, consent: c });
+  const T = fake.seedTeam({ leaderEmail: 'lx@t.test', name: 'النجوم', status: 'draft', members: [kid('أنس بكر'), kid('سالم علي'), kid('يوسف علي')] });
+  fake.notify([lx.id], 'team_status', { status: 'draft', team_name: 'النجوم' });
+  const P = await open(fake, { label: 'dock-leader', mobile: true });
+  await settle(P); await signInOk(P, 'lx@t.test');
+  await P.waitForSelector('.a-dock [data-dock=home]', { timeout: 8000 });
+  const vis = sel => P.locator(sel).first().isVisible();
+  check('phone: the side menu and the header buttons leave, a bottom bar takes their place', !(await vis('.a-side')) && !(await vis('.a-head-b')) && await vis('.a-dock'));
+  const dock = await P.locator('.a-dock .a-dock-b:visible').allInnerTexts();
+  check('the bar: الرئيسية · الأخبار · الفريق · التنبيهات · المزيد', dock.map(t => t.replace(/\d+/g, '').trim()).join('|') === 'الرئيسية|الأخبار|الفريق|التنبيهات|المزيد', dock.join('|'));
+  const sizes = await P.locator('.a-dock .a-dock-b:visible').evaluateAll(bs => bs.map(b => b.getBoundingClientRect()).map(r => [Math.round(r.width), Math.round(r.height)]));
+  check('every button is at least 44px each way (thumb size)', sizes.every(([w, hh]) => w >= 44 && hh >= 44), JSON.stringify(sizes));
+  check('«الرئيسية» is marked as the current place', (await P.locator('[data-dock=home]').getAttribute('aria-current')) === 'page');
+  check('the unread count shows on «التنبيهات»', /1/.test(await P.locator('[data-dock=bell] .a-dock-n').innerText()) && /1 غير مقروء/.test(await P.locator('[data-dock=bell]').getAttribute('aria-label')));
+  check('the bar stays at the bottom of the screen', await P.evaluate(() => { const r = document.querySelector('.a-dock').getBoundingClientRect(); return Math.abs(r.bottom - innerHeight) < 2; }));
+  check('390px: no sideways scroll', (await overflow(P)) <= 0);
+  // «خطوتك التالية» walks the leader through the registration
+  let nx = await P.locator('[data-next]').innerText();
+  check('leader, 4 of 5: «أضف 1 عضوًا إلى فريقك», step 1 of 4 is current', /أضف 1 عضوًا إلى فريقك/.test(nx) && /0 من 4/.test(nx) && (await P.locator('[data-next] li[aria-current=step]').innerText()).includes('الأعضاء'));
+  check('the card comes first in «نظرة عامة»', await P.evaluate(() => document.querySelector('#sec-home .a-grid').firstElementChild.hasAttribute('data-next')));
+  await P.locator('[data-next] [data-fk=next-go]').click();
+  check('«افتح قائمة الفريق» takes the keyboard to the team list', await P.evaluate(() => !!document.activeElement.closest('section') && /أعضاء|القائمة/.test(document.activeElement.textContent)));
+  fake.members.push({ id: fake.uid(), team_id: T.id, full_name: 'عمر حسن', age: 14, guardian_name: 'ولي', guardian_phone: '0912345678', is_leader: false, user_id: null, consent_status: 'pending', consent_at: null, created_at: fake.now() });
+  await reload(P); await P.waitForSelector('[data-next]', { timeout: 8000 });
+  nx = await P.locator('[data-next]').innerText();
+  check('5 members: «أرسل الفريق للاعتماد», 1 of 4 done', /أرسل الفريق للاعتماد/.test(nx) && /1 من 4/.test(nx));
+  await P.locator('[data-next] [data-fk=next-go]').click();
+  check('«إلى زر الإرسال» puts the keyboard on «أرسل الفريق للاعتماد»', (await P.evaluate(() => document.activeElement.dataset.fk)) === 'submit');
+  T.status = 'returned'; T.admin_note = 'صحّح اسم الحي';
+  await reload(P); await P.waitForSelector('[data-next]', { timeout: 8000 });
+  nx = await P.locator('[data-next]').innerText();
+  check('returned: «عدّل ما طلبته الإدارة ثم أعد الإرسال» with the admin\'s note', /عدّل ما طلبته الإدارة/.test(nx) && /صحّح اسم الحي/.test(nx));
+  T.status = 'submitted';
+  await reload(P); await P.waitForSelector('[data-next]', { timeout: 8000 });
+  nx = await P.locator('[data-next]').innerText();
+  check('sent, consents missing (the leader\'s age is unknown, so counted too): «اجمع موافقات الأهل: 0 من 5» and the printable form', /اجمع موافقات الأهل: 0 من 5/.test(nx) && (await P.locator('[data-next] a[href="register.html#c-consent"]').count()) === 1);
+  fake.members.filter(m => m.team_id === T.id).forEach(m => { m.consent_status = 'received'; });
+  T.status = 'approved';
+  await reload(P); await P.waitForSelector('[data-next].is-done', { timeout: 8000 });
+  nx = await P.locator('[data-next]').innerText();
+  check('approved and complete: «كل شيء في مكانه», 4 of 4, a link to the matches', /كل شيء في مكانه/.test(nx) && /4 من 4/.test(nx) && /فريقك معتمد ومكتمل/.test(nx));
+  check('the card never shows children\'s names', !/أنس|سالم|يوسف|عمر/.test(nx));
+  // the bar moves between sections
+  await P.locator('[data-dock=team]').click();
+  await P.waitForFunction(() => document.querySelector('[data-dock=team]').getAttribute('aria-current') === 'page', null, { timeout: 4000 }).catch(() => {});
+  check('«الفريق» scrolls to the team section and lights up', (await P.locator('[data-dock=team]').getAttribute('aria-current')) === 'page' && await P.evaluate(() => { const r = document.getElementById('sec-team').getBoundingClientRect(); return r.top < 200 && r.bottom > 0; }));
+  await P.locator('[data-dock=bell]').click();
+  check('«التنبيهات» opens the notifications', await P.locator('.a-inbox').isVisible() && (await P.locator('[data-dock=bell]').getAttribute('aria-expanded')) === 'true');
+  // «المزيد»
+  await P.locator('[data-dock=more]').click();
+  const sheet = P.locator('[data-more]');
+  check('«المزيد» opens a dialog with the name and role', await sheet.isVisible() && (await sheet.getAttribute('aria-modal')) === 'true' && /قائد النجوم/.test(await sheet.innerText()) && /قائد الفريق/.test(await sheet.innerText()));
+  const secs = await sheet.locator('.a-more-s').allInnerTexts();
+  check('…every section of the dashboard', secs.length === 6 && ['نظرة عامة', 'الأخبار', 'المباريات والمواعيد', 'الفريق', 'المشاريع والمبادرات', 'غرفة القادة'].every(s => secs.some(x => x.includes(s))), secs.join('|'));
+  check('…and the account: تخصيص لوحتي, تغيير كلمة المرور, الموقع العام, تسجيل الخروج', ['تخصيص لوحتي', 'تغيير كلمة المرور', 'الموقع العام', 'تسجيل الخروج'].every(s => sheet.locator('.a-more-a', { hasText: s }).count().then(n => n === 1)) && (await sheet.locator('.a-more-a').count()) === 4);
+  check('…no «ثبّت» while the phone offers no install', !(await sheet.locator('[data-fk=more-install]').count()));
+  check('focus is inside the dialog', await P.evaluate(() => !!document.activeElement.closest('[data-more]')));
+  await P.keyboard.press('Escape');
+  check('Esc closes it and focus returns to «المزيد»', !(await P.locator('[data-more]').count()) && (await P.evaluate(() => document.activeElement.dataset.dock)) === 'more');
+  await P.locator('[data-dock=more]').click();
+  await P.locator('[data-more] [data-fk=more-room]').click();
+  check('a section from «المزيد» (غرفة القادة): the sheet closes, the room is on screen with the keyboard on its title', !(await P.locator('[data-more]').count()) && await P.evaluate(() => { const r = document.getElementById('sec-room').getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0 && !!document.activeElement.closest('#sec-room'); }));
+  await P.locator('[data-dock=more]').click();
+  await P.locator('[data-more] [data-fk=more-cust]').click();
+  check('«تخصيص لوحتي» opens the settings', await P.locator('[data-settings]').isVisible());
+  await P.locator('[data-settings] .a-link', { hasText: 'إغلاق' }).first().click();
+  check('closing the settings returns focus to «المزيد» (the header button is hidden)', (await P.evaluate(() => document.activeElement.dataset.dock)) === 'more');
+  await P.locator('[data-dock=more]').click();
+  await P.locator('[data-more] [data-fk=more-pw]').click();
+  check('«تغيير كلمة المرور» opens the form, ready to type', await P.locator('.a-pwbox').isVisible() && (await P.evaluate(() => document.activeElement.getAttribute('autocomplete'))) === 'new-password');
+  await P.evaluate(() => { const e = new Event('beforeinstallprompt', { cancelable: true }); e.prompt = () => { window.__p = 1; return Promise.resolve(); }; e.userChoice = Promise.resolve({ outcome: 'accepted' }); window.dispatchEvent(e); });
+  await P.locator('[data-dock=more]').click();
+  await P.locator('[data-more] [data-fk=more-install]').click();
+  check('when the phone offers it, «ثبّت ينابيع على هاتفك» in «المزيد» opens the install prompt', (await P.evaluate(() => window.__p)) === 1);
+  check('leader console clean (phone dashboard)', P.errs.length === 0, P.errs.join('|'));
+  // the same screen on a computer keeps the side menu
+  await P.setViewportSize({ width: 1280, height: 900 });
+  check('on a computer: the side menu and header buttons, no bottom bar', await vis('.a-side') && await vis('.a-head-b') && !(await vis('.a-dock')));
+  await close(P);
+
+  // member and parent
+  const mx = fake.addUser({ email: 'mx@t.test', name: 'عضو تجربة', role: 'member' });
+  const m0 = fake.members.find(m => m.team_id === T.id && !m.is_leader);
+  m0.user_id = mx.id; m0.consent_status = 'pending';
+  const M = await open(fake, { label: 'dock-member', mobile: true });
+  await settle(M); await signInOk(M, 'mx@t.test');
+  await M.waitForSelector('[data-next]', { timeout: 8000 });
+  check('member without consent: «موافقة ولي أمرك لم تصل بعد» and the form link', /موافقة ولي أمرك لم تصل بعد/.test(await M.locator('[data-next]').innerText()) && (await M.locator('[data-next] a[href="register.html#c-consent"]').count()) === 1);
+  check('member bar: الرئيسية · الأخبار · الفريق', (await M.locator('.a-dock .a-dock-b[data-dock]:not([data-dock=bell]):not([data-dock=more])').allInnerTexts()).join('|') === 'الرئيسية|الأخبار|الفريق');
+  await close(M);
+  fake.addUser({ email: 'px@t.test', name: 'ولي تجربة', role: 'parent' });
+  const PA = await open(fake, { label: 'dock-parent', mobile: true });
+  await settle(PA); await signInOk(PA, 'px@t.test');
+  await PA.waitForSelector('[data-next]', { timeout: 8000 });
+  check('parent with no child linked: «اربط ابنك أو ابنتك»', /اربط ابنك أو ابنتك/.test(await PA.locator('[data-next]').innerText()));
+  await PA.locator('[data-next] [data-fk=next-go]').click();
+  check('«اربط الآن» goes to the link form', await PA.evaluate(() => { const r = document.getElementById('sec-link').getBoundingClientRect(); return r.top < 300 && r.bottom > 0; }));
+  check('member and parent consoles clean', PA.errs.length === 0, PA.errs.join('|'));
+  await close(PA);
+
+  // the admin: tabs in the bar, the rest in «المزيد»
+  const A = await open(fake, { label: 'dock-admin', mobile: true });
+  await settle(A); await signInOk(A, 'boss@t.test');
+  await A.waitForSelector('.a-dock [data-dock=teams]', { timeout: 8000 });
+  check('admin bar: الفرق · الأخبار · الإحصاءات · … · المزيد', (await A.locator('.a-dock .a-dock-b[data-dock]:not([data-dock=bell]):not([data-dock=more])').allInnerTexts()).join('|') === 'الفرق|الأخبار|الإحصاءات');
+  await A.locator('[data-dock=more]').click();
+  check('«المزيد» lists all 11 admin tabs', (await A.locator('[data-more] .a-more-s').count()) === 11);
+  await A.locator('[data-more] [data-fk=more-people]').click();
+  await A.waitForSelector('#ap-people', { timeout: 6000 }).catch(() => {});
+  check('a tab from «المزيد» (الأشخاص) opens, and «المزيد» lights up', (await A.locator('#at-people').getAttribute('aria-selected')) === 'true' && await A.locator('[data-dock=more]').evaluate(b => b.classList.contains('on')));
+  check('admin console clean (phone bar)', A.errs.length === 0, A.errs.join('|'));
+  await close(A);
 }
 
 section('network hosts and console');

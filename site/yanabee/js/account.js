@@ -451,8 +451,12 @@
     function toggle(open) {
       pwWrap.hidden = !open;
       pwBtn.setAttribute('aria-expanded', String(open));
-      if (open) p1.input.focus(); else pwBtn.focus();
+      if (open) { p1.input.focus(); if (!pwBtn.offsetParent) pwWrap.scrollIntoView({ block: 'start' }); }
+      else backTo(pwBtn);
     }
+    // on a phone the header buttons live in «المزيد»: focus goes back there
+    const backTo = b => { if (b.offsetParent || !dockRef) b.focus(); else dockRef.more.focus(); };
+    let dockRef = null;
     const outBtn = btn(DEMO && DEMO.active ? 'خروج من التجربة' : 'خروج', 'x', 'btn-ghost', async () => {
       outBtn.disabled = true;
       if (DEMO && DEMO.active) { DEMO.exit(); return; }
@@ -473,7 +477,7 @@
     const cust = settingsPanel(profile, paintAvatar);
     const custBtn = h('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'aria-expanded': 'false', 'data-fk': 'cust-open',
       onclick: () => { if (cust.hidden) { cust.open(); custBtn.setAttribute('aria-expanded', 'true'); } else cust.close(); } }, icon('sparkles'), h('span', { text: 'تخصيص' }));
-    cust.onclose = () => { custBtn.setAttribute('aria-expanded', 'false'); custBtn.focus(); };
+    cust.onclose = () => { custBtn.setAttribute('aria-expanded', 'false'); backTo(custBtn); };
     const head = h('header', { class: 'a-head a-card' },
       avatar,
       h('div', { class: 'a-who' },
@@ -487,7 +491,14 @@
       nav,
       h('a', { class: 'a-side-out', href: 'index.html' }, icon('arrow-left'), h('span', { text: 'الموقع العام' })));
     const main = h('div', { class: 'a-main' }, head, inbox.panel, cust, pwWrap, flash, body);
-    const el = h('div', { class: 'a-app dash a-role-' + profile.role }, side, main);
+    dockRef = phoneDock({
+      nav, bell: inbox.bell, panel: inbox.panel,
+      who: () => h('div', { class: 'a-more-who' }, avatar.cloneNode(true), h('div', {}, h('b', { text: profile.full_name || 'حسابي' }), h('span', { class: 'a-badge r-' + profile.role, text: roleName }))),
+      cust: () => { if (cust.hidden) custBtn.click(); requestAnimationFrame(() => cust.scrollIntoView({ block: 'start' })); },
+      pw: () => toggle(true),
+      out: () => outBtn.click(), outLabel: DEMO && DEMO.active ? 'خروج من التجربة' : 'تسجيل الخروج'
+    });
+    const el = h('div', { class: 'a-app dash a-role-' + profile.role }, side, main, dockRef.el);
     inbox.start();
     if (S.flash) { flash.append(banner(S.flash, 'ok')); say(S.flash); S.flash = ''; }
     S.sh = { el, body, flash, nav };
@@ -495,6 +506,184 @@
     return S.sh;
   }
 
+
+  /* ------------------------------------------------------------------ phone: the bottom bar and «المزيد» (900px and less) */
+  // On a phone the side menu and the header buttons leave. A bottom bar takes their place, like the apps people know:
+  // three main sections, the notifications and «المزيد». «المزيد» is a sheet with every section (or every admin tab)
+  // and the account actions (customize, password, install the app, the public site, sign out). The bar only mirrors
+  // the side menu, so whatever the menu shows (a section hidden in «تخصيص», a new tab) the bar follows.
+  const DOCK_PRI = ['home', 'teams', 'feed', 'stats', 'team', 'review', 'matches', 'link', 'judge', 'projects', 'results', 'dates', 'room'];
+  const DOCK_SHORT = { home: 'الرئيسية', feed: 'الأخبار', team: 'الفريق', matches: 'المباريات', teams: 'الفرق', stats: 'الإحصاءات', review: 'الطلبات', link: 'ربط ابن',
+    judge: 'التحكيم', projects: 'المشاريع', results: 'النتائج', dates: 'المواعيد', room: 'الغرفة' };
+  const smooth = () => (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth');
+  function phoneDock(o) {
+    if (S.dockMo) { S.dockMo.forEach(m => m.disconnect()); S.dockMo = null; }
+    const bar = h('nav', { class: 'a-dock', 'aria-label': 'التنقل السريع في لوحتي' });
+    const badge = h('b', { class: 'a-dock-n', hidden: true });
+    const bellB = h('button', { type: 'button', class: 'a-dock-b', 'data-dock': 'bell', 'aria-expanded': 'false', hidden: true, onclick: bellGo }, icon('bell'), h('span', { text: 'التنبيهات' }), badge);
+    const moreB = h('button', { type: 'button', class: 'a-dock-b', 'data-dock': 'more', 'aria-haspopup': 'dialog', 'aria-expanded': 'false', onclick: () => openMore() }, icon('grid'), h('span', { text: 'المزيد' }));
+    let sig = '', btns = {}, sheet = null;
+    function sources() {
+      const links = Array.from(o.nav.querySelectorAll('[data-nav]')).filter(a => !a.closest('[hidden]'));
+      if (links.length) return links.map(a => ({ key: a.dataset.nav, label: a.textContent.trim(), ic: a.querySelector('svg'), el: a, on: a.classList.contains('on'), tab: false }));
+      return Array.from(o.nav.querySelectorAll('[role=tab]')).map(t => ({ key: t.id.replace(/^at-/, ''), label: t.textContent.trim(), ic: t.querySelector('svg'), el: t, on: t.getAttribute('aria-selected') === 'true', tab: true }));
+    }
+    const glyph = s => (s.ic ? s.ic.cloneNode(true) : icon('chart'));
+    function go(key) {
+      const s = sources().find(x => x.key === key);
+      if (!s) return;
+      s.el.click();
+      if (s.tab) { window.scrollTo({ top: 0, behavior: smooth() }); const t = root.querySelector('#at-' + key); if (t) t.focus({ preventScroll: true }); }
+    }
+    function bellGo() {
+      o.bell.click();
+      const open = !o.panel.hidden;
+      bellB.setAttribute('aria-expanded', String(open));
+      if (open) requestAnimationFrame(() => o.panel.scrollIntoView({ block: 'start', behavior: smooth() }));
+    }
+    function render() {
+      const srcs = sources();
+      const main = DOCK_PRI.map(k => srcs.find(s => s.key === k)).filter(Boolean).slice(0, 3);
+      const s2 = main.map(s => s.key).join();
+      if (s2 !== sig) {
+        sig = s2; btns = {};
+        put(bar, ...main.map(s => (btns[s.key] = h('button', { type: 'button', class: 'a-dock-b', 'data-dock': s.key, onclick: () => go(s.key) }, glyph(s), h('span', { text: DOCK_SHORT[s.key] || s.label })))), bellB, moreB);
+      }
+      const cur = srcs.find(s => s.on);
+      Object.keys(btns).forEach(k => {
+        const on = !!cur && cur.key === k;
+        btns[k].classList.toggle('on', on);
+        if (on) btns[k].setAttribute('aria-current', 'page'); else btns[k].removeAttribute('aria-current');
+      });
+      moreB.classList.toggle('on', !!cur && !btns[cur.key]);
+      bellB.hidden = o.bell.hidden;
+      const n = o.bell.querySelector('.a-bell-n');
+      badge.textContent = n ? n.textContent : '';
+      badge.hidden = !n || n.hidden;
+      bellB.setAttribute('aria-label', badge.hidden ? 'التنبيهات' : `التنبيهات: ${badge.textContent} غير مقروء`);
+      bellB.setAttribute('aria-expanded', String(!o.panel.hidden));
+    }
+    let queued = false;
+    const later = () => { if (queued) return; queued = true; requestAnimationFrame(() => { queued = false; render(); }); };
+    if (window.MutationObserver) {
+      const a = new MutationObserver(later), b = new MutationObserver(later), c = new MutationObserver(later);
+      a.observe(o.nav, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'aria-selected', 'hidden'] });
+      b.observe(o.bell, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['hidden'] });
+      c.observe(o.panel, { attributes: true, attributeFilter: ['hidden'] });
+      S.dockMo = [a, b, c];
+    }
+    render();
+
+    function closeMore(back) {
+      if (!sheet) return;
+      sheet.remove(); sheet = null;
+      document.documentElement.classList.remove('a-lock');
+      moreB.setAttribute('aria-expanded', 'false');
+      if (back !== false) moreB.focus();
+    }
+    function openMore() {
+      if (sheet) { closeMore(); return; }
+      const srcs = sources();
+      const act = (ic, label, fk, run) => h('button', { type: 'button', class: 'a-more-a', 'data-fk': fk, onclick: () => { closeMore(false); run(); } }, icon(ic), h('span', { text: label }));
+      const pwa = window.YBPWA && ['prompt', 'ios'].includes(window.YBPWA.state());
+      const close = h('button', { type: 'button', class: 'a-more-x', 'aria-label': 'إغلاق', onclick: () => closeMore() }, icon('x'));
+      const panel = h('div', { class: 'a-more-p', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'a-more-h', tabindex: '-1', 'data-more': '' },
+        h('div', { class: 'a-more-head' }, o.who(), close),
+        h('h3', { class: 'a-more-t', id: 'a-more-h', text: 'أقسام لوحتي' }),
+        h('div', { class: 'a-more-grid' }, srcs.map(s => h('button', { type: 'button', class: 'a-more-s' + (s.on ? ' on' : ''), 'data-fk': 'more-' + s.key, 'aria-current': s.on ? 'page' : null,
+          onclick: () => { closeMore(false); go(s.key); } }, glyph(s), h('span', { text: s.label })))),
+        h('h3', { class: 'a-more-t', text: 'حسابي' }),
+        h('div', { class: 'a-more-list' },
+          act('sparkles', 'تخصيص لوحتي', 'more-cust', o.cust),
+          act('lock', 'تغيير كلمة المرور', 'more-pw', o.pw),
+          pwa ? act('download', 'ثبّت ينابيع على هاتفك', 'more-install', () => window.YBPWA.install(moreB)) : null,
+          h('a', { class: 'a-more-a', href: 'index.html' }, icon('home'), h('span', { text: 'الموقع العام' })),
+          act('x', o.outLabel, 'more-out', o.out)));
+      sheet = h('div', { class: 'a-more' }, h('div', { class: 'a-more-bg', onclick: () => closeMore() }), panel);
+      sheet.addEventListener('keydown', e => {
+        if (e.key === 'Escape') { e.preventDefault(); closeMore(); return; }
+        if (e.key !== 'Tab') return;
+        const f = Array.from(panel.querySelectorAll('button,a[href]'));
+        if (e.shiftKey && (document.activeElement === f[0] || document.activeElement === panel)) { e.preventDefault(); f[f.length - 1].focus(); }
+        else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
+      });
+      document.body.append(sheet);
+      document.documentElement.classList.add('a-lock');
+      moreB.setAttribute('aria-expanded', 'true');
+      panel.focus();
+    }
+    return { el: bar, more: moreB, close: closeMore };
+  }
+
+  /* ------------------------------------------------------------------ «خطوتك التالية»: one clear thing to do now */
+  // At the top of «نظرة عامة»: where the person stands (a short progress line for a leader) and the single most useful
+  // next action, with a button that takes them straight to the card where it is done. Built only from what the screen
+  // already read (no extra request). spec: { steps?: [[label, done]], icon, title, text, note?, action?: [label, run] , done? }
+  function nextCard(spec) {
+    const box = h('section', { class: 'a-card a-next' + (spec.done ? ' is-done' : ''), 'aria-labelledby': 'a-next-h', 'data-next': '' });
+    const steps = spec.steps || [];
+    const doneN = steps.filter(s => s[1]).length;
+    put(box,
+      h('div', { class: 'a-next-top' }, h('h3', { id: 'a-next-h', text: spec.done ? 'كل شيء في مكانه' : 'خطوتك التالية' }),
+        steps.length ? h('span', { class: 'a-next-n', text: `${doneN} من ${steps.length}` }) : null),
+      steps.length ? h('ol', { class: 'a-next-steps', 'aria-label': 'مراحل التسجيل' }, steps.map((s, i) => {
+        const now = !s[1] && steps.slice(0, i).every(x => x[1]);
+        return h('li', { class: s[1] ? 'ok' : now ? 'now' : '', 'aria-current': now ? 'step' : null },
+          h('span', { class: 'a-next-dot', 'aria-hidden': 'true' }, s[1] ? icon('check') : String(i + 1)), h('span', { text: s[0] }), h('span', { class: 'a-sr', text: s[1] ? ' (تمّ)' : now ? ' (الآن)' : '' }));
+      })) : null,
+      h('div', { class: 'a-next-do' },
+        h('span', { class: 'a-next-ic', 'aria-hidden': 'true' }, icon(spec.icon || 'flag')),
+        h('div', { class: 'a-next-t' }, h('b', { text: spec.title }), spec.text ? h('p', { text: spec.text }) : null,
+          spec.note ? h('p', { class: 'a-note' }, h('b', { text: 'ملاحظة الإدارة: ' }), spec.note) : null),
+        spec.action ? h('button', { type: 'button', class: 'btn btn-primary btn-sm a-next-go', 'data-fk': 'next-go', onclick: spec.action[1] }, h('span', { text: spec.action[0] }), icon('arrow-left')) : null,
+        spec.link ? h('a', { class: 'btn btn-ghost btn-sm a-next-go', href: spec.link[1] }, h('span', { text: spec.link[0] }), icon('arrow-left')) : null));
+    return box;
+  }
+  // scroll to a card and put the keyboard on it (its heading, or a given control)
+  function goCard(node, focusSel) {
+    if (!node) return;
+    const sec = node.closest('.a-sec');
+    if (sec && sec.hidden) return;
+    node.scrollIntoView({ block: 'start', behavior: smooth() });
+    const f = (focusSel && node.querySelector(focusSel)) || node.querySelector('h3,h2');
+    if (f) { if (!f.matches('button,a,input,select,textarea')) f.tabIndex = -1; f.focus({ preventScroll: true }); }
+  }
+  const goSec = key => { const s = document.getElementById('sec-' + key); if (s) goCard(s, '.a-sec-h'); };
+  function leaderNext() {
+    const t = L.team, n = L.members.length;
+    const minors = L.members.filter(m => isMinor(m.age)), got = minors.filter(m => m.consent_status === 'received').length;
+    const okN = n >= MIN && n <= MAX, consents = !minors.length || got >= minors.length;
+    const sent = t.status === 'submitted' || t.status === 'approved';
+    const steps = [['الأعضاء', okN], ['الإرسال', sent], ['موافقات الأهل', consents], ['الاعتماد', t.status === 'approved']];
+    const toRoster = ['افتح قائمة الفريق', () => goCard(L.boxes.roster)];
+    const toSubmit = [t.status === 'returned' ? 'إلى زر إعادة الإرسال' : 'إلى زر الإرسال', () => goCard(L.boxes.top, '[data-fk=submit]')];
+    if (t.status === 'rejected') return { steps, icon: 'alert', title: 'لم تعتمد الإدارة الفريق', text: 'تواصل مع الإدارة لمعرفة السبب وإعادة فتح الطلب.', note: t.admin_note || null };
+    if ((t.status === 'draft' || t.status === 'returned') && n < MIN) return { steps, icon: 'users', title: `أضف ${MIN - n} ${MIN - n === 1 ? 'عضوًا' : 'أعضاء'} إلى فريقك`, text: `الفريق من ${MIN} إلى ${MAX} شاملًا القائد. لديك الآن ${n}.`, note: t.status === 'returned' ? t.admin_note : null, action: toRoster };
+    if ((t.status === 'draft' || t.status === 'returned') && n > MAX) return { steps, icon: 'users', title: `احذف ${n - MAX} من القائمة`, text: `الحد الأقصى ${MAX} شاملًا القائد.`, action: toRoster };
+    if (t.status === 'returned') return { steps, icon: 'repeat', title: 'عدّل ما طلبته الإدارة ثم أعد الإرسال', text: 'بعد التعديل اضغط «أعد إرسال الفريق للمراجعة».', note: t.admin_note || null, action: toSubmit };
+    if (t.status === 'draft') return { steps, icon: 'send', title: 'أرسل الفريق للاعتماد', text: 'القائمة مكتملة. أرسلها لتراجعها الإدارة، ويمكنك سحب الإرسال للتعديل.', action: toSubmit };
+    if (!consents) return { steps, icon: 'user-check', title: `اجمع موافقات الأهل: ${got} من ${minors.length}`, text: 'نموذج ورقي موقّع لكل عضو دون 18 سنة. سجّل استلام كل نموذج في قائمة الفريق.', action: toRoster, link: ['اطبع النموذج', 'register.html#c-consent'] };
+    if (t.status === 'submitted') return { steps, icon: 'clock', title: 'طلبك قيد المراجعة', text: 'ستصلك رسالة هنا عند الاعتماد. تابع الرسوم والخطوات في «خطوات اعتماد فريقك».', action: ['عرض الخطوات', () => goCard(L.boxes.check.hidden ? L.boxes.top : L.boxes.check)] };
+    return { steps, done: true, icon: 'trophy', title: 'فريقك معتمد ومكتمل', text: 'تابع المباريات والمواعيد، وأرسل مشاريع فريقك في «المشاريع والمبادرات».', action: ['المباريات والمواعيد', () => goSec('matches')] };
+  }
+  function paintNext() {
+    if (!L.boxes.next || !L.team) return;
+    const fresh = nextCard(leaderNext());
+    L.boxes.next.replaceWith(fresh);
+    L.boxes.next = fresh;
+  }
+  function memberNext(row, me) {
+    const got = me && me.consent_status === 'received';
+    if (me && !got) return { icon: 'user-check', title: 'موافقة ولي أمرك لم تصل بعد', text: 'اطلب من ولي أمرك توقيع نموذج الموافقة وتسليمه لقائد فريقك.', link: ['نموذج الموافقة', 'register.html#c-consent'] };
+    if (row.status !== 'approved') return { icon: 'clock', title: 'فريقك ينتظر الاعتماد', text: 'يكمل قائد فريقك التسجيل، وتظهر هنا المباريات بعد الاعتماد والقرعة.' };
+    return { done: true, icon: 'trophy', title: 'أنت جاهز للمسابقة', text: 'تابع مبارياتك ومواعيدك، وأخبار الفرق في «الأخبار».', action: ['المباريات والمواعيد', () => goSec('matches')] };
+  }
+  function parentNext(kids) {
+    if (!kids.length) return { icon: 'user-check', title: 'اربط ابنك أو ابنتك', text: 'اطلب رمز الفريق من القائد، واكتب اسم الطفل كما في القائمة. بعدها تتابع فريقه ومبارياته هنا.', action: ['اربط الآن', () => goSec('link')] };
+    const wait = kids.filter(k => k.consent_status !== 'received');
+    if (wait.length) return { icon: 'user-check', title: `سلّم نموذج الموافقة لقائد الفريق (${wait.map(k => k.full_name.split(' ')[0]).join('، ')})`, text: 'نموذج ورقي موقّع. تتغيّر الحالة هنا بعد أن يسجّل القائد استلامه.', link: ['اطبع النموذج', 'register.html#c-consent'] };
+    return { done: true, icon: 'trophy', title: 'الموافقات مكتملة', text: 'تابع مباريات الفريق ومواعيده ومشاريعه، وأخبار الفرق في «الأخبار».', action: ['المباريات والمشاريع', () => goSec('matches')] };
+  }
 
   /* ------------------------------------------------------------------ the dashboard (signed in) */
   // Signed in, the page becomes an app: the site's banner goes, a side menu jumps between the role's sections and marks the
@@ -2642,7 +2831,7 @@
     L.subs = leaderSubs({ id: t.team_id, name: t.team_name, status: t.status }, 'lsub');
     if (!L.chat) { L.chat = chatRoom(false, 'lchat'); L.chat.start(); }
     dashLayout([
-      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [leaderTiles(t), L.boxes.top, L.boxes.check, scoresCard(), announceFeed()] },
+      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [(L.boxes.next = nextCard(leaderNext())), leaderTiles(t), L.boxes.top, L.boxes.check, scoresCard(), announceFeed()] },
       feedGroup(),
       { key: 'matches', label: 'المباريات والمواعيد', icon: 'trophy', one: true, nodes: [L.dates, L.sched.node, L.boxes.marks] },
       { key: 'team', label: 'الفريق', icon: 'users', nodes: [L.boxes.roster, L.boxes.roles, L.boxes.code, (L.style || (L.style = teamStyleCard(t), L.style.start(), L.style)).el, L.printBox] },
@@ -2653,7 +2842,7 @@
     startSchedule([L.sched]);
     if (focus) { const f = L.boxes.top.querySelector('[data-focus]'); if (f) f.focus({ preventScroll: true }); }
   }
-  function paintLeader() { paintTop(); paintCheck(); paintMarks(); paintRoster(); paintRoles(); paintCode(); paintPrint(); }
+  function paintLeader() { paintNext(); paintTop(); paintCheck(); paintMarks(); paintRoster(); paintRoles(); paintCode(); paintPrint(); }
   // «هدّافو فريقنا» and «روح الفريق» (yb_my_marks, migration 0007): names only for the team's own people; approved
   // matches count, waiting ones are shown apart
   async function paintMarks() {
@@ -3019,7 +3208,7 @@
       row.status === 'approved' ? teamSubsView(row.team_id, row.team_name) : null,
       box.node];
     dashLayout([
-      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [memberTiles(row), mv[2], mv[0], mv[1], mv[4]] },
+      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [nextCard(memberNext(row, ro.ok ? me : null)), memberTiles(row), mv[2], mv[0], mv[1], mv[4]] },
       feedGroup(),
       { key: 'matches', label: 'المباريات والمواعيد', icon: 'trophy', one: true, nodes: [mv[5], mv[7]] },
       { key: 'team', label: 'الفريق', icon: 'users', nodes: [mv[3]] },
@@ -3038,7 +3227,7 @@
     const kids = r.data || [];
     const jd = judgeDesk('pjdg');
     jd.start();
-    const home = [parentTiles(kids), announceFeed(), scoresCard()];
+    const home = [nextCard(parentNext(kids)), parentTiles(kids), announceFeed(), scoresCard()];
     const nodes = home, games = [];
     const boxes = [];
     if (!kids.length) nodes.push(h('p', { class: 'a-empty a-card', text: 'لم تربط أي ابن أو ابنة بعد. اكتب رمز الفريق واسم الطفل أدناه.' }));

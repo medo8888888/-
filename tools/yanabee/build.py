@@ -12,7 +12,8 @@ import sys
 import traceback
 
 MODULES = ['page_index', 'page_teams', 'page_operations', 'page_quran', 'page_learn', 'page_lab', 'page_competition', 'page_register',
-           'page_leaders', 'page_method', 'page_tournament', 'page_account', 'page_404', 'build_kb']
+           'page_leaders', 'page_method', 'page_tournament', 'page_account', 'page_404', 'build_kb',
+           'build_pwa']  # last: the service worker's version and saved files come from the built pages
 
 if __name__ == '__main__':
     only = sys.argv[1:]

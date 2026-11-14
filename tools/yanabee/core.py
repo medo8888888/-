@@ -136,6 +136,10 @@ ICONS = {
     'chevron-down': '<path d="m6 9 6 6 6-6"/>',
     'check': '<path d="M20 6 9 17l-5-5"/>',
     'printer': '<path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/>',
+    'download': '<path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/>',
+    'share': '<path d="M12 2v13"/><path d="m16 6-4-4-4 4"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>',
+    'plus-square': '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M8 12h8"/><path d="M12 8v8"/>',
+    'wifi-off': '<path d="M12 20h.01"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/><path d="M5 12.859a10 10 0 0 1 5.17-2.69"/><path d="M19 12.859a10 10 0 0 0-2.007-1.523"/><path d="M2 8.82a15 15 0 0 1 4.177-2.643"/><path d="M22 8.82a15 15 0 0 0-11.288-3.764"/><path d="m2 2 20 20"/>',
 }
 
 
@@ -385,8 +389,14 @@ def page(fn, title, body, desc, css=(), js=(), base=None, head=''):
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 {base_tag}<title>{plain(full_title)}</title>
 <meta name="description" content="{plain(desc)}">
-<meta name="theme-color" content="#f3f8f7">
+<meta name="theme-color" content="#f3f8f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#04131a" media="(prefers-color-scheme: dark)">
 <meta name="color-scheme" content="light dark">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ينابيع">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ar_AR">
 <meta property="og:title" content="{plain(full_title)}">
@@ -405,6 +415,7 @@ def page(fn, title, body, desc, css=(), js=(), base=None, head=''):
 {extra_css}<link rel="stylesheet" href="css/fx.css">
 <link rel="stylesheet" href="css/play.css">
 <link rel="stylesheet" href="css/wow.css">
+<link rel="stylesheet" href="css/pwa.css">
 <script src="data/kb.js" defer></script>
 <script src="js/main.js" defer></script>
 <script src="js/acct-nav.js" defer></script>
@@ -413,6 +424,7 @@ def page(fn, title, body, desc, css=(), js=(), base=None, head=''):
 <script src="js/fx.js" defer></script>
 <script src="js/play.js" defer></script>
 <script src="js/wow.js" defer></script>
+<script src="js/pwa.js" defer></script>
 {extra_js}</head>
 <body data-page="{fn}">
 <div class="progress" aria-hidden="true"></div>
@@ -471,6 +483,7 @@ def page(fn, title, body, desc, css=(), js=(), base=None, head=''):
       <button type="button" class="sheet-wide theme-toggle">{ic('sun', 'i sun')}{ic('moon', 'i moon')}<span class="label-light">الوضع الليلي</span><span class="label-dark">الوضع النهاري</span></button>
       <button type="button" class="sheet-wide" data-open-search>{ic('search')}<span>بحث</span></button>
       <button type="button" class="sheet-wide ai" data-open-chat>{ic('sparkles')}<span>اسأل ينابيع</span></button>
+      <button type="button" class="sheet-wide" data-pwa-install hidden>{ic('download')}<span>ثبّت ينابيع على هاتفك</span></button>
     </div>
   </div>
 </div>

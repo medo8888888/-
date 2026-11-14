@@ -27,6 +27,13 @@ window.YB_CONFIG = { url: '$YB_URL', anonKey: '$YB_KEY' };
 EOF
 
 if grep -q '/yanabee/' "$STAGE/site/404.html"; then echo "404.html still has /yanabee/ paths" >&2; exit 1; fi
+# the app's service worker: its version follows the files actually shipped (the live config included), so phones
+# that installed the app replace their saved copies after every upload
+if [ -f "$STAGE/site/sw.js" ]; then
+  V="$(cd "$STAGE/site" && find . -type f ! -name sw.js -print0 | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum | cut -c1-12)"
+  sed -i "s/^const VERSION = '[^']*';/const VERSION = 'z$V';/" "$STAGE/site/sw.js"
+  grep -q "^const VERSION = 'z$V';" "$STAGE/site/sw.js" || { echo "sw.js version not stamped" >&2; exit 1; }
+fi
 rm -f "$OUT"
 (cd "$STAGE/site" && zip -qr -X "$OUT" .)
 echo "zip: $OUT ($(unzip -l "$OUT" | tail -1 | awk '{print $2}') files)"
