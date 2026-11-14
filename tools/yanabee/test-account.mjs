@@ -4576,6 +4576,76 @@ section('the bento look, «الخصم القادم», «تقويم المواع�
   await close(A);
 }
 
+section('per person: «مسار الشطرنج» for a team, the chess and football desks for their officers and the admin');
+{
+  const fake = new Fake();
+  fake.addUser({ email: 'boss@t.test', name: 'محمود المشرف', role: 'member' }); fake.setAdmin('boss@t.test');
+  fake.addUser({ email: 'lk@t.test', name: 'قائد القلعة', role: 'leader' });
+  const kid = fake.addUser({ email: 'kk@t.test', name: 'أنس لاعب القلعة', role: 'member' });
+  const oc = fake.addUser({ email: 'oc@t.test', name: 'حمزة مسؤول الشطرنج', role: 'member' }); fake.setRole('oc@t.test', 'officer');
+  const of = fake.addUser({ email: 'of@t.test', name: 'مسؤول الكرة', role: 'member' }); fake.setRole('of@t.test', 'officer');
+  fake.officers.push({ user_id: oc.id, competition: 'chess' }, { user_id: of.id, competition: 'football' });
+  const TK = fake.seedTeam({ leaderEmail: 'lk@t.test', name: 'القلعة', status: 'approved', members: [{ name: 'أنس لاعب القلعة', age: 14, consent: 'received' }, { name: 'عضو ثان', age: 14 }, { name: 'عضو ثالث', age: 14 }, { name: 'عضو رابع', age: 14 }] });
+  const anas = fake.members.find(m => m.full_name === 'أنس لاعب القلعة');
+  anas.user_id = kid.id; anas.roles = ['chess'];
+  fake.teams.find(t => t.id === TK.id).waitlist = false;   // a seated team (the nominee lists leave out the reserve list)
+  const others = Array.from({ length: 11 }, (_, i) => ({ id: 'cs' + i, name: 'فريق ' + (i + 1) }));
+  const ids = [TK.id, ...others.map(o => o.id)];
+  let st = YT.setTeams(YT.emptyState(), [{ id: TK.id, name: 'القلعة' }, ...others]);
+  st = YT.drawGroups(st, () => 0.5);
+  const gk = st.groups.find(x => x.includes(TK.id)).filter(x => x !== TK.id);
+  st = YT.setResult(st, { a: TK.id, b: gk[0], sa: 2, sb: 1, date: '2026-11-10', time: '16:00' });
+  st = YT.setSchedule(st, TK.id, gk[1], { date: '2026-11-20', time: '16:00' });
+  st = YT.setChessPairs(st, 'r1', Array.from({ length: 6 }, (_, i) => ({ a: ids[i * 2], b: ids[i * 2 + 1] })));
+  st = YT.setChessWinner(st, 'r1', 0, TK.id);
+  st = YT.setChessWinner(st, 'r1', 1, ids[2]);
+  fake.setTournament(st);
+  const nm = id => (others.find(o => o.id === id) || {}).name;
+
+  const L = await open(fake, { label: 'chess-leader', mobile: true });
+  await settle(L); await signInOk(L, 'lk@t.test');
+  await L.waitForSelector('[data-chess]:not([hidden])', { timeout: 8000 });
+  const lc = (await L.locator('[data-chess]').innerText()).replace(/\s+/g, ' ');
+  check('the leader sees «مسار الشطرنج»: who represents the team, the stage reached, and the match won', /يمثّل فريقكم: أنس لاعب القلعة/.test(lc) && /صعد إلى الدور الثاني/.test(lc) && new RegExp(`الدور الأول ضد ${nm(ids[1])} فوز`).test(lc)
+    && (await L.locator('[data-chess] .a-chs-p li.ok').count()) === 1 && (await L.locator('[data-chess] .a-chs-p li.now b').innerText()) === 'الدور الثاني', lc);
+  check('leader console clean (chess)', L.errs.length === 0 && (await overflow(L)) <= 0, L.errs.join('|'));
+  await close(L);
+  const K = await open(fake, { label: 'chess-member', mobile: true });
+  await settle(K); await signInOk(K, 'kk@t.test');
+  await K.waitForSelector('[data-chess]:not([hidden])', { timeout: 8000 });
+  check('a member sees the team\'s chess path without any player\'s name', /صعد إلى الدور الثاني/.test(await K.locator('[data-chess]').innerText()) && !/أنس/.test(await K.locator('[data-chess]').innerText()) && (await K.locator('[data-chess-player]').count()) === 0);
+  await close(K);
+
+  const C = await open(fake, { label: 'chess-officer' });
+  await settle(C); await signInOk(C, 'oc@t.test');
+  await C.waitForSelector('[data-chess-desk]:not([hidden]) [data-chess-stage]', { timeout: 8000 });
+  const cd = C.locator('[data-chess-desk]');
+  const cdt = (await cd.innerText()).replace(/\s+/g, ' ');
+  check('the chess officer\'s desk: matches played of the total, the four stages with their counts', (await cd.locator('[data-chess-played]').innerText()) === '2 من 13' && /الدور الأول 2 من 6/.test(cdt) && /الدور الثاني 0 من 3/.test(cdt) && /التصفية الأخيرة 0 من 3/.test(cdt) && /النهائي 0 من 1/.test(cdt)
+    && (await cd.locator('[data-chess-stage="r1"] .a-chd-p li').count()) === 6, cdt.slice(0, 260));
+  check('winners are marked (bold and by the missing «لم تُلعب»), and the team\'s player is named for the officer', (await cd.locator('[data-chess-stage="r1"] .a-chd-p li').first().locator('span.w').innerText()) === 'القلعة (أنس لاعب القلعة)' && (await cd.locator('[data-chess-stage="r1"] .a-chd-p li', { hasText: 'لم تُلعب' }).count()) === 4);
+  check('the tournament\'s system is one tap away, in the document\'s words', /نظام الكأس وخروج المهزوم: 12 لاعبًا بواقع لاعب من كل فريق/.test(await cd.locator('.a-desk-r').evaluate(e => e.textContent)));
+  check('the chess officer does not get the football desk', (await C.locator('[data-football-desk]').count()) === 0 && /يا حمزة/.test(await C.locator('[data-hero]').innerText()) && C.errs.length === 0, C.errs.join('|'));
+  await close(C);
+
+  const F = await open(fake, { label: 'football-officer' });
+  await settle(F); await signInOk(F, 'of@t.test');
+  await F.waitForSelector('[data-football-desk]:not([hidden]) [data-football-group]', { timeout: 8000 });
+  const fd = F.locator('[data-football-desk]');
+  const fdt = (await fd.innerText()).replace(/\s+/g, ' ');
+  check('the football officer\'s desk: played of the total, three groups and the final round', (await fd.locator('[data-football-played]').innerText()) === '1 من 21' && (await fd.locator('[data-football-group]').count()) === 4 && /المجموعة أ 1 من 6/.test(fdt) && /المتصدر: القلعة \(3 نقاط\)/.test(fdt) && /الدور النهائي بعد المجموعات/.test(fdt), fdt.slice(0, 300));
+  check('matches with no date are flagged (19 of the 21 here: one is played, one is dated; the final round has no teams yet)', /16 مباريات بلا موعد/.test(await fd.locator('[data-football-undated]').innerText()), await fd.locator('[data-football-undated]').innerText());
+  check('quick rules from the regulation', /تأخر أكثر من 10 دقائق: خسارة 0 – 2/.test(await fd.locator('.a-desk-r').evaluate(e => e.textContent)) && (await F.locator('[data-chess-desk]').count()) === 0 && F.errs.length === 0, F.errs.join('|'));
+  await close(F);
+
+  const A = await open(fake, { label: 'desks-admin', viewport: { width: 1440, height: 1000 } });
+  await settle(A); await signInOk(A, 'boss@t.test', undefined, { home: true });
+  await A.waitForSelector('[data-admin-home] [data-chess-desk]:not([hidden]) [data-chess-stage]', { timeout: 8000 });
+  check('the admin\'s home has both desks side by side', (await A.locator('[data-admin-home] [data-football-desk]:not([hidden])').count()) === 1 && await A.evaluate(() => { const a = document.querySelector('[data-football-desk]').getBoundingClientRect(), b = document.querySelector('[data-chess-desk]').getBoundingClientRect(); return Math.abs(a.top - b.top) < 2; })
+    && (await overflow(A)) <= 0 && A.errs.length === 0, A.errs.join('|'));
+  await close(A);
+}
+
 section('network hosts and console');
 check('no request to any host other than the page itself, the fake Supabase and the shell fonts', badHosts.size === 0, [...badHosts].join());
 check('no console error and no uncaught exception in any page', consoleErrors.length === 0, consoleErrors.slice(0, 5).join(' || '));

@@ -417,6 +417,38 @@
 .a-find-t small{color:var(--ink-2);font-size:.84rem;overflow-wrap:anywhere}
 .a-find-b>.i{width:16px;height:16px;color:var(--muted)}
 
+/* ---------- chess and football: the team's cup path, and the officers' desks ---------- */
+.a-chs-i{display:grid;place-items:center;width:36px;height:36px;border-radius:12px;background:color-mix(in oklab,var(--k,var(--brand)) 14%,var(--surface));font-size:1.2rem;line-height:1}
+.a-chs-p{list-style:none;margin:10px 0 12px;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.a-chs-p li{display:grid;justify-items:center;gap:4px;text-align:center;min-width:0}
+.a-chs-p b{font-size:.82rem;overflow-wrap:anywhere}
+.a-chs-p li.ok .a-jr-dot{background:#16a36b;border-color:#16a36b}
+.a-chs-p li.now .a-jr-dot{border-color:var(--brand);box-shadow:0 0 0 4px color-mix(in oklab,var(--brand) 20%,transparent)}
+.a-chs-p li.now b{color:var(--brand)}
+.a-chs-p li.out .a-jr-dot{border-color:var(--t3);background:color-mix(in oklab,var(--t3) 16%,var(--surface))}
+.a-chs-m{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.a-chs-m li{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;border-radius:var(--r-sm);background:var(--surface-2)}
+.a-chs-m small{color:var(--ink-2);min-width:7ch}
+.a-chs-m b{flex:1;min-width:0;overflow-wrap:anywhere}
+.a-chd-l,.a-fbd-g{list-style:none;margin:0 0 12px;padding:0;display:grid;gap:10px}
+.a-chd-s,.a-fbd-g li{display:grid;gap:6px;padding:10px 12px;border-radius:var(--r-sm);background:var(--surface-2)}
+.a-chd-h{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.a-chd-n{font-variant-numeric:tabular-nums;color:var(--ink-2);font-size:.88rem;white-space:nowrap}
+.a-chd-s.ok .a-bdg-bar i{background:#16a36b}
+.a-chd-p{list-style:none;margin:2px 0 0;padding:0;display:grid;gap:4px}
+.a-chd-p li{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:.92rem}
+.a-chd-p span{overflow-wrap:anywhere}
+.a-chd-p span.w{font-weight:800;color:color-mix(in oklab,#16a36b 75%,var(--ink))}
+.a-chd-p small{color:var(--muted)}
+.a-fbd-g small{color:var(--ink-2);font-size:.86rem}
+.a-fbd-w{display:flex;align-items:center;gap:8px;margin:0 0 12px;padding:10px 12px;border-radius:var(--r-sm);background:color-mix(in oklab,var(--sun) 12%,var(--surface));font-weight:600}
+.a-fbd-w .i{flex:none;width:20px;height:20px;color:color-mix(in oklab,var(--sun) 70%,var(--ink))}
+.a-desk-r{margin:0 0 10px;border-radius:var(--r-sm);background:var(--surface-2)}
+.a-desk-r summary{min-height:44px;display:flex;align-items:center;padding:0 12px;cursor:pointer;font-weight:600}
+.a-desk-r ul{margin:0;padding:0 28px 12px 12px;display:grid;gap:4px;color:var(--ink-2);font-size:.92rem}
+.a-app.dash .a-chs,.a-app.dash .a-chd{--k:var(--t6)}
+.a-app.dash .a-fbd{--k:var(--leaf)}
+
 /* ==========================================================================
    The bento look (owner, 14 Nov 2026: "redesign the dashboard"): one tight grid of cards of different sizes, a
    feature tile for the first number, tinted cards, icon chips in the headings. Layout and paint only: the order in

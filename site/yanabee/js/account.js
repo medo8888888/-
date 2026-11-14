@@ -1495,10 +1495,11 @@
           teamMark(t.id), h('span', { class: 'a-tw-t' }, h('b', { text: t.name }), h('small', { text: `القائد: ${leaderName(t)}` }), h('small', { class: as ? '' : 'none', text: `المساعد: ${as ? as.full_name : 'لم يُحدَّد'}` })),
           h('span', { class: 'a-tw-m' }, chip(STATUS[t.status] || t.status, TEAM_TONE[t.status]), h('small', { text: `${membersOf(t.id).length} من ${MAX}` }))));
       })) : h('p', { class: 'a-empty', text: 'لم يُسجَّل أي فريق بعد.' }));
-    const pulse = pulseCard(), cal = calCard({ all: true });
+    const pulse = pulseCard(), cal = calCard({ all: true }), fbd = footballDeskCard();
+    const chd = chessDeskCard(A.members.reduce((m, x) => { if (Array.isArray(x.roles) && x.roles.includes('chess')) m[x.team_id] = x.full_name; return m; }, {}));
     if (!A.todayH) { A.todayH = todayCard(); A.todayH.start(); }
-    panel.append(h('div', { class: 'a-home', 'data-admin-home': '' }, hero, adminFindCard(), wait, followCard(5), nums, mix, A.todayH, pulse, cal, wall));
-    pulse.start(); cal.start();
+    panel.append(h('div', { class: 'a-home', 'data-admin-home': '' }, hero, adminFindCard(), wait, followCard(5), nums, mix, cal, A.todayH, pulse, fbd, chd, wall));
+    pulse.start(); cal.start(); fbd.start(); chd.start();
   }
   // inside an open team card (admin): the assistant's title and the logo
   function adminIdentity(t) {
@@ -2112,6 +2113,84 @@
     inp.addEventListener('input', run);
     inp.addEventListener('keydown', e => { if (e.key === 'Enter' && res.length) { e.preventDefault(); res[0].go(); } });
     return h('section', { class: 'a-card a-find', 'aria-labelledby': 'find-h', 'data-find': '' }, h('h3', { id: 'find-h', class: 'a-sr', text: 'بحث' }), h('span', { class: 'a-search-w' }, icon('search'), inp), st, out);
+  }
+
+  /* ------------------------------------------------------------------ per person: the chess path of a team, and the desks of the chess,
+     football and memorisation officers (competition.txt fm-chess, lg12, lg2, lg6; the public board) */
+  const CH_ROUND = { r1: 'الدور الأول', r2: 'الدور الثاني', rr: 'التصفية الأخيرة', final: 'النهائي' };
+  const CH_STAGE = { r1: 'في الدور الأول', r2: 'صعد إلى الدور الثاني', rr: 'في التصفية الأخيرة (3 لاعبين)', final: 'في المباراة النهائية', third: 'المركز الثالث', first: 'بطل الشطرنج', second: 'وصيف الشطرنج', out: 'خرج من البطولة' };
+  // «مسار الشطرنج»: where the team's one player stands in the cup. o: { player?: () => name | '' } for the leader
+  function chessCard(teamId, teamName, o) {
+    const el = h('section', { class: 'a-card a-chs', 'aria-labelledby': 'chs-h', 'data-chess': '', hidden: true });
+    el.start = async () => {
+      const r = await teamOnBoard(teamId, teamName);
+      const c = r && r.v.chess;
+      if (!c || c.stage === 'none') { el.hidden = true; return; }
+      const order = ['r1', 'r2', 'rr', 'final'];
+      const reach = { r1: 0, r2: 1, rr: 2, final: 3, third: 2, first: 3, second: 3 }[c.stage === 'out' ? c.outAt : c.stage] || 0;
+      const who = o && o.player ? o.player() : null;
+      put(el, h('div', { class: 'a-bdgs-top' }, h('h3', { id: 'chs-h' }, h('span', { class: 'a-chs-i', 'aria-hidden': 'true', text: '♟️' }), h('span', { text: 'مسار الشطرنج' })),
+        chip(CH_STAGE[c.stage] || '', c.stage === 'out' ? 'muted' : c.podium ? 'ok' : 'brand')),
+        who !== null ? h('p', { class: 'a-lead', 'data-chess-player': '', text: who ? `يمثّل فريقكم: ${who}` : 'لم تحدّد لاعب الشطرنج بعد. اختره من «المرشحون والأدوار».' }) : h('p', { class: 'a-lead', text: 'لاعب واحد يمثّل الفريق، بنظام الكأس وخروج المهزوم.' }),
+        h('ol', { class: 'a-chs-p', 'aria-label': 'مراحل بطولة الشطرنج' }, order.map((k, i) => h('li', { class: i < reach ? 'ok' : i === reach ? (c.stage === 'out' ? 'out' : 'now') : '', 'aria-current': i === reach && c.stage !== 'out' ? 'step' : null },
+          h('span', { class: 'a-jr-dot', 'aria-hidden': 'true' }, i < reach ? icon('check') : null), h('b', { text: CH_ROUND[k] })))),
+        c.matches.length ? h('ul', { class: 'a-chs-m' }, c.matches.map(m => h('li', { class: m.won === true ? 'w' : m.won === false ? 'l' : '' }, h('small', { text: CH_ROUND[m.round] }),
+          h('b', { text: `ضد ${nameOf(r.st, m.opponent)}` }), chip(m.won === true ? 'فوز' : m.won === false ? 'خسارة' : 'لم تُلعب بعد', m.won === true ? 'ok' : m.won === false ? 'bad' : 'muted')))) : null);
+      el.hidden = false;
+    };
+    return el;
+  }
+  // the chess officer's (and the admin's) view of the whole cup
+  function chessDeskCard(names) {
+    const el = h('section', { class: 'a-card a-chd', 'aria-labelledby': 'chd-h', 'data-chess-desk': '', hidden: true });
+    el.start = async () => {
+      const g = await boardOnce(), st = g && g.state;
+      let ch = null;
+      try { ch = st && window.YTour ? window.YTour.chess(st) : null; } catch (e) { ch = null; }
+      const head = h('h3', { id: 'chd-h' }, h('span', { class: 'a-chs-i', 'aria-hidden': 'true', text: '♟️' }), h('span', { text: 'بطولة الشطرنج' }));
+      const rules = h('details', { class: 'a-desk-r' }, h('summary', { text: 'نظام البطولة' }), h('ul', {}, ['نظام الكأس وخروج المهزوم: 12 لاعبًا بواقع لاعب من كل فريق.', 'يصعد 6 لاعبين من الدور الأول، ثم 3 من الدور الثاني.', 'في التصفية الأخيرة يلعب كل لاعب من الثلاثة مباراتين.', 'يصعد الأول والثاني إلى المباراة النهائية، وتوزع الجوائز على الثلاثة.'].map(x => h('li', { text: x }))));
+      if (!ch || !ch.r1.matches.length) { put(el, head, h('p', { class: 'a-empty', text: 'لم تُجرَ قرعة الشطرنج بعد. تُسحب من «لوحة البطولة».' }), rules); el.hidden = false; return; }
+      const nm = id => { const p = names && names[id]; return nameOf(st, id) + (p ? ` (${p})` : ''); };
+      const stage = (key, label, played, total, pairs) => h('li', { class: 'a-chd-s' + (played >= total ? ' ok' : ''), 'data-chess-stage': key },
+        h('div', { class: 'a-chd-h' }, h('b', { text: label }), h('span', { class: 'a-chd-n', text: `${played} من ${total}` })),
+        h('span', { class: 'a-bdg-bar', 'aria-hidden': 'true' }, h('i', { style: `width:${Math.round(played / total * 100)}%` })),
+        pairs.length ? h('ul', { class: 'a-chd-p' }, pairs.map(p => h('li', {}, h('span', { class: p.w === p.a ? 'w' : '', text: nm(p.a) }), h('small', { text: '×' }), h('span', { class: p.w === p.b ? 'w' : '', text: nm(p.b) }), p.w ? null : chip('لم تُلعب', 'muted')))) : h('small', { class: 'a-hint', text: 'تبدأ بعد اكتمال الدور السابق.' }));
+      const left = ch.total - ch.played;
+      put(el, h('div', { class: 'a-bdgs-top' }, head, h('span', { class: 'a-bdgs-n' }, FX.ring(ch.total ? ch.played / ch.total * 100 : 0), h('b', { 'data-chess-played': '', text: `${ch.played} من ${ch.total}` }))),
+        ch.podium ? h('p', { class: 'a-plg-ok', role: 'status' }, icon('check'), h('span', { text: `الأول: ${nm(ch.podium[0])} · الثاني: ${nm(ch.podium[1])} · الثالث: ${nm(ch.podium[2])}` })) : h('p', { class: 'a-lead', text: left ? `بقيت ${left === 1 ? 'مباراة واحدة' : left === 2 ? 'مباراتان' : left + ' مباريات'}.` : '' }),
+        h('ol', { class: 'a-chd-l' }, stage('r1', CH_ROUND.r1, ch.r1.played, ch.r1.total, ch.r1.matches), stage('r2', CH_ROUND.r2, ch.r2.played, ch.r2.total, ch.r2.matches),
+          stage('rr', CH_ROUND.rr, ch.rr.played, ch.rr.total, ch.rr.matches), stage('final', CH_ROUND.final, ch.final && ch.final.w ? 1 : 0, 1, ch.final ? [ch.final] : [])), rules);
+      el.hidden = false;
+    };
+    return el;
+  }
+  // the football officer's (and the admin's) view of the league
+  function footballDeskCard() {
+    const el = h('section', { class: 'a-card a-fbd', 'aria-labelledby': 'fbd-h', 'data-football-desk': '', hidden: true });
+    el.start = async () => {
+      const g = await boardOnce(), st = g && g.state;
+      let fb = null;
+      try { fb = st && window.YTour ? window.YTour.football(st) : null; } catch (e) { fb = null; }
+      const head = h('h3', { id: 'fbd-h' }, h('span', { class: 'a-chs-i', 'aria-hidden': 'true', text: '⚽' }), h('span', { text: 'دوري كرة القدم' }));
+      const rules = h('details', { class: 'a-desk-r' }, h('summary', { text: 'قواعد سريعة من اللائحة' }), h('ul', {}, ['الحضور قبل موعد المباراة بعشرين دقيقة.', 'تأخر أكثر من 10 دقائق: خسارة 0 – 2. غياب دون عذر: خسارة 0 – 3 وإنذار أول.',
+        'الفوز 3 نقاط، التعادل نقطة، الخسارة صفر.', 'عند التساوي: فارق الأهداف، ثم الأهداف المسجلة، ثم المواجهات المباشرة، ثم الأقل بطاقات، ثم قرعة علنية.'].map(x => h('li', { text: x }))));
+      if (!fb || !fb.drawn) { put(el, head, h('p', { class: 'a-empty', text: 'لم تُجرَ القرعة بعد. تُسحب المجموعات من «لوحة البطولة».' }), rules); el.hidden = false; return; }
+      let undated = 0;
+      const count = rounds => (rounds || []).forEach(rd => rd.matches.forEach(m => { if (!m.res && !(m.sched && m.sched.date) && m.a && m.b) undated++; }));
+      fb.groups.forEach(x => count(x.rounds));
+      if (fb.final) count(fb.final.rounds);
+      put(el, h('div', { class: 'a-bdgs-top' }, head, h('span', { class: 'a-bdgs-n' }, FX.ring(fb.total ? fb.played / fb.total * 100 : 0), h('b', { 'data-football-played': '', text: `${fb.played} من ${fb.total}` }))),
+        undated ? h('p', { class: 'a-fbd-w', 'data-football-undated': '' }, icon('alert'), h('span', { text: `${undated === 1 ? 'مباراة واحدة' : undated === 2 ? 'مباراتان' : undated + ' مباريات'} بلا موعد. حدّد المواعيد من «لوحة البطولة».` })) : null,
+        h('ul', { class: 'a-fbd-g' }, fb.groups.map(G => h('li', { 'data-football-group': G.name }, h('div', { class: 'a-chd-h' }, h('b', { text: `المجموعة ${G.name}` }), h('span', { class: 'a-chd-n', text: `${G.played} من ${G.total}` })),
+          h('span', { class: 'a-bdg-bar', 'aria-hidden': 'true' }, h('i', { style: `width:${Math.round(G.played / G.total * 100)}%` })),
+          h('small', { text: G.table.length ? `المتصدر: ${nameOf(st, G.table[0].id)} (${G.table[0].pts} ${G.table[0].pts >= 3 && G.table[0].pts <= 10 ? 'نقاط' : 'نقطة'})` : '' }))).concat(
+          h('li', { 'data-football-group': 'final' }, h('div', { class: 'a-chd-h' }, h('b', { text: 'الدور النهائي' }), h('span', { class: 'a-chd-n', text: fb.final ? `${fb.final.played} من ${fb.final.total}` : 'بعد المجموعات' })),
+            h('span', { class: 'a-bdg-bar', 'aria-hidden': 'true' }, h('i', { style: `width:${fb.final ? Math.round(fb.final.played / fb.final.total * 100) : 0}%` })),
+            h('small', { text: fb.podium ? `الأول: ${nameOf(st, fb.podium[0])} · الثاني: ${nameOf(st, fb.podium[1])} · الثالث: ${nameOf(st, fb.podium[2])}` : 'ثلاثة فرق، كل فريق يلعب مباراتين.' })))),
+        rules, h('div', { class: 'a-actions' }, h('a', { class: 'btn btn-ghost btn-sm', href: 'tournament.html' }, h('span', { text: 'لوحة البطولة' }), icon('arrow-left'))));
+      el.hidden = false;
+    };
+    return el;
   }
 
   /* ------------------------------------------------------------------ notifications (in-app inbox) */
@@ -2995,7 +3074,9 @@
       { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [(O.hero = heroCard({ name: S.me && S.me.full_name, sub: 'مسؤول المسابقة: ' + (O.comps.map(k => COMPS[k] || k).join('، ') || 'لم تُسند مسابقة بعد'), actions: [
         O.comps.includes('registration') ? ['طلبات التسجيل', 'users', () => goSec('review'), 'review'] : null, games.length ? ['النتائج', 'flag', () => goSec('results'), 'results'] : null,
         O.comps.includes('projects') ? ['المشاريع', 'image', () => goSec('projects'), 'projects'] : null, ['غرفة القادة', 'bell', () => goSec('room'), 'room']] })),
-        O.comps.includes('football') ? (O.today = todayCard()) : null, O.tiles, comps, (O.pulse = pulseCard()), announceFeed()] },
+        O.comps.includes('football') ? (O.today = todayCard()) : null, O.tiles,
+        (O.fbd = O.comps.includes('football') ? footballDeskCard() : null), (O.chd = O.comps.includes('chess') ? chessDeskCard((O.roles || []).reduce((m, r) => { if ((r.roles || []).includes('chess')) m[r.team_id] = r.full_name; return m; }, {})) : null),
+        comps, (O.pulse = pulseCard()), announceFeed()] },
       feedGroup(),
       { key: 'review', label: 'طلبات التسجيل', icon: 'users', one: true, nodes: [O.comps.includes('registration') ? reviewQueue() : null, O.roles ? roleListCard() : null] },
       { key: 'results', label: 'النتائج', icon: 'flag', one: true, nodes: [games.length ? O.res.el : null] },
@@ -3003,7 +3084,7 @@
       { key: 'dates', label: 'المواعيد', icon: 'calendar', one: true, nodes: [O.evm ? O.evm.el : null] },
       { key: 'room', label: 'غرفة القادة', icon: 'bell', one: true, nodes: [O.chat.el] }]);
     if (O.today) O.today.start();
-    O.pulse.start();
+    O.pulse.start(); if (O.fbd) O.fbd.start(); if (O.chd) O.chd.start();
     if (focusKey) { const f = O.body.querySelector(`[data-fk="${CSS.escape(focusKey)}"]`); if (f) f.focus({ preventScroll: true }); }
   }
   function reviewQueue() {
@@ -4220,6 +4301,7 @@
       ['قيادتي', 'flag', () => goSec('lead'), 'lead'], ['اكتب خبرًا', 'megaphone', () => goSec('feed'), 'feed'], ['المشاريع', 'image', () => goSec('projects'), 'projects']] });
     L.staff = staffCard(t.team_id, { members: () => L.members, after: msg => reloadLeader(msg) });
     L.run = runCard(t.team_id, t.team_name);
+    L.chs = chessCard(t.team_id, t.team_name, { player: () => (L.members.find(m => Array.isArray(m.roles) && m.roles.includes('chess')) || {}).full_name || '' });
     L.opp = oppCard(t.team_id, t.team_name); L.cal = calCard({ teamId: t.team_id, teamName: t.team_name, teamStatus: t.status });
     L.badges = badgesCard({ teamId: t.team_id, teamName: t.team_name, status: t.status, roster: () => { const mn = L.members.filter(m => isMinor(m.age)); return { members: L.members.length, minors: mn.length, got: mn.filter(m => m.consent_status === 'received').length }; } });
     L.pulse = pulseCard();
@@ -4227,7 +4309,7 @@
     L.sum = leadSummaryCard(() => { const mn = L.members.filter(m => isMinor(m.age)); return { team: L.team.team_name, status: STATUS[L.team.status] || L.team.status, members: L.members.length, minors: mn.length,
       got: mn.filter(m => m.consent_status === 'received').length, accepted: L.init.accepted || 0, tasks: L.lw.done() }; });
     dashLayout([
-      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [L.hero, (L.boxes.mday = matchDayCard(t.team_id, t.team_name, 'leader')), (L.boxes.next = nextCard(leaderNext())), leaderTiles(t), L.boxes.top, L.boxes.check, L.staff, L.run, L.opp, L.badges, L.cal, scoresCard(), L.pulse, announceFeed()] },
+      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [L.hero, (L.boxes.mday = matchDayCard(t.team_id, t.team_name, 'leader')), (L.boxes.next = nextCard(leaderNext())), leaderTiles(t), L.boxes.top, L.boxes.check, L.staff, L.run, L.opp, L.chs, L.badges, L.cal, scoresCard(), L.pulse, announceFeed()] },
       feedGroup(),
       { key: 'matches', label: 'المباريات والمواعيد', icon: 'trophy', one: true, nodes: [L.dates, L.sched.node, L.boxes.marks] },
       { key: 'team', label: 'الفريق', icon: 'users', nodes: [L.boxes.roster, L.boxes.roles, L.boxes.code, (L.style || (L.style = teamStyleCard(t), L.style.start(), L.style)).el, L.printBox] },
@@ -4238,7 +4320,7 @@
       { key: 'guide', label: 'المسابقة والنقاط', icon: 'route', nodes: [journeyCard(), (L.points = pointsCard()), honorsCard(), toolsCard(true)] }]);
     L.subs.start();
     L.boxes.mday.start();
-    L.hero.start(); L.staff.start(); L.run.start(); L.badges.start(); L.pulse.start(); L.points.start(); L.init.start(); L.sum.start(); L.opp.start(); L.cal.start();
+    L.hero.start(); L.staff.start(); L.run.start(); L.badges.start(); L.pulse.start(); L.points.start(); L.init.start(); L.sum.start(); L.opp.start(); L.cal.start(); L.chs.start();
     if (t.status === 'approved') celebrateOnce('ap-' + t.team_id, 'مبارك! فريقك معتمد في المسابقة.');
     paintLeader();
     startSchedule([L.sched]);
@@ -4602,7 +4684,7 @@
     const mday = matchDayCard(row.team_id, row.team_name, 'member');
     const mHero = heroCard({ name: profile.full_name, sub: `عضو في ${/^فريق\s/.test(row.team_name) ? '' : 'فريق '}${row.team_name}`, teamId: row.team_id, teamName: row.team_name, actions: [
       ['رحلتي', 'route', () => goSec('journey'), 'journey'], ['مباريات فريقي', 'trophy', () => goSec('matches'), 'matches'], ['الأخبار', 'megaphone', () => goSec('feed'), 'feed'], ['أعضاء فريقي', 'users', () => goSec('team'), 'team']] });
-    const mStaff = staffCard(row.team_id), mRun = runCard(row.team_id, row.team_name), mPulse = pulseCard(), mPoints = pointsCard(), mOpp = oppCard(row.team_id, row.team_name), mCal = calCard({ teamId: row.team_id, teamName: row.team_name, teamStatus: row.status });
+    const mStaff = staffCard(row.team_id), mRun = runCard(row.team_id, row.team_name), mPulse = pulseCard(), mPoints = pointsCard(), mOpp = oppCard(row.team_id, row.team_name), mChs = chessCard(row.team_id, row.team_name), mCal = calCard({ teamId: row.team_id, teamName: row.team_name, teamStatus: row.status });
     const mBadges = badgesCard({ teamId: row.team_id, teamName: row.team_name, status: row.status, roster: () => ({ members: ro.ok ? roster.length : null, minors: null, got: null }) });
     const mv = [
       announceFeed(),
@@ -4618,7 +4700,7 @@
       row.status === 'approved' ? teamSubsView(row.team_id, row.team_name) : null,
       box.node];
     dashLayout([
-      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [mHero, mday, nextCard(memberNext(row, ro.ok ? me : null)), memberTiles(row), mv[2], mStaff, mRun, mOpp, mBadges, mCal, mv[1], mPulse, mv[0], mv[4]] },
+      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [mHero, mday, nextCard(memberNext(row, ro.ok ? me : null)), memberTiles(row), mv[2], mStaff, mRun, mOpp, mChs, mBadges, mCal, mv[1], mPulse, mv[0], mv[4]] },
       { key: 'journey', label: 'رحلتي', icon: 'route', nodes: [journeyCard(), pledgeCard(), deedCard(), surahCard(), mPoints, honorsCard(), toolsCard(false)] },
       feedGroup(),
       { key: 'matches', label: 'المباريات والمواعيد', icon: 'trophy', one: true, nodes: [mv[5], mv[7]] },
@@ -4626,7 +4708,7 @@
       { key: 'projects', label: 'المشاريع والمبادرات', icon: 'image', one: true, nodes: [mv[6]] }]);
     startSchedule([box]);
     mday.start();
-    [mHero, mStaff, mRun, mBadges, mPulse, mPoints, mOpp, mCal].forEach(x => x.start());
+    [mHero, mStaff, mRun, mBadges, mPulse, mPoints, mOpp, mChs, mCal].forEach(x => x.start());
   }
 
   /* ------------------------------------------------------------------ PARENT */
@@ -4645,7 +4727,7 @@
     const pHero = heroCard({ name: profile.full_name, sub: k0 ? `ولي أمر في ${/^فريق\s/.test(k0.team_name) ? '' : 'فريق '}${k0.team_name}` : 'اربط ابنك أو ابنتك لتتابع فريقه من هنا.', teamId: k0 && k0.team_id, teamName: k0 && k0.team_name, actions: [
       k0 ? ['موافقتي', 'user-check', () => goCard(root.querySelector('[data-child]')), 'consent'] : null, k0 ? ['المباريات', 'trophy', () => goSec('matches'), 'matches'] : null,
       ['الأخبار', 'megaphone', () => goSec('feed'), 'feed'], ['اربط ابنًا أو ابنة', 'users', () => goSec('link'), 'link']] });
-    const pExtra = k0 ? [staffCard(k0.team_id), runCard(k0.team_id, k0.team_name), oppCard(k0.team_id, k0.team_name), badgesCard({ teamId: k0.team_id, teamName: k0.team_name, status: k0.team_status }),
+    const pExtra = k0 ? [staffCard(k0.team_id), runCard(k0.team_id, k0.team_name), oppCard(k0.team_id, k0.team_name), chessCard(k0.team_id, k0.team_name), badgesCard({ teamId: k0.team_id, teamName: k0.team_name, status: k0.team_status }),
       calCard({ teamId: k0.team_id, teamName: k0.team_name, teamStatus: k0.team_status })] : [];
     const pPulse = pulseCard(), pPoints = pointsCard();
     const home = [pHero, mday, nextCard(parentNext(kids)), parentTiles(kids), ...pExtra, scoresCard(), pPulse, announceFeed()];
