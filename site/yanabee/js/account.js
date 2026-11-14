@@ -1438,7 +1438,7 @@
     const me = A.profiles.find(p => p.id === A.me) || S.me || {};
     const go = (tab, fk, pre) => () => { if (pre) pre(); A.tab = tab; drawAdmin(fk || 'tab-' + tab); window.scrollTo({ top: 0, behavior: smooth() }); };
     const hero = heroCard({ name: me.full_name, sub: 'لوحة إدارة المسابقة: كل ما يحتاج قرارك في مكان واحد.', actions: [
-      ['راجع الفرق', 'users', go('teams'), 'teams'], ['أدخل نتيجة', 'flag', go('results'), 'results'], ['اكتب إعلانًا', 'megaphone', go('comms'), 'comms'], ['تصدير Excel', 'download', go('export'), 'export']] });
+      ['راجع الفرق', 'users', go('teams'), 'teams'], ['الخطة والمؤشرات', 'route', go('plan'), 'plan'], ['أدخل نتيجة', 'flag', go('results'), 'results'], ['اكتب إعلانًا', 'megaphone', go('comms'), 'comms'], ['تصدير Excel', 'download', go('export'), 'export']] });
     // «بانتظار قرارك»
     const wait = h('section', { class: 'a-card a-wait', 'aria-labelledby': 'wait-h', 'data-wait': '' });
     const W8 = [
@@ -1497,7 +1497,7 @@
       })) : h('p', { class: 'a-empty', text: 'لم يُسجَّل أي فريق بعد.' }));
     const pulse = pulseCard();
     if (!A.todayH) { A.todayH = todayCard(); A.todayH.start(); }
-    panel.append(h('div', { class: 'a-home', 'data-admin-home': '' }, hero, wait, mix, nums, A.todayH, pulse, wall));
+    panel.append(h('div', { class: 'a-home', 'data-admin-home': '' }, hero, wait, followCard(5), nums, mix, A.todayH, pulse, wall));
     pulse.start();
   }
   // inside an open team card (admin): the assistant's title and the logo
@@ -1747,6 +1747,261 @@
       ['method.html', 'منهجية التطبيق', 'route'], leader ? ['leaders.html', 'إعداد القادة', 'award'] : null].filter(Boolean);
     return h('section', { class: 'a-card a-tools', 'aria-labelledby': 'tools-h', 'data-tools': '' }, h('h3', { id: 'tools-h' }, icon('grid'), h('span', { text: 'أدواتي' })),
       h('ul', { class: 'a-tools-l' }, T.map(t => h('li', {}, h('a', { class: 'a-tool', href: t[0] }, h('span', { class: 'a-tool-i', 'aria-hidden': 'true' }, icon(t[2])), h('span', { text: t[1] }))))));
+  }
+
+  /* ------------------------------------------------------------------ «قيادتي» (the team leader) and «الخطة والمؤشرات» (the admin), from the documents */
+  // Leader (method.txt m-roles, m-meeting, m-workshop; competition.txt f-pledge, c-rubric, m-kpis): the week's duties, the
+  // 90-minute meeting with a timer, the team's pact, the three initiatives, the workshop's eight activities and a
+  // summary to hand to the supervisor. Ticks and the pact stay on the leader's device; no member's name is written.
+  const weekKey = () => { const d = today0(); d.setDate(d.getDate() - ((d.getDay() + 1) % 7)); return localDay(d); };   // weeks start on Saturday
+  const LEAD_TASKS = [['meet', 'حضّر لقاء فريقك الأسبوعي (90 دقيقة)'], ['cards', 'اجمع المهام والبطاقات السلوكية من الأعضاء'], ['follow', 'تابع الإنجاز الأسبوعي للأعضاء'],
+    ['summary', 'ارفع ملخص الأسبوع للمشرف'], ['leaders', 'احضر لقاء قادة الفرق مع مسؤولي المبادرة']];
+  const MEETING = [[10, 'الاستقبال والمراجعة', 'الترحيب ومراجعة المهمة السابقة'], [25, 'التسميع والتلاوة', 'تصحيح التلاوة وتسميع المقرر'], [20, 'الفهم والاستنباط', 'شرح المعاني واستخراج القيمة التربوية'],
+    [20, 'النشاط العملي', 'لعبة أو تطبيق تفاعلي للقيمة'], [10, 'المهمة السلوكية', 'تحديد مهمة منزلية وتوزيع بطاقة المتابعة'], [5, 'التغذية الراجعة', 'تقييم مختصر وختام وتحفيز']];
+  const WORKSHOP = [['مواقف في المصداقية', 'مواقف من الحياة اليومية، ونقاش الفرق بين القول والفعل.'], ['صندوق المفقودات', 'صندوق داخل المدرسة أو النادي، بموافقة الإدارة، وشخص مسؤول عنه.'],
+    ['ميثاق الوعد والالتزام للفريق', 'يختار الفريق قيمة ويحدد طريقة التطبيق ومن المسؤول ومتى تُنفَّذ.'], ['ميثاق الوعد والالتزام للعضو', 'كل مشارك يكتب وعدًا يقدر أن ينفذه خلال أسبوع، ويُتابَع فيه.'],
+    ['أمانة النقل', 'كيف نتأكد من الأخبار قبل نشرها.'], ['الكلمة الطيبة وأثرها', 'كلمات طيبة وتشجيع مع الأهل والأصحاب خلال الأسبوع، ثم نقاش التجربة.'],
+    ['مسرحية التوافق السلوكي', 'في ختام النشاط، ويشارك فيها الطلاب.'], ['معرض الأفعال الميدانية', 'عرض ما نفذته الفرق، مع مراعاة موافقات التصوير.']];
+  const PACT_VALUES = ['الصدق', 'الأمانة', 'التعاون', 'الاحترام وبر الوالدين', 'النظافة والمسؤولية'];
+  const PACT_WHO = ['كل أعضاء الفريق', 'قائد الفريق', 'مساعد القائد', 'مسؤول التنسيق والتوثيق'];
+  const checklist = (key, items, fk) => {   // a ticked list kept on the device under key; returns { el, done() }
+    const ul = h('ul', { class: 'a-ck' });
+    const state = () => mine.get()[key] || {};
+    const paint = () => put(ul, items.map(it => {
+      const id = uid('f'), on = !!state()[it[0]];
+      const cb = h('input', { type: 'checkbox', id, checked: on, 'data-fk': `${fk}-${it[0]}` });
+      cb.addEventListener('change', () => { const s = state(); if (cb.checked) s[it[0]] = 1; else delete s[it[0]]; mine.set({ [key]: s }); if (ul.onchange2) ul.onchange2(); });
+      return h('li', {}, h('label', { class: 'a-check', for: id }, cb, h('span', {}, h('b', { text: it[1] }), it[2] ? h('small', { text: it[2] }) : null)));
+    }));
+    paint();
+    return { el: ul, done: () => items.filter(it => state()[it[0]]).length };
+  };
+  function leadWeekCard() {
+    const key = 'lw-' + weekKey();
+    const n = h('b', {}), rg = FX.ring(0);
+    const ck = checklist(key, LEAD_TASKS, 'lw');
+    const sync = () => { n.textContent = `${ck.done()} من ${LEAD_TASKS.length}`; rg.set(ck.done() / LEAD_TASKS.length * 100); };
+    ck.el.onchange2 = () => { sync(); if (ck.done() === LEAD_TASKS.length) { FX.confetti({ count: 30 }); say('أنجزت مهام القائد لهذا الأسبوع.'); } };
+    sync();
+    const el = h('section', { class: 'a-card a-lw', 'aria-labelledby': 'lw-h', 'data-lead-week': '' },
+      h('div', { class: 'a-bdgs-top' }, h('h3', { id: 'lw-h' }, icon('check'), h('span', { text: 'مهامي هذا الأسبوع' })), h('span', { class: 'a-bdgs-n', 'data-lead-week-n': '' }, rg, n)),
+      ck.el, h('small', { class: 'a-hint', text: 'تبدأ قائمة جديدة كل سبت. ' + DEVICE_NOTE }));
+    el.done = () => ck.done();
+    return el;
+  }
+  // the weekly meeting: the six parts of the 90 minutes, and a timer that walks through them
+  function meetingCard() {
+    const el = h('section', { class: 'a-card a-meet', 'aria-labelledby': 'meet-h', 'data-meeting': '' });
+    const total = MEETING.reduce((s, m) => s + m[0], 0) * 60;
+    let timer = 0;
+    const fmt = s => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+    const stopT = () => { if (timer) { clearInterval(timer); timer = 0; } };
+    function paint(focus) {
+      const t0 = mine.get().meet || 0, on = t0 && (Date.now() - t0) / 1000 < total;
+      stopT();
+      const list = h('ol', { class: 'a-meet-l' }, MEETING.map((m, i) => h('li', { 'data-meet-part': String(i) }, h('span', { class: 'a-meet-m', text: `${m[0]} د` }), h('div', {}, h('b', { text: m[1] }), h('small', { text: m[2] })))));
+      const now = h('div', { class: 'a-meet-now', hidden: !on, 'data-meet-now': '' });
+      const bar = h('i', {});
+      const tick = () => {
+        const el2 = Math.floor((Date.now() - (mine.get().meet || 0)) / 1000);
+        if (el2 >= total) { mine.set({ meet: 0 }); say('انتهى وقت اللقاء.'); paint(); return; }
+        let acc = 0, idx = 0;
+        for (; idx < MEETING.length; idx++) { if (el2 < acc + MEETING[idx][0] * 60) break; acc += MEETING[idx][0] * 60; }
+        const left = acc + MEETING[idx][0] * 60 - el2;
+        if (now.dataset.i !== String(idx)) { if (now.dataset.i !== undefined) say(`الآن: ${MEETING[idx][1]}`); now.dataset.i = String(idx); }
+        put(now, h('small', { text: `الفقرة ${idx + 1} من ${MEETING.length}` }), h('b', { text: MEETING[idx][1] }), h('span', { class: 'a-meet-t', role: 'timer', dir: 'ltr', text: fmt(left) }),
+          h('small', { text: idx + 1 < MEETING.length ? `التالي: ${MEETING[idx + 1][1]}` : 'آخر فقرة' }));
+        bar.style.width = `${Math.round(el2 / total * 100)}%`;
+        list.querySelectorAll('li').forEach((li, i) => { li.className = i < idx ? 'ok' : i === idx ? 'now' : ''; });
+      };
+      const skip = () => {   // jump to the start of the next part
+        const el2 = (Date.now() - mine.get().meet) / 1000;
+        let acc = 0;
+        for (const m of MEETING) { acc += m[0] * 60; if (el2 < acc) break; }
+        mine.set({ meet: Date.now() - acc * 1000 });
+        tick();
+      };
+      put(el, h('h3', { id: 'meet-h' }, icon('clock'), h('span', { text: 'لقاء الفريق الأسبوعي (90 دقيقة)' })), now,
+        on ? h('div', { class: 'a-jr-bar a-meet-bar', 'aria-hidden': 'true' }, bar) : null, list,
+        h('div', { class: 'a-actions' },
+          on ? btn('الفقرة التالية', 'arrow-left', 'btn-primary', skip, { 'data-fk': 'meet-next' }) : btn('ابدأ اللقاء', 'clock', 'btn-primary', () => { mine.set({ meet: Date.now() }); say('بدأ اللقاء: ' + MEETING[0][1]); paint('meet-next'); }, { 'data-fk': 'meet-start' }),
+          on ? btn('أنهِ اللقاء', 'x', 'btn-ghost', () => { mine.set({ meet: 0 }); say('أُنهي اللقاء.'); paint('meet-start'); }, { 'data-fk': 'meet-stop' }) : null));
+      if (on) { tick(); timer = setInterval(tick, 1000); mdayStops('meet', stopT); }
+      if (focus) { const f = el.querySelector(`[data-fk="${focus}"]`); if (f) f.focus({ preventScroll: true }); }
+    }
+    paint();
+    return el;
+  }
+  // «ميثاق الفريق»: one value, how, who (a role, never a name) and when
+  function pactCard() {
+    const el = h('section', { class: 'a-card a-pact', 'aria-labelledby': 'pact-h', 'data-pact': '' });
+    function paint(edit, focus) {
+      const cur = mine.get().pact || null;
+      const head = h('h3', { id: 'pact-h' }, icon('hand-heart'), h('span', { text: 'ميثاق الفريق' }));
+      if (!cur || edit) {
+        const ids = [uid('f'), uid('f'), uid('f'), uid('f')];
+        const val = h('select', { id: ids[0], 'data-fk': 'pact-value' }, PACT_VALUES.map(v => h('option', { value: v, selected: !!cur && cur.value === v, text: v })));
+        const how = h('textarea', { id: ids[1], rows: 2, maxLength: 160, 'data-fk': 'pact-how', placeholder: 'مثال: ننظّف ساحة الحي معًا مرة كل أسبوع' });
+        how.value = cur ? cur.how : '';
+        const who = h('select', { id: ids[2], 'data-fk': 'pact-who' }, PACT_WHO.map(v => h('option', { value: v, selected: !!cur && cur.who === v, text: v })));
+        const when = h('input', { id: ids[3], type: 'text', maxLength: 60, 'data-fk': 'pact-when', placeholder: 'مثال: كل جمعة بعد العصر', value: cur ? cur.when : '' });
+        const msg = h('p', { class: 'a-live-msg', role: 'alert', hidden: true });
+        const f = (id, label, node) => h('div', { class: 'a-f' }, h('label', { for: id, class: 'a-l', text: label }), node);
+        put(el, head, h('p', { class: 'a-lead', text: 'يختار الفريق قيمة واحدة، ويحدد طريقة تطبيقها، ومن المسؤول، ومتى تُنفَّذ.' }),
+          f(ids[0], 'القيمة', val), f(ids[1], 'كيف نطبقها؟', how), f(ids[2], 'من المسؤول؟ (دور، لا اسم)', who), f(ids[3], 'متى؟', when), msg,
+          h('div', { class: 'a-actions' }, btn('احفظ الميثاق', 'check', 'btn-primary', () => {
+            const t = how.value.replace(/\s+/g, ' ').trim();
+            if (t.length < 5) { msg.textContent = 'اكتب طريقة التطبيق بجملة قصيرة واضحة.'; msg.hidden = false; say(msg.textContent); how.focus(); return; }
+            mine.set({ pact: { value: val.value, how: t.slice(0, 160), who: who.value, when: when.value.replace(/\s+/g, ' ').trim().slice(0, 60) } });
+            say('حُفظ ميثاق الفريق.');
+            paint(false, 'pact-edit');
+          }, { 'data-fk': 'pact-save' }), cur ? h('button', { type: 'button', class: 'a-link', text: 'إلغاء', onclick: () => paint(false, 'pact-edit') }) : null),
+          h('small', { class: 'a-hint', text: DEVICE_NOTE }));
+        if (focus || edit) how.focus();
+        return;
+      }
+      put(el, head, h('dl', { class: 'a-pact-d' }, [['القيمة', cur.value], ['كيف نطبقها؟', cur.how], ['من المسؤول؟', cur.who], ['متى؟', cur.when || '—']].map(r => h('div', {}, h('dt', { text: r[0] }), h('dd', { text: r[1] })))),
+        h('div', { class: 'a-actions' }, btn('عدّل الميثاق', 'repeat', 'btn-ghost', () => paint(true), { 'data-fk': 'pact-edit' })), h('small', { class: 'a-hint', text: DEVICE_NOTE }));
+      if (focus) { const f2 = el.querySelector(`[data-fk="${focus}"]`); if (f2) f2.focus({ preventScroll: true }); }
+    }
+    paint();
+    return el;
+  }
+  // «مبادرات الفريق»: three completed field initiatives a team (m-kpis), and how the 45 points are judged
+  function initiativesCard(t) {
+    const el = h('section', { class: 'a-card a-init', 'aria-labelledby': 'init-h', 'data-initiatives': '' });
+    const paint = rows => {
+      const acc = rows ? rows.filter(x => x.status === 'accepted').length : 0, sent = rows ? rows.length : 0;
+      put(el, h('div', { class: 'a-bdgs-top' }, h('h3', { id: 'init-h' }, icon('image'), h('span', { text: 'مبادرات الفريق' })), h('span', { class: 'a-bdgs-n' }, FX.ring(Math.min(acc, 3) / 3 * 100), h('b', { 'data-init-n': '', text: `${Math.min(acc, 3)} من 3` }))),
+        h('p', { class: 'a-lead', text: t.status === 'approved' ? `المستهدف ثلاث مبادرات عملية مكتملة لكل فريق، ومشروع تطبيقي واحد موثّق على الأقل. أرسلتم ${sent}، وقُبل ${acc}.` : 'تُفتح المشاريع والمبادرات بعد اعتماد الفريق. المستهدف ثلاث مبادرات عملية مكتملة لكل فريق.' }),
+        h('ul', { class: 'a-init-r', 'aria-label': 'تقييم محور التطبيق (45 نقطة)' }, [['مشاركة أعضاء الفريق وتوزيع الأدوار', 10], ['التنفيذ الفعلي للمشروع', 30], ['توثيق النتائج والأثر', 5]].map(r => h('li', {}, h('span', { text: r[0] }), h('b', { text: `${r[1]} نقطة` })))),
+        t.status === 'approved' ? h('div', { class: 'a-actions' }, btn('افتح المشاريع والمبادرات', 'arrow-left', 'btn-ghost', () => goSec('projects'), { 'data-fk': 'init-go' })) : null);
+    };
+    paint(null);
+    el.accepted = 0;
+    el.start = () => { if (t.status === 'approved') subsOf(t.team_id).then(rows => { el.accepted = rows ? rows.filter(x => x.status === 'accepted').length : 0; paint(rows); }); };
+    return el;
+  }
+  function workshopCard() {
+    const ck = checklist('ws', WORKSHOP.map((w, i) => ['w' + i, w[0], w[1]]), 'ws');
+    const n = h('b', {});
+    const sync = () => { n.textContent = `${ck.done()} من ${WORKSHOP.length}`; };
+    ck.el.onchange2 = sync; sync();
+    return h('section', { class: 'a-card a-ws', 'aria-labelledby': 'ws-h', 'data-workshop': '' },
+      h('div', { class: 'a-bdgs-top' }, h('h3', { id: 'ws-h' }, icon('sparkles'), h('span', { text: 'ورشة «الفعل لا القول»' })), h('span', { class: 'a-bdgs-n', 'data-workshop-n': '' }, n)),
+      h('p', { class: 'a-lead', text: 'ثمانية أنشطة لتطبيق قيم الصدق والأمانة. علّم ما نفّذه فريقك.' }), ck.el, h('small', { class: 'a-hint', text: DEVICE_NOTE }));
+  }
+  // «ملخص الأسبوع للمشرف»: numbers only, no member's name
+  function leadSummaryCard(o) {
+    const out = h('textarea', { class: 'a-sum-t', rows: 7, readOnly: true, 'aria-label': 'ملخص الأسبوع', 'data-lead-summary': '' });
+    const msg = h('small', { class: 'a-hint', role: 'status' });
+    const build = () => {
+      const d = o();
+      const pact = mine.get().pact;
+      out.value = [`ملخص فريق ${d.team} — ${new Date().toLocaleDateString('ar-u-nu-latn', { day: 'numeric', month: 'long', year: 'numeric' })}`,
+        `حالة الفريق: ${d.status}`, `الأعضاء: ${d.members} من ${MAX}`, `موافقات أولياء الأمور: ${d.minors ? `${d.got} من ${d.minors}` : 'لا قاصرين'}`,
+        `المبادرات المقبولة: ${d.accepted} من 3`, `مهام القائد هذا الأسبوع: ${d.tasks} من ${LEAD_TASKS.length}`,
+        pact ? `ميثاق الفريق: ${pact.value}، ${pact.how} (${pact.who}${pact.when ? '، ' + pact.when : ''})` : 'ميثاق الفريق: لم يُكتب بعد'].join('\n');
+    };
+    const el = h('section', { class: 'a-card a-sum', 'aria-labelledby': 'sum-h', 'data-lead-sum': '' }, h('h3', { id: 'sum-h' }, icon('file-text'), h('span', { text: 'ملخص الأسبوع للمشرف' })),
+      h('p', { class: 'a-lead', text: 'أرقام فريقك في سطور، بلا أسماء الأعضاء. حدّثه ثم انسخه وأرسله للمشرف.' }), out,
+      h('div', { class: 'a-actions' }, btn('حدّث الملخص', 'repeat', 'btn-ghost', () => { build(); msg.textContent = 'حُدّث الملخص.'; say(msg.textContent); }, { 'data-fk': 'sum-build' }),
+        btn('انسخ', 'check', 'btn-primary', async () => { build(); msg.textContent = (await copyText(out.value)) ? 'نُسخ الملخص.' : 'تعذّر النسخ. حدّد النص وانسخه يدويًا.'; say(msg.textContent); }, { 'data-fk': 'sum-copy' })), msg);
+    el.start = build;
+    return el;
+  }
+
+  /* --- the admin: the operating plan, targets against what is achieved, teams that need a follow-up, the urgent decisions */
+  const OPS_STEPS = [[null, '2026-10-31', 'قبل 1 نوفمبر', 'اعتماد مدير المسابقة واللجان، والتحقق من الموافقات والفئات العمرية والمقرات والميزانية ومصدر الجوائز؛ ثم فتح التسجيل بعد استكمال المتطلبات.'],
+    ['2026-11-01', '2026-11-14', '1 – 14 نوفمبر', 'تسجيل الفرق (5–7 أعضاء شاملة القائد)، تعريف القادة باللائحة، وتقديم الشرح الإلكتروني لسورة الصف.'],
+    ['2026-11-15', '2026-11-30', '15 – 30 نوفمبر', 'التقييمات الأولية للحفظ والفهم، وإطلاق مهام تطبيق القيم في الأسرة والحي والمدرسة، وجدولة مباريات كرة القدم والشطرنج.'],
+    ['2026-12-01', '2026-12-31', '1 – 31 ديسمبر', 'استمرار المنافسات، وجمع أدلة التطبيقات المجتمعية وفق ضوابط الخصوصية، ومراجعة نتائج التحكيم أسبوعيًا.'],
+    ['2027-01-01', '2027-01-14', '1 – 15 يناير', 'استكمال المسابقات والأنشطة، ومتابعة الفرق الأقل مشاركة، ومراجعة الاعتراضات والسجلات المالية.'],
+    ['2027-01-15', '2027-01-24', '15 – 24 يناير', 'اختبارات ومنافسات ختامية، والتحقق من نتائج جميع المحاور وإعلان النتائج بعد مراجعة لجنة التحكيم.'],
+    ['2027-01-25', '2027-01-31', '25 – 31 يناير', 'إعداد تقرير الأثر والدروس المستفادة، وتجهيز الحفل وتوزيع الجوائز في 31 يناير 2027.']];
+  const DECISIONS = [['d1', 'تحديد المواقع والملاعب الآمنة وقاعة الشطرنج', 'مسؤول الأنشطة · قبل نشر الجدول'], ['d2', 'اعتماد الفرق والأعمار والرسوم والجوائز والتمويل', 'إدارة ينابيع · قبل الإعلان'],
+    ['d3', 'اعتماد شرح السورة والاختبارات والتوثيق السلوكي', 'المسؤول العلمي · قبل التنفيذ'], ['d4', 'تجهيز الورش والمشاريع التطبيقية', 'مسؤول البرامج · قبل بدء الأنشطة'],
+    ['d5', 'اعتماد لوائح التحكيم والتقييم والتظلمات', 'لجنة المسابقة · قبل المنافسات'], ['d6', 'اعتماد رابط التسجيل ورقم التواصل', 'مسؤول التسجيل · بعد استكمال الموافقات'],
+    ['d7', 'تجهيز نماذج المتابعة والتقييم', 'مسؤول المتابعة · قبل الانطلاق']];
+  const adminSubs = () => { A.home = A.home || { n: {} }; if (!A.home.subsP) A.home.subsP = YB.rpc('yb_submissions_queue', {}).then(r => (r.ok && Array.isArray(r.data) ? r.data : [])); return A.home.subsP; };
+  // what each team still lacks (never a member's name)
+  function teamIssues(t, subs) {
+    const ms = membersOf(t.id), minors = ms.filter(m => isMinor(m.age)), miss = minors.filter(m => m.consent_status !== 'received').length, out = [];
+    if (ms.length < MIN) out.push(`ينقصه ${MIN - ms.length} ${MIN - ms.length === 1 ? 'عضو' : 'أعضاء'}`);
+    if (ms.length > MAX) out.push('زاد عن 7 أعضاء');
+    if (miss) out.push(`تنقص ${miss} ${miss === 1 ? 'موافقة' : 'موافقات'}`);
+    if ((t.status === 'approved' || t.status === 'submitted') && (t.fee_status || 'unpaid') === 'unpaid') out.push('الرسوم لم تُسدَّد');
+    if (t.status === 'submitted') { const d = Math.floor((Date.now() - new Date(t.updated_at || t.created_at).getTime()) / 86400000); if (d >= 3) out.push(`ينتظر الاعتماد منذ ${daysWord(d)}`); }
+    if (t.status === 'approved' && subs && !subs.some(x => x.team_id === t.id && x.status === 'accepted')) out.push('لا مشروع مقبول بعد');
+    if (t.status === 'returned') out.push('أُعيد للتعديل ولم يُرسل');
+    return out;
+  }
+  function followCard(limit) {
+    const el = h('section', { class: 'a-card a-fol', 'aria-labelledby': 'fol-h', 'data-follow': '' });
+    const open = t => () => { A.open[t.id] = true; A.filter = 'all'; A.q = ''; A.tab = 'teams'; drawAdmin('th-' + t.id); const c = root.querySelector(`[data-team="${CSS.escape(t.id)}"]`); if (c) c.scrollIntoView({ block: 'start', behavior: smooth() }); };
+    const paint = subs => {
+      const rows = A.teams.filter(t => t.status !== 'rejected').map(t => ({ t, is: teamIssues(t, subs) })).filter(x => x.is.length).sort((a, b) => b.is.length - a.is.length);
+      const show = limit ? rows.slice(0, limit) : rows;
+      put(el, h('div', { class: 'a-wait-top' }, h('h3', { id: 'fol-h' }, icon('alert'), h('span', { text: 'فرق تحتاج متابعة' })), rows.length ? h('b', { class: 'a-wait-n', 'data-follow-n': '', text: String(rows.length) }) : null),
+        rows.length ? h('ul', { class: 'a-fol-l' }, show.map(x => h('li', { 'data-follow-team': x.t.id }, teamMark(x.t.id, 'sm'), h('div', { class: 'a-fol-t' }, h('b', { text: x.t.name }), h('span', { class: 'a-fol-c' }, x.is.map(i => chip(i, 'sun')))),
+          h('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'data-fk': 'fol-' + x.t.id, onclick: open(x.t) }, h('span', { text: 'افتح' }), icon('arrow-left')))))
+          : h('p', { class: 'a-wait-0' }, icon('check'), h('span', { text: A.teams.length ? 'كل الفرق مكتملة البيانات.' : 'لم يُسجَّل أي فريق بعد.' })),
+        limit && rows.length > limit ? h('div', { class: 'a-actions' }, btn(`كل الفرق (${rows.length})`, 'arrow-left', 'btn-ghost', () => { A.tab = 'plan'; drawAdmin('tab-plan'); window.scrollTo({ top: 0, behavior: smooth() }); }, { 'data-fk': 'fol-all' })) : null);
+    };
+    paint(null);
+    adminSubs().then(s => { if (el.isConnected) paint(s); });
+    return el;
+  }
+  function drawAdminPlan(panel) {
+    // 1. the operating plan, with today's step
+    const td = localDay(new Date());
+    const cur = OPS_STEPS.findIndex(s => (!s[0] || td >= s[0]) && td <= s[1]);
+    const plan = h('section', { class: 'a-card a-ops', 'aria-labelledby': 'ops-h', 'data-ops': '' }, h('h3', { id: 'ops-h' }, icon('route'), h('span', { text: 'خطة تشغيل المسابقة' })),
+      h('ol', { class: 'a-ops-l' }, OPS_STEPS.map((s, i) => h('li', { class: cur < 0 ? (td > s[1] ? 'ok' : '') : i < cur ? 'ok' : i === cur ? 'now' : '', 'aria-current': i === cur ? 'step' : null },
+        h('span', { class: 'a-ops-d', 'aria-hidden': 'true' }, (cur < 0 ? td > s[1] : i < cur) ? icon('check') : String(i + 1)), h('div', {}, h('b', { text: s[2] + (i === cur ? ' · الآن' : '') }), h('p', { text: s[3] }))))));
+    // 2. targets against what is achieved (the two-weekly report)
+    const tg = h('section', { class: 'a-card a-tg', 'aria-labelledby': 'tg-h', 'data-targets': '' });
+    const paintTg = (subs, ov) => {
+      const ok = A.teams.filter(t => t.status === 'approved'), formed = ok.filter(t => { const n = membersOf(t.id).length; return n >= MIN && n <= MAX; });
+      const people = ok.reduce((s, t) => s + membersOf(t.id).length, 0);
+      const acc = id => (subs || []).filter(x => x.team_id === id && x.status === 'accepted').length;
+      const minors = A.members.filter(m => isMinor(m.age)), got = minors.filter(m => m.consent_status === 'received').length;
+      const paid = ok.filter(t => t.fee_status === 'paid' || t.fee_status === 'waived').length;
+      const R = [['الفرق المشاركة (استمارة مكتملة ومعتمدة)', `${EXPECTED} فريقًا`, formed.length, EXPECTED],
+        ['الأعضاء المشاركون', '60 – 84 مشاركًا', people, 60],
+        ['مشروع تطبيقي موثّق لكل فريق', 'مشروع واحد على الأقل', ok.filter(t => acc(t.id) >= 1).length, ok.length],
+        ['ثلاث مبادرات مكتملة لكل فريق', '3 مبادرات', ok.filter(t => acc(t.id) >= 3).length, ok.length],
+        ['موافقات أولياء الأمور للقاصرين', 'كل القاصرين', got, minors.length],
+        ['رسوم الاشتراك (10 $ للفريق)', 'كل الفرق المعتمدة', paid, ok.length],
+        ['مباريات كرة القدم', ov ? `${ov.football.total} مباراة` : 'بعد القرعة', ov ? ov.football.played : 0, ov ? ov.football.total : 0]];
+      const pct = r => (r[3] ? Math.min(100, Math.round(r[2] / r[3] * 100)) : 0);
+      const text = () => [`تقرير المتابعة — ${new Date().toLocaleDateString('ar-u-nu-latn', { day: 'numeric', month: 'long', year: 'numeric' })}`].concat(R.map(r => `${r[0]}: ${r[2]} من ${r[3] || '—'} (${pct(r)}%) · المستهدف: ${r[1]}`),
+        [`فرق تحتاج متابعة: ${A.teams.filter(t => t.status !== 'rejected' && teamIssues(t, subs).length).length}`]).join('\n');
+      const msg = h('small', { class: 'a-hint', role: 'status' });
+      put(tg, h('h3', { id: 'tg-h' }, icon('chart'), h('span', { text: 'المستهدف والمتحقق' })),
+        h('p', { class: 'a-lead', text: 'تقرير مختصر كل أسبوعين: المستهدف، والمتحقق، ونسبة الإنجاز.' }),
+        h('table', { class: 'a-tg-t' }, h('thead', {}, h('tr', {}, ['المؤشر', 'المستهدف', 'المتحقق', 'الإنجاز'].map(x => h('th', { scope: 'col', text: x })))),
+          h('tbody', {}, R.map(r => h('tr', {}, h('th', { scope: 'row', text: r[0] }), h('td', { text: r[1] }), h('td', {}, h('b', { text: `${r[2]}${r[3] ? ' من ' + r[3] : ''}` })),
+            h('td', {}, h('span', { class: 'a-tg-b', 'aria-hidden': 'true' }, h('i', { class: pct(r) >= 100 ? 'full' : '', style: `width:${pct(r)}%` })), h('span', { text: `${pct(r)}%` })))))),
+        h('div', { class: 'a-actions' }, btn('انسخ التقرير', 'check', 'btn-primary', async () => { msg.textContent = (await copyText(text())) ? 'نُسخ التقرير.' : 'تعذّر النسخ.'; say(msg.textContent); }, { 'data-fk': 'tg-copy' }),
+          btn('اطبع', 'printer', 'btn-ghost', () => window.print(), { 'data-fk': 'tg-print' })), msg);
+      tg.report = text;
+    };
+    paintTg(null, null);
+    Promise.all([adminSubs(), boardOnce()]).then(([subs, g]) => {
+      let ov = null;
+      try { ov = g && g.state && window.YTour ? window.YTour.overview(g.state) : null; } catch (e) { ov = null; }
+      if (tg.isConnected) paintTg(subs, ov && ov.drawn ? ov : null);
+    });
+    // 3. the urgent decisions (ticks on this device)
+    const ck = checklist('dec', DECISIONS, 'dec');
+    const dn = h('b', {});
+    const syncD = () => { dn.textContent = `${ck.done()} من ${DECISIONS.length}`; };
+    ck.el.onchange2 = syncD; syncD();
+    const dec = h('section', { class: 'a-card a-dec', 'aria-labelledby': 'dec-h', 'data-decisions': '' },
+      h('div', { class: 'a-bdgs-top' }, h('h3', { id: 'dec-h' }, icon('scale'), h('span', { text: 'القرارات العاجلة لإدارة المسابقة' })), h('span', { class: 'a-bdgs-n', 'data-decisions-n': '' }, dn)),
+      ck.el, h('small', { class: 'a-hint', text: DEVICE_NOTE }));
+    panel.append(h('div', { class: 'a-home', 'data-admin-plan': '' }, plan, tg, followCard(0), dec));
   }
 
   /* ------------------------------------------------------------------ notifications (in-app inbox) */
@@ -2122,7 +2377,7 @@
         h('b', { text: String(n) }), h('span', { text: label })))));
   }
   function adminTabs() {
-    const defs = [['home', 'الرئيسية', 'home'], ['teams', 'الفرق', 'users'], ['stats', 'الإحصاءات', 'chart'], ['feed', 'الأخبار', 'megaphone'], ['people', 'الأشخاص', 'user'], ['schedule', 'الجدول', 'calendar'], ['results', 'النتائج', 'flag'], ['projects', 'المشاريع', 'image'], ['comms', 'التواصل', 'bell'], ['judging', 'التحكيم', 'scale'], ['tour', 'لوحة البطولة', 'trophy'], ['export', 'تصدير', 'file-text']];
+    const defs = [['home', 'الرئيسية', 'home'], ['plan', 'الخطة والمؤشرات', 'route'], ['teams', 'الفرق', 'users'], ['stats', 'الإحصاءات', 'chart'], ['feed', 'الأخبار', 'megaphone'], ['people', 'الأشخاص', 'user'], ['schedule', 'الجدول', 'calendar'], ['results', 'النتائج', 'flag'], ['projects', 'المشاريع', 'image'], ['comms', 'التواصل', 'bell'], ['judging', 'التحكيم', 'scale'], ['tour', 'لوحة البطولة', 'trophy'], ['export', 'تصدير', 'file-text']];
     const list = h('div', { role: 'tablist', 'aria-label': 'أقسام الإدارة', class: 'a-tabs a-tabs-4 a-tabs-5 a-tabs-6 a-tabs-7 a-tabs-8 a-tabs-9 a-tabs-11' });
     const els = defs.map(([k, label, ic], i) => {
       const on = A.tab === k;
@@ -2143,6 +2398,7 @@
     const keep = focusKey || (document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.fk : '');
     const panel = h('div', { role: 'tabpanel', id: 'ap-' + A.tab, 'aria-labelledby': 'at-' + A.tab, class: 'a-panel' });
     if (A.tab === 'home') drawAdminHome(panel);
+    else if (A.tab === 'plan') drawAdminPlan(panel);
     else if (A.tab === 'teams') drawAdminTeams(panel);
     else if (A.tab === 'stats') drawAdminStats(panel);
     else if (A.tab === 'feed') { if (!S.feed) { S.feed = feedDesk('feed'); S.feed.start(); } panel.append(S.feed.el); }
@@ -2172,8 +2428,8 @@
     }
     else drawAdminExport(panel);
     if (S.sh) put(S.sh.nav, adminTabs());
-    put(A.body, A.tab === 'home' ? null : counters(), ...(S.sh ? [] : [adminTabs()]), panel);
-    if (A.fxTab !== A.tab) { A.fxTab = A.tab; FX.reveal(A.tab === 'home' ? panel.querySelectorAll('.a-home > *') : panel.children); }
+    put(A.body, A.tab === 'home' || A.tab === 'plan' ? null : counters(), ...(S.sh ? [] : [adminTabs()]), panel);
+    if (A.fxTab !== A.tab) { A.fxTab = A.tab; FX.reveal(A.tab === 'home' || A.tab === 'plan' ? panel.querySelectorAll('.a-home > *') : panel.children); }
     if (keep) { const f = root.querySelector(`[data-fk="${CSS.escape(keep)}"]`); if (f) f.focus({ preventScroll: true }); }
   }
 
@@ -3851,23 +4107,27 @@
     if (!L.chat) { L.chat = chatRoom(false, 'lchat'); L.chat.start(); }
     L.hero = heroCard({ name: S.me && S.me.full_name, sub: `قائد ${/^فريق\s/.test(t.team_name) ? '' : 'فريق '}${t.team_name}`, teamId: t.team_id, teamName: t.team_name, actions: [
       ['الأعضاء', 'users', () => goCard(L.boxes.roster), 'roster'], ['رمز الانضمام', 'send', () => goCard(L.boxes.code), 'code'],
-      ['اكتب خبرًا', 'megaphone', () => goSec('feed'), 'feed'], ['المشاريع', 'image', () => goSec('projects'), 'projects']] });
+      ['قيادتي', 'flag', () => goSec('lead'), 'lead'], ['اكتب خبرًا', 'megaphone', () => goSec('feed'), 'feed'], ['المشاريع', 'image', () => goSec('projects'), 'projects']] });
     L.staff = staffCard(t.team_id, { members: () => L.members, after: msg => reloadLeader(msg) });
     L.run = runCard(t.team_id, t.team_name);
     L.badges = badgesCard({ teamId: t.team_id, teamName: t.team_name, status: t.status, roster: () => { const mn = L.members.filter(m => isMinor(m.age)); return { members: L.members.length, minors: mn.length, got: mn.filter(m => m.consent_status === 'received').length }; } });
     L.pulse = pulseCard();
+    L.lw = leadWeekCard(); L.init = initiativesCard(t);
+    L.sum = leadSummaryCard(() => { const mn = L.members.filter(m => isMinor(m.age)); return { team: L.team.team_name, status: STATUS[L.team.status] || L.team.status, members: L.members.length, minors: mn.length,
+      got: mn.filter(m => m.consent_status === 'received').length, accepted: L.init.accepted || 0, tasks: L.lw.done() }; });
     dashLayout([
       { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [L.hero, (L.boxes.mday = matchDayCard(t.team_id, t.team_name, 'leader')), (L.boxes.next = nextCard(leaderNext())), leaderTiles(t), L.boxes.top, L.boxes.check, L.staff, L.run, L.badges, scoresCard(), L.pulse, announceFeed()] },
       feedGroup(),
       { key: 'matches', label: 'المباريات والمواعيد', icon: 'trophy', one: true, nodes: [L.dates, L.sched.node, L.boxes.marks] },
       { key: 'team', label: 'الفريق', icon: 'users', nodes: [L.boxes.roster, L.boxes.roles, L.boxes.code, (L.style || (L.style = teamStyleCard(t), L.style.start(), L.style)).el, L.printBox] },
       { key: 'projects', label: 'المشاريع والمبادرات', icon: 'image', one: true, nodes: [L.subs.el] },
+      { key: 'lead', label: 'قيادتي', icon: 'flag', nodes: [L.lw, meetingCard(), L.init, pactCard(), workshopCard(), L.sum] },
       { key: 'players', label: 'لاعبون يبحثون عن فريق', icon: 'users', one: true, nodes: [poolCard('pool')] },
       { key: 'room', label: 'غرفة القادة', icon: 'bell', one: true, nodes: [L.chat.el] },
       { key: 'guide', label: 'المسابقة والنقاط', icon: 'route', nodes: [journeyCard(), (L.points = pointsCard()), honorsCard(), toolsCard(true)] }]);
     L.subs.start();
     L.boxes.mday.start();
-    L.hero.start(); L.staff.start(); L.run.start(); L.badges.start(); L.pulse.start(); L.points.start();
+    L.hero.start(); L.staff.start(); L.run.start(); L.badges.start(); L.pulse.start(); L.points.start(); L.init.start(); L.sum.start();
     if (t.status === 'approved') celebrateOnce('ap-' + t.team_id, 'مبارك! فريقك معتمد في المسابقة.');
     paintLeader();
     startSchedule([L.sched]);
@@ -4445,7 +4705,7 @@
       const size = radios('csz', 'حجم الخط', Object.fromEntries(Object.keys(SIZES).map(k => [k, { label: SIZES[k] }])), p.text_size || 'm',
         async k => { if (await savePref({ text_size: k })) saved('حُفظ حجم الخط.'); });
       // the sections of this screen (the overview always stays)
-      const secs = (S.lastGroups || []).filter(g => g && !['home', 'journey', 'guide'].includes(g.key));
+      const secs = (S.lastGroups || []).filter(g => g && !['home', 'journey', 'guide', 'lead'].includes(g.key));
       const hidden = p.hidden_sections || [];
       const secBox = secs.length ? h('fieldset', { class: 'a-cust-set' }, h('legend', { text: 'أقسام لوحتي' }),
         h('p', { class: 'a-hint', text: 'أخفِ ما لا تحتاجه. تبقى «نظرة عامة» دائمًا.' }),

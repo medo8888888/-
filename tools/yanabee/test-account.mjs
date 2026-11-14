@@ -1791,7 +1791,7 @@ let teamId = '';
   await settle(AD);
   const stateBefore = world.count(/tournament_state/);
   await signInOk(AD, ADMIN.email);
-  check('admin screen: role badge الإدارة, twelve tabs (الرئيسية first, with الإحصاءات, الأخبار, الجدول, النتائج, المشاريع, التواصل, التحكيم)', (await AD.locator('.a-head .a-badge').innerText()) === 'الإدارة' && /^الرئيسية.*الإحصاءات.*الأخبار.*الجدول/.test((await AD.locator('[role=tab]').allInnerTexts()).join('|').replace(/\s+/g, ' ')) && (await AD.locator('[role=tab]').count()) === 12);
+  check('admin screen: role badge الإدارة, thirteen tabs (الرئيسية first, with الإحصاءات, الأخبار, الجدول, النتائج, المشاريع, التواصل, التحكيم)', (await AD.locator('.a-head .a-badge').innerText()) === 'الإدارة' && /^الرئيسية.*الإحصاءات.*الأخبار.*الجدول/.test((await AD.locator('[role=tab]').allInnerTexts()).join('|').replace(/\s+/g, ' ')) && (await AD.locator('[role=tab]').count()) === 13);
   check('admin load reads the published board once (the home tab\'s numbers) and does not poll it', world.count(/tournament_state/) - stateBefore <= 1);
   const counts = await AD.locator('.a-counters .a-count').allInnerTexts();
   check('counters by status (1 قيد المراجعة, 0 مطلوب تعديل, total 1)', counts.some(c => /^1\s*كل الفرق/.test(c.replace(/\n/g, ' '))) && counts.some(c => /^1\s*قيد المراجعة/.test(c.replace(/\n/g, ' '))) && counts.some(c => /^0\s*مطلوب تعديل/.test(c.replace(/\n/g, ' '))) && counts.some(c => /^0\s*معتمد/.test(c.replace(/\n/g, ' '))));
@@ -4085,7 +4085,7 @@ section('the phone dashboard: a bottom bar like the apps, «المزيد», and 
   const sheet = P.locator('[data-more]');
   check('«المزيد» opens a dialog with the name and role', await sheet.isVisible() && (await sheet.getAttribute('aria-modal')) === 'true' && /قائد النجوم/.test(await sheet.innerText()) && /قائد الفريق/.test(await sheet.innerText()));
   const secs = await sheet.locator('.a-more-s').allInnerTexts();
-  check('…every section of the dashboard', secs.length === 8 && ['نظرة عامة', 'الأخبار', 'المباريات والمواعيد', 'الفريق', 'المشاريع والمبادرات', 'لاعبون يبحثون عن فريق', 'غرفة القادة', 'المسابقة والنقاط'].every(s => secs.some(x => x.includes(s))), secs.join('|'));
+  check('…every section of the dashboard', secs.length === 9 && ['نظرة عامة', 'الأخبار', 'المباريات والمواعيد', 'الفريق', 'المشاريع والمبادرات', 'قيادتي', 'لاعبون يبحثون عن فريق', 'غرفة القادة', 'المسابقة والنقاط'].every(s => secs.some(x => x.includes(s))), secs.join('|'));
   check('…and the account: تخصيص لوحتي, تغيير كلمة المرور, الموقع العام, تسجيل الخروج', ['تخصيص لوحتي', 'تغيير كلمة المرور', 'الموقع العام', 'تسجيل الخروج'].every(s => sheet.locator('.a-more-a', { hasText: s }).count().then(n => n === 1)) && (await sheet.locator('.a-more-a').count()) === 4);
   check('…no «ثبّت» while the phone offers no install', !(await sheet.locator('[data-fk=more-install]').count()));
   check('focus is inside the dialog', await P.evaluate(() => !!document.activeElement.closest('[data-more]')));
@@ -4138,7 +4138,7 @@ section('the phone dashboard: a bottom bar like the apps, «المزيد», and 
   await A.waitForSelector('.a-dock [data-dock=teams]', { timeout: 8000 });
   check('admin bar: الرئيسية · الفرق · الأخبار · … · المزيد', (await A.locator('.a-dock .a-dock-b[data-dock]:not([data-dock=bell]):not([data-dock=more])').allInnerTexts()).join('|') === 'الرئيسية|الفرق|الأخبار');
   await A.locator('[data-dock=more]').click();
-  check('«المزيد» lists all 12 admin tabs', (await A.locator('[data-more] .a-more-s').count()) === 12);
+  check('«المزيد» lists all 13 admin tabs', (await A.locator('[data-more] .a-more-s').count()) === 13);
   await A.locator('[data-more] [data-fk=more-people]').click();
   await A.waitForSelector('#ap-people', { timeout: 6000 }).catch(() => {});
   check('a tab from «المزيد» (الأشخاص) opens, and «المزيد» lights up', (await A.locator('#at-people').getAttribute('aria-selected')) === 'true' && await A.locator('[data-dock=more]').evaluate(b => b.classList.contains('on')));
@@ -4279,7 +4279,7 @@ section('dashboard 2: the welcome card, the team\'s mark and logo, who leads the
   await settle(A); await signInOk(A, 'boss@t.test', undefined, { home: true });
   await A.waitForSelector('[data-admin-home] [data-wait-row="teams"]', { timeout: 8000 });
   check('the admin lands on «الرئيسية»: a greeting, and no status counters above it', (await A.locator('#at-home').getAttribute('aria-selected')) === 'true' && /يا محمود/.test(await A.locator('[data-hero]').innerText()) && (await A.locator('.a-counters').count()) === 0);
-  check('«بانتظار قرارك»: one team waits, with a button that opens it', /1\s*فرق تنتظر الاعتماد/.test((await A.locator('[data-wait]').innerText()).replace(/\s+/g, ' ')) && (await A.locator('.a-wait-n').innerText()) === '1');
+  check('«بانتظار قرارك»: one team waits, with a button that opens it', /1\s*فرق تنتظر الاعتماد/.test((await A.locator('[data-wait]').innerText()).replace(/\s+/g, ' ')) && (await A.locator('[data-wait] .a-wait-n').innerText()) === '1');
   const kp = async l => (await A.locator(`[data-admin-home] [data-kpi="${l}"] .a-kpi-v`).innerText());
   check('key numbers: approved teams of 12, members, consents, fees, accounts, matches played', (await kp('فرق معتمدة')) === '1 من 12' && (await kp('الأعضاء')) === '10' && (await kp('موافقات الأهل')) === '4 من 10' && (await kp('الرسوم')) === '0 من 2' && (await kp('الحسابات')) === '5' && /^2 من \d+$/.test(await kp('مباريات لُعبت')),
     [await kp('فرق معتمدة'), await kp('الأعضاء'), await kp('موافقات الأهل'), await kp('الرسوم'), await kp('الحسابات'), await kp('مباريات لُعبت')].join('|'));
@@ -4398,6 +4398,103 @@ section('«رحلتي»: the member\'s journey from the documents (dates, 100 po
   await P.waitForSelector('#sec-guide [data-journey]', { timeout: 8000 });
   check('a parent sees the dates, the points and the honors', (await P.locator('#sec-guide [data-points]').count()) === 1 && (await P.locator('#sec-guide [data-honors]').count()) === 1 && (await P.locator('[data-pledge], [data-hifz]').count()) === 0 && P.errs.length === 0, P.errs.join('|'));
   await close(P);
+}
+
+section('«قيادتي» for the team leader and «الخطة والمؤشرات» for the admin, from the documents');
+{
+  const fake = new Fake();
+  fake.addUser({ email: 'boss@t.test', name: 'محمود المشرف', role: 'member' }); fake.setAdmin('boss@t.test');
+  fake.addUser({ email: 'la@t.test', name: 'سليم قائد الأمل', role: 'leader' });
+  fake.addUser({ email: 'lb@t.test', name: 'قائد البدر', role: 'leader' });
+  fake.addUser({ email: 'lc@t.test', name: 'قائد الفجر', role: 'leader' });
+  const mk = (n, k, c) => Array.from({ length: k }, (_, i) => ({ name: `${n} ${i + 1}`, age: 13, consent: c }));
+  const TA = fake.seedTeam({ leaderEmail: 'la@t.test', name: 'الأمل', status: 'approved', members: mk('لاعب الأمل', 4, 'received') });
+  const TB = fake.seedTeam({ leaderEmail: 'lb@t.test', name: 'البدر', status: 'submitted', members: mk('لاعب البدر', 4) });
+  const TC = fake.seedTeam({ leaderEmail: 'lc@t.test', name: 'الفجر', status: 'draft', members: mk('لاعب الفجر', 2) });
+  fake.teams.find(t => t.id === TA.id).fee_status = 'paid';
+  fake.members.filter(m => m.team_id === TA.id && m.is_leader).forEach(m => { m.age = 30; });
+  fake.subs.push({ id: fake.uid(), team_id: TA.id, kind: 'project', title: 'سقيا الحي', value_text: 'الإحسان', place: 'neighborhood', done_on: '2026-11-10', summary: 'وزعنا الماء', results: '40 عبوة', beneficiaries: 40, photos: [], status: 'accepted', featured: false, created_at: fake.now(), updated_at: fake.now() });
+
+  /* ---- the leader ---- */
+  const L = await open(fake, { label: 'lead-leader', mobile: true });
+  await settle(L); await signInOk(L, 'la@t.test');
+  await L.waitForSelector('#sec-lead [data-lead-week]', { timeout: 8000 });
+  await L.locator('[data-fk="qa-lead"]').click();
+  check('the leader has «قيادتي», reachable from the welcome card', await L.evaluate(() => !!document.activeElement.closest('#sec-lead')));
+  const lw = L.locator('[data-lead-week]');
+  check('«مهامي هذا الأسبوع»: the five duties of the documents', (await lw.locator('.a-ck li').count()) === 5 && /اجمع المهام والبطاقات السلوكية من الأعضاء/.test(await lw.innerText()) && /احضر لقاء قادة الفرق مع مسؤولي المبادرة/.test(await lw.innerText()) && /0 من 5/.test(await L.locator('[data-lead-week-n]').innerText()));
+  await L.locator('[data-fk="lw-meet"]').check(); await L.locator('[data-fk="lw-cards"]').check();
+  check('ticking a duty counts it', /2 من 5/.test(await L.locator('[data-lead-week-n]').innerText()));
+  const mt = L.locator('[data-meeting]');
+  check('«لقاء الفريق الأسبوعي»: six parts that add up to 90 minutes', (await mt.locator('.a-meet-m').allInnerTexts()).map(x => parseInt(x, 10)).join('+') === '10+25+20+20+10+5' && /التسميع والتلاوة/.test(await mt.innerText()) && (await mt.locator('[data-meet-now]:not([hidden])').count()) === 0);
+  await mt.locator('[data-fk="meet-start"]').click();
+  await mt.locator('[data-meet-now]:not([hidden]) [role=timer]').waitFor();
+  const t1 = await mt.locator('[data-meet-now]').innerText();
+  check('«ابدأ اللقاء» starts a timer on the first part and names the next', /الفقرة 1 من 6/.test(t1) && /الاستقبال والمراجعة/.test(t1) && /^(09:5\d|10:00)$/m.test(t1) && /التالي: التسميع والتلاوة/.test(t1) && (await mt.locator('.a-meet-l li.now').count()) === 1, t1);
+  await mt.locator('[data-fk="meet-next"]').click();
+  await L.waitForFunction(() => /الفقرة 2 من 6/.test(document.querySelector('[data-meet-now]').innerText));
+  check('«الفقرة التالية» moves to the recitation part (25 minutes)', /التسميع والتلاوة/.test(await mt.locator('[data-meet-now] b').innerText()) && /^(24:5\d|25:00)$/m.test(await mt.locator('[data-meet-now]').innerText()) && (await mt.locator('.a-meet-l li.ok').count()) === 1);
+  await L.reload(); await settle(L);
+  await L.waitForSelector('[data-meet-now]:not([hidden])', { timeout: 8000 });
+  check('the meeting keeps running after a reload', /الفقرة 2 من 6/.test(await L.locator('[data-meet-now]').innerText()) && /2 من 5/.test(await L.locator('[data-lead-week-n]').innerText()));
+  await L.locator('[data-fk="meet-stop"]').click();
+  check('«أنهِ اللقاء» stops it', (await L.locator('[data-meet-now]:not([hidden])').count()) === 0 && (await L.locator('[data-fk="meet-start"]').count()) === 1);
+  const pc = L.locator('[data-pact]');
+  await pc.locator('[data-fk="pact-save"]').click();
+  check('the pact needs a way to apply the value', /اكتب طريقة التطبيق/.test(await pc.innerText()));
+  await pc.locator('[data-fk="pact-value"]').selectOption('التعاون');
+  await pc.locator('[data-fk="pact-how"]').fill('ننظّف ساحة الحي معًا مرة كل أسبوع');
+  await pc.locator('[data-fk="pact-who"]').selectOption('مساعد القائد');
+  await pc.locator('[data-fk="pact-when"]').fill('كل جمعة بعد العصر');
+  await pc.locator('[data-fk="pact-save"]').click();
+  await pc.locator('.a-pact-d').waitFor();
+  check('«ميثاق الفريق»: a value, how, who (a role, never a name) and when', (await pc.locator('.a-pact-d dd').allInnerTexts()).join('|') === 'التعاون|ننظّف ساحة الحي معًا مرة كل أسبوع|مساعد القائد|كل جمعة بعد العصر');
+  const ini = L.locator('[data-initiatives]');
+  await L.waitForFunction(() => /1 من 3/.test(document.querySelector('[data-init-n]').textContent), null, { timeout: 6000 });
+  check('«مبادرات الفريق»: accepted work against the three asked, and how the 45 points are judged', /أرسلتم 1، وقُبل 1/.test(await ini.innerText()) && (await ini.locator('.a-init-r b').allInnerTexts()).join('|') === '10 نقطة|30 نقطة|5 نقطة');
+  const ws = L.locator('[data-workshop]');
+  await L.locator('[data-fk="ws-w1"]').check();
+  check('«ورشة الفعل لا القول»: the eight activities, ticked as done', (await ws.locator('.a-ck li').count()) === 8 && /صندوق المفقودات/.test(await ws.innerText()) && /1 من 8/.test(await L.locator('[data-workshop-n]').innerText()));
+  await L.locator('[data-fk="sum-build"]').click();
+  const sum = await L.locator('[data-lead-summary]').inputValue();
+  check('«ملخص الأسبوع للمشرف»: the team\'s numbers and the pact, with no member\'s name', /ملخص فريق الأمل/.test(sum) && /حالة الفريق: معتمد/.test(sum) && /الأعضاء: 5 من 7/.test(sum) && /موافقات أولياء الأمور: 4 من 4/.test(sum) && /المبادرات المقبولة: 1 من 3/.test(sum)
+    && /مهام القائد هذا الأسبوع: 2 من 5/.test(sum) && /ميثاق الفريق: التعاون، ننظّف ساحة الحي/.test(sum) && !/لاعب الأمل|سليم/.test(sum), sum);
+  await L.locator('[data-fk="sum-copy"]').click();
+  await L.waitForFunction(() => /نُسخ الملخص/.test(document.querySelector('[data-lead-sum]').innerText));
+  check('«انسخ» puts it on the clipboard', (await L.evaluate(() => navigator.clipboard.readText())) === await L.locator('[data-lead-summary]').inputValue());
+  check('nothing of the leader\'s notes was sent; they sit on the device', fake.log.filter(x => /ننظّف ساحة الحي/.test(JSON.stringify(x))).length === 0 && /ننظّف ساحة الحي/.test(await L.evaluate(() => localStorage.getItem('yanabee-dash'))));
+  check('phone width: «قيادتي» does not overflow', (await overflow(L)) <= 0);
+  check('leader console clean (قيادتي)', L.errs.length === 0, L.errs.join('|'));
+  await close(L);
+
+  /* ---- the admin ---- */
+  const A = await open(fake, { label: 'plan-admin' });
+  await settle(A); await signInOk(A, 'boss@t.test', undefined, { home: true });
+  await A.waitForSelector('[data-admin-home] [data-follow] [data-follow-team]', { timeout: 8000 });
+  const fol = (await A.locator('[data-admin-home] [data-follow]').innerText()).replace(/\s+/g, ' ');
+  check('the admin\'s home lists «فرق تحتاج متابعة» with what each lacks (no member\'s name)', (await A.locator('[data-follow-n]').innerText()) === '2' && /الفجر .*ينقصه 2 أعضاء/.test(fol) && /البدر .*تنقص \d+ موافقات.*الرسوم لم تُسدَّد/.test(fol) && !/الأمل/.test(fol) && !/لاعب/.test(fol), fol);
+  await A.locator('[data-fk="qa-plan"]').click();
+  await A.waitForSelector('#ap-plan [data-admin-plan] [data-ops]');
+  const ops = A.locator('[data-ops]');
+  check('«خطة تشغيل المسابقة»: the seven periods of the document, the current one marked', (await ops.locator('.a-ops-l li').count()) === 7 && /1 – 14 نوفمبر/.test(await ops.innerText()) && /تجهيز الحفل وتوزيع الجوائز في 31 يناير 2027/.test(await ops.innerText())
+    && (await ops.locator('.a-ops-l li.now').count()) <= 1 && (await ops.locator('.a-ops-l li.now, .a-ops-l li.ok').count()) >= 1);
+  await A.waitForFunction(() => /1 من 1/.test(document.querySelector('[data-targets] tbody tr:nth-child(3)').innerText), null, { timeout: 6000 });
+  const rows = (await A.locator('[data-targets] tbody tr').allInnerTexts()).map(t => t.replace(/\s+/g, ' ').trim());
+  check('«المستهدف والمتحقق»: seven indicators with target, achieved and percent', rows.length === 7 && /^الفرق المشاركة.* 12 فريقًا 1 من 12 8%$/.test(rows[0]) && /^الأعضاء المشاركون 60 – 84 مشاركًا 5 من 60 8%$/.test(rows[1])
+    && /^مشروع تطبيقي موثّق لكل فريق .* 1 من 1 100%$/.test(rows[2]) && /^ثلاث مبادرات مكتملة لكل فريق 3 مبادرات 0 من 1 0%$/.test(rows[3]) && /^رسوم الاشتراك .* 1 من 1 100%$/.test(rows[5]), rows.join(' || '));
+  await A.locator('[data-fk="tg-copy"]').click();
+  await A.waitForFunction(() => /نُسخ التقرير/.test(document.querySelector('[data-targets]').innerText));
+  const rep = await A.evaluate(() => navigator.clipboard.readText());
+  check('«انسخ التقرير» copies the two-weekly report as text (numbers, no names)', /^تقرير المتابعة/.test(rep) && /الفرق المشاركة.*: 1 من 12 \(8%\)/.test(rep) && /فرق تحتاج متابعة: 2/.test(rep) && !/لاعب|سليم/.test(rep), rep);
+  check('the full follow-up list is on this tab too', (await A.locator('#ap-plan [data-follow-team]').count()) === 2);
+  await A.locator('[data-fk="dec-d1"]').check();
+  check('«القرارات العاجلة»: the seven decisions with who and when, ticked on this device', (await A.locator('[data-decisions] .a-ck li').count()) === 7 && /مسؤول الأنشطة · قبل نشر الجدول/.test(await A.locator('[data-decisions]').innerText()) && /1 من 7/.test(await A.locator('[data-decisions-n]').innerText()));
+  check('no status counters on the plan tab', (await A.locator('.a-counters').count()) === 0);
+  await A.locator(`#ap-plan [data-fk="fol-${TC.id}"]`).click();
+  await A.waitForSelector(`#ap-teams [data-team="${TC.id}"].open`);
+  check('«افتح» on a team that needs a follow-up opens its card', (await A.locator('#at-teams').getAttribute('aria-selected')) === 'true');
+  check('admin console clean (plan)', A.errs.length === 0, A.errs.join('|'));
+  await close(A);
 }
 
 section('network hosts and console');
