@@ -590,6 +590,29 @@
       }
       return { status: 200, body: Object.assign({ can_avatar: false }, copy(pr)) };
     }
+    // migration 0014 in the demo: who leads the team, and the assistant's title (no logo upload in the demo)
+    if (name === 'yb_team_staff' || name === 'yb_set_assistant') {
+      var tf = teamById(body.team_id);
+      if (!tf) return raise('permission_denied', '42501');
+      var tms = db.members.filter(function (m) { return m.team_id === tf.id; });
+      var lead = tf.leader_id === me;
+      if (name === 'yb_set_assistant') {
+        if (!lead) return raise('permission_denied', '42501');
+        var pick = body.member_id ? tms.filter(function (m) { return m.id === body.member_id; })[0] : null;
+        if (body.member_id && !pick) return { status: 200, body: { ok: false, error: 'member_not_found' } };
+        if (pick && pick.is_leader) return { status: 200, body: { ok: false, error: 'leader_is_leader' } };
+        tms.forEach(function (m) { m.roles = (m.roles || []).filter(function (k) { return k !== 'assistant'; }); });
+        if (pick) pick.roles = (pick.roles || []).concat('assistant');
+        persist();
+        return { status: 200, body: { ok: true } };
+      }
+      var inside = lead || tms.some(function (m) { return m.user_id === me; });
+      var pOnly = !inside && db.links.some(function (l) { return l.parent_id === me && tms.some(function (m) { return m.id === l.member_id; }); });
+      if (!inside && !pOnly) return raise('permission_denied', '42501');
+      var who = function (k) { var m = tms.filter(function (x) { return (x.roles || []).indexOf(k) >= 0; })[0]; return m ? (pOnly ? String(m.full_name).trim().split(/\s+/)[0] : m.full_name) : null; };
+      var lpf = profileOf(tf.leader_id), lrow = tms.filter(function (m) { return m.is_leader; })[0];
+      return { status: 200, body: { leader: (lpf && lpf.full_name) || (lrow && lrow.full_name) || null, assistant: who('assistant'), coord: who('coord'), members: tms.length, can_edit: lead } };
+    }
     if (name === 'yb_set_team_style') {
       var ts = teamById(body.team_id);
       if (!ts || ts.leader_id !== me) return raise('permission_denied', '42501');
@@ -689,7 +712,7 @@
       if (bad) return { status: 200, body: { ok: false, error: 'member_not_found' } };
       if (body.reciter && body.reciter === body.reserve) return { status: 200, body: { ok: false, error: 'same_reciters' } };
       db.members.filter(function (m) { return m.team_id === tr.id; }).forEach(function (m) {
-        m.roles = keys2.filter(function (k) { return body[k] === m.id; });
+        m.roles = keys2.filter(function (k) { return body[k] === m.id; }).concat((m.roles || []).indexOf('assistant') >= 0 ? ['assistant'] : []);
       });
       persist();
       return { status: 200, body: { ok: true } };

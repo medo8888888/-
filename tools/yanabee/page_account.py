@@ -69,6 +69,6 @@ def build():
   </div>
 </section>'''
     page(PAGE, PAGE_LABEL[PAGE], body, 'الدخول وإنشاء حساب في مسابقة ينابيع، وشاشة لكل دور: قائد الفريق والعضو وولي الأمر، وتجربة بحسابات وهمية.',
-         css=('css/comp.css', 'css/account.css'),
-         js=('js/yb-demo.js', 'js/yb-config.js', 'js/yb-api.js', 'js/tournament-engine.js', 'js/yb-checklist.js', 'js/xlsx-lite.js', 'js/account.js'))
+         css=('css/comp.css', 'css/account.css', 'css/dash-fx.css'),
+         js=('js/yb-demo.js', 'js/yb-config.js', 'js/yb-api.js', 'js/tournament-engine.js', 'js/yb-checklist.js', 'js/xlsx-lite.js', 'js/dash-fx.js', 'js/account.js'))
     return PAGE

@@ -54,6 +54,7 @@ class Fake {
     this.live = []; this.marks = []; this.markSeq = 0;   // migration 0007
     this.subs = []; this.objects = new Map(); this.uploads = [];   // migration 0008 (submissions, private photos)
     this.seekers = new Map(); this.invites = []; this.transfers = false;   // migration 0012 (players looking for a team)
+    this.logos = new Map();   // migration 0014 (team logos: path -> uploader)
     this.pushSubs = []; this.pushReady = true; this.pushKey = 'B' + 'x'.repeat(86);   // migration 0013 (phone notifications)
     this.judges = new Map(); this.jscores = []; this.ascores = []; this.published = false;   // migration 0010
     this.ann = []; this.annSeq = 0; this.chat = []; this.chatSeq = 0; this.reports = []; this.mutes = new Map(); this.reads = new Map();   // migration 0009
@@ -248,6 +249,20 @@ class Fake {
   storage(method, p, body, c) {
     const B = 'yanabee-submissions';
     if (c.bad) return c.bad;
+    if (p.includes('yanabee-logos')) {   // 0014: <team>/<file>, the team's leader or the admin; signed-in people read
+      const LB = 'yanabee-logos', deny = { status: 400, body: { statusCode: '403', error: 'Unauthorized', message: 'new row violates row-level security policy' } };
+      if (!c.uid) return deny;
+      const may = path => { const parts = path.split('/'); return parts.length === 2 && !!parts[1] && (c.role === 'admin' || this.teams.some(t => t.id === parts[0] && t.leader_id === c.uid)); };
+      if (method === 'POST' && p.startsWith(`object/sign/${LB}`)) return { status: 200, body: ((body && body.paths) || []).map(x => (this.logos.has(x) ? { path: x, signedURL: `/object/sign/${LB}/${x}?token=t-${this.tick}`, error: null } : { path: x, signedURL: null, error: 'not found' })) };
+      if (method === 'POST' && p.startsWith(`object/${LB}/`)) {
+        const path = p.slice(`object/${LB}/`.length);
+        if (!may(path) || [...this.logos.keys()].filter(k => k.startsWith(path.split('/')[0] + '/')).length >= 3) return deny;
+        this.logos.set(path, c.uid);
+        return { status: 200, body: { Key: `${LB}/${path}`, Id: this.uid() } };
+      }
+      if (method === 'DELETE' && p === `object/${LB}`) { const gone = ((body && body.prefixes) || []).filter(x => this.logos.has(x) && may(x)); gone.forEach(x => this.logos.delete(x)); return { status: 200, body: gone.map(name => ({ name, bucket_id: LB })) }; }
+      return { status: 400, body: { statusCode: '404', error: 'not_found', message: 'Object not found' } };
+    }
     const isPublic = x => this.subs.some(s => s.featured && s.status === 'accepted' && s.photos.includes(x));   // 0008: photos of featured work
     if (!c.uid && !(method === 'POST' && p.startsWith(`object/sign/${B}`))) return { status: 400, body: { statusCode: '403', error: 'Unauthorized', message: 'new row violates row-level security policy' } };
     if (method === 'POST' && p.startsWith(`object/sign/${B}`)) {
@@ -460,6 +475,7 @@ class Fake {
     const admin = c.role === 'admin';
     const SIG = { yb_seek_me: [], yb_seek_save: ['p'], yb_seek_stop: [], yb_seek_guardian: ['code'], yb_guardian_seekers: [], yb_seek_guardian_revoke: ['seeker'], yb_seek_pool: [],
       yb_invite_send: ['seeker'], yb_invite_cancel: ['id'], yb_invite_answer: ['id', 'accept'], yb_set_transfers: ['allow'], yb_seek_stats: [],
+      yb_team_staff: ['team_id'], yb_set_assistant: ['team_id', 'member_id'], yb_set_team_logo: ['team_id', 'path'],
       yb_push_mine: ['endpoint'], yb_push_key: [], yb_push_subscribe: ['sub'], yb_push_unsubscribe: ['endpoint'],
       my_team: [], join_team: ['code', 'member_name'], link_child: ['code', 'child_name'], approve_team: ['team_id', 'ok', 'note'], mark_consent: ['member_id', 'received'],
       unlink_member: ['member_id'], regenerate_join_code: ['team_id'], set_user_role: ['target', 'new_role'],
@@ -849,6 +865,34 @@ class Fake {
           invites_open: this.invites.filter(i => i.status === 'pending').length, joined: this.invites.filter(i => i.status === 'accepted').length });
       }
     }
+    /* migration 0014: who leads the team, the assistant's title, the team's logo */
+    if (name === 'yb_team_staff' || name === 'yb_set_assistant' || name === 'yb_set_team_logo') {
+      const ok = d => ({ status: 200, body: d });
+      const t = this.teams.find(x => x.id === body.team_id), role = (this.profiles.find(p => p.id === me) || {}).role;
+      const ms = t ? this.members.filter(m => m.team_id === t.id) : [];
+      const isLeader = !!t && t.leader_id === me, staff = role === 'admin' || role === 'officer';
+      if (name === 'yb_team_staff') {
+        const inside = staff || isLeader || ms.some(m => m.user_id === me);
+        const parentOnly = !inside && this.links.some(l => l.parent_id === me && ms.some(m => m.id === l.member_id));
+        if (!t || !(inside || parentOnly)) return raise('permission_denied', '42501');
+        const nm = k => { const m = ms.find(x => (x.roles || []).includes(k)); return m ? (parentOnly ? m.full_name.trim().split(/\s+/)[0] : m.full_name) : null; };
+        const lp = this.profiles.find(p => p.id === t.leader_id), lr = ms.find(m => m.is_leader);
+        return ok({ leader: (lp && lp.full_name) || (lr && lr.full_name) || null, assistant: nm('assistant'), coord: nm('coord'), members: ms.length, can_edit: role === 'admin' || isLeader });
+      }
+      if (name === 'yb_set_assistant') {
+        if (!t || !(role === 'admin' || isLeader)) return raise('permission_denied', '42501');
+        const m = body.member_id ? ms.find(x => x.id === body.member_id) : null;
+        if (body.member_id && !m) return ok({ ok: false, error: 'member_not_found' });
+        if (m && m.is_leader) return ok({ ok: false, error: 'leader_is_leader' });
+        ms.forEach(x => { x.roles = (x.roles || []).filter(k => k !== 'assistant'); });
+        if (m) m.roles = (m.roles || []).concat('assistant');
+        return ok({ ok: true });
+      }
+      if (!t || !(role === 'admin' || isLeader)) return raise('permission_denied', '42501');
+      if (body.path && !(body.path.startsWith(t.id + '/') && this.logos.has(body.path))) return ok({ ok: false, error: 'invalid_data' });
+      this.tstyle.set(t.id, { color: 'teal', badge: 'star', ...(this.tstyle.get(t.id) || {}), team_id: t.id, logo_path: body.path || null });
+      return ok({ ok: true });
+    }
     /* migration 0013: phone notifications (a child needs a parent's consent on record) */
     if (/^yb_push_/.test(name)) {
       const ok = d => ({ status: 200, body: d });
@@ -901,7 +945,7 @@ class Fake {
     if (name === 'yb_set_team_style') {
       if (!(admin || this.teams.some(t => t.id === body.team_id && t.leader_id === me))) return raise('permission_denied', '42501');
       if (!['teal', 'blue', 'green', 'amber', 'orange', 'red', 'purple', 'pink'].includes(body.color) || !['star', 'moon', 'sun', 'leaf', 'book', 'ball', 'chess', 'bolt', 'heart', 'shield'].includes(body.badge)) return { status: 200, body: { ok: false, error: 'invalid_data' } };
-      this.tstyle.set(body.team_id, { team_id: body.team_id, color: body.color, badge: body.badge });
+      this.tstyle.set(body.team_id, { ...(this.tstyle.get(body.team_id) || {}), team_id: body.team_id, color: body.color, badge: body.badge });
       return { status: 200, body: { ok: true } };
     }
     if (name === 'yb_feed') {
@@ -1175,7 +1219,7 @@ class Fake {
       const ids = ['reciter', 'reserve', 'chess', 'coord'].map(k => body[k]).filter(Boolean);
       if (ids.some(id => !this.members.some(m => m.id === id && m.team_id === t.id))) return { status: 200, body: { ok: false, error: 'member_not_found' } };
       if (body.reciter && body.reciter === body.reserve) return { status: 200, body: { ok: false, error: 'same_reciters' } };
-      this.members.filter(m => m.team_id === t.id).forEach(m => { m.roles = ['reciter', 'reserve', 'chess', 'coord'].filter(k => body[k] === m.id); });
+      this.members.filter(m => m.team_id === t.id).forEach(m => { m.roles = ['reciter', 'reserve', 'chess', 'coord'].filter(k => body[k] === m.id).concat((m.roles || []).includes('assistant') ? ['assistant'] : []); });
       return { status: 200, body: { ok: true } };
     }
     if (name === 'yb_role_list') {
@@ -1388,10 +1432,17 @@ async function signIn(p, email, password = 'Passw0rd!') {
   await p.locator('#panel-login form[aria-label="تسجيل الدخول"] input[name=password]').fill(password);
   await p.locator('#panel-login form[aria-label="تسجيل الدخول"] button[type=submit]').click();
 }
-async function signInOk(p, email, password) {
+async function signInOk(p, email, password, o = {}) {
   await signIn(p, email, password);
   await waitApp(p);
   await settle(p);
+  // the admin lands on «الرئيسية» (the home tab). The older sections test the tabs from «الفرق», so hop there unless asked to stay.
+  if (!o.home && await p.locator('#at-home[aria-selected="true"]').count()) {
+    if (await p.locator('#at-teams').isVisible()) await p.locator('#at-teams').click();
+    else await p.evaluate(() => document.getElementById('at-teams').click());
+    await p.waitForSelector('#ap-teams', { timeout: 6000 });
+    await sleep(40);
+  }
 }
 async function signUp(p, { name, email, password = 'Passw0rd!', role }) {
   await p.locator('#panel-signup input[name=name]').fill(name);
@@ -1420,7 +1471,8 @@ section('source: no secrets, no logging, no HTML injection, no direct network');
   check('no direct network primitive (everything goes through window.YB)', !/\bfetch\(|XMLHttpRequest|sendBeacon|WebSocket|EventSource/.test(code));
   check('no hard-coded URL string', !/['"`]https?:\/\//.test(code));
   check('no service key / JWT-looking literal', !/service_role|eyJ[A-Za-z0-9_-]{20,}/.test(code));
-  check('the only storage keys it writes are the registration draft and the chosen theme', (code.match(/localStorage\.setItem/g) || []).length === 2 && /setItem\(DRAFT_KEY/.test(code) && /setItem\('yanabee-theme'/.test(code));
+  check('the only storage keys it writes are the registration draft and the chosen theme', (code.match(/localStorage\.setItem/g) || []).length === 3 && /setItem\(DRAFT_KEY/.test(code) && /setItem\('yanabee-theme'/.test(code) && /setItem\(DASH_KEY/.test(code));
+  check('the dashboard\'s own key holds only what was celebrated (badge names, flags): no token, no name', /const dashStore = \{/.test(code) && !/dashStore\.set\([^)]*(token|email|full_name)/.test(code));
   check('no token or password is stored (no access_token / refresh_token / sessionStorage in account.js)', !/\.access_token|\.refresh_token|sessionStorage/.test(code));
   check('uses YB.poll for the tournament state', /YB\.poll\(/.test(code));
   const page = fs.readFileSync(path.join(SITE, 'account.html'), 'utf8');
@@ -1739,8 +1791,8 @@ let teamId = '';
   await settle(AD);
   const stateBefore = world.count(/tournament_state/);
   await signInOk(AD, ADMIN.email);
-  check('admin screen: role badge الإدارة, eleven tabs (with الإحصاءات, الأخبار, الجدول, النتائج, المشاريع, التواصل, التحكيم)', (await AD.locator('.a-head .a-badge').innerText()) === 'الإدارة' && /الإحصاءات.*الأخبار.*الجدول/.test((await AD.locator('[role=tab]').allInnerTexts()).join('|').replace(/\s+/g, ' ')) && (await AD.locator('[role=tab]').count()) === 11);
-  check('admin load does NOT poll or read the tournament state', world.count(/tournament_state/) === stateBefore);
+  check('admin screen: role badge الإدارة, twelve tabs (الرئيسية first, with الإحصاءات, الأخبار, الجدول, النتائج, المشاريع, التواصل, التحكيم)', (await AD.locator('.a-head .a-badge').innerText()) === 'الإدارة' && /^الرئيسية.*الإحصاءات.*الأخبار.*الجدول/.test((await AD.locator('[role=tab]').allInnerTexts()).join('|').replace(/\s+/g, ' ')) && (await AD.locator('[role=tab]').count()) === 12);
+  check('admin load reads the published board once (the home tab\'s numbers) and does not poll it', world.count(/tournament_state/) - stateBefore <= 1);
   const counts = await AD.locator('.a-counters .a-count').allInnerTexts();
   check('counters by status (1 قيد المراجعة, 0 مطلوب تعديل, total 1)', counts.some(c => /^1\s*كل الفرق/.test(c.replace(/\n/g, ' '))) && counts.some(c => /^1\s*قيد المراجعة/.test(c.replace(/\n/g, ' '))) && counts.some(c => /^0\s*مطلوب تعديل/.test(c.replace(/\n/g, ' '))) && counts.some(c => /^0\s*معتمد/.test(c.replace(/\n/g, ' '))));
   const card = AD.locator('.a-team').first();
@@ -1866,7 +1918,7 @@ let memberEmail = 'sara@t.test', parentEmail = 'parent@t.test';
   check('member sees own consent status (received: set by the admin)', /استُلمت موافقة ولي الأمر/.test(mt));
   check('no admin / leader controls on the member screen', !(await M.locator('input[role=switch], form.a-add, button[data-fk=submit], .a-tabs-4').count()));
   const reqs = world.log.filter(l => l.who === world.profileByEmail(memberEmail).id).map(l => l.path.replace('/rest/v1/', ''));
-  check('member screen reads only my_team, my_roster, tournament_state and the own profile (never teams, team_members, profiles list)', reqs.every(r => /^(rpc\/(my_team|join_team|yb_mark_read|yb_my_scores|yb_my_prefs|yb_feed|yb_seek_me)|my_roster|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements|yb_match_live)$/.test(r)), [...new Set(reqs)].join());
+  check('member screen reads only my_team, my_roster, tournament_state and the own profile (never teams, team_members, profiles list)', reqs.every(r => /^(rpc\/(my_team|join_team|yb_mark_read|yb_my_scores|yb_my_prefs|yb_feed|yb_seek_me|yb_team_staff)|my_roster|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements|yb_match_live|yb_team_style)$/.test(r)), [...new Set(reqs)].join());
   const tour = await M.locator('.a-sched').innerText();
   check('schedule card shows the empty state before the tournament is published', /لم تُنشر بيانات البطولة بعد/.test(tour));
   // second account tries the same name
@@ -1921,7 +1973,7 @@ let memberEmail = 'sara@t.test', parentEmail = 'parent@t.test';
   const chips = await P.locator('.a-child .a-consent .a-chip').allInnerTexts();
   check('two children: one «استُلمت», one «لم تُستلم بعد»; ONE schedule card for the shared team', chips.some(c => /^استُلمت/.test(c)) && chips.some(c => /لم تُستلم/.test(c)) && (await P.locator('.a-sched').count()) === 1);
   const preqs = world.log.filter(l => l.who === world.profileByEmail(parentEmail).id).map(l => l.path.replace('/rest/v1/', ''));
-  check('parent screen reads only my_children, tournament_state and the own profile', preqs.every(r => /^(rpc\/(link_child|yb_mark_read|yb_my_scores|yb_my_judging|yb_my_prefs|yb_feed|yb_guardian_seekers)|my_children|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements|yb_match_live)$/.test(r)), [...new Set(preqs)].join());
+  check('parent screen reads only my_children, tournament_state and the own profile', preqs.every(r => /^(rpc\/(link_child|yb_mark_read|yb_my_scores|yb_my_judging|yb_my_prefs|yb_feed|yb_guardian_seekers|yb_team_staff)|my_children|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements|yb_match_live|yb_team_style)$/.test(r)), [...new Set(preqs)].join());
   check('parent console clean', P.errs.length === 0, P.errs.join('|'));
   world.P = P;
 }
@@ -2327,7 +2379,7 @@ const SHOTS = path.join(process.env.ACCOUNT_SHOTS || '', '');
           if (email) {
             const sess = JSON.parse(await P.evaluate(() => localStorage.getItem('yanabee-session-v1')));
             check(`${label}: tokens and password never appear in the DOM or the address bar`, !dom.includes(sess.access_token) && !dom.includes(sess.refresh_token) && !dom.includes('Passw0rd!') && !(await P.evaluate(() => location.href)).includes(sess.access_token));
-            check(`${label}: only the YB session (and theme, and the app's page count) is in storage; no password anywhere`, !lsAll.includes('Passw0rd!') && Object.keys(JSON.parse(lsAll).l).every(k => ['yanabee-session-v1', 'yanabee-theme', 'yanabee-pwa'].includes(k)) && !/token|@|pass/i.test(JSON.parse(lsAll).l['yanabee-pwa'] || '') && !Object.keys(JSON.parse(lsAll).s).some(k => /token|pass/i.test(k)), lsAll.slice(0, 200));
+            check(`${label}: only the YB session (and theme, and the app's page count) is in storage; no password anywhere`, !lsAll.includes('Passw0rd!') && Object.keys(JSON.parse(lsAll).l).every(k => ['yanabee-session-v1', 'yanabee-theme', 'yanabee-pwa', 'yanabee-dash'].includes(k)) && !/token|@|pass/i.test((JSON.parse(lsAll).l['yanabee-pwa'] || '') + (JSON.parse(lsAll).l['yanabee-dash'] || '')) && !Object.keys(JSON.parse(lsAll).s).some(k => /token|pass/i.test(k)), lsAll.slice(0, 200));
           }
           const kidsIn = kids.filter(k => dom.includes(k.name)).length;
           const expected = { signedout: 0, signup: 0, admin: 6, leader: 6, member: 6, parent: 2 }[name];
@@ -3643,7 +3695,8 @@ section('the news feed, customization, the handover and the statistics (0011): o
   await close(A2);
   const A3 = await open(fake, { label: 'soc-admin3', mobile: true });
   await settle(A3); await signInOk(A3, 'boss@t.test');
-  await A3.locator('.a-dock [data-dock=stats]').click();             // on a phone the admin's tabs live in the bottom bar
+  await A3.locator('.a-dock [data-dock=more]').click();              // on a phone the admin's tabs live in the bottom bar and «المزيد»
+  await A3.locator('[data-more] [data-fk=more-stats]').click();
   await A3.waitForSelector('[data-stats] .a-viz-g', { timeout: 8000 });
   check('phone width: the statistics do not overflow', (await overflow(A3)) <= 0);
   await close(A3);
@@ -3857,7 +3910,7 @@ section('match day: «يوم المباراة» for the team, «مباريات �
   check('before kick-off: «اليوم مباراتكم», the opponent, the time and the place', /اليوم مباراتكم/.test(md) && md.includes(oppName) && md.includes('الموج') && (md.includes('الساعة ' + kick)) && /ملعب المدينة/.test(md));
   check('…a countdown («تبدأ بعد …»)', /تبدأ بعد/.test(md) || kick === '23:59');
   check('…the leader\'s reminders (arrive 20 minutes early, attendance)', /قبل الموعد بعشرين دقيقة/.test(md) && /سجّله في «المباريات والمواعيد»/.test(md));
-  check('the card comes first in «نظرة عامة»', await L.evaluate(() => document.querySelector('#sec-home .a-grid').firstElementChild.hasAttribute('data-matchday')));
+  check('the card comes right after the welcome card in «نظرة عامة»', await L.evaluate(() => { const k = [...document.querySelector('#sec-home .a-grid').children]; return k[0].hasAttribute('data-hero') && k[1].hasAttribute('data-matchday'); }));
   check('…with links to the board and the big screen', (await L.locator('[data-matchday] a[href="tournament.html"]').count()) === 1 && (await L.locator('[data-matchday] a[href="tournament.html?screen=1"]').count()) === 1);
   await L.locator('[data-matchday] [data-fk=mday-go]').click();
   check('«الحضور والمواعيد» goes to the matches section', await L.evaluate(() => !!document.activeElement.closest('#sec-matches')));
@@ -3998,7 +4051,7 @@ section('the phone dashboard: a bottom bar like the apps, «المزيد», and 
   // «خطوتك التالية» walks the leader through the registration
   let nx = await P.locator('[data-next]').innerText();
   check('leader, 4 of 5: «أضف 1 عضوًا إلى فريقك», step 1 of 4 is current', /أضف 1 عضوًا إلى فريقك/.test(nx) && /0 من 4/.test(nx) && (await P.locator('[data-next] li[aria-current=step]').innerText()).includes('الأعضاء'));
-  check('the card comes first in «نظرة عامة» (after the match-day card, which shows only on a match day)', await P.evaluate(() => [...document.querySelector('#sec-home .a-grid').children].find(c => !c.hidden).hasAttribute('data-next')));
+  check('the card comes right after the welcome card in «نظرة عامة» (the match-day card shows only on a match day)', await P.evaluate(() => { const k = [...document.querySelector('#sec-home .a-grid').children].filter(c => !c.hidden); return k[0].hasAttribute('data-hero') && k[1].hasAttribute('data-next'); }));
   await P.locator('[data-next] [data-fk=next-go]').click();
   check('«افتح قائمة الفريق» takes the keyboard to the team list', await P.evaluate(() => !!document.activeElement.closest('section') && /أعضاء|القائمة/.test(document.activeElement.textContent)));
   fake.members.push({ id: fake.uid(), team_id: T.id, full_name: 'عمر حسن', age: 14, guardian_name: 'ولي', guardian_phone: '0912345678', is_leader: false, user_id: null, consent_status: 'pending', consent_at: null, created_at: fake.now() });
@@ -4083,13 +4136,177 @@ section('the phone dashboard: a bottom bar like the apps, «المزيد», and 
   const A = await open(fake, { label: 'dock-admin', mobile: true });
   await settle(A); await signInOk(A, 'boss@t.test');
   await A.waitForSelector('.a-dock [data-dock=teams]', { timeout: 8000 });
-  check('admin bar: الفرق · الأخبار · الإحصاءات · … · المزيد', (await A.locator('.a-dock .a-dock-b[data-dock]:not([data-dock=bell]):not([data-dock=more])').allInnerTexts()).join('|') === 'الفرق|الأخبار|الإحصاءات');
+  check('admin bar: الرئيسية · الفرق · الأخبار · … · المزيد', (await A.locator('.a-dock .a-dock-b[data-dock]:not([data-dock=bell]):not([data-dock=more])').allInnerTexts()).join('|') === 'الرئيسية|الفرق|الأخبار');
   await A.locator('[data-dock=more]').click();
-  check('«المزيد» lists all 11 admin tabs', (await A.locator('[data-more] .a-more-s').count()) === 11);
+  check('«المزيد» lists all 12 admin tabs', (await A.locator('[data-more] .a-more-s').count()) === 12);
   await A.locator('[data-more] [data-fk=more-people]').click();
   await A.waitForSelector('#ap-people', { timeout: 6000 }).catch(() => {});
   check('a tab from «المزيد» (الأشخاص) opens, and «المزيد» lights up', (await A.locator('#at-people').getAttribute('aria-selected')) === 'true' && await A.locator('[data-dock=more]').evaluate(b => b.classList.contains('on')));
   check('admin console clean (phone bar)', A.errs.length === 0, A.errs.join('|'));
+  await close(A);
+}
+
+section('dashboard 2: the welcome card, the team\'s mark and logo, who leads the team, badges, the team\'s run, the pulse, the admin\'s home, motion');
+{
+  const fake = new Fake();
+  fake.addUser({ email: 'boss@t.test', name: 'محمود المشرف', role: 'member' }); fake.setAdmin('boss@t.test');
+  fake.addUser({ email: 'lm@t.test', name: 'أحمد قائد الموج', role: 'leader' });
+  fake.addUser({ email: 'lq@t.test', name: 'قائد القمر', role: 'leader' });
+  const kid = fake.addUser({ email: 'km@t.test', name: 'سامي لاعب الموج', role: 'member' });
+  const par = fake.addUser({ email: 'pm@t.test', name: 'ولي أمر كريم', role: 'parent' });
+  const TM = fake.seedTeam({ leaderEmail: 'lm@t.test', name: 'الموج', status: 'approved', members: [{ name: 'سامي لاعب الموج', age: 13, consent: 'received' }, { name: 'كريم حسن العلي', age: 13, consent: 'received' },
+    { name: 'باسل عمر', age: 13, consent: 'received' }, { name: 'نادر سعيد', age: 13, consent: 'received' }] });
+  const TQ = fake.seedTeam({ leaderEmail: 'lq@t.test', name: 'القمر', status: 'submitted', members: Array.from({ length: 4 }, (_, i) => ({ name: `لاعب القمر ${i + 1}`, age: 13 })) });
+  const mOf = n => fake.members.find(m => m.team_id === TM.id && m.full_name === n);
+  mOf('سامي لاعب الموج').user_id = kid.id;
+  fake.links.push({ parent_id: par.id, member_id: mOf('كريم حسن العلي').id, created_at: fake.now() });
+  mOf('كريم حسن العلي').roles = ['assistant'];
+  fake.tstyle.set(TM.id, { team_id: TM.id, color: 'purple', badge: 'bolt' });
+  const others = Array.from({ length: 10 }, (_, i) => ({ id: 'd2' + i, name: 'فريق ' + (i + 1) }));
+  let st = YT.setTeams(YT.emptyState(), [{ id: TM.id, name: 'الموج' }, { id: TQ.id, name: 'القمر' }, ...others]);
+  st = YT.drawGroups(st, () => 0.5);
+  const opps = st.groups.find(x => x.includes(TM.id)).filter(x => x !== TM.id);
+  const nm = id => (id === TQ.id ? 'القمر' : (others.find(o => o.id === id) || {}).name);
+  st = YT.setResult(st, { a: TM.id, b: opps[0], sa: 3, sb: 0, date: '2026-11-10', time: '16:00' });
+  st = YT.setResult(st, { a: TM.id, b: opps[1], sa: 1, sb: 1, date: '2026-11-12', time: '16:00' });
+  const dd = new Date(Date.now() + 3 * 86400e3), pad = n => String(n).padStart(2, '0');
+  st = YT.setSchedule(st, TM.id, opps[2], { date: `${dd.getFullYear()}-${pad(dd.getMonth() + 1)}-${pad(dd.getDate())}`, time: '17:30' });
+  fake.setTournament(st);
+  const dash = p => p.evaluate(() => JSON.parse(localStorage.getItem('yanabee-dash') || '{}'));
+
+  /* ---- the leader, on a phone ---- */
+  const L = await open(fake, { label: 'd2-leader', mobile: true });
+  await settle(L); await signInOk(L, 'lm@t.test');
+  await L.waitForSelector('[data-hero] [data-hero-next]:not([hidden])', { timeout: 8000 });
+  await L.waitForSelector('[data-badges]:not([hidden])'); await L.waitForSelector('[data-run]:not([hidden])'); await L.waitForSelector('[data-pulse]:not([hidden])'); await L.waitForSelector('[data-staff]:not([hidden])');
+  const heroT = await L.locator('[data-hero]').innerText();
+  check('the welcome card opens «نظرة عامة»: a greeting by first name and the team', /(صباح|مساء) الخير يا أحمد/.test(heroT) && /قائد فريق الموج/.test(heroT)
+    && await L.evaluate(() => Array.from(document.querySelectorAll('#sec-home .a-grid > *')).find(c => !c.hidden && c.offsetParent).matches('[data-hero]')), heroT.slice(0, 80));
+  check('it carries the team\'s mark on the team\'s color (purple, ⚡)', await L.locator('[data-hero] .a-tm').evaluate(e => e.style.getPropertyValue('--tc') === '#5b3fb5' && /⚡/.test(e.textContent)));
+  check('the next match: the opponent, a countdown (days, hours, minutes; no seconds with reduced motion) and the date', new RegExp('المباراة القادمة ضد ' + nm(opps[2])).test(heroT) && (await L.locator('[data-hero] .a-cd .fx-cd-c').count()) === 3
+    && /^0[23]$/.test(await L.locator('[data-hero] .a-cd .fx-cd-c b').first().innerText()) && /17:30/.test(heroT), heroT);
+  await L.locator('[data-fk="qa-code"]').click();
+  check('a shortcut takes the leader to its card («رمز الانضمام»)', await L.evaluate(() => !!document.activeElement.closest('.a-codecard')));
+  check('the team card shows the mark too', (await L.locator('.a-teamcard .a-team-id .a-tm').count()) === 1);
+  const staffT = () => L.locator('[data-staff]').innerText();
+  check('«قيادة الفريق»: the leader and the assistant by name', /قائد الفريق\s*أحمد قائد الموج/.test(await staffT()) && /مساعد القائد\s*كريم حسن العلي/.test(await staffT()), await staffT());
+  await L.locator('[data-fk="staff-sel"]').selectOption({ label: 'باسل عمر' });
+  await L.locator('[data-fk="staff-save"]').click();
+  await L.waitForFunction(() => /مساعد القائد\s*باسل عمر/.test(document.querySelector('[data-staff]').innerText), null, { timeout: 6000 });
+  check('the leader names another assistant: saved, one assistant a team, the leader is not offered', JSON.stringify(mOf('باسل عمر').roles) === '["assistant"]' && !(mOf('كريم حسن العلي').roles || []).includes('assistant')
+    && !(await L.locator('[data-fk="staff-sel"] option').allInnerTexts()).includes('أحمد قائد الموج'));
+  const bd = L.locator('[data-badges]');
+  check('«إنجازات الفريق»: earned badges are marked, the others say how (with progress)', (await bd.locator('.a-bdg.on[data-badge=approved]').count()) === 1 && (await bd.locator('.a-bdg.on[data-badge=win1]').count()) === 1
+    && (await bd.locator('.a-bdg.on[data-badge=clean]').count()) === 1 && /\(1 من 3\)/.test(await bd.locator('[data-badge=win3]').innerText()) && /\(4 من 5\)/.test(await bd.locator('[data-badge=consents]').innerText())
+    && new RegExp(`${await bd.locator('.a-bdg.on').count()} من ${await bd.locator('.a-bdg').count()}`).test(await bd.locator('.a-bdgs-n').innerText()), await bd.innerText());
+  check('badges belong to the team: no member\'s name in them', !/سامي|كريم|باسل|نادر/.test(await bd.innerText()));
+  const d0 = await dash(L);
+  check('this device remembers what was celebrated (badge keys and a flag only)', d0.b && d0.b[TM.id].includes('approved') && d0.c && d0.c['ap-' + TM.id] === 1 && !/token|@|أحمد/.test(JSON.stringify(d0)), JSON.stringify(d0));
+  const run = L.locator('[data-run]');
+  check('«مشوار الفريق»: played 2, 4 points, 4 for, 1 against', (await run.locator('.a-run-nums li').allInnerTexts()).map(t => t.replace(/\s+/g, ' ')).join('|') === '2 لعب|4 نقاط|4 له|1 عليه', (await run.locator('.a-run-nums li').allInnerTexts()).join('|'));
+  check('the last results as letters with words for screen readers, and a legend with numbers', (await run.locator('.a-run-chips li').count()) === 2 && /فوز ضد .* 3 – 0/.test(await run.locator('.a-run-chips').innerText()) && /تعادل ضد .* 1 – 1/.test(await run.locator('.a-run-chips').innerText())
+    && /فوز 1/.test(await run.locator('.a-run-leg').innerText()) && /تعادل 1/.test(await run.locator('.a-run-leg').innerText()), JSON.stringify([await run.locator('.a-run-chips').innerText(), await run.locator('.a-run-leg').innerText(), await run.locator('.a-run-chips li').first().evaluate(e => e.textContent)]));
+  check('the group table: four teams, the own row lit', (await run.locator('.a-run-tb tbody tr').count()) === 4 && /الموج/.test(await run.locator('.a-run-tb tr.me').innerText()) && (await run.locator('.a-run-tb tr.me').getAttribute('aria-current')) === 'true');
+  const pl = L.locator('[data-pulse]');
+  check('«نبض المسابقة»: matches played of the total, the stage, and a strip of results and next matches', /2 من \d+ مباراة لُعبت · دور المجموعات/.test((await pl.innerText()).replace(/\s+/g, ' ')) && (await pl.locator('.a-tick-l').first().locator('li.r').count()) === 2
+    && (await pl.locator('.a-tick-l').first().locator('li.n').count()) >= 1 && /3 – 0/.test(await pl.locator('.a-tick-l').first().innerText()), (await pl.innerText()).slice(0, 160));
+  check('the strip is named, reachable by keyboard, and its repeat is hidden from screen readers', (await pl.locator('.a-tick').getAttribute('role')) === 'region' && (await pl.locator('.a-tick').getAttribute('tabindex')) === '0' && (await pl.locator('.a-tick-l[aria-hidden=true]').count()) === 1);
+  check('tiles: a ring on «الأعضاء» (5 من 7), none on the group position', (await L.locator('[data-kpi="الأعضاء"] .a-kpi-r:not([hidden]) svg').count()) === 1 && (await L.locator('[data-kpi="ترتيب المجموعة"] .a-kpi-r:not([hidden])').count()) === 0);
+  check('reduced motion: nothing waits hidden, no confetti', (await L.locator('.fx-rise').count()) === 0 && (await L.locator('.fx-confetti').count()) === 0);
+  check('phone width: the new cards do not overflow', (await overflow(L)) <= 0);
+  // the logo
+  const png = Buffer.from(await L.evaluate(() => { const c = document.createElement('canvas'); c.width = 600; c.height = 600; const g = c.getContext('2d'); g.fillStyle = '#5b3fb5'; g.fillRect(0, 0, 600, 600); g.fillStyle = '#fff'; g.beginPath(); g.arc(300, 300, 180, 0, 7); g.fill(); return c.toDataURL('image/png').split(',')[1]; }), 'base64');
+  await L.locator('[data-team-logo]').scrollIntoViewIfNeeded();
+  check('«هوية الفريق» has «شعار الفريق» with the rule (a drawing, no people)', /رسمة أو رمز للفريق، لا صور أشخاص/.test(await L.locator('[data-team-logo]').innerText()));
+  await L.locator('[data-fk="tlogo"]').setInputFiles({ name: 'logo.png', mimeType: 'image/png', buffer: png });
+  await L.waitForSelector('[data-hero] .a-tm.has-logo img', { timeout: 8000 });
+  const lp = (fake.tstyle.get(TM.id) || {}).logo_path;
+  const upl = fake.uploads[fake.uploads.length - 1];
+  check('the leader uploads a logo: shrunk to a small JPEG in the team\'s folder, saved, and shown at once in the welcome card and the team card', !!lp && lp.startsWith(TM.id + '/') && fake.logos.has(lp) && upl.jpeg && upl.size < 60000
+    && /yanabee-logos/.test(upl.path) && (await L.locator('.a-teamcard .a-tm.has-logo img').count()) === 1 && fake.tstyle.get(TM.id).color === 'purple', JSON.stringify(upl));
+  check('leader console clean (dashboard 2)', L.errs.length === 0, L.errs.join('|'));
+  // a new badge is celebrated once
+  await L.evaluate(id => { const v = JSON.parse(localStorage.getItem('yanabee-dash')); v.b[id] = v.b[id].filter(k => k !== 'win1'); localStorage.setItem('yanabee-dash', JSON.stringify(v)); }, TM.id);
+  await L.reload(); await settle(L);
+  await L.waitForSelector('[data-badges] .a-bdgs-new', { timeout: 8000 });
+  check('a newly earned badge is announced («إنجاز جديد: أول فوز») and marked', /إنجاز جديد: أول فوز/.test(await L.locator('.a-bdgs-new').innerText()) && (await L.locator('.a-bdg.new[data-badge=win1]').count()) === 1 && /إنجاز جديد لفريقك/.test(await live(L)));
+  await L.reload(); await settle(L);
+  await L.waitForSelector('[data-badges]:not([hidden])');
+  check('and only once', (await L.locator('[data-badges] .a-bdgs-new').count()) === 0);
+  await close(L);
+
+  /* ---- motion on ---- */
+  const Mo = await open(fake, { label: 'd2-motion', mobile: true });
+  await Mo.emulateMedia({ reducedMotion: 'no-preference' });
+  await Mo.reload(); await settle(Mo);
+  await Mo.evaluate(id => localStorage.setItem('yanabee-dash', JSON.stringify({ b: { [id]: ['approved'] }, c: {} })), TM.id);
+  await signInOk(Mo, 'lm@t.test');
+  await Mo.waitForSelector('[data-hero]');
+  const conf = await Mo.waitForSelector('.fx-confetti', { timeout: 6000 }).then(() => true, () => false);
+  check('with motion: confetti for the approval and the new badges, hidden from screen readers', conf && (await Mo.locator('.fx-confetti').first().getAttribute('aria-hidden')) === 'true');
+  await sleep(1500);
+  check('cards on screen have finished their entrance (nothing in view is left transparent)', await Mo.evaluate(() => Array.from(document.querySelectorAll('#sec-home .a-grid > *, .a-sec-h')).filter(e => { const r = e.getBoundingClientRect(); return !e.hidden && r.height > 0 && r.top < innerHeight * 0.9 && r.bottom > 0; }).every(e => getComputedStyle(e).opacity === '1')));
+  check('cards further down wait for their entrance', (await Mo.locator('.fx-rise:not(.fx-in)').count()) > 0);
+  await Mo.locator('[data-run]').scrollIntoViewIfNeeded();
+  await sleep(1400);
+  check('they appear when scrolled to, and the numbers end on the real value', await Mo.locator('[data-run]').evaluate(e => getComputedStyle(e).opacity === '1') && (await Mo.locator('[data-run] .a-run-nums li.pts b').innerText()) === '4'
+    && (await Mo.locator('[data-kpi="الأعضاء"] .a-kpi-v').innerText()) === '5 من 7');
+  check('the countdown ticks with seconds', (await Mo.locator('[data-hero] .a-cd .fx-cd-c').count()) === 4);
+  await sleep(2200);
+  check('the confetti removes itself', (await Mo.locator('.fx-confetti').count()) === 0);
+  check('the bottom bar has its sliding line under the open section', await Mo.locator('.a-dock .a-dock-pill').evaluate(e => getComputedStyle(e).opacity === '1'));
+  check('motion console clean', Mo.errs.length === 0, Mo.errs.join('|'));
+  await close(Mo);
+
+  /* ---- the member and the parent ---- */
+  const K = await open(fake, { label: 'd2-member', mobile: true });
+  await settle(K); await signInOk(K, 'km@t.test');
+  await K.waitForSelector('[data-staff]:not([hidden])', { timeout: 8000 }); await K.waitForSelector('[data-badges]:not([hidden])');
+  check('a member: greeting, «عضو في فريق الموج», the team\'s logo', /يا سامي/.test(await K.locator('[data-hero]').innerText()) && /عضو في فريق الموج/.test(await K.locator('[data-hero]').innerText()) && (await K.locator('[data-hero] .a-tm.has-logo').count()) === 1);
+  check('a member sees who leads the team, read only', /قائد الفريق\s*أحمد قائد الموج/.test(await K.locator('[data-staff]').innerText()) && /مساعد القائد\s*باسل عمر/.test(await K.locator('[data-staff]').innerText()) && (await K.locator('[data-fk="staff-sel"]').count()) === 0);
+  check('a member\'s badges leave out what only the leader knows (consents)', (await K.locator('[data-badge=consents]').count()) === 0 && (await K.locator('.a-bdg.on[data-badge=win1]').count()) === 1 && (await K.locator('[data-run]:not([hidden])').count()) === 1);
+  check('member console clean (dashboard 2)', K.errs.length === 0, K.errs.join('|'));
+  await close(K);
+  const P = await open(fake, { label: 'd2-parent', mobile: true });
+  await settle(P); await signInOk(P, 'pm@t.test');
+  await P.waitForSelector('[data-staff]:not([hidden])', { timeout: 8000 });
+  check('a parent sees the leader by name and the assistant by first name only', /قائد الفريق\s*أحمد قائد الموج/.test(await P.locator('[data-staff]').innerText()) && /مساعد القائد\s*باسل\s*$/m.test(await P.locator('[data-staff]').innerText()) && !/باسل عمر/.test(await text(P)), await P.locator('[data-staff]').innerText());
+  check('the parent\'s welcome card names the parent, not the child', /يا ولي/.test(await P.locator('[data-hero]').innerText()) && !/كريم/.test(await P.locator('[data-hero]').innerText()));
+  await close(P);
+
+  /* ---- the admin's home ---- */
+  const A = await open(fake, { label: 'd2-admin' });
+  await settle(A); await signInOk(A, 'boss@t.test', undefined, { home: true });
+  await A.waitForSelector('[data-admin-home] [data-wait-row="teams"]', { timeout: 8000 });
+  check('the admin lands on «الرئيسية»: a greeting, and no status counters above it', (await A.locator('#at-home').getAttribute('aria-selected')) === 'true' && /يا محمود/.test(await A.locator('[data-hero]').innerText()) && (await A.locator('.a-counters').count()) === 0);
+  check('«بانتظار قرارك»: one team waits, with a button that opens it', /1\s*فرق تنتظر الاعتماد/.test((await A.locator('[data-wait]').innerText()).replace(/\s+/g, ' ')) && (await A.locator('.a-wait-n').innerText()) === '1');
+  const kp = async l => (await A.locator(`[data-admin-home] [data-kpi="${l}"] .a-kpi-v`).innerText());
+  check('key numbers: approved teams of 12, members, consents, fees, accounts, matches played', (await kp('فرق معتمدة')) === '1 من 12' && (await kp('الأعضاء')) === '10' && (await kp('موافقات الأهل')) === '4 من 10' && (await kp('الرسوم')) === '0 من 2' && (await kp('الحسابات')) === '5' && /^2 من \d+$/.test(await kp('مباريات لُعبت')),
+    [await kp('فرق معتمدة'), await kp('الأعضاء'), await kp('موافقات الأهل'), await kp('الرسوم'), await kp('الحسابات'), await kp('مباريات لُعبت')].join('|'));
+  check('«حالة الفرق»: every status with its number (never color alone)', (await A.locator('[data-mix] .a-mix-b').allInnerTexts()).map(t => t.replace(/\s+/g, ' ').trim()).join('|') === 'مسودة 0|قيد المراجعة 1|مطلوب تعديل 0|معتمد 1|مرفوض 0', (await A.locator('[data-mix] .a-mix-b').allInnerTexts()).join('|'));
+  const wallT = (await A.locator(`[data-wall-team="${TM.id}"]`).innerText()).replace(/\s+/g, ' ');
+  check('«الفرق وقادتها»: the logo, the leader, the assistant and the count for each team', /الموج/.test(wallT) && /القائد: أحمد قائد الموج/.test(wallT) && /المساعد: باسل عمر/.test(wallT) && /5 من 7/.test(wallT) && (await A.locator(`[data-wall-team="${TM.id}"] .a-tm.has-logo`).count()) === 1
+    && /المساعد: لم يُحدَّد/.test(await A.locator(`[data-wall-team="${TQ.id}"]`).innerText()), wallT);
+  check('the pulse is on the admin\'s home too', (await A.locator('[data-admin-home] [data-pulse]:not([hidden])').count()) === 1);
+  await A.locator('[data-fk="wait-teams"]').click();
+  await A.waitForSelector('#ap-teams [data-team]');
+  check('«افتح» goes to the teams waiting for approval (the filter is set)', (await A.locator('#ap-teams [data-team]').count()) === 1 && /القمر/.test(await A.locator('#ap-teams [data-team]').innerText()) && (await A.locator('.a-counters [data-fk="count-submitted"]').getAttribute('aria-pressed')) === 'true');
+  await A.locator('#at-home').click();
+  await A.locator(`[data-fk="tw-${TM.id}"]`).click();
+  await A.waitForSelector(`#ap-teams [data-team="${TM.id}"].open [data-idbar]`);
+  check('a team on the wall opens its card: the mark, the leader and assistant in the heading, «مساعد القائد» on the member', (await A.locator(`[data-team="${TM.id}"] .a-team-h .a-tm`).count()) === 1 && /المساعد: باسل عمر/.test(await A.locator(`[data-team="${TM.id}"] .a-team-h`).innerText())
+    && /مساعد القائد/.test(await A.locator(`[data-team="${TM.id}"] .a-mem`, { hasText: 'باسل عمر' }).innerText()));
+  await A.locator(`[data-fk="as-${TM.id}"]`).selectOption({ label: 'نادر سعيد' });
+  await A.locator(`[data-fk="as-save-${TM.id}"]`).click();
+  await A.waitForFunction(id => /المساعد: نادر سعيد/.test(document.querySelector(`[data-team="${id}"] .a-team-h`).innerText), TM.id, { timeout: 6000 });
+  check('the admin changes the assistant', JSON.stringify(mOf('نادر سعيد').roles) === '["assistant"]' && !(mOf('باسل عمر').roles || []).includes('assistant'));
+  await A.waitForSelector(`[data-fk="logo-x-${TM.id}"]`);
+  await A.locator(`[data-fk="logo-x-${TM.id}"]`).click();
+  check('removing a team\'s logo needs a second press', !!fake.tstyle.get(TM.id).logo_path);
+  await A.locator(`[data-fk="logo-x-${TM.id}"]`).click();
+  await A.waitForFunction(id => !document.querySelector(`[data-fk="logo-x-${id}"]`), TM.id, { timeout: 6000 }).catch(() => {});
+  check('then the logo is gone (the file too); the color stays', !fake.tstyle.get(TM.id).logo_path && fake.logos.size === 0 && fake.tstyle.get(TM.id).color === 'purple');
+  check('admin console clean (dashboard 2)', A.errs.length === 0, A.errs.join('|'));
   await close(A);
 }
 

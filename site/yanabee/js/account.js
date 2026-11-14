@@ -111,7 +111,7 @@
 
   /* ------------------------------------------------------------------ app state */
   const S = { seq: 0, uid: null, role: null, expired: false, manualOut: false, recoveryDone: false, stopPoll: null, stopInbox: null, rendered: null, modeSet: null, confirmedShown: false };
-  const clearData = () => { A.teams = []; A.members = []; A.profiles = []; A.state = undefined; A.evm = null; A.res = null; A.proj = null; A.ann = null; A.chat = null; A.judge = null; O.res = null; O.proj = null; A.today = null; O.evm = null; O.chat = null; O.tiles = null; L.chat = null; L.team = null; L.members = []; L.style = null; A.stats = null; };
+  const clearData = () => { A.teams = []; A.members = []; A.profiles = []; A.state = undefined; A.evm = null; A.res = null; A.proj = null; A.ann = null; A.chat = null; A.judge = null; O.res = null; O.proj = null; A.today = null; O.evm = null; O.chat = null; O.tiles = null; A.home = null; A.todayH = null; A.fxTab = null; L.chat = null; L.team = null; L.members = []; L.style = null; A.stats = null; };
 
   function mount(node, focus) {
     put(root, node);
@@ -523,6 +523,7 @@
     const bellB = h('button', { type: 'button', class: 'a-dock-b', 'data-dock': 'bell', 'aria-expanded': 'false', hidden: true, onclick: bellGo }, icon('bell'), h('span', { text: 'التنبيهات' }), badge);
     const moreB = h('button', { type: 'button', class: 'a-dock-b', 'data-dock': 'more', 'aria-haspopup': 'dialog', 'aria-expanded': 'false', onclick: () => openMore() }, icon('grid'), h('span', { text: 'المزيد' }));
     let sig = '', btns = {}, sheet = null;
+    FX.dockPill(bar);
     function sources() {
       const links = Array.from(o.nav.querySelectorAll('[data-nav]')).filter(a => !a.closest('[hidden]'));
       if (links.length) return links.map(a => ({ key: a.dataset.nav, label: a.textContent.trim(), ic: a.querySelector('svg'), el: a, on: a.classList.contains('on'), tab: false }));
@@ -1047,6 +1048,8 @@
       h('a', { href: '#sec-' + g.key, class: 'a-nav-l' + (i ? '' : ' on'), 'aria-current': i ? null : 'true', 'data-nav': g.key,
         onclick: e => { e.preventDefault(); go(g.key); } }, icon(g.icon), h('span', { text: g.label }))))));
     put(sh.body, ...nodes);
+    // the entrance plays once per screen, not after every save
+    if (S.fxSeq !== S.seq) { S.fxSeq = S.seq; FX.reveal(sh.body.querySelectorAll('.a-sec-h, .a-grid > *')); }
     if (S.dashObs) { S.dashObs.disconnect(); S.dashObs = null; }
     if (S.dashMo) { S.dashMo.disconnect(); S.dashMo = null; }
     // a section whose cards are all hidden (nothing to show yet) leaves the page and the menu until one appears
@@ -1070,13 +1073,22 @@
     }
   }
   // a summary tile; value undefined = loading (filled later with .set)
+  const NO_RING = ['ترتيب المجموعة'];
   function tile(label, ic, value, sub, tone) {
-    const v = h('b', { class: 'a-kpi-v', text: value === undefined ? '…' : value === null ? '—' : String(value) });
+    const v = h('b', { class: 'a-kpi-v' });
     const s = h('small', { class: 'a-kpi-s', text: sub || '' });
+    const rg = h('span', { class: 'a-kpi-r', 'aria-hidden': 'true', hidden: true });
     const el = h('div', { class: 'a-kpi' + (tone ? ' t-' + tone : ''), role: 'group', 'aria-label': label, 'data-kpi': label },
-      h('span', { class: 'a-kpi-i', 'aria-hidden': 'true' }, icon(ic)), h('span', { class: 'a-kpi-l', text: label }), v, s);
+      h('span', { class: 'a-kpi-i', 'aria-hidden': 'true' }, icon(ic)), h('span', { class: 'a-kpi-l', text: label }), v, s, rg);
+    // the number counts up; "x من y" also draws a small ring
+    const show = t => {
+      FX.countUp(v, t);
+      const m = NO_RING.includes(label) ? null : /^(\d+(?:\.\d+)?) من (\d+)$/.exec(t);
+      if (m && Number(m[2]) > 0) { if (!rg.firstChild) rg.append(FX.ring(0)); rg.firstChild.set(Number(m[1]) / Number(m[2]) * 100); rg.hidden = false; } else rg.hidden = true;
+    };
+    show(value === undefined ? '…' : value === null ? '—' : String(value));
     el.set = (val, sb, tn) => {
-      v.textContent = val === null || val === undefined ? '—' : String(val);
+      show(val === null || val === undefined ? '—' : String(val));
       s.textContent = sb || '';
       el.className = 'a-kpi' + (tn ? ' t-' + tn : '');
     };
@@ -1122,8 +1134,7 @@
     fillMatchTiles(tNext, tPos, t.team_id, t.team_name);
     // projects open after approval (as in the projects card): no read before that
     if (t.status !== 'approved') tSubs.set('—', 'بعد اعتماد الفريق');
-    else read('yb_submissions', { select: 'id,status', filter: { team_id: 'eq.' + t.team_id } }).then(r => {
-      const rows = r.ok && Array.isArray(r.data) ? r.data : null;
+    else subsOf(t.team_id).then(rows => {
       tSubs.set(rows ? rows.filter(x => x.status === 'accepted').length : '—', rows ? `من ${rows.length} أُرسلت` : '');
     });
     YB.rpc('yb_chat_unread', {}).then(r => { const n = r.ok && typeof r.data === 'number' ? r.data : null; tChat.set(n, 'في غرفة القادة', n ? 'ok' : ''); });
@@ -1164,6 +1175,360 @@
     YB.rpc('yb_chat_unread', {}).then(r => { const n = r.ok && typeof r.data === 'number' ? r.data : null; tChat.set(n, 'في غرفة القادة', n ? 'ok' : ''); });
     ts.push(tChat);
     return kpis(...ts);
+  }
+
+  /* ------------------------------------------------------------------ DASHBOARD 2 (owner request, Nov 2026): motion, the welcome
+     card, the team's mark and leadership, badges, the team's run, the competition pulse and the admin's home */
+  // Motion comes from js/dash-fx.js; without it (or with reduced motion on the device) everything simply shows.
+  const FX = window.YBFx || { reduce: () => true, reveal() {}, countUp(el, t) { el.textContent = t; }, ring: () => { const s = h('span'); s.set = () => {}; return s; },
+    confetti: () => false, pulse() {}, dockPill() {}, countdown: () => () => {} };
+  const LOGO_BUCKET = 'yanabee-logos', DASH_KEY = 'yanabee-dash';
+  // what this device has already celebrated (badges seen, the approval): decoration only, never data
+  const dashStore = {
+    get() { try { const v = JSON.parse(localStorage.getItem(DASH_KEY) || '{}'); return v && typeof v === 'object' ? v : {}; } catch (e) { return {}; } },
+    set(v) { try { localStorage.setItem(DASH_KEY, JSON.stringify(v)); } catch (e) { /* private mode: nothing is remembered */ } }
+  };
+  const niceDay = d => { try { const x = new Date(`${d}T00:00:00`); return isNaN(x) ? String(d || '') : x.toLocaleDateString('ar-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'long' }); } catch (e) { return String(d || ''); } };
+  const firstName = n => String(n || '').trim().split(/\s+/)[0] || '';
+
+  /* --- the team's mark: its logo when it has one, else its badge on its color (yb_team_style; logo_path from 0014) */
+  function teamStyles(fresh) {
+    if (fresh) S.stylesP = null;
+    if (!S.stylesP) S.stylesP = (async () => {
+      let r = await read('yb_team_style', { select: 'team_id,color,badge,logo_path' });
+      S.has14 = r.ok;   // the logo column and the assistant's title arrived together (migration 0014)
+      if (!r.ok) r = await read('yb_team_style', { select: 'team_id,color,badge' });
+      const map = {};
+      (r.ok && Array.isArray(r.data) ? r.data : []).forEach(x => { map[x.team_id] = x; });
+      return map;
+    })();
+    return S.stylesP;
+  }
+  function teamMark(teamId, cls) {
+    const el = h('span', { class: 'a-tm' + (cls ? ' ' + cls : ''), 'aria-hidden': 'true', 'data-tm': teamId || '' }, h('span', { class: 'a-tm-e', text: BADGES.star[1] }));
+    if (teamId) teamStyles().then(async map => {
+      const st = map[teamId] || {};
+      el.style.setProperty('--tc', (PALETTE[st.color] || PALETTE.teal)[1]);
+      put(el, h('span', { class: 'a-tm-e', text: (BADGES[st.badge] || BADGES.star)[1] }));
+      if (!st.logo_path) return;
+      const u = await photoUrls([st.logo_path], LOGO_BUCKET);
+      if (u[st.logo_path]) { put(el, h('img', { src: u[st.logo_path], alt: '' })); el.classList.add('has-logo'); }
+    });
+    return el;
+  }
+  const refreshMarks = teamId => root.querySelectorAll('[data-tm]').forEach(n => { if (n.dataset.tm === teamId) n.replaceWith(teamMark(teamId, n.className.replace(/\ba-tm\b|\bhas-logo\b/g, '').trim())); });
+  function subsOf(teamId) {
+    S.subsP = S.subsP || {};
+    if (!S.subsP[teamId]) S.subsP[teamId] = read('yb_submissions', { select: 'id,status', filter: { team_id: 'eq.' + teamId } }).then(r => (r.ok && Array.isArray(r.data) ? r.data : null));
+    return S.subsP[teamId];
+  }
+  function celebrateOnce(key, msg) {
+    const st = dashStore.get(), c = st.c || {};
+    if (c[key]) return false;
+    c[key] = 1; st.c = c; dashStore.set(st);
+    FX.confetti();
+    if (msg) say(msg);
+    return true;
+  }
+
+  /* --- the welcome card: a greeting, the team's mark, a live countdown to the next match and shortcuts */
+  // o: { name, sub, teamId?, teamName?, actions: [[label, icon, run, key]] }
+  function heroCard(o) {
+    const hr = new Date().getHours();
+    const greet = hr >= 4 && hr < 12 ? 'صباح الخير' : 'مساء الخير';
+    const first = firstName(o.name);
+    const cd = h('div', { class: 'a-hero2-cd', hidden: true, 'data-hero-next': '' });
+    const el = h('section', { class: 'a-hero2', 'aria-labelledby': 'hero-h', 'data-hero': '' },
+      h('div', { class: 'a-hero2-bg', 'aria-hidden': 'true' }, h('i'), h('i'), h('i')),
+      h('div', { class: 'a-hero2-top' }, o.teamId ? teamMark(o.teamId, 'lg') : h('span', { class: 'a-tm lg plain', 'aria-hidden': 'true' }, icon('sparkles')),
+        h('div', { class: 'a-hero2-t' }, h('h3', { id: 'hero-h', text: first ? `${greet} يا ${first}` : greet }), o.sub ? h('p', { text: o.sub }) : null)),
+      cd,
+      o.actions && o.actions.length ? h('div', { class: 'a-hero2-qa', role: 'group', 'aria-label': 'اختصارات' },
+        o.actions.filter(Boolean).map(a => h('button', { type: 'button', class: 'a-qa', 'data-fk': 'qa-' + a[3], onclick: a[2] }, icon(a[1]), h('span', { text: a[0] })))) : null);
+    if (o.teamId) teamStyles().then(map => { const st = map[o.teamId]; el.style.setProperty('--tc', (PALETTE[st && st.color] || PALETTE.teal)[1]); });
+    el.start = () => {
+      if (!o.teamId) return;
+      teamOnBoard(o.teamId, o.teamName).then(r => {
+        const n = r && r.v.next;
+        if (!n) return;
+        const when = n.date ? new Date(`${n.date}T${n.time || '00:00'}:00`) : null;
+        const head = h('span', { class: 'a-hero2-cd-l' }, 'المباراة القادمة ضد ', h('b', { text: nameOf(r.st, n.opponent) }));
+        const dateTxt = [n.date ? niceDay(n.date) : '', n.time].filter(Boolean).join(' · ');
+        if (when && !isNaN(when) && when.getTime() > Date.now()) {
+          const cells = h('div', { class: 'a-cd', role: 'timer', 'aria-label': 'الوقت المتبقي للمباراة القادمة' });
+          put(cd, head, cells, dateTxt ? h('small', { text: dateTxt }) : null);
+          mdayStops('hero', FX.countdown(cells, when, () => { put(cd, head, h('small', { text: 'حان موعدها' })); }));
+        } else put(cd, head, h('small', { text: dateTxt || 'يُعلن الموعد قريبًا' }));
+        cd.hidden = false;
+      });
+    };
+    return el;
+  }
+
+  /* --- «قيادة الفريق»: who leads the team (yb_team_staff, 0014). The leader picks the assistant: a title, no extra permission */
+  // o: { members?: () => [{id, full_name, is_leader, roles}], after?: async msg => {} } for the leader's picker
+  function staffCard(teamId, o) {
+    const el = h('section', { class: 'a-card a-staff', 'aria-labelledby': 'staff-h', 'data-staff': '', hidden: true });
+    async function load() {
+      const r = await YB.rpc('yb_team_staff', { team_id: teamId });
+      const d = r.ok && r.data && typeof r.data === 'object' && !Array.isArray(r.data) ? r.data : null;
+      if (!d) { el.hidden = true; return; }
+      const row = (key, title, name, ic, empty) => h('li', { class: 'a-staff-r', 'data-staff-row': key }, h('span', { class: 'a-staff-i ' + key, 'aria-hidden': 'true' }, icon(ic)),
+        h('div', {}, h('small', { text: title }), h('b', { class: name ? '' : 'none', text: name || empty })));
+      const nodes = [h('h3', { id: 'staff-h' }, icon('shield'), h('span', { text: 'قيادة الفريق' })),
+        h('ul', { class: 'a-staff-l' }, row('ld', 'قائد الفريق', d.leader, 'flag', '—'), row('as', 'مساعد القائد', d.assistant, 'user-check', 'لم يُحدَّد بعد'),
+          d.coord ? row('co', 'مسؤول التنسيق والتوثيق', d.coord, 'calendar', '') : null)];
+      const ms = d.can_edit && o && o.members ? o.members().filter(m => !m.is_leader) : null;
+      if (ms) {
+        const id = uid('f'), cur = ms.find(m => Array.isArray(m.roles) && m.roles.includes('assistant'));
+        const sel = h('select', { id, 'data-fk': 'staff-sel' }, h('option', { value: '', text: '— لا أحد —' }), ms.map(m => h('option', { value: m.id, selected: !!cur && cur.id === m.id, text: m.full_name })));
+        const msg = h('p', { class: 'a-live-msg', role: 'alert', hidden: true });
+        const save = btn('احفظ المساعد', 'check', 'btn-primary', async () => {
+          save.disabled = true;
+          const x = await YB.rpc('yb_set_assistant', { team_id: teamId, member_id: sel.value || null });
+          save.disabled = false;
+          const bad = rpcFail(x);
+          if (bad) { if (sessionLost(bad)) return; msg.textContent = errMsg(bad); msg.hidden = false; say(msg.textContent); return; }
+          if (o.after) await o.after(sel.value ? 'حُفظ مساعد القائد.' : 'أُزيل مساعد القائد.');
+          await load();
+          const f = el.querySelector('[data-fk="staff-sel"]'); if (f) f.focus({ preventScroll: true });
+        }, { 'data-fk': 'staff-save' });
+        nodes.push(ms.length ? h('div', { class: 'a-staff-ed' }, h('div', { class: 'a-f' }, h('label', { for: id, class: 'a-l', text: 'اختر مساعد القائد من أعضاء الفريق' }), sel), save, msg,
+          h('small', { class: 'a-hint', text: 'لقب داخل الفريق يراه أعضاء فريقك وأولياء أمورهم وإدارة المسابقة. لا يمنح صلاحيات إضافية.' }))
+          : h('p', { class: 'a-hint', text: 'أضف أعضاء الفريق أولًا، ثم اختر منهم مساعدًا لك.' }));
+      }
+      put(el, ...nodes);
+      el.hidden = false;
+    }
+    el.start = load;
+    return el;
+  }
+
+  /* --- «إنجازات الفريق»: badges earned by the TEAM (never by a child), from what the screen already reads */
+  // each: [key, mark, title, how, test(ctx) -> [have, need] | null when it cannot be known on this screen]
+  const BADGE_DEFS = [
+    ['roster', '👥', 'فريق مكتمل', `اجمع ${MIN} أعضاء على الأقل`, c => (c.members === null ? null : [Math.min(c.members, MIN), MIN])],
+    ['consents', '📝', 'موافقات مكتملة', 'استلم موافقات كل أولياء الأمور', c => (c.minors === null || !c.minors ? null : [c.got, c.minors])],
+    ['approved', '✅', 'فريق معتمد', 'اعتماد الإدارة لتسجيل الفريق', c => [c.status === 'approved' ? 1 : 0, 1]],
+    ['kickoff', '⚽', 'صافرة البداية', 'العبوا مباراتكم الأولى', c => [Math.min(c.played, 1), 1]],
+    ['win1', '🥇', 'أول فوز', 'افوزوا بمباراة', c => [Math.min(c.wins, 1), 1]],
+    ['win3', '🔥', 'ثلاثة انتصارات', 'افوزوا بثلاث مباريات', c => [Math.min(c.wins, 3), 3]],
+    ['clean', '🧤', 'شباك نظيفة', 'أنهوا مباراة دون أن يُسجَّل عليكم هدف', c => [c.clean ? 1 : 0, 1]],
+    ['goals10', '🎯', 'عشرة أهداف', 'سجّلوا عشرة أهداف في المسابقة', c => [Math.min(c.gf, 10), 10]],
+    ['top', '👑', 'صدارة المجموعة', 'تصدّروا مجموعتكم', c => [c.top ? 1 : 0, 1]],
+    ['final', '🚀', 'إلى الدور النهائي', 'تأهّلوا من دور المجموعات', c => [c.through ? 1 : 0, 1]],
+    ['podium', '🏆', 'منصة التتويج', 'أحد المراكز الثلاثة الأولى', c => [c.podium ? 1 : 0, 1]],
+    ['proj1', '💡', 'أول مشروع مقبول', 'قدّموا مشروعًا أو مبادرة وتُقبل', c => (c.accepted === null ? null : [Math.min(c.accepted, 1), 1])],
+    ['proj3', '🌱', 'ثلاثة مشاريع مقبولة', 'ثلاثة أعمال مقبولة', c => (c.accepted === null ? null : [Math.min(c.accepted, 3), 3])]];
+  // o: { teamId, teamName, status, roster?: () => ({ members, minors, got }) }
+  function badgesCard(o) {
+    const el = h('section', { class: 'a-card a-bdgs', 'aria-labelledby': 'bdg-h', 'data-badges': '', hidden: true });
+    async function paint() {
+      const [r, subs] = await Promise.all([teamOnBoard(o.teamId, o.teamName), (el.status || o.status) === 'approved' ? subsOf(o.teamId) : Promise.resolve([])]);
+      const v = r && r.v, played = v ? v.matches.filter(m => m.played) : [];
+      const ro = o.roster ? o.roster() : { members: null, minors: null, got: null };
+      const status = el.status || o.status;
+      const ctx = { members: ro.members, minors: ro.minors, got: ro.got, status,
+        played: played.length, wins: played.filter(m => m.result.outcome === 'W').length, clean: played.some(m => m.result.ga === 0 && !m.result.adm),
+        gf: v && v.row ? v.row.gf : 0, top: !!(v && v.position === 1 && played.length), through: !!(v && ['qualified', 'final', 'first', 'second', 'third'].includes(v.status)),
+        podium: !!(v && v.podium), accepted: subs ? subs.filter(x => x.status === 'accepted').length : null };
+      const list = BADGE_DEFS.map(b => { const p = b[4](ctx); return p ? { key: b[0], mark: b[1], title: b[2], how: b[3], have: p[0], need: p[1], on: p[0] >= p[1] } : null; }).filter(Boolean);
+      const got = list.filter(b => b.on);
+      const st = dashStore.get(), seen = (st.b || {})[o.teamId];
+      const fresh = seen ? got.filter(b => !seen.includes(b.key)) : [];
+      st.b = Object.assign({}, st.b, { [o.teamId]: got.map(b => b.key) });
+      dashStore.set(st);
+      const rg = FX.ring(list.length ? got.length / list.length * 100 : 0);
+      put(el,
+        h('div', { class: 'a-bdgs-top' }, h('h3', { id: 'bdg-h' }, icon('award'), h('span', { text: 'إنجازات الفريق' })),
+          h('span', { class: 'a-bdgs-n' }, rg, h('b', { text: `${got.length} من ${list.length}` }))),
+        fresh.length ? h('p', { class: 'a-bdgs-new', role: 'status' }, h('span', { 'aria-hidden': 'true', text: '🎉 ' }), `إنجاز جديد: ${fresh.map(b => b.title).join('، ')}`) : null,
+        h('ul', { class: 'a-bdgs-l' }, list.map(b => h('li', { class: 'a-bdg' + (b.on ? ' on' : '') + (fresh.includes(b) ? ' new' : ''), 'data-badge': b.key },
+          h('span', { class: 'a-bdg-m', 'aria-hidden': 'true', text: b.mark }),
+          h('b', { text: b.title }),
+          b.on ? h('small', { class: 'a-bdg-ok' }, icon('check'), h('span', { text: 'تحقّق' }))
+            : h('small', { class: 'a-bdg-how', text: b.how + (b.need > 1 ? ` (${b.have} من ${b.need})` : '') }),
+          !b.on && b.need > 1 ? h('span', { class: 'a-bdg-bar', 'aria-hidden': 'true' }, h('i', { style: `width:${Math.round(b.have / b.need * 100)}%` })) : null))));
+      el.hidden = false;
+      if (fresh.length) { FX.confetti(); say(`إنجاز جديد لفريقك: ${fresh.map(b => b.title).join('، ')}`); }
+    }
+    el.start = paint;
+    el.refresh = paint;
+    return el;
+  }
+
+  /* --- «مشوار الفريق»: played, points, goals, the last results and the group table with the team's row lit */
+  function runCard(teamId, teamName) {
+    const el = h('section', { class: 'a-card a-run', 'aria-labelledby': 'run-h', 'data-run': '', hidden: true });
+    el.start = async () => {
+      const r = await teamOnBoard(teamId, teamName);
+      if (!r || r.v.group === null || !r.v.row) { el.hidden = true; return; }
+      const row = r.v.row, played = r.v.matches.filter(m => m.played);
+      let fb = null;
+      try { fb = window.YTour.football(r.st); } catch (e) { fb = null; }
+      const table = fb && fb.groups[r.v.group] ? fb.groups[r.v.group].table : [];
+      const stat = (label, val, cls) => { const b = h('b', {}); FX.countUp(b, String(val)); return h('li', { class: cls || '' }, b, h('small', { text: label })); };
+      const WDL = [['w', 'فوز', row.w], ['d', 'تعادل', row.d], ['l', 'خسارة', row.l]];
+      const LET = { W: ['ف', 'w', 'فوز'], D: ['ت', 'd', 'تعادل'], L: ['خ', 'l', 'خسارة'] };
+      const maxPts = Math.max(1, ...table.map(x => x.pts));
+      put(el,
+        h('div', { class: 'a-run-top' }, h('h3', { id: 'run-h' }, icon('chart'), h('span', { text: 'مشوار الفريق' })), chip(`المجموعة ${r.v.groupName || ''}`, 'brand')),
+        h('ul', { class: 'a-run-nums', 'aria-label': 'أرقام الفريق' }, stat('لعب', row.p), stat('نقاط', row.pts, 'pts'), stat('له', row.gf), stat('عليه', row.ga)),
+        row.p ? h('div', { class: 'a-run-wdl' },
+          h('div', { class: 'a-run-bar', 'aria-hidden': 'true' }, WDL.filter(x => x[2]).map(x => h('i', { class: x[0], style: `flex-grow:${x[2]}` }))),
+          h('ul', { class: 'a-run-leg' }, WDL.map(x => h('li', {}, h('i', { class: x[0], 'aria-hidden': 'true' }), h('span', { text: `${x[1]} ${x[2]}` })))))
+          : h('p', { class: 'a-hint', text: 'لم يلعب الفريق مباراة بعد. تظهر هنا النتائج أولًا بأول.' }),
+        played.length ? h('div', { class: 'a-run-form' }, h('small', { text: 'آخر النتائج' }),
+          h('ol', { class: 'a-run-chips' }, played.slice(-5).map(m => h('li', { class: LET[m.result.outcome][1], title: `ضد ${nameOf(r.st, m.opponent)}: ${m.result.gf} – ${m.result.ga}` },
+            h('span', { 'aria-hidden': 'true', text: LET[m.result.outcome][0] }), h('span', { class: 'a-sr', text: `${LET[m.result.outcome][2]} ضد ${nameOf(r.st, m.opponent)} ${m.result.gf} – ${m.result.ga}` }))))) : null,
+        table.length ? h('table', { class: 'a-run-tb' }, h('caption', { class: 'a-sr', text: `ترتيب المجموعة ${r.v.groupName || ''}` }),
+          h('thead', {}, h('tr', {}, h('th', { scope: 'col', text: '#' }), h('th', { scope: 'col', text: 'الفريق' }), h('th', { scope: 'col', text: 'لعب' }), h('th', { scope: 'col', text: 'نقاط' }))),
+          h('tbody', {}, table.map(x => h('tr', { class: x.id === r.v.id ? 'me' : '', 'aria-current': x.id === r.v.id ? 'true' : null },
+            h('td', { text: String(x.rank) }), h('th', { scope: 'row' }, h('span', { text: nameOf(r.st, x.id) }), h('i', { class: 'a-run-pb', 'aria-hidden': 'true', style: `width:${Math.round(x.pts / maxPts * 100)}%` })),
+            h('td', { text: String(x.p) }), h('td', {}, h('b', { text: String(x.pts) })))))) : null);
+      el.hidden = false;
+    };
+    return el;
+  }
+
+  /* --- «نبض المسابقة»: how far the season is, and a moving strip of the latest results and the next matches (public board) */
+  const PHASE = { draw: 'قبل القرعة', groups: 'دور المجموعات', final: 'الدور النهائي', done: 'انتهت المباريات' };
+  function pulseCard() {
+    const el = h('section', { class: 'a-card a-pulse', 'aria-labelledby': 'pulse-h', 'data-pulse': '', hidden: true });
+    el.start = async () => {
+      const g = await boardOnce();
+      const st = g && g.state;
+      let fb = null, ov = null;
+      try { if (st && window.YTour) { fb = window.YTour.football(st); ov = window.YTour.overview(st); } } catch (e) { fb = null; }
+      if (!fb || !fb.drawn || !ov) { el.hidden = true; return; }
+      const all = [];
+      const take = rounds => (rounds || []).forEach(rd => rd.matches.forEach(m => all.push({ a: m.a, b: m.b, sa: m.sa, sb: m.sb, done: !!m.res,
+        date: (m.res && m.res.date) || (m.sched && m.sched.date) || '', time: (m.res && m.res.time) || (m.sched && m.sched.time) || '' })));
+      fb.groups.forEach(x => take(x.rounds));
+      if (fb.final) take(fb.final.rounds);
+      const key = m => `${m.date || '9999'} ${m.time || ''}`;
+      const done = all.filter(m => m.done).sort((x, y) => key(y).localeCompare(key(x))).slice(0, 6);
+      const next = all.filter(m => !m.done && m.a && m.b).sort((x, y) => key(x).localeCompare(key(y))).slice(0, 5);
+      const item = m => h('li', { class: m.done ? 'r' : 'n' }, h('span', { class: 'a-tick-k', text: m.done ? 'نتيجة' : 'قادمة' }),
+        h('b', { text: nameOf(st, m.a) }), m.done ? h('span', { class: 'a-tick-s', dir: 'ltr', text: `${m.sa} – ${m.sb}` }) : h('span', { class: 'a-tick-x', text: '×' }), h('b', { text: nameOf(st, m.b) }),
+        !m.done && (m.date || m.time) ? h('small', { text: [m.date ? niceDay(m.date) : '', m.time].filter(Boolean).join(' · ') }) : null);
+      const items = done.concat(next);
+      const f = ov.football, pct = f.total ? Math.round(f.played / f.total * 100) : 0;
+      const num = h('b', {});
+      FX.countUp(num, `${f.played} من ${f.total}`);
+      put(el,
+        h('div', { class: 'a-pulse-top' },
+          h('span', { class: 'a-pulse-r' }, FX.ring(pct, `لُعب ${pct}% من مباريات كرة القدم`), h('b', { 'aria-hidden': 'true', text: pct + '%' })),
+          h('div', {}, h('h3', { id: 'pulse-h' }, icon('trophy'), h('span', { text: 'نبض المسابقة' })),
+            h('p', { class: 'a-pulse-p' }, num, h('span', { text: ' مباراة لُعبت · ' + (PHASE[f.phase] || '') })),
+            ov.chess && ov.chess.total ? h('p', { class: 'a-pulse-c' }, h('span', { text: `الشطرنج: ${ov.chess.played} من ${ov.chess.total}` }),
+              h('span', { class: 'a-pulse-cb', 'aria-hidden': 'true' }, h('i', { style: `width:${Math.round(ov.chess.played / ov.chess.total * 100)}%` }))) : null),
+          h('a', { class: 'btn btn-ghost btn-sm', href: 'tournament.html' }, h('span', { text: 'لوحة البطولة' }), icon('arrow-left'))),
+        items.length ? h('div', { class: 'a-tick', role: 'region', 'aria-label': 'آخر النتائج والمباريات القادمة', tabIndex: 0, style: `--dur:${Math.max(18, items.length * 5)}s` },
+          h('div', { class: 'a-tick-t' }, h('ul', { class: 'a-tick-l' }, items.map(item)), h('ul', { class: 'a-tick-l', 'aria-hidden': 'true' }, items.map(item)))) : null);
+      el.hidden = false;
+    };
+    return el;
+  }
+
+  /* --- the admin's home: what waits for a decision, the key numbers, the teams and who leads them */
+  const TEAM_TONE = { draft: 'muted', submitted: 'brand', returned: 'sun', approved: 'ok', rejected: 'bad' };
+  const assistantOf = teamId => A.members.find(m => m.team_id === teamId && Array.isArray(m.roles) && m.roles.includes('assistant')) || null;
+  function drawAdminHome(panel) {
+    const me = A.profiles.find(p => p.id === A.me) || S.me || {};
+    const go = (tab, fk, pre) => () => { if (pre) pre(); A.tab = tab; drawAdmin(fk || 'tab-' + tab); window.scrollTo({ top: 0, behavior: smooth() }); };
+    const hero = heroCard({ name: me.full_name, sub: 'لوحة إدارة المسابقة: كل ما يحتاج قرارك في مكان واحد.', actions: [
+      ['راجع الفرق', 'users', go('teams'), 'teams'], ['أدخل نتيجة', 'flag', go('results'), 'results'], ['اكتب إعلانًا', 'megaphone', go('comms'), 'comms'], ['تصدير Excel', 'download', go('export'), 'export']] });
+    // «بانتظار قرارك»
+    const wait = h('section', { class: 'a-card a-wait', 'aria-labelledby': 'wait-h', 'data-wait': '' });
+    const W8 = [
+      { k: 'teams', label: 'فرق تنتظر الاعتماد', ic: 'users', go: go('teams', 'count-submitted', () => { A.filter = 'submitted'; }) },
+      { k: 'results', label: 'نتائج مباريات تنتظر اعتمادك', ic: 'flag', go: go('results') },
+      { k: 'projects', label: 'مشاريع تنتظر المراجعة', ic: 'image', go: go('projects') },
+      { k: 'posts', label: 'أخبار تنتظر موافقتك', ic: 'megaphone', go: go('feed') },
+      { k: 'reports', label: 'بلاغات عن تعليقات', ic: 'alert', go: go('feed') }];
+    if (!A.home) A.home = { n: {} };
+    A.home.n.teams = A.teams.filter(t => t.status === 'submitted').length;
+    const paintWait = () => {
+      const n = A.home.n, loading = W8.some(w => n[w.k] === undefined), open = W8.filter(w => n[w.k] > 0), total = open.reduce((s, w) => s + n[w.k], 0);
+      put(wait, h('div', { class: 'a-wait-top' }, h('h3', { id: 'wait-h' }, icon('bell'), h('span', { text: 'بانتظار قرارك' })), total ? h('b', { class: 'a-wait-n', text: String(total) }) : null),
+        open.length ? h('ul', { class: 'a-wait-l' }, open.map(w => h('li', { 'data-wait-row': w.k }, h('span', { class: 'a-wait-i', 'aria-hidden': 'true' }, icon(w.ic)), h('b', { class: 'a-wait-c', text: String(n[w.k]) }),
+          h('span', { class: 'a-wait-t', text: w.label }), h('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'data-fk': 'wait-' + w.k, onclick: w.go }, h('span', { text: 'افتح' }), icon('arrow-left')))))
+          : h('p', { class: 'a-wait-0' }, icon('check'), h('span', { text: loading ? 'جارٍ التحقق…' : 'لا شيء ينتظر قرارك الآن.' })));
+    };
+    paintWait();
+    if (!A.home.at || Date.now() - A.home.at > 15000) {
+      A.home.at = Date.now();
+      const set = (k, v) => { A.home.n[k] = v; if (A.tab === 'home' && wait.isConnected) paintWait(); };
+      YB.rpc('yb_results_queue', {}).then(r => set('results', r.ok && Array.isArray(r.data) ? r.data.filter(x => x.status === 'final').length : 0));
+      YB.rpc('yb_submissions_queue', {}).then(r => set('projects', r.ok && Array.isArray(r.data) ? r.data.filter(x => x.status === 'submitted').length : 0));
+      YB.rpc('yb_feed', { before: null, lim: 1 }).then(r => { const d = r.ok && r.data ? r.data : {}; set('posts', Array.isArray(d.queue) ? d.queue.length : 0); set('reports', typeof d.reports === 'number' ? d.reports : 0); });
+    }
+    // the key numbers
+    const minors = A.members.filter(m => isMinor(m.age)), got = minors.filter(m => m.consent_status === 'received').length;
+    const appr = A.teams.filter(t => t.status === 'approved').length, paid = A.teams.filter(t => t.fee_status === 'paid' || t.fee_status === 'waived').length;
+    const tPlay = tile('مباريات لُعبت', 'trophy');
+    boardOnce().then(g => {
+      let ov = null;
+      try { ov = g && g.state && window.YTour ? window.YTour.overview(g.state) : null; } catch (e) { ov = null; }
+      if (ov && ov.drawn) tPlay.set(`${ov.football.played} من ${ov.football.total}`, PHASE[ov.football.phase] || ''); else tPlay.set('—', 'بعد القرعة');
+    });
+    const nums = kpis(
+      tile('فرق معتمدة', 'flag', `${appr} من ${EXPECTED}`, `${A.teams.length} مسجّلة`, appr ? 'ok' : ''),
+      tile('الأعضاء', 'users', A.members.length, 'في كل الفرق'),
+      tile('موافقات الأهل', 'user-check', minors.length ? `${got} من ${minors.length}` : '—', minors.length && got < minors.length ? 'تنقص موافقات' : 'مكتملة', minors.length && got < minors.length ? 'sun' : 'ok'),
+      tile('الرسوم', 'file-text', A.teams.length ? `${paid} من ${A.teams.length}` : '—', 'سُدّدت أو أُعفيت'),
+      tile('الحسابات', 'user', A.profiles.length, 'قادة وأعضاء وأولياء أمور'),
+      tPlay);
+    // the teams by status: one bar, and a legend that filters the teams tab
+    const by = Object.keys(STATUS).map(k => [k, A.teams.filter(t => t.status === k).length]);
+    const mix = h('section', { class: 'a-card a-mix', 'aria-labelledby': 'mix-h', 'data-mix': '' }, h('h3', { id: 'mix-h' }, icon('chart'), h('span', { text: 'حالة الفرق' })),
+      A.teams.length ? h('div', { class: 'a-mix-bar', 'aria-hidden': 'true' }, by.filter(x => x[1]).map(x => h('i', { class: 's-' + x[0], style: `flex-grow:${x[1]}` }))) : null,
+      h('ul', { class: 'a-mix-leg' }, by.map(x => h('li', {}, h('button', { type: 'button', class: 'a-mix-b', 'data-fk': 'mix-' + x[0], onclick: go('teams', 'count-' + x[0], () => { A.filter = x[0]; }) },
+        h('i', { class: 's-' + x[0], 'aria-hidden': 'true' }), h('span', { text: STATUS[x[0]] }), h('b', { text: String(x[1]) }))))));
+    // the teams and who leads them
+    const wall = h('section', { class: 'a-card a-wall', 'aria-labelledby': 'wall-h', 'data-wall': '' }, h('h3', { id: 'wall-h' }, icon('users'), h('span', { text: 'الفرق وقادتها' })),
+      A.teams.length ? h('ul', { class: 'a-wall-l' }, A.teams.slice().sort((a, b) => (a.status === 'approved' ? 0 : 1) - (b.status === 'approved' ? 0 : 1) || a.name.localeCompare(b.name, 'ar')).map(t => {
+        const as = assistantOf(t.id);
+        return h('li', {}, h('button', { type: 'button', class: 'a-tw', 'data-fk': 'tw-' + t.id, 'data-wall-team': t.id,
+          onclick: () => { A.open[t.id] = true; A.filter = 'all'; A.q = ''; A.tab = 'teams'; drawAdmin('th-' + t.id); const c = root.querySelector(`[data-team="${CSS.escape(t.id)}"]`); if (c) c.scrollIntoView({ block: 'start', behavior: smooth() }); } },
+          teamMark(t.id), h('span', { class: 'a-tw-t' }, h('b', { text: t.name }), h('small', { text: `القائد: ${leaderName(t)}` }), h('small', { class: as ? '' : 'none', text: `المساعد: ${as ? as.full_name : 'لم يُحدَّد'}` })),
+          h('span', { class: 'a-tw-m' }, chip(STATUS[t.status] || t.status, TEAM_TONE[t.status]), h('small', { text: `${membersOf(t.id).length} من ${MAX}` }))));
+      })) : h('p', { class: 'a-empty', text: 'لم يُسجَّل أي فريق بعد.' }));
+    const pulse = pulseCard();
+    if (!A.todayH) { A.todayH = todayCard(); A.todayH.start(); }
+    panel.append(h('div', { class: 'a-home', 'data-admin-home': '' }, hero, wait, mix, nums, A.todayH, pulse, wall));
+    pulse.start();
+  }
+  // inside an open team card (admin): the assistant's title and the logo
+  function adminIdentity(t) {
+    const ms = membersOf(t.id).filter(m => !m.is_leader), cur = assistantOf(t.id), id = uid('f');
+    const sel = h('select', { id, 'data-fk': 'as-' + t.id }, h('option', { value: '', text: '— لا أحد —' }), ms.map(m => h('option', { value: m.id, selected: !!cur && cur.id === m.id, text: m.full_name })));
+    const save = btn('احفظ', 'check', 'btn-ghost', async () => {
+      save.disabled = true;
+      const r = await YB.rpc('yb_set_assistant', { team_id: t.id, member_id: sel.value || null });
+      const bad = rpcFail(r);
+      if (bad) { save.disabled = false; if (!sessionLost(bad)) say(errMsg(bad)); return; }
+      await refreshAdmin(sel.value ? 'حُفظ مساعد القائد.' : 'أُزيل مساعد القائد.', 'as-' + t.id);
+    }, { 'data-fk': 'as-save-' + t.id });
+    const logoX = h('span', { hidden: true });
+    const bar = h('div', { class: 'a-idbar', 'data-idbar': t.id, hidden: true }, h('div', { class: 'a-f' }, h('label', { for: id, class: 'a-l', text: 'مساعد القائد' }), sel), save, logoX);
+    teamStyles().then(map => {
+      bar.hidden = !S.has14;   // an older backend: no title to set yet
+      if (!(map[t.id] && map[t.id].logo_path)) return;
+      const path = map[t.id].logo_path;
+      const b = btn('أزل شعار الفريق', 'trash', 'btn-ghost', null, { 'data-fk': 'logo-x-' + t.id });
+      armed(b, 'اضغط مرة أخرى للتأكيد', async () => {
+        const r = await YB.rpc('yb_set_team_logo', { team_id: t.id, path: null });
+        const bad = rpcFail(r);
+        if (bad) { if (!sessionLost(bad)) say(errMsg(bad)); return; }
+        YB.removeFiles(LOGO_BUCKET, [path]);
+        await teamStyles(true);
+        await refreshAdmin('أُزيل شعار الفريق.', 'th-' + t.id);
+      });
+      logoX.append(b); logoX.hidden = false;
+    });
+    return bar;
   }
 
   /* ------------------------------------------------------------------ notifications (in-app inbox) */
@@ -1217,6 +1582,8 @@
       const unread = rows.filter(n => !n.read_at).length;
       count.textContent = String(unread);
       count.hidden = !unread;
+      if (unread > (paint.seen || 0)) FX.pulse(bell, 'fx-ringing');
+      paint.seen = unread;
       bell.setAttribute('aria-label', unread ? `الإشعارات: ${unread} غير مقروء` : 'الإشعارات');
       put(list, ...(rows.length ? rows.map(n => h('li', { class: 'a-inbox-i' + (n.read_at ? '' : ' new') },
         h('p', { text: noteText(n) }),
@@ -1496,7 +1863,7 @@
   function stopPoll() { if (S.stopPoll) { S.stopPoll(); S.stopPoll = null; } }
 
   /* ------------------------------------------------------------------ ADMIN */
-  const A = { teams: [], members: [], profiles: [], officers: [], state: undefined, tab: 'teams', filter: 'all', q: '', open: {}, notes: {}, pq: '', roleDraft: {}, body: null, me: null };
+  const A = { teams: [], members: [], profiles: [], officers: [], state: undefined, tab: 'home', filter: 'all', q: '', open: {}, notes: {}, pq: '', roleDraft: {}, body: null, me: null };
 
   async function loadAdmin() {
     const [t, m, p] = await Promise.all([
@@ -1537,7 +1904,7 @@
         h('b', { text: String(n) }), h('span', { text: label })))));
   }
   function adminTabs() {
-    const defs = [['teams', 'الفرق', 'users'], ['stats', 'الإحصاءات', 'chart'], ['feed', 'الأخبار', 'megaphone'], ['people', 'الأشخاص', 'user'], ['schedule', 'الجدول', 'calendar'], ['results', 'النتائج', 'flag'], ['projects', 'المشاريع', 'image'], ['comms', 'التواصل', 'bell'], ['judging', 'التحكيم', 'scale'], ['tour', 'لوحة البطولة', 'trophy'], ['export', 'تصدير', 'file-text']];
+    const defs = [['home', 'الرئيسية', 'home'], ['teams', 'الفرق', 'users'], ['stats', 'الإحصاءات', 'chart'], ['feed', 'الأخبار', 'megaphone'], ['people', 'الأشخاص', 'user'], ['schedule', 'الجدول', 'calendar'], ['results', 'النتائج', 'flag'], ['projects', 'المشاريع', 'image'], ['comms', 'التواصل', 'bell'], ['judging', 'التحكيم', 'scale'], ['tour', 'لوحة البطولة', 'trophy'], ['export', 'تصدير', 'file-text']];
     const list = h('div', { role: 'tablist', 'aria-label': 'أقسام الإدارة', class: 'a-tabs a-tabs-4 a-tabs-5 a-tabs-6 a-tabs-7 a-tabs-8 a-tabs-9 a-tabs-11' });
     const els = defs.map(([k, label, ic], i) => {
       const on = A.tab === k;
@@ -1557,7 +1924,8 @@
   function drawAdmin(focusKey) {
     const keep = focusKey || (document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.fk : '');
     const panel = h('div', { role: 'tabpanel', id: 'ap-' + A.tab, 'aria-labelledby': 'at-' + A.tab, class: 'a-panel' });
-    if (A.tab === 'teams') drawAdminTeams(panel);
+    if (A.tab === 'home') drawAdminHome(panel);
+    else if (A.tab === 'teams') drawAdminTeams(panel);
     else if (A.tab === 'stats') drawAdminStats(panel);
     else if (A.tab === 'feed') { if (!S.feed) { S.feed = feedDesk('feed'); S.feed.start(); } panel.append(S.feed.el); }
     else if (A.tab === 'people') drawAdminPeople(panel);
@@ -1586,7 +1954,8 @@
     }
     else drawAdminExport(panel);
     if (S.sh) put(S.sh.nav, adminTabs());
-    put(A.body, counters(), ...(S.sh ? [] : [adminTabs()]), panel);
+    put(A.body, A.tab === 'home' ? null : counters(), ...(S.sh ? [] : [adminTabs()]), panel);
+    if (A.fxTab !== A.tab) { A.fxTab = A.tab; FX.reveal(A.tab === 'home' ? panel.querySelectorAll('.a-home > *') : panel.children); }
     if (keep) { const f = root.querySelector(`[data-fk="${CSS.escape(keep)}"]`); if (f) f.focus({ preventScroll: true }); }
   }
 
@@ -1620,7 +1989,7 @@
     const bodyId = 'tb-' + t.id;
     const head = h('button', { type: 'button', class: 'a-team-h', 'aria-expanded': String(open), 'aria-controls': bodyId, 'data-fk': 'th-' + t.id,
       onclick: () => { A.open[t.id] = !A.open[t.id]; drawAdmin('th-' + t.id); } },
-      h('span', { class: 'a-team-t' }, h('b', { text: t.name }), h('small', { text: [t.area, `القائد: ${leaderName(t)}`].filter(Boolean).join(' · ') })),
+      h('span', { class: 'a-team-tw' }, teamMark(t.id, 'sm'), h('span', { class: 'a-team-t' }, h('b', { text: t.name }), h('small', { text: [t.area, `القائد: ${leaderName(t)}`, (a => (a ? `المساعد: ${a.full_name}` : ''))(assistantOf(t.id))].filter(Boolean).join(' · ') }))),
       h('span', { class: 'a-team-m' }, statusChip(t.status), h('small', { text: `${ms.length} من ${MAX} أعضاء · موافقات مستلمة ${minors.length - pending} من ${minors.length}` })),
       icon('chevron-down'));
     const card = h('article', { class: 'a-team' + (open ? ' open' : ''), 'data-team': t.id }, head);
@@ -1632,6 +2001,7 @@
       if (pending) warn.push(`موافقات أولياء الأمور المستلمة ${minors.length - pending} من ${minors.length}.`);
       if (warn.length) body.append(h('ul', { class: 'a-warn' }, warn.map(w => h('li', {}, icon('alert'), h('span', { text: w })))));
       body.append(h('ul', { class: 'a-roster' }, ms.map(m => adminMember(m, t))));
+      body.append(adminIdentity(t));
       body.append(regBar({ id: t.id, name: t.name, fee_status: t.fee_status, fee_receipt: t.fee_receipt, ref_code: t.ref_code, claimed: !!t.leader_id,
         waitlist: t.waitlist, wait_pos: waitPos(t), canMove: true },
         (msg, fk) => refreshAdmin(msg, fk)));
@@ -1648,7 +2018,7 @@
       return true;
     }, 'sw-' + m.id);
     return h('li', { class: 'a-mem' },
-      h('div', { class: 'a-mem-h' }, h('b', { text: m.full_name }), m.is_leader ? chip('قائد', 'brand') : null, roleChips(m), isMinor(m.age) ? chip('قاصر', 'muted') : null, m.user_id ? chip('حساب مرتبط', 'ok') : null),
+      h('div', { class: 'a-mem-h' }, h('b', { text: m.full_name }), m.is_leader ? chip('قائد', 'brand') : null, Array.isArray(m.roles) && m.roles.includes('assistant') ? chip('مساعد القائد', 'brand') : null, roleChips(m), isMinor(m.age) ? chip('قاصر', 'muted') : null, m.user_id ? chip('حساب مرتبط', 'ok') : null),
       h('dl', { class: 'a-dl' },
         h('div', {}, h('dt', { text: W.age || 'العمر' }), h('dd', { text: m.age === null || m.age === undefined ? '—' : String(m.age) })),
         h('div', {}, h('dt', { text: W.guardianName || 'اسم ولي الأمر' }), h('dd', { text: m.guardian_name || '—' })),
@@ -2038,7 +2408,10 @@
     if (others.length && !O.evm) O.evm = eventManager(others, () => O.pub, 'off');
     if (!O.tiles) O.tiles = officerTiles();
     dashLayout([
-      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [O.comps.includes('football') ? (O.today = todayCard()) : null, O.tiles, comps, announceFeed()] },
+      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [(O.hero = heroCard({ name: S.me && S.me.full_name, sub: 'مسؤول المسابقة: ' + (O.comps.map(k => COMPS[k] || k).join('، ') || 'لم تُسند مسابقة بعد'), actions: [
+        O.comps.includes('registration') ? ['طلبات التسجيل', 'users', () => goSec('review'), 'review'] : null, games.length ? ['النتائج', 'flag', () => goSec('results'), 'results'] : null,
+        O.comps.includes('projects') ? ['المشاريع', 'image', () => goSec('projects'), 'projects'] : null, ['غرفة القادة', 'bell', () => goSec('room'), 'room']] })),
+        O.comps.includes('football') ? (O.today = todayCard()) : null, O.tiles, comps, (O.pulse = pulseCard()), announceFeed()] },
       feedGroup(),
       { key: 'review', label: 'طلبات التسجيل', icon: 'users', one: true, nodes: [O.comps.includes('registration') ? reviewQueue() : null, O.roles ? roleListCard() : null] },
       { key: 'results', label: 'النتائج', icon: 'flag', one: true, nodes: [games.length ? O.res.el : null] },
@@ -2046,6 +2419,7 @@
       { key: 'dates', label: 'المواعيد', icon: 'calendar', one: true, nodes: [O.evm ? O.evm.el : null] },
       { key: 'room', label: 'غرفة القادة', icon: 'bell', one: true, nodes: [O.chat.el] }]);
     if (O.today) O.today.start();
+    O.pulse.start();
     if (focusKey) { const f = O.body.querySelector(`[data-fk="${CSS.escape(focusKey)}"]`); if (f) f.focus({ preventScroll: true }); }
   }
   function reviewQueue() {
@@ -3257,8 +3631,15 @@
     L.boxes.marks = h('section', { class: 'a-card', 'aria-labelledby': 'l-marks-h', 'data-marks': '', hidden: true });
     L.subs = leaderSubs({ id: t.team_id, name: t.team_name, status: t.status }, 'lsub');
     if (!L.chat) { L.chat = chatRoom(false, 'lchat'); L.chat.start(); }
+    L.hero = heroCard({ name: S.me && S.me.full_name, sub: `قائد ${/^فريق\s/.test(t.team_name) ? '' : 'فريق '}${t.team_name}`, teamId: t.team_id, teamName: t.team_name, actions: [
+      ['الأعضاء', 'users', () => goCard(L.boxes.roster), 'roster'], ['رمز الانضمام', 'send', () => goCard(L.boxes.code), 'code'],
+      ['اكتب خبرًا', 'megaphone', () => goSec('feed'), 'feed'], ['المشاريع', 'image', () => goSec('projects'), 'projects']] });
+    L.staff = staffCard(t.team_id, { members: () => L.members, after: msg => reloadLeader(msg) });
+    L.run = runCard(t.team_id, t.team_name);
+    L.badges = badgesCard({ teamId: t.team_id, teamName: t.team_name, status: t.status, roster: () => { const mn = L.members.filter(m => isMinor(m.age)); return { members: L.members.length, minors: mn.length, got: mn.filter(m => m.consent_status === 'received').length }; } });
+    L.pulse = pulseCard();
     dashLayout([
-      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [(L.boxes.mday = matchDayCard(t.team_id, t.team_name, 'leader')), (L.boxes.next = nextCard(leaderNext())), leaderTiles(t), L.boxes.top, L.boxes.check, scoresCard(), announceFeed()] },
+      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [L.hero, (L.boxes.mday = matchDayCard(t.team_id, t.team_name, 'leader')), (L.boxes.next = nextCard(leaderNext())), leaderTiles(t), L.boxes.top, L.boxes.check, L.staff, L.run, L.badges, scoresCard(), L.pulse, announceFeed()] },
       feedGroup(),
       { key: 'matches', label: 'المباريات والمواعيد', icon: 'trophy', one: true, nodes: [L.dates, L.sched.node, L.boxes.marks] },
       { key: 'team', label: 'الفريق', icon: 'users', nodes: [L.boxes.roster, L.boxes.roles, L.boxes.code, (L.style || (L.style = teamStyleCard(t), L.style.start(), L.style)).el, L.printBox] },
@@ -3267,6 +3648,8 @@
       { key: 'room', label: 'غرفة القادة', icon: 'bell', one: true, nodes: [L.chat.el] }]);
     L.subs.start();
     L.boxes.mday.start();
+    L.hero.start(); L.staff.start(); L.run.start(); L.badges.start(); L.pulse.start();
+    if (t.status === 'approved') celebrateOnce('ap-' + t.team_id, 'مبارك! فريقك معتمد في المسابقة.');
     paintLeader();
     startSchedule([L.sched]);
     if (focus) { const f = L.boxes.top.querySelector('[data-focus]'); if (f) f.focus({ preventScroll: true }); }
@@ -3368,7 +3751,7 @@
     const t = L.team, n = L.members.length;
     const box = L.boxes.top;
     const nodes = [h('div', { class: 'a-team-top' },
-      h('div', {}, h('h3', { id: 'l-team-h', tabindex: '-1', 'data-focus': '', text: t.team_name }), t.area ? h('small', { class: 'a-hint', text: t.area }) : null),
+      h('div', { class: 'a-team-id' }, teamMark(t.team_id), h('div', {}, h('h3', { id: 'l-team-h', tabindex: '-1', 'data-focus': '', text: t.team_name }), t.area ? h('small', { class: 'a-hint', text: t.area }) : null)),
       statusChip(t.status)),
     timeline(t.status),
     h('p', { class: 'a-lead', text: statusText(t) })];
@@ -3422,6 +3805,7 @@
     if (!r.ok) { if (!sessionLost(r.error)) say(YB.errorText(r.error)); return false; }
     if (!L.team) { drawNoTeam(L.boxes.body); return false; }
     paintLeader();
+    if (L.badges) { L.badges.status = L.team.status; L.badges.refresh(); }
     if (msg) say(msg);
     return true;
   }
@@ -3626,10 +4010,14 @@
     const me = roster.find(x => x.is_me);
     const box = scheduleBox({ id: row.team_id, name: row.team_name });
     const mday = matchDayCard(row.team_id, row.team_name, 'member');
+    const mHero = heroCard({ name: profile.full_name, sub: `عضو في ${/^فريق\s/.test(row.team_name) ? '' : 'فريق '}${row.team_name}`, teamId: row.team_id, teamName: row.team_name, actions: [
+      ['مباريات فريقي', 'trophy', () => goSec('matches'), 'matches'], ['الأخبار', 'megaphone', () => goSec('feed'), 'feed'], ['أعضاء فريقي', 'users', () => goSec('team'), 'team']] });
+    const mStaff = staffCard(row.team_id), mRun = runCard(row.team_id, row.team_name), mPulse = pulseCard();
+    const mBadges = badgesCard({ teamId: row.team_id, teamName: row.team_name, status: row.status, roster: () => ({ members: ro.ok ? roster.length : null, minors: null, got: null }) });
     const mv = [
       announceFeed(),
       scoresCard(),
-      h('section', { class: 'a-card a-teamcard' }, h('div', { class: 'a-team-top' }, h('div', {}, h('h3', { text: row.team_name }), row.area ? h('small', { class: 'a-hint', text: row.area }) : null), statusChip(row.status)),
+      h('section', { class: 'a-card a-teamcard' }, h('div', { class: 'a-team-top' }, h('div', { class: 'a-team-id' }, teamMark(row.team_id), h('div', {}, h('h3', { text: row.team_name }), row.area ? h('small', { class: 'a-hint', text: row.area }) : null)), statusChip(row.status)),
         h('p', { class: 'a-lead', text: 'أنت عضو في هذا الفريق.' })),
       h('section', { class: 'a-card' }, h('h3', {}, icon('users'), h('span', { text: 'أعضاء الفريق' })),
         ro.ok ? h('ul', { class: 'a-names a-names-roster' }, roster.map(x => h('li', {}, h('span', { text: x.full_name }), x.is_leader ? chip('قائد', 'brand') : null, x.is_me ? chip('أنا', 'ok') : null)))
@@ -3640,13 +4028,14 @@
       row.status === 'approved' ? teamSubsView(row.team_id, row.team_name) : null,
       box.node];
     dashLayout([
-      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [mday, nextCard(memberNext(row, ro.ok ? me : null)), memberTiles(row), mv[2], mv[0], mv[1], mv[4]] },
+      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [mHero, mday, nextCard(memberNext(row, ro.ok ? me : null)), memberTiles(row), mv[2], mStaff, mRun, mBadges, mv[1], mPulse, mv[0], mv[4]] },
       feedGroup(),
       { key: 'matches', label: 'المباريات والمواعيد', icon: 'trophy', one: true, nodes: [mv[5], mv[7]] },
       { key: 'team', label: 'الفريق', icon: 'users', nodes: [mv[3], seekCard('seek')] },
       { key: 'projects', label: 'المشاريع والمبادرات', icon: 'image', one: true, nodes: [mv[6]] }]);
     startSchedule([box]);
     mday.start();
+    [mHero, mStaff, mRun, mBadges, mPulse].forEach(x => x.start());
   }
 
   /* ------------------------------------------------------------------ PARENT */
@@ -3661,13 +4050,19 @@
     const jd = judgeDesk('pjdg');
     jd.start();
     const mday = kids.length ? matchDayCard(kids[0].team_id, kids[0].team_name, 'parent') : null;
-    const home = [mday, nextCard(parentNext(kids)), parentTiles(kids), announceFeed(), scoresCard()];
+    const k0 = kids[0];
+    const pHero = heroCard({ name: profile.full_name, sub: k0 ? `ولي أمر في ${/^فريق\s/.test(k0.team_name) ? '' : 'فريق '}${k0.team_name}` : 'اربط ابنك أو ابنتك لتتابع فريقه من هنا.', teamId: k0 && k0.team_id, teamName: k0 && k0.team_name, actions: [
+      k0 ? ['موافقتي', 'user-check', () => goCard(root.querySelector('[data-child]')), 'consent'] : null, k0 ? ['المباريات', 'trophy', () => goSec('matches'), 'matches'] : null,
+      ['الأخبار', 'megaphone', () => goSec('feed'), 'feed'], ['اربط ابنًا أو ابنة', 'users', () => goSec('link'), 'link']] });
+    const pExtra = k0 ? [staffCard(k0.team_id), runCard(k0.team_id, k0.team_name), badgesCard({ teamId: k0.team_id, teamName: k0.team_name, status: k0.team_status })] : [];
+    const pPulse = pulseCard();
+    const home = [pHero, mday, nextCard(parentNext(kids)), parentTiles(kids), ...pExtra, scoresCard(), pPulse, announceFeed()];
     const nodes = home, games = [];
     const boxes = [];
     if (!kids.length) nodes.push(h('p', { class: 'a-empty a-card', text: 'لم تربط أي ابن أو ابنة بعد. اكتب رمز الفريق واسم الطفل أدناه.' }));
     kids.forEach(k => {
       nodes.push(h('section', { class: 'a-card a-child', 'data-child': k.member_id },
-        h('div', { class: 'a-team-top' }, h('div', {}, h('h3', { text: k.full_name }), h('small', { class: 'a-hint', text: `فريق ${k.team_name}` + (k.team_area ? ` · ${k.team_area}` : '') })), statusChip(k.team_status)),
+        h('div', { class: 'a-team-top' }, h('div', { class: 'a-team-id' }, teamMark(k.team_id), h('div', {}, h('h3', { text: k.full_name }), h('small', { class: 'a-hint', text: `فريق ${k.team_name}` + (k.team_area ? ` · ${k.team_area}` : '') }))), statusChip(k.team_status)),
         consentBlock(k.consent_status)));
     });
     const seen = {};
@@ -3688,6 +4083,7 @@
       { key: 'link', label: 'ربط ابن أو ابنة', icon: 'user-check', nodes: [link, guardianSeekCard('gseek')] }]);
     startSchedule(boxes);
     if (mday) mday.start();
+    [pHero, pPulse, ...pExtra].forEach(x => x.start());
   }
 
   /* ------------------------------------------------------------------ SOCIAL (migration 0011): the news feed, customization,
@@ -3901,7 +4297,8 @@
   /* --- team identity (yb_team_style): the leader picks a color and a badge */
   function teamStyleCard(team) {
     const el = h('section', { class: 'a-card a-tstyle', 'aria-labelledby': 'tst-h', 'data-team-style': '' });
-    const cur = { color: 'teal', badge: 'star' };
+    const cur = { color: 'teal', badge: 'star', logo: null, canLogo: false };
+    const tid = team.team_id || team.id;
     const preview = h('div', { class: 'a-tstyle-p', 'aria-live': 'polite' });
     const paintPreview = () => put(preview, h('span', { class: 'a-tbadge', style: `--tc:${PALETTE[cur.color][1]}` }, h('span', { 'aria-hidden': 'true', text: BADGES[cur.badge][1] }),
       h('b', { text: team.team_name || team.name || '' })), h('small', { class: 'a-hint', text: `${PALETTE[cur.color][0]} · ${BADGES[cur.badge][0]}` }));
@@ -3914,8 +4311,11 @@
       })));
     const msg = h('p', { class: 'a-hint', role: 'status' });
     async function start() {
-      const r = await read('yb_team_style', { select: 'color,badge', filter: { team_id: 'eq.' + (team.team_id || team.id) } });
+      let r = await read('yb_team_style', { select: 'color,badge,logo_path', filter: { team_id: 'eq.' + tid } });
+      cur.canLogo = r.ok;   // the logo column arrived with migration 0014
+      if (!r.ok) r = await read('yb_team_style', { select: 'color,badge', filter: { team_id: 'eq.' + tid } });
       const row = r.ok && Array.isArray(r.data) && r.data[0];
+      cur.logo = (row && row.logo_path) || null;
       if (row && PALETTE[row.color]) cur.color = row.color;
       if (row && BADGES[row.badge]) cur.badge = row.badge;
       S.myColor = cur.color;
@@ -3924,15 +4324,54 @@
     function paint() {
       const name = 'ts';
       put(el, h('h3', { id: 'tst-h' }, icon('flag'), h('span', { text: 'هوية الفريق' })),
-        h('p', { class: 'a-lead', text: 'اختر لون فريقك وشارته. تظهران على أخبار الفريق وفي بطاقته.' }), preview,
-        group(name + 'c', 'اللون', PALETTE, 'color'), group(name + 'b', 'الشارة', BADGES, 'badge'), msg,
+        h('p', { class: 'a-lead', text: 'اختر لون فريقك وشارته، وارفع شعاره إن وُجد. تظهر في بطاقة الفريق وأعلى لوحتك وعلى أخباره.' }), preview,
+        group(name + 'c', 'اللون', PALETTE, 'color'), group(name + 'b', 'الشارة', BADGES, 'badge'), cur.canLogo ? logoSet() : null, msg,
         h('div', { class: 'a-actions' }, btn('احفظ هوية الفريق', 'check', 'btn-primary', async () => {
           const r = await YB.rpc('yb_set_team_style', { team_id: team.team_id || team.id, color: cur.color, badge: cur.badge });
           if (!r.ok || !r.data || !r.data.ok) { if (r && sessionLost(r)) return; msg.textContent = errMsg(r.ok ? { error: r.data && r.data.error } : r); return; }
           S.myColor = cur.color;
+          await teamStyles(true); refreshMarks(tid);
           msg.textContent = 'حُفظت هوية الفريق.'; say(msg.textContent);
         }, { 'data-fk': 'tst-save' })));
       paintPreview();
+    }
+    // the team's logo (0014): a drawing or a symbol, shrunk on the device, seen by signed-in people only
+    function logoSet() {
+      const pickId = uid('f');
+      const pick = h('input', { id: pickId, type: 'file', accept: 'image/*', class: 'a-file-h', 'data-fk': 'tlogo' });
+      const lmsg = h('p', { class: 'a-live-msg', role: 'alert', hidden: true });
+      const lst = h('small', { class: 'a-hint', role: 'status' });
+      const fail = r => { lst.textContent = ''; if (sessionLost(r)) return; lmsg.textContent = errMsg(r); lmsg.hidden = false; say(lmsg.textContent); };
+      const done = async (text) => { await teamStyles(true); refreshMarks(tid); paint(); say(text); const f = el.querySelector('[data-fk="tlogo"]'); if (f) f.focus({ preventScroll: true }); };
+      pick.addEventListener('change', async () => {
+        const f = pick.files && pick.files[0];
+        pick.value = '';
+        if (!f) return;
+        lmsg.hidden = true;
+        lst.textContent = 'جارٍ رفع الشعار…';
+        let blob;
+        try { blob = await shrinkPhoto(f, 320); } catch (e) { return fail(e); }
+        const path = `${tid}/${Date.now().toString(36)}.jpg`, old = cur.logo;
+        const u = await YB.upload(LOGO_BUCKET, path, blob, 'image/jpeg');
+        if (!u.ok) return fail(u);
+        const bad = rpcFail(await YB.rpc('yb_set_team_logo', { team_id: tid, path }));
+        if (bad) { YB.removeFiles(LOGO_BUCKET, [path]); return fail(bad); }
+        if (old && old !== path) YB.removeFiles(LOGO_BUCKET, [old]);
+        cur.logo = path;
+        await done('حُفظ شعار الفريق.');
+      });
+      const remove = cur.logo ? btn('أزل الشعار', 'trash', 'btn-ghost', async () => {
+        const old = cur.logo;
+        const bad = rpcFail(await YB.rpc('yb_set_team_logo', { team_id: tid, path: null }));
+        if (bad) return fail(bad);
+        YB.removeFiles(LOGO_BUCKET, [old]);
+        cur.logo = null;
+        await done('أُزيل شعار الفريق.');
+      }, { 'data-fk': 'tlogo-x' }) : null;
+      return h('fieldset', { class: 'a-cust-set a-tlogo', 'data-team-logo': '' }, h('legend', { text: 'شعار الفريق' }),
+        h('div', { class: 'a-cust-pic' }, teamMark(tid, 'lg'),
+          h('div', {}, h('label', { for: pickId, class: 'btn btn-ghost btn-sm' }, icon('image'), h('span', { text: cur.logo ? 'غيّر الشعار' : 'ارفع شعارًا' })), pick, remove,
+            h('small', { class: 'a-hint', text: 'رسمة أو رمز للفريق، لا صور أشخاص. يُصغَّر على جهازك قبل الرفع، ويراه من سجّل الدخول فقط، ويظهر مكان الشارة.' }), lst)), lmsg);
     }
     return { el, start };
   }
@@ -4448,7 +4887,7 @@
     if (S.dashObs) { S.dashObs.disconnect(); S.dashObs = null; }
     if (S.dashMo) { S.dashMo.disconnect(); S.dashMo = null; }
     if (S.mdays) { Object.values(S.mdays).forEach(f => f()); S.mdays = null; }
-    S.boardP = null; S.sh = null; S.feed = null; S.lastGroups = null; S.myColor = null;
+    S.boardP = null; S.stylesP = null; S.subsP = null; S.sh = null; S.feed = null; S.lastGroups = null; S.myColor = null;
     document.documentElement.classList.remove('is-dash');
     S.modeSet = null;
     S.focusNext = !!opts.focus;
