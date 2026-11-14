@@ -1496,10 +1496,12 @@
           h('span', { class: 'a-tw-m' }, chip(STATUS[t.status] || t.status, TEAM_TONE[t.status]), h('small', { text: `${membersOf(t.id).length} من ${MAX}` }))));
       })) : h('p', { class: 'a-empty', text: 'لم يُسجَّل أي فريق بعد.' }));
     const pulse = pulseCard(), cal = calCard({ all: true }), fbd = footballDeskCard();
+    const hfd = hifzDeskCard({ teams: A.teams.filter(t => t.status === 'approved').map(t => ({ id: t.id, name: t.name })), canSchedule: () => { A.tab = 'schedule'; drawAdmin('tab-schedule'); window.scrollTo({ top: 0, behavior: smooth() }); },
+      roles: A.members.reduce((m, x) => { const r = m[x.team_id] || (m[x.team_id] = {}); if (Array.isArray(x.roles) && x.roles.includes('reciter')) r.reciter = x.full_name; if (Array.isArray(x.roles) && x.roles.includes('reserve')) r.reserve = x.full_name; return m; }, {}) });
     const chd = chessDeskCard(A.members.reduce((m, x) => { if (Array.isArray(x.roles) && x.roles.includes('chess')) m[x.team_id] = x.full_name; return m; }, {}));
     if (!A.todayH) { A.todayH = todayCard(); A.todayH.start(); }
-    panel.append(h('div', { class: 'a-home', 'data-admin-home': '' }, hero, adminFindCard(), wait, followCard(5), nums, mix, cal, A.todayH, pulse, fbd, chd, wall));
-    pulse.start(); cal.start(); fbd.start(); chd.start();
+    panel.append(h('div', { class: 'a-home', 'data-admin-home': '' }, hero, adminFindCard(), wait, followCard(5), nums, mix, cal, A.todayH, pulse, fbd, chd, hfd, wall));
+    pulse.start(); cal.start(); fbd.start(); chd.start(); hfd.start();
   }
   // inside an open team card (admin): the assistant's title and the logo
   function adminIdentity(t) {
@@ -1713,6 +1715,7 @@
       put(el, h('div', { class: 'a-hifz-top' }, h('h3', { id: 'hifz-h' }, icon('star'), h('span', { text: 'حفظي لسورة الصف' })),
         h('span', { class: 'a-bdgs-n' }, rg, h('b', { 'data-hifz-n': '', text: `${done.length} من ${AYAHS}` }))),
         h('p', { class: 'a-lead', text: 'علّم كل آية حفظتها. الفهم لجميع أعضاء الفريق، والتسميع المباشر يقدّمه المرشحان عن الفريق.' }),
+        done.length < AYAHS ? h('p', { class: 'a-hint', 'data-hifz-pace': '', text: `المنهجية: مقدار يسير من 1 إلى 3 آيات يوميًا لضمان الإتقان. بآيتين في اليوم تُتمّ الباقي في ${daysWord(Math.ceil((AYAHS - done.length) / 2))}.` }) : null,
         h('div', { class: 'a-hifz-g', role: 'group', 'aria-label': 'آيات سورة الصف' }, Array.from({ length: AYAHS }, (_, i) => {
           const n = i + 1, on = done.includes(n);
           return h('button', { type: 'button', class: 'a-hifz-a' + (on ? ' on' : ''), 'aria-pressed': String(on), 'aria-label': `الآية ${n}`, 'data-fk': 'ayah-' + n, onclick: () => {
@@ -2188,6 +2191,63 @@
             h('span', { class: 'a-bdg-bar', 'aria-hidden': 'true' }, h('i', { style: `width:${fb.final ? Math.round(fb.final.played / fb.final.total * 100) : 0}%` })),
             h('small', { text: fb.podium ? `الأول: ${nameOf(st, fb.podium[0])} · الثاني: ${nameOf(st, fb.podium[1])} · الثالث: ${nameOf(st, fb.podium[2])}` : 'ثلاثة فرق، كل فريق يلعب مباراتين.' })))),
         rules, h('div', { class: 'a-actions' }, h('a', { class: 'btn btn-ghost btn-sm', href: 'tournament.html' }, h('span', { text: 'لوحة البطولة' }), icon('arrow-left'))));
+      el.hidden = false;
+    };
+    return el;
+  }
+
+  /* ------------------------------------------------------------------ memorisation (الحفظ): the officer's desk, the printed record, the team's card */
+  // competition.txt c-axes: two members a team (a main one and a reserve) recite Surat as-Saff in person, on one unified
+  // record with the level and the notes; 10 points. quran.txt a1, a2: a little each day, and sound recitation.
+  const nextHifz = (evs, teamId) => (evs || []).filter(e => e.competition === 'hifz' && e.status !== 'cancelled' && !isPast(e) && ((e.team_ids || []).includes(teamId) || !(e.team_ids || []).length))[0] || null;
+  // o: { teams: [{id, name}], roles: { [teamId]: { reciter, reserve } }, canSchedule: fn | null }
+  function hifzDeskCard(o) {
+    const el = h('section', { class: 'a-card a-hfd', 'aria-labelledby': 'hfd-h', 'data-hifz-desk': '' });
+    const rows = () => o.teams.slice().sort((a, b) => a.name.localeCompare(b.name, 'ar')).map(t => ({ t, r: o.roles[t.id] || {} }));
+    function printSheet() {
+      const old = document.querySelector('.a-print-sheet');
+      if (old) old.remove();
+      const sheet = h('div', { class: 'a-print-sheet', 'data-hifz-sheet': '' }, h('h1', { text: 'محضر التسميع الموحد — سورة الصف' }),
+        h('p', { text: `مشروع ينابيع · المسابقة الأولى · ${new Date().toLocaleDateString('ar-u-nu-latn', { day: 'numeric', month: 'long', year: 'numeric' })}` }),
+        h('table', {}, h('thead', {}, h('tr', {}, ['م', 'الفريق', 'المرشح الأساسي', 'المرشح الاحتياطي', 'المستوى', 'الملاحظات', 'الدرجة من 10'].map(x => h('th', { text: x })))),
+          h('tbody', {}, rows().map((x, i) => h('tr', {}, h('td', { text: String(i + 1) }), h('td', { text: x.t.name }), h('td', { text: x.r.reciter || '' }), h('td', { text: x.r.reserve || '' }), h('td', {}), h('td', {}), h('td', {}))))),
+        h('p', { class: 'a-print-sign', text: 'اسم المحكّم: ........................................    التوقيع: ........................    التاريخ: ....................' }));
+      document.body.append(sheet);
+      document.documentElement.classList.add('yb-print-sheet');
+      const off = () => { document.documentElement.classList.remove('yb-print-sheet'); sheet.remove(); window.removeEventListener('afterprint', off); };
+      window.addEventListener('afterprint', off);
+      window.print();
+    }
+    async function paint() {
+      const evs = await eventsOnce();
+      const list = rows(), named = list.filter(x => x.r.reciter).length, dated = list.filter(x => nextHifz(evs, x.t.id)).length;
+      put(el, h('div', { class: 'a-bdgs-top' }, h('h3', { id: 'hfd-h' }, h('span', { class: 'a-chs-i', 'aria-hidden': 'true', text: '📖' }), h('span', { text: 'الحفظ والتسميع: سورة الصف' })),
+        h('span', { class: 'a-bdgs-n' }, FX.ring(list.length ? named / list.length * 100 : 0), h('b', { 'data-hifz-named': '', text: `${named} من ${list.length}` }))),
+        h('p', { class: 'a-lead', text: list.length ? `رشّح ${named} من ${list.length} ${list.length >= 3 && list.length <= 10 ? 'فرق' : 'فريقًا'} مرشحه الأساسي، وحُدّد موعد التسميع لـ ${dated}.` : 'لا فرق معتمدة بعد.' }),
+        list.length ? h('ul', { class: 'a-hfd-l' }, list.map(x => { const ev = nextHifz(evs, x.t.id); return h('li', { 'data-hifz-team': x.t.id }, teamMark(x.t.id, 'sm'),
+          h('div', { class: 'a-hfd-t' }, h('b', { text: x.t.name }),
+            x.r.reciter ? h('small', { text: `الأساسي: ${x.r.reciter}` + (x.r.reserve ? ` · الاحتياطي: ${x.r.reserve}` : ' · بلا احتياطي') }) : h('small', { class: 'none', text: 'لم يُرشَّح أحد بعد' })),
+          ev ? chip(fmtWhen(ev.starts_at), 'ok') : chip('بلا موعد', 'sun')); })) : null,
+        h('details', { class: 'a-desk-r' }, h('summary', { text: 'المطلوب في محور الحفظ' }), h('ul', {}, ['اختيار عضوين (عضو أساسي وعضو احتياطي) من كل فريق للتسميع المباشر لسورة الصف.', 'محضر تسميع موحد يوضح المستوى والملاحظات.', 'الحفظ 10 نقاط من 100.',
+          'التقييمات الأولية للحفظ والفهم: 15 – 30 نوفمبر.', 'ضبط النطق ومراعاة أحكام التلاوة المقررة.'].map(x => h('li', { text: x })))),
+        h('div', { class: 'a-actions' }, list.length ? btn('اطبع محضر التسميع', 'printer', 'btn-primary', printSheet, { 'data-fk': 'hifz-print' }) : null,
+          o.canSchedule ? btn('حدّد موعد تسميع', 'calendar', 'btn-ghost', o.canSchedule, { 'data-fk': 'hifz-date' }) : null));
+    }
+    el.start = paint;
+    return el;
+  }
+  // the team's own card: who recites (the leader only sees names), the next session, what is asked
+  function hifzTeamCard(teamId, o) {
+    const el = h('section', { class: 'a-card a-hft', 'aria-labelledby': 'hft-h', 'data-hifz-team-card': '', hidden: true });
+    el.start = async () => {
+      const evs = await eventsOnce();
+      if (evs === null) { el.hidden = true; return; }
+      const ev = nextHifz(evs, teamId), names = o && o.names ? o.names() : null;
+      put(el, h('h3', { id: 'hft-h' }, h('span', { class: 'a-chs-i', 'aria-hidden': 'true', text: '📖' }), h('span', { text: 'تسميع الفريق' })),
+        names ? h('ul', { class: 'a-staff-l' }, [['المرشح الأساسي', names.reciter], ['المرشح الاحتياطي', names.reserve]].map(r => h('li', { class: 'a-staff-r' }, h('div', {}, h('small', { text: r[0] }), h('b', { class: r[1] ? '' : 'none', text: r[1] || 'لم يُحدَّد بعد' })))))
+          : h('p', { class: 'a-lead', text: 'يقدّم التسميع المباشر مرشحان عن الفريق (أساسي واحتياطي)، وأسئلة الفهم لجميع الأعضاء.' }),
+        h('p', { class: 'a-hft-d', 'data-hifz-next': '' }, icon('calendar'), h('span', { text: ev ? `موعد التسميع: ${fmtWhen(ev.starts_at)}${ev.place ? ' · ' + ev.place : ''}` : 'لم يُحدَّد موعد التسميع بعد.' })),
+        h('small', { class: 'a-hint', text: 'الحفظ 10 نقاط والفهم 15 نقطة من 100.' }));
       el.hidden = false;
     };
     return el;
@@ -3076,6 +3136,7 @@
         O.comps.includes('projects') ? ['المشاريع', 'image', () => goSec('projects'), 'projects'] : null, ['غرفة القادة', 'bell', () => goSec('room'), 'room']] })),
         O.comps.includes('football') ? (O.today = todayCard()) : null, O.tiles,
         (O.fbd = O.comps.includes('football') ? footballDeskCard() : null), (O.chd = O.comps.includes('chess') ? chessDeskCard((O.roles || []).reduce((m, r) => { if ((r.roles || []).includes('chess')) m[r.team_id] = r.full_name; return m; }, {})) : null),
+        (O.hfd = O.comps.some(k => k === 'hifz' || k === 'fahm') ? hifzDeskCard({ teams: O.pub, canSchedule: () => goSec('dates'), roles: (O.roles || []).reduce((m, r) => { const x = m[r.team_id] || (m[r.team_id] = {}); if ((r.roles || []).includes('reciter')) x.reciter = r.full_name; if ((r.roles || []).includes('reserve')) x.reserve = r.full_name; return m; }, {}) }) : null),
         comps, (O.pulse = pulseCard()), announceFeed()] },
       feedGroup(),
       { key: 'review', label: 'طلبات التسجيل', icon: 'users', one: true, nodes: [O.comps.includes('registration') ? reviewQueue() : null, O.roles ? roleListCard() : null] },
@@ -3084,7 +3145,7 @@
       { key: 'dates', label: 'المواعيد', icon: 'calendar', one: true, nodes: [O.evm ? O.evm.el : null] },
       { key: 'room', label: 'غرفة القادة', icon: 'bell', one: true, nodes: [O.chat.el] }]);
     if (O.today) O.today.start();
-    O.pulse.start(); if (O.fbd) O.fbd.start(); if (O.chd) O.chd.start();
+    O.pulse.start(); if (O.fbd) O.fbd.start(); if (O.chd) O.chd.start(); if (O.hfd) O.hfd.start();
     if (focusKey) { const f = O.body.querySelector(`[data-fk="${CSS.escape(focusKey)}"]`); if (f) f.focus({ preventScroll: true }); }
   }
   function reviewQueue() {
@@ -4302,6 +4363,7 @@
     L.staff = staffCard(t.team_id, { members: () => L.members, after: msg => reloadLeader(msg) });
     L.run = runCard(t.team_id, t.team_name);
     L.chs = chessCard(t.team_id, t.team_name, { player: () => (L.members.find(m => Array.isArray(m.roles) && m.roles.includes('chess')) || {}).full_name || '' });
+    L.hft = hifzTeamCard(t.team_id, { names: () => { const f = k => (L.members.find(m => Array.isArray(m.roles) && m.roles.includes(k)) || {}).full_name || ''; return { reciter: f('reciter'), reserve: f('reserve') }; } });
     L.opp = oppCard(t.team_id, t.team_name); L.cal = calCard({ teamId: t.team_id, teamName: t.team_name, teamStatus: t.status });
     L.badges = badgesCard({ teamId: t.team_id, teamName: t.team_name, status: t.status, roster: () => { const mn = L.members.filter(m => isMinor(m.age)); return { members: L.members.length, minors: mn.length, got: mn.filter(m => m.consent_status === 'received').length }; } });
     L.pulse = pulseCard();
@@ -4309,7 +4371,7 @@
     L.sum = leadSummaryCard(() => { const mn = L.members.filter(m => isMinor(m.age)); return { team: L.team.team_name, status: STATUS[L.team.status] || L.team.status, members: L.members.length, minors: mn.length,
       got: mn.filter(m => m.consent_status === 'received').length, accepted: L.init.accepted || 0, tasks: L.lw.done() }; });
     dashLayout([
-      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [L.hero, (L.boxes.mday = matchDayCard(t.team_id, t.team_name, 'leader')), (L.boxes.next = nextCard(leaderNext())), leaderTiles(t), L.boxes.top, L.boxes.check, L.staff, L.run, L.opp, L.chs, L.badges, L.cal, scoresCard(), L.pulse, announceFeed()] },
+      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [L.hero, (L.boxes.mday = matchDayCard(t.team_id, t.team_name, 'leader')), (L.boxes.next = nextCard(leaderNext())), leaderTiles(t), L.boxes.top, L.boxes.check, L.staff, L.run, L.opp, L.chs, L.hft, L.badges, L.cal, scoresCard(), L.pulse, announceFeed()] },
       feedGroup(),
       { key: 'matches', label: 'المباريات والمواعيد', icon: 'trophy', one: true, nodes: [L.dates, L.sched.node, L.boxes.marks] },
       { key: 'team', label: 'الفريق', icon: 'users', nodes: [L.boxes.roster, L.boxes.roles, L.boxes.code, (L.style || (L.style = teamStyleCard(t), L.style.start(), L.style)).el, L.printBox] },
@@ -4320,7 +4382,7 @@
       { key: 'guide', label: 'المسابقة والنقاط', icon: 'route', nodes: [journeyCard(), (L.points = pointsCard()), honorsCard(), toolsCard(true)] }]);
     L.subs.start();
     L.boxes.mday.start();
-    L.hero.start(); L.staff.start(); L.run.start(); L.badges.start(); L.pulse.start(); L.points.start(); L.init.start(); L.sum.start(); L.opp.start(); L.cal.start(); L.chs.start();
+    L.hero.start(); L.staff.start(); L.run.start(); L.badges.start(); L.pulse.start(); L.points.start(); L.init.start(); L.sum.start(); L.opp.start(); L.cal.start(); L.chs.start(); L.hft.start();
     if (t.status === 'approved') celebrateOnce('ap-' + t.team_id, 'مبارك! فريقك معتمد في المسابقة.');
     paintLeader();
     startSchedule([L.sched]);
@@ -4684,7 +4746,7 @@
     const mday = matchDayCard(row.team_id, row.team_name, 'member');
     const mHero = heroCard({ name: profile.full_name, sub: `عضو في ${/^فريق\s/.test(row.team_name) ? '' : 'فريق '}${row.team_name}`, teamId: row.team_id, teamName: row.team_name, actions: [
       ['رحلتي', 'route', () => goSec('journey'), 'journey'], ['مباريات فريقي', 'trophy', () => goSec('matches'), 'matches'], ['الأخبار', 'megaphone', () => goSec('feed'), 'feed'], ['أعضاء فريقي', 'users', () => goSec('team'), 'team']] });
-    const mStaff = staffCard(row.team_id), mRun = runCard(row.team_id, row.team_name), mPulse = pulseCard(), mPoints = pointsCard(), mOpp = oppCard(row.team_id, row.team_name), mChs = chessCard(row.team_id, row.team_name), mCal = calCard({ teamId: row.team_id, teamName: row.team_name, teamStatus: row.status });
+    const mStaff = staffCard(row.team_id), mRun = runCard(row.team_id, row.team_name), mPulse = pulseCard(), mPoints = pointsCard(), mOpp = oppCard(row.team_id, row.team_name), mChs = chessCard(row.team_id, row.team_name), mHft = hifzTeamCard(row.team_id), mCal = calCard({ teamId: row.team_id, teamName: row.team_name, teamStatus: row.status });
     const mBadges = badgesCard({ teamId: row.team_id, teamName: row.team_name, status: row.status, roster: () => ({ members: ro.ok ? roster.length : null, minors: null, got: null }) });
     const mv = [
       announceFeed(),
@@ -4700,7 +4762,7 @@
       row.status === 'approved' ? teamSubsView(row.team_id, row.team_name) : null,
       box.node];
     dashLayout([
-      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [mHero, mday, nextCard(memberNext(row, ro.ok ? me : null)), memberTiles(row), mv[2], mStaff, mRun, mOpp, mChs, mBadges, mCal, mv[1], mPulse, mv[0], mv[4]] },
+      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [mHero, mday, nextCard(memberNext(row, ro.ok ? me : null)), memberTiles(row), mv[2], mStaff, mRun, mOpp, mChs, mHft, mBadges, mCal, mv[1], mPulse, mv[0], mv[4]] },
       { key: 'journey', label: 'رحلتي', icon: 'route', nodes: [journeyCard(), pledgeCard(), deedCard(), surahCard(), mPoints, honorsCard(), toolsCard(false)] },
       feedGroup(),
       { key: 'matches', label: 'المباريات والمواعيد', icon: 'trophy', one: true, nodes: [mv[5], mv[7]] },
@@ -4708,7 +4770,7 @@
       { key: 'projects', label: 'المشاريع والمبادرات', icon: 'image', one: true, nodes: [mv[6]] }]);
     startSchedule([box]);
     mday.start();
-    [mHero, mStaff, mRun, mBadges, mPulse, mPoints, mOpp, mChs, mCal].forEach(x => x.start());
+    [mHero, mStaff, mRun, mBadges, mPulse, mPoints, mOpp, mChs, mHft, mCal].forEach(x => x.start());
   }
 
   /* ------------------------------------------------------------------ PARENT */
@@ -4727,7 +4789,7 @@
     const pHero = heroCard({ name: profile.full_name, sub: k0 ? `ولي أمر في ${/^فريق\s/.test(k0.team_name) ? '' : 'فريق '}${k0.team_name}` : 'اربط ابنك أو ابنتك لتتابع فريقه من هنا.', teamId: k0 && k0.team_id, teamName: k0 && k0.team_name, actions: [
       k0 ? ['موافقتي', 'user-check', () => goCard(root.querySelector('[data-child]')), 'consent'] : null, k0 ? ['المباريات', 'trophy', () => goSec('matches'), 'matches'] : null,
       ['الأخبار', 'megaphone', () => goSec('feed'), 'feed'], ['اربط ابنًا أو ابنة', 'users', () => goSec('link'), 'link']] });
-    const pExtra = k0 ? [staffCard(k0.team_id), runCard(k0.team_id, k0.team_name), oppCard(k0.team_id, k0.team_name), chessCard(k0.team_id, k0.team_name), badgesCard({ teamId: k0.team_id, teamName: k0.team_name, status: k0.team_status }),
+    const pExtra = k0 ? [staffCard(k0.team_id), runCard(k0.team_id, k0.team_name), oppCard(k0.team_id, k0.team_name), chessCard(k0.team_id, k0.team_name), hifzTeamCard(k0.team_id), badgesCard({ teamId: k0.team_id, teamName: k0.team_name, status: k0.team_status }),
       calCard({ teamId: k0.team_id, teamName: k0.team_name, teamStatus: k0.team_status })] : [];
     const pPulse = pulseCard(), pPoints = pointsCard();
     const home = [pHero, mday, nextCard(parentNext(kids)), parentTiles(kids), ...pExtra, scoresCard(), pPulse, announceFeed()];

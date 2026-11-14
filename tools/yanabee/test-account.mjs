@@ -4646,6 +4646,67 @@ section('per person: «مسار الشطرنج» for a team, the chess and footb
   await close(A);
 }
 
+section('memorisation (الحفظ): the officer\'s desk, the printed record, the team\'s card');
+{
+  const fake = new Fake();
+  fake.addUser({ email: 'boss@t.test', name: 'محمود المشرف', role: 'member' }); fake.setAdmin('boss@t.test');
+  fake.addUser({ email: 'lh@t.test', name: 'قائد البيان', role: 'leader' });
+  fake.addUser({ email: 'lg@t.test', name: 'قائد الضياء', role: 'leader' });
+  const kid = fake.addUser({ email: 'kh@t.test', name: 'معاذ عضو البيان', role: 'member' });
+  const oh = fake.addUser({ email: 'oh@t.test', name: 'حمزة مسؤول الحفظ', role: 'member' }); fake.setRole('oh@t.test', 'officer');
+  fake.officers.push({ user_id: oh.id, competition: 'hifz' });
+  const TB = fake.seedTeam({ leaderEmail: 'lh@t.test', name: 'البيان', status: 'approved', members: [{ name: 'معاذ عضو البيان', age: 14, consent: 'received' }, { name: 'بلال سعد', age: 14 }, { name: 'عضو ثالث', age: 14 }, { name: 'عضو رابع', age: 14 }] });
+  const TD = fake.seedTeam({ leaderEmail: 'lg@t.test', name: 'الضياء', status: 'approved', members: Array.from({ length: 4 }, (_, i) => ({ name: `عضو الضياء ${i + 1}`, age: 14 })) });
+  fake.teams.forEach(t => { t.waitlist = false; });
+  const m = n => fake.members.find(x => x.full_name === n);
+  m('معاذ عضو البيان').user_id = kid.id; m('معاذ عضو البيان').roles = ['reciter']; m('بلال سعد').roles = ['reserve'];
+  const when = new Date(Date.now() + 2 * 86400e3); when.setHours(16, 0, 0, 0);
+  fake.events.push({ id: fake.uid(), competition: 'hifz', kind: 'session', title: 'تسميع فريق البيان', starts_at: when.toISOString(), place: 'قاعة الجمعية', team_ids: [TB.id], category: null, status: 'scheduled', note: null });
+
+  const O = await open(fake, { label: 'hifz-officer' });
+  await settle(O); await signInOk(O, 'oh@t.test');
+  await O.waitForSelector('[data-hifz-desk] [data-hifz-team]', { timeout: 8000 });
+  const hd = O.locator('[data-hifz-desk]');
+  const hb = (await hd.locator(`[data-hifz-team="${TB.id}"]`).innerText()).replace(/\s+/g, ' ');
+  const hdv = (await hd.locator(`[data-hifz-team="${TD.id}"]`).innerText()).replace(/\s+/g, ' ');
+  check('the memorisation officer opens on «الحفظ والتسميع»: how many teams named their reciter', /يا حمزة/.test(await O.locator('[data-hero]').innerText()) && (await hd.locator('[data-hifz-named]').innerText()) === '1 من 2' && /رشّح 1 من 2 فريقًا مرشحه الأساسي، وحُدّد موعد التسميع لـ 1/.test(await hd.innerText()));
+  check('each team: the main and the reserve reciter by name, and the session\'s time', /البيان الأساسي: معاذ عضو البيان · الاحتياطي: بلال سعد/.test(hb) && /4:00 م/.test(hb) && !/بلا موعد/.test(hb), hb);
+  check('a team with no nominee and no session is flagged in words (not color alone)', /الضياء لم يُرشَّح أحد بعد بلا موعد/.test(hdv), hdv);
+  check('what the axis asks, in the documents\' words', /محضر تسميع موحد يوضح المستوى والملاحظات/.test(await hd.locator('.a-desk-r').evaluate(e => e.textContent)) && /الحفظ 10 نقاط من 100/.test(await hd.locator('.a-desk-r').evaluate(e => e.textContent)));
+  await O.evaluate(() => { window.__printed = 0; window.print = () => { window.__printed++; }; });
+  await hd.locator('[data-fk="hifz-print"]').click();
+  const sheet = await O.locator('[data-hifz-sheet]').evaluate(e => [e.querySelector('h1').textContent, ...[...e.querySelectorAll('tr')].map(r => [...r.children].map(c => c.textContent).join(' ')), e.querySelector('.a-print-sign').textContent].join(' ').replace(/\s+/g, ' '));
+  check('«اطبع محضر التسميع» builds the unified record: every team, its two nominees, blank level, notes and mark out of 10', (await O.evaluate(() => window.__printed)) === 1 && /محضر التسميع الموحد — سورة الصف/.test(sheet)
+    && /م الفريق المرشح الأساسي المرشح الاحتياطي المستوى الملاحظات الدرجة من 10/.test(sheet) && /1 البيان معاذ عضو البيان بلال سعد/.test(sheet) && /2 الضياء/.test(sheet) && /اسم المحكّم/.test(sheet)
+    && await O.evaluate(() => document.documentElement.classList.contains('yb-print-sheet')), sheet.slice(0, 260));
+  await O.evaluate(() => window.dispatchEvent(new Event('afterprint')));
+  check('after printing the record leaves the page', (await O.locator('[data-hifz-sheet]').count()) === 0 && !(await O.evaluate(() => document.documentElement.classList.contains('yb-print-sheet'))));
+  await hd.locator('[data-fk="hifz-date"]').click();
+  check('«حدّد موعد تسميع» goes to the dates', await O.evaluate(() => !!document.activeElement.closest('#sec-dates')));
+  check('the memorisation officer gets neither the chess nor the football desk; console clean', (await O.locator('[data-chess-desk], [data-football-desk]').count()) === 0 && O.errs.length === 0, O.errs.join('|'));
+  await close(O);
+
+  const L = await open(fake, { label: 'hifz-leader', mobile: true });
+  await settle(L); await signInOk(L, 'lh@t.test');
+  await L.waitForSelector('[data-hifz-team-card]:not([hidden])', { timeout: 8000 });
+  const lt = (await L.locator('[data-hifz-team-card]').innerText()).replace(/\s+/g, ' ');
+  check('the leader sees «تسميع الفريق»: the two nominees, the session with its place, and the points', /المرشح الأساسي معاذ عضو البيان/.test(lt) && /المرشح الاحتياطي بلال سعد/.test(lt) && /موعد التسميع: .*4:00 م · قاعة الجمعية/.test(lt) && /الحفظ 10 نقاط والفهم 15 نقطة/.test(lt) && (await overflow(L)) <= 0, lt);
+  await close(L);
+  const K = await open(fake, { label: 'hifz-member', mobile: true });
+  await settle(K); await signInOk(K, 'kh@t.test');
+  await K.waitForSelector('[data-hifz-team-card]:not([hidden])', { timeout: 8000 });
+  const kt = await K.locator('[data-hifz-team-card]').innerText();
+  check('a member sees the session and what is asked, with no names', /موعد التسميع/.test(kt) && /مرشحان عن الفريق/.test(kt) && !/معاذ|بلال/.test(kt));
+  check('the surah tracker gives the method\'s pace (1 to 3 ayahs a day) and an estimate', /من 1 إلى 3 آيات يوميًا/.test(await K.locator('[data-hifz-pace]').innerText()) && /تُتمّ الباقي في 7 أيام/.test(await K.locator('[data-hifz-pace]').innerText()) && K.errs.length === 0, K.errs.join('|'));
+  await close(K);
+
+  const A = await open(fake, { label: 'hifz-admin', viewport: { width: 1440, height: 1000 } });
+  await settle(A); await signInOk(A, 'boss@t.test', undefined, { home: true });
+  await A.waitForSelector('[data-admin-home] [data-hifz-desk] [data-hifz-team]', { timeout: 8000 });
+  check('the admin\'s home has the memorisation desk too (the same two teams)', (await A.locator('[data-admin-home] [data-hifz-team]').count()) === 2 && (await A.locator('[data-admin-home] [data-hifz-named]').innerText()) === '1 من 2' && (await overflow(A)) <= 0 && A.errs.length === 0, A.errs.join('|'));
+  await close(A);
+}
+
 section('network hosts and console');
 check('no request to any host other than the page itself, the fake Supabase and the shell fonts', badHosts.size === 0, [...badHosts].join());
 check('no console error and no uncaught exception in any page', consoleErrors.length === 0, consoleErrors.slice(0, 5).join(' || '));
