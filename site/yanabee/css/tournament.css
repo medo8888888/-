@@ -348,6 +348,14 @@ button.tn-side:hover{border-color:var(--brand)}
 .tn-fxs.live{color:#b91c1c}
 .tn-fx.is-live{border-inline-start:3px solid #dc2626}
 .tn-now-l{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.tn-today{border-color:color-mix(in oklab,var(--brand) 40%,var(--line))}
+.tn-today-l{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.tn-today-i{display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface-2)}
+.tn-today-i.is-live{border-color:#c2410c}
+.tn-today-time{font-weight:700;font-variant-numeric:tabular-nums;color:var(--brand);min-width:44px}
+.tn-today-t{display:grid;gap:2px;min-width:0}
+.tn-today-t small{color:var(--ink-2)}
+@media(max-width:560px){.tn-today-i{grid-template-columns:auto 1fr auto}.tn-today-i .tn-chip{grid-column:2/-1;justify-self:start}}
 .tn-now-i{display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface-2)}
 .tn-now-c{font-size:.8rem;color:var(--muted)}
 .tn-now-s{font-size:1.15rem;font-variant-numeric:tabular-nums}

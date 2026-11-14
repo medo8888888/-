@@ -111,7 +111,7 @@
 
   /* ------------------------------------------------------------------ app state */
   const S = { seq: 0, uid: null, role: null, expired: false, manualOut: false, recoveryDone: false, stopPoll: null, stopInbox: null, rendered: null, modeSet: null, confirmedShown: false };
-  const clearData = () => { A.teams = []; A.members = []; A.profiles = []; A.state = undefined; A.evm = null; A.res = null; A.proj = null; A.ann = null; A.chat = null; A.judge = null; O.res = null; O.proj = null; O.evm = null; O.chat = null; O.tiles = null; L.chat = null; L.team = null; L.members = []; L.style = null; A.stats = null; };
+  const clearData = () => { A.teams = []; A.members = []; A.profiles = []; A.state = undefined; A.evm = null; A.res = null; A.proj = null; A.ann = null; A.chat = null; A.judge = null; O.res = null; O.proj = null; A.today = null; O.evm = null; O.chat = null; O.tiles = null; L.chat = null; L.team = null; L.members = []; L.style = null; A.stats = null; };
 
   function mount(node, focus) {
     put(root, node);
@@ -685,6 +685,132 @@
     return { done: true, icon: 'trophy', title: 'الموافقات مكتملة', text: 'تابع مباريات الفريق ومواعيده ومشاريعه، وأخبار الفرق في «الأخبار».', action: ['المباريات والمشاريع', () => goSec('matches')] };
   }
 
+  /* ------------------------------------------------------------------ match day: «يوم المباراة» and «مباريات اليوم» */
+  // On a day the team plays (a board match dated today), the overview opens with the match: the opponent, the time and
+  // the place, a countdown, then the live score with the minute (yb_match_live, read every 20 seconds while the tab is
+  // open), then the result. Nothing new on the server: the published board, the dates and the live table already exist.
+  const MDAY_MS = 20000;
+  const localDay = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  function untilText(date, time) {
+    if (!time) return '';
+    const t = new Date(`${date}T${time}:00`);
+    if (isNaN(t)) return '';
+    const mins = Math.round((t - Date.now()) / 60000);
+    if (mins <= 0) return mins > -120 ? 'حان موعدها' : '';
+    const hh = Math.floor(mins / 60), mm = mins % 60;
+    return 'تبدأ بعد ' + (hh ? `${hh} ${hh === 1 ? 'ساعة' : hh === 2 ? 'ساعتين' : 'ساعات'}` + (mm ? ` و${mm} دقيقة` : '') : `${mm} دقيقة`);
+  }
+  const liveMinute = x => (x && x.started_at ? Math.max(1, Math.floor((Date.now() - new Date(x.started_at).getTime()) / 60000) + 1) : null);
+  // the match-day timers stop together when the screen changes
+  // one set of timers per card (a screen drawn again replaces its own), all stopped when the screen changes
+  function mdayStops(key, ...fns) {
+    S.mdays = S.mdays || {};
+    if (S.mdays[key]) S.mdays[key]();
+    S.mdays[key] = () => fns.forEach(f => { try { f(); } catch (e) { /* already stopped */ } });
+  }
+  function matchDayCard(teamId, teamName, who) {
+    const box = h('section', { class: 'a-card a-mday', hidden: true, 'aria-labelledby': 'a-mday-h', 'data-matchday': '' });
+    const D = { m: null, opp: '', place: '', live: null, ours: null, day: localDay(new Date()) };
+    async function load() {
+      const r = await teamOnBoard(teamId, teamName);
+      const m = r && r.v.matches.find(x => x.date === D.day);
+      if (!m) { box.hidden = true; return; }
+      D.m = m; D.ours = r.v.id; D.opp = nameOf(r.st, m.opponent);
+      const [lv, ev] = await Promise.all([read('yb_match_live', { select: 'comp,match_key,a,b,sa,sb,status,started_at,updated_at,approved_at', filter: { match_key: 'eq.' + m.key } }),
+        D.place ? Promise.resolve(null) : read('yb_events', { select: EV_SELECT, order: 'starts_at.asc' })]);
+      D.live = lv && lv.ok && Array.isArray(lv.data) ? lv.data.find(x => x.comp === 'football') || null : D.live;
+      if (ev && ev.ok && Array.isArray(ev.data)) {
+        const e = ev.data.find(x => x.kind === 'match' && localDay(new Date(x.starts_at)) === D.day && ((x.team_ids || []).includes(teamId) || !(x.team_ids || []).length));
+        if (e) { D.place = e.place || ''; if (!D.m.time) D.m.time = fmtHour(e.starts_at); }
+      }
+      paint();
+    }
+    function score() {
+      const x = D.live;
+      if (x && x.status !== 'approved') return x.a === D.ours ? [x.sa, x.sb] : [x.sb, x.sa];
+      if (D.m.played && D.m.result) return [D.m.result.gf, D.m.result.ga];
+      if (x) return x.a === D.ours ? [x.sa, x.sb] : [x.sb, x.sa];
+      return null;
+    }
+    function paint() {
+      if (!D.m) return;
+      const x = D.live, sc = score();
+      const phase = D.m.played || (x && x.status === 'approved') ? 'done' : x && x.status === 'live' ? 'live' : x && (x.status === 'final' || x.status === 'returned') ? 'wait' : 'before';
+      const title = who === 'parent' ? 'اليوم مباراة فريق ابنك' : 'اليوم مباراتكم';
+      const when = [D.m.time ? 'الساعة ' + D.m.time : '', D.place, `${STAGE[D.m.stage] || ''} · الجولة ${D.m.round}`].filter(Boolean).join(' · ');
+      const nodes = [h('div', { class: 'a-mday-top' }, h('span', { class: 'a-mday-tag' }, icon('trophy'), h('span', { text: 'يوم المباراة' })),
+        phase === 'live' ? h('span', { class: 'a-mday-live' }, h('i', { 'aria-hidden': 'true' }), h('span', { text: `جارية الآن · الدقيقة ${liveMinute(x) || 1}` })) : null),
+        h('h3', { id: 'a-mday-h', text: phase === 'before' ? title : phase === 'done' ? 'انتهت مباراة اليوم' : 'مباراة اليوم' })];
+      const teams = h('div', { class: 'a-mday-vs' }, h('b', { class: 'a-mday-t', text: teamName }),
+        sc ? h('b', { class: 'a-mday-s', dir: 'ltr', 'aria-label': `النتيجة ${sc[0]} مقابل ${sc[1]}`, text: `${sc[1]} – ${sc[0]}` }) : h('span', { class: 'a-mday-x', text: 'ضد' }),
+        h('b', { class: 'a-mday-t', text: D.opp }));
+      nodes.push(teams, h('p', { class: 'a-hint a-mday-when', text: when }));
+      if (phase === 'before') {
+        const u = untilText(D.day, D.m.time);
+        if (u) nodes.push(h('p', { class: 'a-mday-count', role: 'timer', 'aria-live': 'off', text: u }));
+        if (who === 'leader') nodes.push(h('ul', { class: 'a-mday-tips' },
+          h('li', { text: 'احضروا قبل الموعد بعشرين دقيقة على الأقل.' }),
+          h('li', { text: 'تأكّد من حضور اللاعبين وسجّله في «المباريات والمواعيد».' }),
+          h('li', { text: 'التأخر أو الغياب يُحسب وفق لائحة الدوري.' })));
+      } else if (phase === 'wait') nodes.push(h('p', { class: 'a-lead', text: 'انتهت المباراة، والنتيجة بانتظار اعتماد الإدارة. لا تدخل الترتيب قبل اعتمادها.' }));
+      else if (phase === 'done' && sc) {
+        const o = sc[0] > sc[1] ? 'فوز، مبارك!' : sc[0] < sc[1] ? 'خسارة، والجولة القادمة فرصة جديدة.' : 'تعادل.';
+        nodes.push(h('p', { class: 'a-lead', text: o }));
+      }
+      nodes.push(h('div', { class: 'a-actions' },
+        who === 'leader' && phase === 'before' ? btn('الحضور والمواعيد', 'calendar', 'btn-primary', () => goSec('matches'), { 'data-fk': 'mday-go' }) : null,
+        h('a', { class: 'btn btn-ghost btn-sm', href: 'tournament.html' }, icon('trophy'), h('span', { text: 'لوحة البطولة' })),
+        h('a', { class: 'btn btn-ghost btn-sm', href: 'tournament.html?screen=1', target: '_blank', rel: 'noopener' }, icon('eye'), h('span', { text: 'شاشة العرض' }))));
+      box.className = 'a-card a-mday is-' + phase;
+      put(box, ...nodes);
+      box.hidden = false;
+    }
+    box.start = () => {
+      const stop = YB.poll ? YB.poll(load, MDAY_MS) : (load(), null);
+      const tick = setInterval(() => { if (D.m && !box.hidden) paint(); }, 30000);
+      mdayStops('team', () => stop && stop(), () => clearInterval(tick));
+    };
+    return box;
+  }
+  // «مباريات اليوم» for the officer and the admin: every board match dated today, with its live state
+  function todayCard() {
+    const box = h('section', { class: 'a-card a-today', hidden: true, 'aria-labelledby': 'a-today-h', 'data-today': '' });
+    const day = localDay(new Date());
+    async function load() {
+      const g = await boardOnce();
+      const st = g && g.state;
+      let fb = null;
+      try { fb = st && window.YTour ? window.YTour.football(st) : null; } catch (e) { fb = null; }
+      const list = [];
+      if (fb && fb.drawn) {
+        const take = (stage, gname, rounds) => (rounds || []).forEach(r => r.matches.forEach(m => {
+          const d = (m.res && m.res.date) || (m.sched && m.sched.date) || '';
+          if (d === day) list.push({ key: m.key, a: m.a, b: m.b, time: (m.res && m.res.time) || (m.sched && m.sched.time) || '', label: `${STAGE[stage]}${gname ? ' · المجموعة ' + gname : ''} · الجولة ${r.round}`, res: m.res, sa: m.sa, sb: m.sb });
+        }));
+        fb.groups.forEach(x => take('group', x.name, x.rounds));
+        if (fb.final) take('final', '', fb.final.rounds);
+      }
+      if (!list.length) { box.hidden = true; return; }
+      const lv = await read('yb_match_live', { select: 'comp,match_key,a,b,sa,sb,status,started_at' });
+      const rows = lv.ok && Array.isArray(lv.data) ? lv.data.filter(x => x.comp === 'football') : [];
+      list.sort((p, q) => String(p.time).localeCompare(String(q.time)));
+      put(box, h('div', { class: 'a-mday-top' }, h('h3', { id: 'a-today-h' }, icon('trophy'), h('span', { text: `مباريات اليوم (${list.length})` })),
+        h('a', { class: 'btn btn-ghost btn-sm', href: 'tournament.html?screen=1', target: '_blank', rel: 'noopener' }, icon('eye'), h('span', { text: 'شاشة العرض' }))),
+        h('ul', { class: 'a-today-l' }, list.map(m => {
+          const x = rows.find(r => r.match_key === m.key);
+          const s = m.res ? `${m.sa} – ${m.sb}` : x ? (x.a === m.a ? `${x.sa} – ${x.sb}` : `${x.sb} – ${x.sa}`) : '';
+          const state = m.res ? chip('معتمدة', 'ok') : !x ? chip('لم تبدأ', 'muted') : chip(RES_W[x.status] + (x.status === 'live' ? ` · د ${liveMinute(x)}` : ''), x.status === 'live' ? 'brand' : x.status === 'returned' ? 'sun' : 'muted');
+          return h('li', { class: 'a-today-i', 'data-today-key': m.key },
+            h('span', { class: 'a-today-time', text: m.time || '—' }),
+            h('span', { class: 'a-today-t' }, h('b', { text: `${nameOf(st, m.a)} ضد ${nameOf(st, m.b)}` }), h('small', { class: 'a-hint', text: m.label })),
+            s ? h('b', { class: 'a-today-s', dir: 'ltr', text: s.split(' – ').reverse().join(' – ') }) : null, state);
+        })));
+      box.hidden = false;
+    }
+    box.start = () => { const stop = YB.poll ? YB.poll(load, MDAY_MS) : (load(), null); mdayStops('today', () => stop && stop()); };
+    return box;
+  }
+
   /* ------------------------------------------------------------------ the dashboard (signed in) */
   // Signed in, the page becomes an app: the site's banner goes, a side menu jumps between the role's sections and marks the
   // one in view, and «نظرة عامة» opens with summary tiles. Every section stays on the page (nothing is locked behind a
@@ -1228,7 +1354,8 @@
     else if (A.tab === 'tour') drawAdminTour(panel);
     else if (A.tab === 'results') {
       if (!A.res) { A.res = resultsDesk(['football', 'chess'], true, 'ares'); A.res.start(); }
-      panel.append(A.res.el);
+      if (!A.today) { A.today = todayCard(); A.today.start(); }
+      panel.append(A.today, A.res.el);
     }
     else if (A.tab === 'judging') {
       if (!A.judge) { A.judge = judgingAdmin('ajdg'); A.judge.start(); }
@@ -1531,6 +1658,86 @@
   }
   const toCsv = rows => '﻿' + [EXPORT_HEAD()].concat(rows).map(r => r.map(csvCell).join(',')).join('\r\n') + '\r\n';
   function stamp() { const d = new Date(), p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; }
+  /* --- the Excel workbook (js/xlsx-lite.js, SPEC 4.10.8): built here, from what the admin can already read */
+  const fmtDay = iso => { const d = new Date(iso); return isNaN(d) ? '' : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  const fmtHour = iso => { const d = new Date(iso); return isNaN(d) ? '' : `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+  const numOr = v => (v === null || v === undefined || v === '' || isNaN(+v) ? '' : +v);
+  // the football sheets from the published board: every match (with its result) and every table
+  function boardSheets(g) {
+    const st = g && g.state;
+    const out = { results: [['الدور', 'المجموعة', 'الجولة', 'الفريق الأول', 'أهداف الأول', 'أهداف الثاني', 'الفريق الثاني', 'التاريخ', 'الوقت', 'الحالة']],
+      table: [['الدور', 'المجموعة', 'المركز', 'الفريق', 'لعب', 'فاز', 'تعادل', 'خسر', 'له', 'عليه', 'الفارق', 'النقاط']] };
+    if (!st || !window.YTour) return out;
+    let fb;
+    try { fb = window.YTour.football(st); } catch (e) { return out; }
+    const nm = id => nameOf(st, id);
+    const put2 = (stage, gname, rounds, rows) => {
+      (rounds || []).forEach(r => r.matches.forEach(m => out.results.push([stage, gname, r.round, nm(m.a), m.res ? numOr(m.sa) : '', m.res ? numOr(m.sb) : '', nm(m.b),
+        (m.sched && m.sched.date) || (m.res && m.res.date) || '', (m.sched && m.sched.time) || (m.res && m.res.time) || '', m.res ? 'انتهت' : 'لم تُلعب'])));
+      (rows || []).forEach(x => out.table.push([stage, gname, x.rank || '', nm(x.id), x.p, x.w, x.d, x.l, x.gf, x.ga, x.gd, x.pts]));
+    };
+    (fb.groups || []).forEach(g2 => put2(STAGE.group, g2.name, g2.rounds, g2.table));
+    if (fb.final) put2(STAGE.final, '—', fb.final.rounds, fb.final.table);
+    return out;
+  }
+  async function adminWorkbook(withPeople) {
+    const [ev, sub, jb, g] = await Promise.all([
+      read('yb_events', { select: EV_SELECT, order: 'starts_at.asc' }),
+      YB.rpc('yb_submissions_queue', {}), YB.rpc('yb_results_board', {}), Promise.resolve().then(() => YB.getState()).catch(() => null)]);
+    const teamName = id => (A.teams.find(t => t.id === id) || {}).name || '';
+    const sheets = [];
+    sheets.push({ name: 'الفرق', rows: [['اسم الفريق', 'الحي / المنطقة', 'الحالة', 'قائد الفريق', 'عدد الأعضاء', 'القاصرون', 'الموافقات المستلمة', 'الرسوم', 'رقم الطلب', 'قائمة الاحتياط', 'تاريخ التسجيل', 'ملاحظة المراجعة']]
+      .concat(A.teams.slice().sort((a, b) => a.name.localeCompare(b.name, 'ar')).map(t => {
+        const ms = membersOf(t.id), minors = ms.filter(m => isMinor(m.age));
+        return [t.name, t.area || '', STATUS[t.status] || t.status, leaderName(t), ms.length, minors.length, minors.filter(m => m.consent_status === 'received').length,
+          FEE[t.fee_status] || '', t.ref_code || '', t.waitlist ? 'نعم' : '', fmtDay(t.created_at), t.admin_note || ''];
+      })) });
+    if (withPeople) sheets.push({ name: 'الأعضاء', rows: [EXPORT_HEAD()].concat(exportRows()) });
+    const evs = ev.ok && Array.isArray(ev.data) ? ev.data : [];
+    sheets.push({ name: 'الجدول', rows: [['التاريخ', 'الوقت', 'النوع', 'العنوان', 'المسابقة', 'المكان', 'الفرق', 'الحالة', 'ملاحظة']]
+      .concat(evs.map(e => [fmtDay(e.starts_at), fmtHour(e.starts_at), KINDS[e.kind] || e.kind || '', e.title || '', COMPS[e.competition] || e.competition || '', e.place || '',
+        (e.team_ids || []).map(teamName).filter(Boolean).join('، '), e.status === 'cancelled' ? 'أُلغي' : e.status === 'changed' ? 'تغيّر الموعد' : '', e.note || ''])) });
+    const b = boardSheets(g);
+    sheets.push({ name: 'النتائج', rows: b.results }, { name: 'الترتيب', rows: b.table });
+    const board = jb.ok && jb.data && typeof jb.data === 'object' ? jb.data : null;
+    sheets.push({ name: 'الدرجات', rows: [['المركز', 'الفريق', AXIS.hifz, AXIS.fahm, AXIS.tatbiq, AXIS.football, AXIS.chess, 'المجموع من 100']]
+      .concat(((board && board.teams) || []).map(t => [t.rank || '', t.team_name, numOr(t.hifz), numOr(t.fahm), numOr(t.tatbiq), numOr(t.football), numOr(t.chess), numOr(t.total)])) });
+    if (withPeople) sheets.push({ name: 'تفاصيل الدرجات', rows: [['الفريق', 'المعيار', 'الحكم', 'الدرجة', 'سبب الدرجة', 'آخر تعديل']]
+      .concat(((board && board.scores) || []).map(s => [teamName(s.team_id), s.criterion || '', s.judge || '', numOr(s.points), s.reason || '', fmtDay(s.at)]))
+      .concat(((board && board.admin) || []).map(s => [teamName(s.team_id), AXIS[s.axis] || s.axis, 'الإدارة', numOr(s.points), s.reason || '', ''])) });
+    const subs = sub.ok && Array.isArray(sub.data) ? sub.data : [];
+    sheets.push({ name: 'التسليمات', rows: [['الفريق', 'النوع', 'العنوان', 'المكان', 'تاريخ التنفيذ', 'الحالة', 'عدد المشاركين', 'المستفيدون', 'عدد الصور', 'في الصفحة الرئيسية', 'الملخص', 'النتائج', 'ملاحظة المراجعة']]
+      .concat(subs.map(s => [s.team_name || '', SUB_KIND[s.kind] || s.kind || '', s.title || '', SUB_PLACE[s.place] || s.place || '', s.done_on || '', SUB_ST[s.status] || s.status || '',
+        numOr(s.members_n), numOr(s.beneficiaries), (s.photos || []).length, s.featured ? 'نعم' : '', s.summary || '', s.results || '', s.review_note || ''])) });
+    return sheets;
+  }
+  // a leader's own team: the team, its members (the leader already sees them), and its dates
+  async function leaderWorkbook() {
+    const t = L.team;
+    const ev = await read('yb_events', { select: EV_SELECT, order: 'starts_at.asc' });
+    // the team's own dates and those for every team (an empty list), as on «مواعيد فريقك»
+    const evs = (ev.ok && Array.isArray(ev.data) ? ev.data : []).filter(e => (e.team_ids || []).indexOf(t.team_id) >= 0 || ((e.team_ids || []).length === 0 && t.status === 'approved'));
+    return [
+      { name: 'الفريق', rows: [['اسم الفريق', 'الحي / المنطقة', 'الحالة', 'عدد الأعضاء'], [t.team_name, t.area || '', STATUS[t.status] || t.status, L.members.length]] },
+      { name: 'الأعضاء', rows: [['م', W.memberName || 'الاسم الثلاثي', W.age || 'العمر', W.guardianName || 'اسم ولي الأمر', W.guardianPhone || 'رقم الهاتف', 'قائد الفريق', 'موافقة ولي الأمر', 'الأدوار', 'حساب مرتبط']]
+        .concat(L.members.map((m, i) => [i + 1, m.full_name, numOr(m.age), m.guardian_name || '', m.guardian_phone || '', m.is_leader ? 'نعم' : '', m.consent_status === 'received' ? 'استُلمت' : 'لم تُستلم',
+          (m.roles || []).map(r => ROLE_W[r] || r).join('، '), m.user_id ? 'نعم' : ''])) },
+      { name: 'المواعيد', rows: [['التاريخ', 'الوقت', 'النوع', 'العنوان', 'المكان', 'الحالة']]
+        .concat(evs.map(e => [fmtDay(e.starts_at), fmtHour(e.starts_at), KINDS[e.kind] || e.kind || '', e.title || '', e.place || '', e.status === 'cancelled' ? 'أُلغي' : e.status === 'changed' ? 'تغيّر الموعد' : ''])) }];
+  }
+  async function saveWorkbook(button, make, file, status) {
+    if (!window.YBXlsx) { status.textContent = 'تعذّر تجهيز ملف Excel في هذا المتصفح. استعمل ملف CSV.'; return; }
+    button.disabled = true;
+    status.textContent = 'يُجهَّز الملف…';
+    try {
+      const sheets = await make();
+      YBXlsx.download(file, YBXlsx.workbook(sheets, { title: 'مشروع ينابيع' }));
+      status.textContent = `بدأ تنزيل الملف (${sheets.length} أوراق: ${sheets.map(s => s.name).join('، ')}).`;
+      say(status.textContent);
+    } catch (e) {
+      status.textContent = 'تعذّر تجهيز الملف الآن. حاول مرة أخرى.';
+    } finally { button.disabled = false; }
+  }
   function download(name, text, type) {
     const url = URL.createObjectURL(new Blob([text], { type }));
     const a = h('a', { href: url, download: name, hidden: true });
@@ -1547,6 +1754,14 @@
         h('table', { class: 'a-ptable' }, h('thead', {}, h('tr', {}, EXPORT_HEAD().map(x => h('th', { scope: 'col', text: x })))),
           h('tbody', {}, rows.map(r => h('tr', {}, r.map(c => h('td', { text: String(c) })))))));
     };
+    const xStatus = h('p', { class: 'a-hint', role: 'status', 'aria-live': 'polite', 'data-xlsx-status': '' });
+    const full = btn('نزّل ملف Excel الكامل', 'file-text', 'btn-primary', () => saveWorkbook(full, () => adminWorkbook(true), `yanabee-${stamp()}.xlsx`, xStatus), { 'data-fk': 'xlsx' });
+    const share = btn('نسخة للمشاركة بلا بيانات الأعضاء', 'users', 'btn-ghost', () => saveWorkbook(share, () => adminWorkbook(false), `yanabee-share-${stamp()}.xlsx`, xStatus), { 'data-fk': 'xlsx-share' });
+    panel.append(h('div', { class: 'a-card', 'data-xlsx': '' },
+      h('h3', {}, icon('file-text'), h('span', { text: 'ملف Excel للموسم' })),
+      h('p', { text: 'ملف واحد بأوراق منفصلة: الفرق، الأعضاء، الجدول، النتائج، الترتيب، الدرجات، تفاصيل الدرجات، التسليمات. يُجهَّز على جهازك ولا يُرسل إلى أي مكان.' }),
+      h('p', { class: 'a-privacy' }, icon('lock'), h('span', { text: 'الملف الكامل فيه أسماء قاصرين وبيانات أولياء أمورهم وأسماء الحكّام. للمشاركة مع اللجنة استعمل النسخة التي بلا بيانات الأعضاء.' })),
+      h('div', { class: 'a-actions' }, full, share), xStatus));
     panel.append(h('div', { class: 'a-card' },
       h('h3', {}, icon('file-text'), h('span', { text: 'تصدير الفرق والأعضاء' })),
       h('p', { text: `${A.teams.length} فريقًا · ${rows.length} عضوًا. الملف مناسب لفتحه في Excel ولطباعة كشف الاستمارات.` }),
@@ -1612,13 +1827,14 @@
     if (others.length && !O.evm) O.evm = eventManager(others, () => O.pub, 'off');
     if (!O.tiles) O.tiles = officerTiles();
     dashLayout([
-      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [O.tiles, comps, announceFeed()] },
+      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [O.comps.includes('football') ? (O.today = todayCard()) : null, O.tiles, comps, announceFeed()] },
       feedGroup(),
       { key: 'review', label: 'طلبات التسجيل', icon: 'users', one: true, nodes: [O.comps.includes('registration') ? reviewQueue() : null, O.roles ? roleListCard() : null] },
       { key: 'results', label: 'النتائج', icon: 'flag', one: true, nodes: [games.length ? O.res.el : null] },
       { key: 'projects', label: 'المشاريع', icon: 'image', one: true, nodes: [O.proj ? O.proj.el : null] },
       { key: 'dates', label: 'المواعيد', icon: 'calendar', one: true, nodes: [O.evm ? O.evm.el : null] },
       { key: 'room', label: 'غرفة القادة', icon: 'bell', one: true, nodes: [O.chat.el] }]);
+    if (O.today) O.today.start();
     if (focusKey) { const f = O.body.querySelector(`[data-fk="${CSS.escape(focusKey)}"]`); if (f) f.focus({ preventScroll: true }); }
   }
   function reviewQueue() {
@@ -2831,13 +3047,14 @@
     L.subs = leaderSubs({ id: t.team_id, name: t.team_name, status: t.status }, 'lsub');
     if (!L.chat) { L.chat = chatRoom(false, 'lchat'); L.chat.start(); }
     dashLayout([
-      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [(L.boxes.next = nextCard(leaderNext())), leaderTiles(t), L.boxes.top, L.boxes.check, scoresCard(), announceFeed()] },
+      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [(L.boxes.mday = matchDayCard(t.team_id, t.team_name, 'leader')), (L.boxes.next = nextCard(leaderNext())), leaderTiles(t), L.boxes.top, L.boxes.check, scoresCard(), announceFeed()] },
       feedGroup(),
       { key: 'matches', label: 'المباريات والمواعيد', icon: 'trophy', one: true, nodes: [L.dates, L.sched.node, L.boxes.marks] },
       { key: 'team', label: 'الفريق', icon: 'users', nodes: [L.boxes.roster, L.boxes.roles, L.boxes.code, (L.style || (L.style = teamStyleCard(t), L.style.start(), L.style)).el, L.printBox] },
       { key: 'projects', label: 'المشاريع والمبادرات', icon: 'image', one: true, nodes: [L.subs.el] },
       { key: 'room', label: 'غرفة القادة', icon: 'bell', one: true, nodes: [L.chat.el] }]);
     L.subs.start();
+    L.boxes.mday.start();
     paintLeader();
     startSchedule([L.sched]);
     if (focus) { const f = L.boxes.top.querySelector('[data-focus]'); if (f) f.focus({ preventScroll: true }); }
@@ -3122,13 +3339,15 @@
   /* --- print the registration form pre-filled */
   function paintPrint() {
     const msg = h('p', { class: 'a-err', role: 'alert', hidden: true });
+    const xStatus = h('p', { class: 'a-hint', role: 'status', 'aria-live': 'polite', 'data-xlsx-status': '' });
+    const xbtn = btn('نزّل ملف Excel لفريقك', 'file-text', 'btn-ghost', () => saveWorkbook(xbtn, leaderWorkbook, `yanabee-team-${stamp()}.xlsx`, xStatus), { 'data-fk': 'xlsx-team' });
     put(L.printBox, 
       h('h3', {}, icon('printer'), h('span', { text: 'استمارة التسجيل جاهزة' })),
       h('p', { class: 'a-lead', text: 'نملأ لك استمارة التسجيل بما أدخلته هنا، فتراجعها وتطبعها مع موافقات أولياء الأمور. تُحفظ المسودة على هذا الجهاز فقط.' }),
       h('div', { class: 'a-actions' }, btn('اطبع الاستمارة جاهزة', 'printer', 'btn-primary', () => {
         if (!writeDraft()) { msg.textContent = 'تعذّر حفظ المسودة في هذا المتصفح، فلا يمكن تعبئة الاستمارة تلقائيًا.'; msg.hidden = false; say(msg.textContent); return; }
         location.href = 'register.html';
-      }, { 'data-fk': 'print-form' })), msg);
+      }, { 'data-fk': 'print-form' }), xbtn), msg, xStatus);
   }
   function writeDraft() {
     const t = L.team, p = L.profile || {};
@@ -3194,6 +3413,7 @@
     const roster = ro.ok ? (ro.data || []) : [];
     const me = roster.find(x => x.is_me);
     const box = scheduleBox({ id: row.team_id, name: row.team_name });
+    const mday = matchDayCard(row.team_id, row.team_name, 'member');
     const mv = [
       announceFeed(),
       scoresCard(),
@@ -3208,12 +3428,13 @@
       row.status === 'approved' ? teamSubsView(row.team_id, row.team_name) : null,
       box.node];
     dashLayout([
-      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [nextCard(memberNext(row, ro.ok ? me : null)), memberTiles(row), mv[2], mv[0], mv[1], mv[4]] },
+      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [mday, nextCard(memberNext(row, ro.ok ? me : null)), memberTiles(row), mv[2], mv[0], mv[1], mv[4]] },
       feedGroup(),
       { key: 'matches', label: 'المباريات والمواعيد', icon: 'trophy', one: true, nodes: [mv[5], mv[7]] },
       { key: 'team', label: 'الفريق', icon: 'users', nodes: [mv[3]] },
       { key: 'projects', label: 'المشاريع والمبادرات', icon: 'image', one: true, nodes: [mv[6]] }]);
     startSchedule([box]);
+    mday.start();
   }
 
   /* ------------------------------------------------------------------ PARENT */
@@ -3227,7 +3448,8 @@
     const kids = r.data || [];
     const jd = judgeDesk('pjdg');
     jd.start();
-    const home = [nextCard(parentNext(kids)), parentTiles(kids), announceFeed(), scoresCard()];
+    const mday = kids.length ? matchDayCard(kids[0].team_id, kids[0].team_name, 'parent') : null;
+    const home = [mday, nextCard(parentNext(kids)), parentTiles(kids), announceFeed(), scoresCard()];
     const nodes = home, games = [];
     const boxes = [];
     if (!kids.length) nodes.push(h('p', { class: 'a-empty a-card', text: 'لم تربط أي ابن أو ابنة بعد. اكتب رمز الفريق واسم الطفل أدناه.' }));
@@ -3253,6 +3475,7 @@
       { key: 'matches', label: 'المباريات والمشاريع', icon: 'trophy', one: true, nodes: games },
       { key: 'link', label: 'ربط ابن أو ابنة', icon: 'user-check', nodes: [link] }]);
     startSchedule(boxes);
+    if (mday) mday.start();
   }
 
   /* ------------------------------------------------------------------ SOCIAL (migration 0011): the news feed, customization,
@@ -3958,6 +4181,7 @@
     if (S.stopChat) S.stopChat();
     if (S.dashObs) { S.dashObs.disconnect(); S.dashObs = null; }
     if (S.dashMo) { S.dashMo.disconnect(); S.dashMo = null; }
+    if (S.mdays) { Object.values(S.mdays).forEach(f => f()); S.mdays = null; }
     S.boardP = null; S.sh = null; S.feed = null; S.lastGroups = null; S.myColor = null;
     document.documentElement.classList.remove('is-dash');
     S.modeSet = null;

@@ -290,6 +290,9 @@ class Fake {
       return deny();
     }
     if (table === 'public_teams') return method === 'GET' ? finish(this.teams.filter(t => t.status === 'approved').map(t => ({ id: t.id, name: t.name, area: t.area }))) : deny();
+    // migration 0007: the live table is public (scores and times, never notes or who entered them)
+    if (table === 'yb_match_live') return method === 'GET' ? finish(this.live.map(x => ({ comp: x.comp, match_key: x.match_key, a: x.a, b: x.b, sa: x.sa, sb: x.sb, ca: x.ca || 0, cb: x.cb || 0, ra: x.ra || 0, rb: x.rb || 0,
+      status: x.status, started_at: x.started_at || null, updated_at: x.updated_at || null, approved_at: x.approved_at || null }))) : deny();
     if (table === 'yb_announcements') {   // migration 0009: anon reads published «all»; each role its own; the admin everything
       if (method !== 'GET') return deny();
       if ((q.get('select') || '').includes('created_by')) return err(401, '42501', 'permission denied for column created_by');
@@ -3523,6 +3526,151 @@ section('the news feed, customization, the handover and the statistics (0011): o
   await close(A3);
 }
 
+/* ================================================================ Excel export (js/xlsx-lite.js, SPEC 4.10.8) */
+section('Excel export: the admin\'s workbook, the copy for sharing, the leader\'s team file');
+{
+  const { execFileSync } = await import('node:child_process');
+  const SCRATCH_TMP = (await import('node:os')).tmpdir();
+  const py = ['python3.13', 'python3'].find(x => { try { execFileSync(x, ['-c', 'import openpyxl'], { stdio: 'pipe' }); return true; } catch (e) { return false; } });
+  const readBook = f => JSON.parse(execFileSync(py, ['-c', `
+import json, sys, openpyxl
+wb = openpyxl.load_workbook(sys.argv[1])
+print(json.dumps({ws.title: {"rtl": bool(ws.sheet_view.rightToLeft), "rows": [[c.value for c in r] for r in ws.iter_rows()]} for ws in wb.worksheets}, ensure_ascii=False, default=str))`, f], { encoding: 'utf8' }));
+  if (!py) console.log('  (openpyxl is not installed: the Excel checks are skipped)');
+  else {
+    const fake = new Fake();
+    fake.addUser({ email: 'boss@t.test', name: 'المشرف', role: 'member' }); fake.setAdmin('boss@t.test');
+    fake.addUser({ email: 'lz@t.test', name: 'قائد السنابل', role: 'leader' });
+    fake.addUser({ email: 'lw@t.test', name: 'قائد الفجر', role: 'leader' });
+    const kids = ['سالم أحمد علي', 'يوسف خالد عمر', 'أنس بكر سعيد', 'زيد محمد حسن'].map((n, i) => ({ name: n, age: 11 + i, consent: i ? 'pending' : 'received', gname: 'ولي ' + n.split(' ')[1], gphone: '091111111' + i }));
+    const TS = fake.seedTeam({ leaderEmail: 'lz@t.test', name: 'السنابل', status: 'approved', members: kids });
+    const TW = fake.seedTeam({ leaderEmail: 'lw@t.test', name: 'الفجر', status: 'approved', members: [{ name: 'عمر فاروق نزار', age: 13 }, { name: 'حمزة سامي طه', age: 12 }, { name: 'معاذ رامي وليد', age: 14 }, { name: 'بلال هاني زكي', age: 15 }] });
+    fake.events.push({ id: fake.uid(), competition: 'football', kind: 'match', title: 'السنابل ضد الفجر', starts_at: '2026-11-20T13:00:00Z', place: 'ملعب الحي', team_ids: [TS.id, TW.id], category: null, status: 'scheduled', note: null },
+      { id: fake.uid(), competition: 'quran', kind: 'recitation', title: 'تسميع الفجر', starts_at: '2026-11-21T13:00:00Z', place: 'المسجد', team_ids: [TW.id], category: null, status: 'scheduled', note: null });
+    let st = YT.setTeams(YT.emptyState(), [{ id: TS.id, name: 'السنابل' }, { id: TW.id, name: 'الفجر' }, ...Array.from({ length: 10 }, (_, i) => ({ id: 'x' + i, name: 'فريق ' + (i + 1) }))]);
+    st = YT.drawGroups(st, () => 0.5);
+    const grp = st.groups.find(x => x.includes(TS.id)), opp = grp.find(x => x !== TS.id);
+    st = YT.setResult(st, { a: TS.id, b: opp, sa: 3, sb: 1, date: '2026-11-20', time: '16:00' });
+    fake.setTournament(st);
+    fake.subs.push({ id: fake.uid(), team_id: TS.id, kind: 'project', title: 'سقيا الحي', value_text: 'الإحسان', place: 'neighborhood', done_on: '2026-11-10', summary: 'وزعنا الماء', results: '40 عبوة',
+      members_n: 4, beneficiaries: 40, photos: ['a/b.jpg'], status: 'accepted', review_note: null, created_at: fake.now(), updated_at: fake.now(), featured: true });
+    const A = await open(fake, { label: 'xlsx-admin' });
+    await settle(A); await signInOk(A, 'boss@t.test');
+    await A.locator('#at-export').click();
+    await A.waitForSelector('[data-xlsx] [data-fk=xlsx]');
+    check('the export tab offers «نزّل ملف Excel الكامل» and the copy for sharing, with the privacy note', await A.locator('[data-fk=xlsx-share]').isVisible() && /أسماء قاصرين/.test(await A.locator('[data-xlsx]').innerText()));
+    const grab = async (pg, fk) => { const [d] = await Promise.all([pg.waitForEvent('download'), pg.locator(`[data-fk=${fk}]`).click()]); const f = path.join(fs.mkdtempSync(path.join(SCRATCH_TMP, 'ybx-')), 'book.xlsx'); await d.saveAs(f); const book = readBook(f); fs.rmSync(path.dirname(f), { recursive: true, force: true }); return { name: d.suggestedFilename(), book }; };
+    const full = await grab(A, 'xlsx');
+    const names = Object.keys(full.book);
+    check('a real .xlsx named for the day', /^yanabee-\d{4}-\d\d-\d\d\.xlsx$/.test(full.name), full.name);
+    check('eight sheets: الفرق, الأعضاء, الجدول, النتائج, الترتيب, الدرجات, تفاصيل الدرجات, التسليمات', names.join('|') === 'الفرق|الأعضاء|الجدول|النتائج|الترتيب|الدرجات|تفاصيل الدرجات|التسليمات', names.join('|'));
+    check('every sheet reads right to left', Object.values(full.book).every(s => s.rtl));
+    const teams = full.book['الفرق'].rows;
+    const sn = teams.find(r => r[0] === 'السنابل');
+    check('الفرق: name, status, leader, 5 members, 5 minors (the leader\'s age unknown), 1 consent', sn && sn[2] === 'معتمد' && sn[3] === 'قائد السنابل' && sn[4] === 5 && sn[6] === 1, JSON.stringify(sn));
+    const mem = full.book['الأعضاء'].rows;
+    check('الأعضاء (the full file): every member with age and guardian', mem.some(r => r.includes('سالم أحمد علي') && r.includes(11) && r.includes('0911111110')) && mem.length === 1 + 10);
+    const ev = full.book['الجدول'].rows;
+    check('الجدول: every date with time, kind, place and the teams by name', ev.length === 3 && ev[1].includes('السنابل ضد الفجر') && ev[1].includes('ملعب الحي') && ev[1].includes('السنابل، الفجر') && ev[1].includes('مباراة'));
+    const res = full.book['النتائج'].rows;
+    check('النتائج: every group match; the played one 3 – 1 with its date', res.length === 1 + 18 && res.some(r => r.includes('السنابل') && r.includes(3) && r.includes(1) && r.includes('2026-11-20') && r.includes('انتهت')));
+    const tbl = full.book['الترتيب'].rows;
+    check('الترتيب: 12 rows of the group tables, السنابل with 3 points', tbl.length === 13 && tbl.some(r => r[3] === 'السنابل' && r[11] === 3));
+    const subs = full.book['التسليمات'].rows;
+    check('التسليمات: title, place, status, beneficiaries, photos counted (never their paths)', subs[1].includes('سقيا الحي') && subs[1].includes('السكن والحي') && subs[1].includes('مقبول') && subs[1].includes(40) && !JSON.stringify(subs).includes('a/b.jpg'));
+    check('no chat and no e-mail in the workbook', !/@t\.test/.test(JSON.stringify(full.book)));
+    const share = await grab(A, 'xlsx-share');
+    check('the copy for sharing: no الأعضاء, no تفاصيل الدرجات, and no child\'s name anywhere', !share.book['الأعضاء'] && !share.book['تفاصيل الدرجات'] && !/سالم|يوسف|أنس|زيد|عمر فاروق|0911/.test(JSON.stringify(share.book)) && /^yanabee-share-/.test(share.name));
+    check('…with the six other sheets', Object.keys(share.book).length === 6);
+    check('«بدأ تنزيل الملف» is announced with the sheet names', /بدأ تنزيل الملف \(6 أوراق/.test(await A.locator('[data-xlsx-status]').innerText()));
+    check('the CSV export is still there', (await A.locator('[data-fk=csv]').count()) === 1);
+    check('admin console clean (Excel)', A.errs.length === 0, A.errs.join('|'));
+    await close(A);
+    const L = await open(fake, { label: 'xlsx-leader' });
+    await settle(L); await signInOk(L, 'lz@t.test');
+    await L.waitForSelector('[data-fk=xlsx-team]', { timeout: 8000 });
+    const lb = await grab(L, 'xlsx-team');
+    check('the leader\'s file: الفريق, الأعضاء, المواعيد (a plain file name: phones refuse some Arabic names; the team is inside)', Object.keys(lb.book).join('|') === 'الفريق|الأعضاء|المواعيد' && /^yanabee-team-\d{4}-\d\d-\d\d\.xlsx$/.test(lb.name) && lb.book['الفريق'].rows[1][0] === 'السنابل', lb.name);
+    check('…their own members with guardians and consent', lb.book['الأعضاء'].rows.length === 6 && lb.book['الأعضاء'].rows.some(r => r.includes('سالم أحمد علي') && r.includes('استُلمت')));
+    check('…only their team\'s dates (not the other team\'s recitation)', lb.book['المواعيد'].rows.length === 2 && !JSON.stringify(lb.book['المواعيد']).includes('تسميع الفجر'));
+    check('…and nothing of the other team', !/عمر فاروق|حمزة|معاذ|بلال/.test(JSON.stringify(lb.book)));
+    check('leader console clean (Excel)', L.errs.length === 0, L.errs.join('|'));
+    await close(L);
+  }
+}
+
+/* ================================================================ match day */
+section('match day: «يوم المباراة» for the team, «مباريات اليوم» for the admin and on the board');
+{
+  const fake = new Fake();
+  fake.addUser({ email: 'boss@t.test', name: 'المشرف', role: 'member' }); fake.setAdmin('boss@t.test');
+  fake.addUser({ email: 'lm@t.test', name: 'قائد الموج', role: 'leader' });
+  fake.addUser({ email: 'lq@t.test', name: 'قائد القمر', role: 'leader' });
+  const mk = n => Array.from({ length: 4 }, (_, i) => ({ name: `${n} ${i + 1}`, age: 13, consent: 'received' }));
+  const TM = fake.seedTeam({ leaderEmail: 'lm@t.test', name: 'الموج', status: 'approved', members: mk('لاعب الموج') });
+  const TQ = fake.seedTeam({ leaderEmail: 'lq@t.test', name: 'القمر', status: 'approved', members: mk('لاعب القمر') });
+  const others = Array.from({ length: 10 }, (_, i) => ({ id: 'md' + i, name: 'فريق ' + (i + 1) }));
+  let st = YT.setTeams(YT.emptyState(), [{ id: TM.id, name: 'الموج' }, { id: TQ.id, name: 'القمر' }, ...others]);
+  st = YT.drawGroups(st, () => 0.5);
+  const gM = st.groups.find(x => x.includes(TM.id));
+  const opp = gM.find(x => x !== TM.id && x !== TQ.id);
+  const d = new Date(), pad = n => String(n).padStart(2, '0');
+  const today = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const later = new Date(d.getTime() + 2 * 3600e3 + 20 * 60e3);
+  const kick = later.getDate() === d.getDate() ? `${pad(later.getHours())}:${pad(later.getMinutes())}` : '23:59';
+  st = YT.setSchedule(st, TM.id, opp, { date: today, time: kick });
+  const gO = st.groups.find(x => !x.includes(TM.id) && !x.includes(TQ.id));
+  st = YT.setSchedule(st, gO[0], gO[1], { date: today, time: '10:00' });
+  fake.setTournament(st);
+  const oppName = others.find(o => o.id === opp).name;
+  fake.events.push({ id: fake.uid(), competition: 'football', kind: 'match', title: 'الموج ضد ' + oppName, starts_at: later.toISOString(), place: 'ملعب المدينة', team_ids: [TM.id], category: null, status: 'scheduled', note: null });
+  const L = await open(fake, { label: 'mday-leader', mobile: true });
+  await settle(L); await signInOk(L, 'lm@t.test');
+  await L.waitForSelector('[data-matchday]:not([hidden])', { timeout: 8000 });
+  let md = await L.locator('[data-matchday]').innerText();
+  check('before kick-off: «اليوم مباراتكم», the opponent, the time and the place', /اليوم مباراتكم/.test(md) && md.includes(oppName) && md.includes('الموج') && (md.includes('الساعة ' + kick)) && /ملعب المدينة/.test(md));
+  check('…a countdown («تبدأ بعد …»)', /تبدأ بعد/.test(md) || kick === '23:59');
+  check('…the leader\'s reminders (arrive 20 minutes early, attendance)', /قبل الموعد بعشرين دقيقة/.test(md) && /سجّله في «المباريات والمواعيد»/.test(md));
+  check('the card comes first in «نظرة عامة»', await L.evaluate(() => document.querySelector('#sec-home .a-grid').firstElementChild.hasAttribute('data-matchday')));
+  check('…with links to the board and the big screen', (await L.locator('[data-matchday] a[href="tournament.html"]').count()) === 1 && (await L.locator('[data-matchday] a[href="tournament.html?screen=1"]').count()) === 1);
+  await L.locator('[data-matchday] [data-fk=mday-go]').click();
+  check('«الحضور والمواعيد» goes to the matches section', await L.evaluate(() => !!document.activeElement.closest('#sec-matches')));
+  const key = YT.pairKey(TM.id, opp);
+  fake.live.push({ comp: 'football', match_key: key, a: opp, b: TM.id, sa: 1, sb: 2, status: 'live', started_at: new Date(Date.now() - 22.5 * 60e3).toISOString(), updated_at: new Date().toISOString() });
+  await reload(L); await L.waitForSelector('[data-matchday].is-live', { timeout: 8000 });
+  md = await L.locator('[data-matchday]').innerText();
+  check('during the match: «جارية الآن · الدقيقة 23», the live score from the team\'s side', /جارية الآن · الدقيقة 2[34]/.test(md) && (await L.locator('.a-mday-s').getAttribute('aria-label')) === 'النتيجة 2 مقابل 1');
+  check('no countdown and no reminders once it started', !/تبدأ بعد|بعشرين دقيقة/.test(md));
+  fake.live[0].status = 'final';
+  await reload(L); await L.waitForSelector('[data-matchday].is-wait', { timeout: 8000 });
+  check('after the whistle: «بانتظار اعتماد الإدارة», not counted yet', /بانتظار اعتماد الإدارة/.test(await L.locator('[data-matchday]').innerText()));
+  check('phone width: no sideways scroll with the card', (await overflow(L)) <= 0);
+  check('leader console clean (match day)', L.errs.length === 0, L.errs.join('|'));
+  await close(L);
+  const Q = await open(fake, { label: 'mday-other' });
+  await settle(Q); await signInOk(Q, 'lq@t.test');
+  await Q.waitForSelector('[data-next]', { timeout: 8000 });
+  await sleep(600);
+  check('a team with no match today: no match-day card', await Q.locator('[data-matchday]').isHidden());
+  await close(Q);
+  const A = await open(fake, { label: 'mday-admin' });
+  await settle(A); await signInOk(A, 'boss@t.test');
+  await A.locator('#at-results').click();
+  await A.waitForSelector('[data-today]:not([hidden])', { timeout: 8000 });
+  const td = await A.locator('[data-today]').innerText();
+  check('admin «النتائج»: «مباريات اليوم (2)», earliest first, the live one marked', /مباريات اليوم \(2\)/.test(td) && (await A.locator('[data-today] .a-today-i').first().innerText()).includes(kick < '10:00' ? kick : '10:00') && /بانتظار الاعتماد/.test(td));
+  check('admin console clean (match day)', A.errs.length === 0, A.errs.join('|'));
+  await close(A);
+  const B = await open(fake, { path: 'tournament.html', label: 'mday-board' });
+  await B.waitForSelector('[data-today]', { timeout: 8000 });
+  const bt = await B.locator('[data-today]').innerText();
+  check('the public board: «اليوم يوم مباريات (2)» with the times', /اليوم يوم مباريات \(2\)/.test(bt) && bt.includes('10:00') && bt.includes(kick));
+  await B.goto(`${ORIGIN}/tournament.html?screen=1`);
+  await B.waitForSelector('[data-screen]', { timeout: 8000 });
+  check('the big screen lists «مباريات اليوم» instead of the next matches', /مباريات اليوم/.test(await B.locator('[data-screen]').innerText()) && (await B.locator('[data-screen-today] li').count()) === 2);
+  await close(B);
+}
+
 /* ================================================================ the phone dashboard: bottom bar, «المزيد», «خطوتك التالية» */
 section('the phone dashboard: a bottom bar like the apps, «المزيد», and «خطوتك التالية» for each role');
 {
@@ -3548,7 +3696,7 @@ section('the phone dashboard: a bottom bar like the apps, «المزيد», and 
   // «خطوتك التالية» walks the leader through the registration
   let nx = await P.locator('[data-next]').innerText();
   check('leader, 4 of 5: «أضف 1 عضوًا إلى فريقك», step 1 of 4 is current', /أضف 1 عضوًا إلى فريقك/.test(nx) && /0 من 4/.test(nx) && (await P.locator('[data-next] li[aria-current=step]').innerText()).includes('الأعضاء'));
-  check('the card comes first in «نظرة عامة»', await P.evaluate(() => document.querySelector('#sec-home .a-grid').firstElementChild.hasAttribute('data-next')));
+  check('the card comes first in «نظرة عامة» (after the match-day card, which shows only on a match day)', await P.evaluate(() => [...document.querySelector('#sec-home .a-grid').children].find(c => !c.hidden).hasAttribute('data-next')));
   await P.locator('[data-next] [data-fk=next-go]').click();
   check('«افتح قائمة الفريق» takes the keyboard to the team list', await P.evaluate(() => !!document.activeElement.closest('section') && /أعضاء|القائمة/.test(document.activeElement.textContent)));
   fake.members.push({ id: fake.uid(), team_id: T.id, full_name: 'عمر حسن', age: 14, guardian_name: 'ولي', guardian_phone: '0912345678', is_leader: false, user_id: null, consent_status: 'pending', consent_at: null, created_at: fake.now() });

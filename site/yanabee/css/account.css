@@ -706,6 +706,35 @@ html[data-theme=dark] .a-an{--viz-1:#3987e5;--viz-2:#d95926;--viz-3:#199e70;--vi
 .a-next-go{display:inline-flex;align-items:center;gap:6px;min-height:44px}
 .a-next-go .i{width:18px;height:18px}
 
+/* ---- match day: «يوم المباراة» (the team) and «مباريات اليوم» (officer, admin) */
+.a-mday,.a-today{grid-column:1/-1;display:grid;gap:10px}
+.a-mday{background:linear-gradient(135deg,color-mix(in oklab,var(--brand) 14%,var(--surface)),var(--surface) 70%);border-color:color-mix(in oklab,var(--brand) 40%,var(--line))}
+.a-mday.is-live{border-color:#c2410c;box-shadow:0 0 0 3px color-mix(in oklab,#c2410c 18%,transparent)}
+.a-mday-top{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.a-mday-top h3{display:flex;align-items:center;gap:8px;margin:0}
+.a-mday h3{margin:0;font-size:1.15rem}
+.a-mday-tag{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:var(--brand);color:#fff;font-size:.82rem;font-weight:700}
+[data-theme=dark] .a-mday-tag{color:#04131a}
+.a-mday-tag .i{width:16px;height:16px}
+.a-mday-live{display:inline-flex;align-items:center;gap:6px;color:#c2410c;font-weight:700;font-size:.9rem}
+[data-theme=dark] .a-mday-live{color:#ff9a6b}
+.a-mday-live i{width:10px;height:10px;border-radius:50%;background:currentColor;animation:a-pulse 1.4s ease-in-out infinite}
+@keyframes a-pulse{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.a-mday-live i{animation:none}}
+.a-mday-vs{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;text-align:center}
+.a-mday-t{font-size:1.05rem;overflow-wrap:anywhere}
+.a-mday-s{font-size:2rem;font-variant-numeric:tabular-nums;color:var(--brand);letter-spacing:.04em}
+.a-mday-x{color:var(--ink-2);font-weight:700}
+.a-mday-when{margin:0;text-align:center}
+.a-mday-count{margin:0;text-align:center;font-weight:700;font-size:1.05rem;color:var(--brand)}
+.a-mday-tips{margin:0;padding-inline-start:20px;display:grid;gap:4px;font-size:.92rem;color:var(--ink-2)}
+.a-today-l{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.a-today-i{display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2)}
+.a-today-time{font-variant-numeric:tabular-nums;font-weight:700;color:var(--brand);min-width:44px}
+.a-today-t{display:grid;gap:2px;min-width:0}
+.a-today-s{font-variant-numeric:tabular-nums;font-size:1.1rem}
+@media (max-width:520px){.a-today-i{grid-template-columns:auto 1fr auto}.a-today-i .a-chip{grid-column:2/-1;justify-self:start}}
+
 /* ---- phone: the bottom bar and «المزيد» (900px and less) */
 .a-dock{display:none}
 html.a-lock{overflow:hidden}

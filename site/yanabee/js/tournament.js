@@ -1008,6 +1008,8 @@
     box.append(h('div', { class: 'tn-sports' }, fbCard, chCard));
     const now = nowCard();
     if (now) box.prepend(now);
+    const td = todayCard();
+    if (td) box.prepend(td);
     const nx = nextMatches();
     box.append(h('section', { class: 'tn-card', 'aria-labelledby': 'tn-next-h' }, h('h3', { id: 'tn-next-h' }, 'المباريات القادمة'),
       nx.length ? h('ul', { class: 'tn-next' }, nx.map(x => h('li', null, h('span', null, x.text), h('button', { type: 'button', class: 'tn-link-btn', onclick: () => setTab(x.tab) }, 'افتح'))))
@@ -1057,6 +1059,42 @@
       done.length ? [h('h4', { class: 'tn-sub' }, 'آخر النتائج المعتمدة'), h('ul', { class: 'tn-now-l' }, done.map(line))] : null,
       h('p', { class: 'tn-fine' }, 'النتيجة الجارية أو المنتظرة لا تدخل الترتيب حتى تعتمدها الإدارة.'));
   }
+  // match day: every football match dated today on the board (its schedule or its result), earliest first
+  function localDay(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+  function todayMatches() {
+    const { fb } = view();
+    if (!fb || !fb.drawn) return [];
+    const day = localDay(new Date()), out = [];
+    const take = (label, rounds) => (rounds || []).forEach(r => r.matches.forEach(m => {
+      const d = (m.res && m.res.date) || (m.sched && m.sched.date) || '';
+      if (d === day) out.push({ m, label: `${label} · الجولة ${r.round}`, time: (m.res && m.res.time) || (m.sched && m.sched.time) || '' });
+    }));
+    fb.groups.forEach(g => take('المجموعة ' + g.name, g.rounds));
+    if (fb.final) take('التصفيات', fb.final.rounds);
+    return out.sort((x, y) => String(x.time).localeCompare(String(y.time)));
+  }
+  function todayScore(t) {
+    if (t.m.res) return `${t.m.sa} – ${t.m.sb}`;
+    const x = liveRow('football', t.m.a, t.m.b);
+    return x ? (x.a === t.m.a ? `${x.sa} – ${x.sb}` : `${x.sb} – ${x.sa}`) : '';
+  }
+  // «مباريات اليوم» on the board: shown only on a day with matches
+  function todayCard() {
+    const list = todayMatches();
+    if (!list.length) return null;
+    return h('section', { class: 'tn-card tn-today', 'aria-labelledby': 'tn-today-h', 'data-today': '' },
+      h('div', { class: 'tn-chead' }, h('h3', { id: 'tn-today-h' }, `اليوم يوم مباريات (${list.length})`),
+        h('a', { class: 'tn-link-btn', href: '?screen=1', target: '_blank', rel: 'noopener' }, 'شاشة العرض')),
+      h('ul', { class: 'tn-today-l' }, list.map(t => {
+        const x = t.m.res ? null : liveRow('football', t.m.a, t.m.b), s = todayScore(t);
+        return h('li', { class: 'tn-today-i' + (x && x.status === 'live' ? ' is-live' : '') },
+          h('span', { class: 'tn-today-time' }, t.time || '—'),
+          h('span', { class: 'tn-today-t' }, h('b', null, `${nm(t.m.a)} ضد ${nm(t.m.b)}`), h('small', null, t.label)),
+          s ? h('b', { class: 'tn-now-s', dir: 'rtl' }, s) : null,
+          t.m.res ? h('em', { class: 'tn-chip live-approved' }, 'انتهت') : x ? liveChip(x) : h('em', { class: 'tn-chip' }, 'لم تبدأ'));
+      })),
+      h('p', { class: 'tn-fine' }, 'تتحدّث هذه القائمة وحدها كل بضع ثوانٍ أثناء المباريات.'));
+  }
   // the big screen (?screen=1): live matches large, one group table at a time, the next matches, a clock
   function renderScreen() {
     const { fb } = view();
@@ -1068,6 +1106,7 @@
     const groups = fb.drawn ? fb.groups : [];
     const g = groups.length ? groups[A.screenIdx % groups.length] : null;
     const nx = nextMatches().slice(0, 4);
+    const today = todayMatches();
     const clock = new Date().toLocaleTimeString('ar-u-nu-latn', { hour: 'numeric', minute: '2-digit' });
     root.replaceChildren(h('div', { class: 'tns', 'data-screen': '' },
       h('header', { class: 'tns-h' }, h('b', null, 'مشروع ينابيع · البطولة الآن'), h('span', { class: 'tns-clock' }, clock),
@@ -1076,8 +1115,11 @@
       h('div', { class: 'tns-grid' },
         g ? h('section', { class: 'tns-table', 'aria-label': 'ترتيب المجموعة ' + g.name }, h('h3', null, 'المجموعة ' + g.name), standings(g.table, 'ترتيب المجموعة ' + g.name, { qualified: g.first }))
           : h('section', { class: 'tns-table' }, h('p', { class: 'tns-empty' }, 'تظهر الجداول بعد القرعة.')),
-        h('section', { class: 'tns-next' }, h('h3', null, 'المباريات القادمة'),
-          nx.length ? h('ul', null, nx.map(x => h('li', null, x.text))) : h('p', { class: 'tns-empty' }, 'لا مباريات قادمة.')))));
+        today.length
+          ? h('section', { class: 'tns-next', 'data-screen-today': '' }, h('h3', null, 'مباريات اليوم'),
+            h('ul', null, today.map(t => h('li', null, `${t.time || '—'} · ${nm(t.m.a)} ضد ${nm(t.m.b)}` + (todayScore(t) ? ' · ' + todayScore(t) : '')))))
+          : h('section', { class: 'tns-next' }, h('h3', null, 'المباريات القادمة'),
+            nx.length ? h('ul', null, nx.map(x => h('li', null, x.text))) : h('p', { class: 'tns-empty' }, 'لا مباريات قادمة.')))));
     root.setAttribute('aria-busy', 'false');
   }
 
