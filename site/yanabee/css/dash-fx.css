@@ -520,6 +520,9 @@
 .a-adm textarea{width:100%;box-sizing:border-box;min-height:84px;padding:10px 14px;border-radius:12px;border:1.5px solid var(--line-2);background:var(--surface-2);color:var(--ink);font:inherit;resize:vertical}
 .a-adm textarea:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 4px color-mix(in oklab,var(--brand) 18%,transparent)}
 .a-adm .a-actions{margin-top:12px}
+.a-adm-follow{margin-top:12px}
+.a-adm-follow>.a-card{box-shadow:none;border:1px solid var(--line)}
+@media (min-width:1180px){.a-app.dash .a-sec>.a-grid:not(.one)>.a-mym{grid-column:1/-1}}
 @media (min-width:760px){.a-tool-row{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}.a-tool-tasks{grid-template-columns:1fr 1fr}}
 @media (min-width:1180px){.a-app.dash .a-home>.a-tool-w,.a-app.dash .a-sec>.a-grid:not(.one)>.a-theme,.a-app.dash .a-home>.a-theme,.a-app.dash .a-sec>.a-grid:not(.one)>.a-atk,.a-app.dash .a-sec>.a-grid:not(.one)>.a-aw,.a-app.dash .a-home>.a-aw{grid-column:1/-1}}
 @media (min-width:760px){.a-race-l>li{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);align-items:center}}

@@ -144,6 +144,12 @@ offline with PGlite, then goes live in one apply (slice 20).
     - Notifications: `week_theme` and `admin_task` (follow the announcements choice), `award` (always). Awards are encouragement, not the final prizes, and the card says so.
     - Tests: `supabase/tests/admin-tools.test.mjs` 89; `test-account.mjs` (25 new).
 
+35. [x] **«إنجازاتي», the admin's per-team follow-up, «تقرير الأسبوع»** (owner, 15 Nov 2026: "continue building"; the site and 0014-0017 are deployed). No database change.
+    - Member, in «رحلتي»: nine personal milestones from what is already recorded (first promise, kept 1 and 3, two weeks in a row, half and whole surah, 3 and 7 days of practice, a kind word). Updates as the member acts; nothing is announced on the first visit. Says it is not team points.
+    - Admin, in each approved team's card: «تابع أعضاء الفريق هذا الأسبوع» opens the leader's follow-up view, read only.
+    - Admin, in «أدوات الإدارة»: «تقرير الأسبوع», a text to copy (value of the week, teams, promises, ayahs, quiet teams, awards, leaders' tasks); team names and counts only.
+    - Tests: `test-account.mjs` 1059 (13 new).
+
 **Live database, 15 Nov 2026:** the owner approved the prompts; `yb_0014_team_identity`, `yb_0015_journey`, `yb_0016_journey_social` and `yb_0017_admin_tools` are APPLIED to project `dhjmdiqausbcyhrguinl`. Checked live: 32 functions present, none runnable by visitors, 9 new tables locked with no direct grants, the logo column and the private logo bucket exist. Still to do: redeploy the `yb-push` edge function so phones show the new notification words (in-app words already work), and upload the new zip to Cloudflare.
 
 25. [ ] *(Optional)* Private chess labels, Arabic email templates, a custom domain (SPEC 4.9); 🔒 a live quiz with a buzzer for hifz and fahm, only if the owner wants it (SPEC 4.11).

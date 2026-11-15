@@ -5288,6 +5288,68 @@ section('tools for the admin (0017): the value of the week, encouragement awards
   check('without the database update the tab says so plainly instead of showing broken forms', /تنتظر تحديث قاعدة البيانات/.test(await txt(Z.locator('[data-tools-off]'))) && (await Z.locator('[data-fk="th-save"], [data-fk="aw-give"], [data-fk="tk-add"]').count()) === 0 && Z.errs.length === 0, Z.errs.join('|'));
 }
 
+section('«إنجازاتي» for the member, «تابع أعضاء الفريق» and «تقرير الأسبوع» for the admin');
+{
+  const fake = new Fake();
+  fake.j15 = true; fake.j16 = true; fake.t17 = true;
+  fake.addUser({ email: 'boss@t.test', name: 'محمود المشرف', role: 'member' }); fake.setAdmin('boss@t.test');
+  fake.addUser({ email: 'ln@t.test', name: 'قائد النخيل', role: 'leader' });
+  fake.addUser({ email: 'lw@t.test', name: 'قائد الواحة', role: 'leader' });
+  const kid = fake.addUser({ email: 'kn@t.test', name: 'رامي عضو النخيل', role: 'member' });
+  const par = fake.addUser({ email: 'pn@t.test', name: 'والد رامي', role: 'parent' });
+  const TN = fake.seedTeam({ leaderEmail: 'ln@t.test', name: 'النخيل', status: 'approved', members: [{ name: 'رامي عضو النخيل', age: 14, consent: 'received' }, { name: 'ثان', age: 14 }, { name: 'ثالث', age: 14 }, { name: 'رابع', age: 14 }] });
+  const TW = fake.seedTeam({ leaderEmail: 'lw@t.test', name: 'الواحة', status: 'approved', members: Array.from({ length: 4 }, (_, i) => ({ name: `عضو الواحة ${i + 1}`, age: 14 })) });
+  fake.teams.forEach(t => { t.waitlist = false; });
+  const row = fake.members.find(m => m.full_name === 'رامي عضو النخيل'); row.user_id = kid.id;
+  fake.links.push({ parent_id: par.id, member_id: row.id, created_at: fake.now() });
+  const day = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const satD = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 1) % 7)); return d; })();
+  const sat = day(satD), prev = day(new Date(satD.getTime() - 7 * 86400e3 + 3600e3));
+  fake.pledges.push({ user_id: kid.id, team_id: TN.id, week: sat, field: 'home', body: 'أرتّب غرفتي كل يوم', done: true, parent_note: 'أحسنت يا رامي' }, { user_id: kid.id, team_id: TN.id, week: prev, field: 'kin', body: 'أزور جدتي', done: true, parent_note: null });
+  fake.hifzMarks.set(kid.id, [1, 2, 3, 4, 5, 6, 7]);
+  [0, 1, 2].forEach(i => fake.deedDays.push({ user_id: kid.id, day: day(new Date(Date.now() - i * 86400e3)) }));
+  fake.themes.set(sat, { title: 'الأمانة', body: null });
+  fake.awards.push({ id: 91, team_id: TN.id, member_id: null, kind: 'taawun', note: null, at: new Date().toISOString() });
+  fake.atasks.push({ id: 92, title: 'سلّموا الموافقات', due: null, at: fake.now() }); fake.atDone.add('92|' + TN.id);
+  const txt = async l => (await l.innerText()).replace(/\s+/g, ' ');
+
+  const K = await open(fake, { label: 'mym-member', mobile: true });
+  await settle(K); await signInOk(K, 'kn@t.test');
+  await K.waitForSelector('#sec-journey [data-my-milestones]', { timeout: 8000 });
+  await K.locator('.a-dock [data-dock=journey]').click();
+  const my = K.locator('[data-my-milestones]');
+  await K.waitForFunction(() => document.querySelector('[data-mym-n]').textContent === '6 من 9', null, { timeout: 8000 }).catch(() => {});
+  const on = await my.locator('[data-mym].on').evaluateAll(a => a.map(x => x.getAttribute('data-mym')).join(','));
+  check('«إنجازاتي» counts what the member did: first promise, a kept one, two weeks in a row, half the surah, three days, a kind word', on === 'first,kept1,streak,half,deeds3,word' && (await my.locator('[data-mym-n]').innerText()) === '6 من 9', on);
+  check('the streak is said in words, and what is left says how far', /وفّيت بوعدك أسبوعين متتاليين/.test(await my.locator('[data-mym-streak]').innerText()) && /وفِّ بثلاثة وعود \(2 من 3\)/.test(await txt(my.locator('[data-mym=kept3]'))) && /\(7 من 14\)/.test(await txt(my.locator('[data-mym=surah]'))));
+  check('on the first visit nothing is announced as new; it says this is not team points', (await my.locator('.a-bdgs-new').count()) === 0 && /لا تدخل في نقاط الفريق/.test(await txt(my)));
+  for (const n of [8, 9, 10, 11, 12, 13, 14]) await K.locator(`[data-hifz] [data-fk="ayah-${n}"]`).click();
+  await my.locator('[data-mym=surah].on').waitFor({ timeout: 8000 });
+  check('ticking the rest of the surah lights «السورة كاملة» at once and announces it', (await my.locator('[data-mym-n]').innerText()) === '7 من 9' && /إنجاز جديد: السورة كاملة/.test(await my.locator('.a-bdgs-new').innerText()));
+  check('member page: no overflow, console clean', (await overflow(K)) <= 0 && K.errs.length === 0, K.errs.join('|'));
+
+  const A = await open(fake, { label: 'mym-admin' });
+  await settle(A); await signInOk(A, 'boss@t.test', undefined, { home: true });
+  await A.locator(`[data-fk="tw-${TN.id}"]`).click();
+  const fb = A.locator(`[data-fk="af-${TN.id}"]`);
+  await fb.waitFor({ timeout: 8000 });
+  check('each approved team\'s card has «تابع أعضاء الفريق هذا الأسبوع», closed at first', (await fb.getAttribute('aria-expanded')) === 'false' && (await A.locator(`[data-admin-follow="${TN.id}"]`).isHidden()));
+  await fb.click();
+  await A.locator(`[data-admin-follow="${TN.id}"] [data-mf]`).first().waitFor({ timeout: 8000 });
+  const af = await txt(A.locator(`[data-admin-follow="${TN.id}"]`));
+  check('the admin reads the team\'s week as its leader does: the promise, kept, the parent\'s word', (await fb.getAttribute('aria-expanded')) === 'true' && /رامي عضو النخيل/.test(af) && /أرتّب غرفتي كل يوم/.test(af) && /وفّى بوعده/.test(af) && /كلمة وليّ الأمر: أحسنت يا رامي/.test(af));
+  check('read only: no cheer and no reminder (those are the leader\'s)', (await A.locator(`[data-admin-follow="${TN.id}"] [data-fk^="mf-cheer-"], [data-admin-follow="${TN.id}"] [data-fk="mf-nudge"]`).count()) === 0);
+  await A.locator('#at-tools').click();
+  await A.waitForFunction(() => /تقرير الأسبوع — يبدأ السبت/.test((document.querySelector('[data-week-report]') || {}).value || ''), null, { timeout: 8000 });
+  const rep = await A.locator('[data-week-report]').inputValue();
+  check('«تقرير الأسبوع» gathers the week: the value, teams, promises, ayahs, quiet teams, awards and tasks', /قيمة الأسبوع: الأمانة/.test(rep) && /الفرق: 2 معتمدة، 0 قيد المراجعة/.test(rep) && /الوعود هذا الأسبوع: كُتب 1، ووُفّي بـ 1/.test(rep) && /آيات عُلّمت في كل الفرق: 14/.test(rep)
+    && /فرق بلا نشاط هذا الأسبوع \(1\): الواحة/.test(rep) && /أوسمة مُنحت هذا الأسبوع \(1\): التميز في التعاون \(النخيل\)/.test(rep) && /مهمة القادة «سلّموا الموافقات»: أنجزها 1 من 2/.test(rep), rep);
+  check('the report names teams only, never a member or a promise', !/رامي|غرفتي|جدتي/.test(rep));
+  await A.locator('[data-fk="wr-build"]').click();
+  await A.waitForFunction(() => /حُدّث التقرير/.test(document.querySelector('[data-tool-report]').textContent), null, { timeout: 8000 });
+  check('admin: no overflow, console clean', (await overflow(A)) <= 0 && A.errs.length === 0, A.errs.join('|'));
+}
+
 section('network hosts and console');
 check('no request to any host other than the page itself, the fake Supabase and the shell fonts', badHosts.size === 0, [...badHosts].join());
 check('no console error and no uncaught exception in any page', consoleErrors.length === 0, consoleErrors.slice(0, 5).join(' || '));

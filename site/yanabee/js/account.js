@@ -1565,7 +1565,7 @@
   // the person's own notes on this device
   const mine = {
     get() { const st = dashStore.get(); return ((st.j || {})[S.uid || '-']) || {}; },
-    set(patch) { const st = dashStore.get(); st.j = st.j || {}; st.j[S.uid || '-'] = Object.assign({}, st.j[S.uid || '-'], patch); dashStore.set(st); }
+    set(patch) { const st = dashStore.get(); st.j = st.j || {}; st.j[S.uid || '-'] = Object.assign({}, st.j[S.uid || '-'], patch); dashStore.set(st); try { document.dispatchEvent(new Event('yb-journey')); } catch (e) { /* older browsers */ } }
   };
   const DEVICE_NOTE = 'يُحفظ على هذا الجهاز فقط، ولا يُرسل لأحد.';
 
@@ -1612,7 +1612,7 @@
         mine.set(patch);
         const again = () => J.subs.forEach(f => { try { f(); } catch (e) { /* a card that left the screen */ } });
         again();
-        YB.rpc('yb_my_pledges', { lim: 12 }).then(x => { if (x.ok && Array.isArray(x.data)) { S.pastP = x.data.filter(q => q.week !== wk); if (S.pastP.length) again(); } });   // 0016; absent on an older backend
+        YB.rpc('yb_my_pledges', { lim: 12 }).then(x => { S.pastP = x.ok && Array.isArray(x.data) ? x.data.filter(q => q.week !== wk) : []; again(); });   // 0016; absent on an older backend
         return d;
       }));
     },
@@ -1969,8 +1969,74 @@
         if (focus) focusOn(tk, focus);
       });
     }
-    wrap.append(th, aw, tk);
+    wrap.append(th, aw, tk, weekReportCard());
     drawTheme(); drawAwards(); drawTasks();
+  }
+
+  // «إنجازاتي»: the member's own milestones, from what they already recorded (promises, ayahs, days of practice, the
+  // words they received). Personal encouragement only: no points, no comparison with other members.
+  function myMilestonesCard() {
+    const el = h('section', { class: 'a-card a-bdgs a-mym', 'aria-labelledby': 'mym-h', 'data-my-milestones': '' });
+    function paint() {
+      const st = mine.get(), wk = weekKey(), all = st.pledges || {}, cur = all[wk] || null;
+      const past = S.has15 && Array.isArray(S.pastP) ? S.pastP : Object.keys(all).filter(k => k !== wk).sort().reverse().map(k => ({ week: k, done: !!all[k].done }));
+      const kept = S.has15 ? Number(st.kept) || 0 : Object.keys(all).filter(k => all[k].done).length;
+      const wrote = !!cur || past.length > 0, ay = (st.hifz || []).length;
+      const days = Array.from({ length: 7 }, (_, i) => localDay(new Date(today0().getTime() - i * 86400000))).filter(k => ((st.deeds || {})[k] || []).length).length;
+      let streak = cur && cur.done ? 1 : 0;   // weeks in a row with a kept promise, ending at this week or the last one
+      for (let i = 0, w = dayOf(wk); i < past.length; i++) { w = new Date(w.getTime() - 7 * 86400000 + 3600000); if (past[i].week === localDay(w) && past[i].done) streak++; else break; w = dayOf(localDay(w)); }
+      const list = [['first', '✍️', 'أول وعد', 'اكتب وعدك الأول', wrote ? 1 : 0, 1], ['kept1', '🤝', 'وعد صادق', 'وفِّ بوعد واحد', kept, 1], ['kept3', '🌟', 'ثلاثة وعود', 'وفِّ بثلاثة وعود', kept, 3],
+        ['streak', '🔥', 'أسبوعان متتاليان', 'وفِّ بوعدك أسبوعين متتاليين', streak, 2], ['half', '📖', 'نصف السورة', 'علّم 7 آيات من سورة الصف', ay, 7], ['surah', '🏅', 'السورة كاملة', 'علّم آيات السورة الأربع عشرة', ay, AYAHS],
+        ['deeds3', '🌱', 'ثلاثة أيام عمل', 'طبّق في 3 من آخر 7 أيام', days, 3], ['deeds7', '☀️', 'أسبوع كامل', 'طبّق كل يوم مدة أسبوع', days, 7],
+        ['word', '💬', 'كلمة طيبة', 'تصلك كلمة من وليّ أمرك أو تشجيع من قائدك', cur && (cur.note || cur.cheer) ? 1 : 0, 1]]
+        .map(b => ({ key: b[0], mark: b[1], title: b[2], how: b[3], have: Math.min(b[4], b[5]), need: b[5], on: b[4] >= b[5] }));
+      // nothing is announced until the account has answered, and what is already earned on the first visit is the baseline
+      const got = list.filter(b => b.on), settled = S.has15 === false || (S.has15 === true && Array.isArray(S.pastP)), seen = (dashStore.get().m || {})[S.uid || '-'] || null;
+      const fresh = settled && seen ? got.filter(b => !seen.includes(b.key)) : [];
+      if (settled && (!seen || fresh.length)) { const d = dashStore.get(); d.m = d.m || {}; d.m[S.uid || '-'] = got.map(b => b.key); dashStore.set(d); }
+      const rg = FX.ring(got.length / list.length * 100);
+      put(el, h('div', { class: 'a-bdgs-top' }, h('h3', { id: 'mym-h' }, icon('award'), h('span', { text: 'إنجازاتي' })), h('span', { class: 'a-bdgs-n' }, rg, h('b', { 'data-mym-n': '', text: `${got.length} من ${list.length}` }))),
+        h('p', { class: 'a-lead', text: 'محطاتك أنت في الرحلة، من وعودك وحفظك وأيام تطبيقك. للتشجيع فقط، ولا تدخل في نقاط الفريق.' }),
+        streak >= 2 ? h('p', { class: 'a-plg-ok', 'data-mym-streak': '', role: 'status' }, icon('check'), h('span', { text: `وفّيت بوعدك ${streak === 2 ? 'أسبوعين متتاليين' : `${streak} أسابيع متتالية`}. استمر.` })) : null,
+        fresh.length ? h('p', { class: 'a-bdgs-new', role: 'status' }, h('span', { 'aria-hidden': 'true', text: '🎉 ' }), `إنجاز جديد: ${fresh.map(b => b.title).join('، ')}`) : null,
+        h('ul', { class: 'a-bdgs-l' }, list.map(b => h('li', { class: 'a-bdg' + (b.on ? ' on' : '') + (fresh.includes(b) ? ' new' : ''), 'data-mym': b.key },
+          h('span', { class: 'a-bdg-m', 'aria-hidden': 'true', text: b.mark }), h('b', { text: b.title }),
+          b.on ? h('small', { class: 'a-bdg-ok' }, icon('check'), h('span', { text: 'تحقّق' })) : h('small', { class: 'a-bdg-how', text: b.how + (b.need > 1 ? ` (${b.have} من ${b.need})` : '') })))));
+      if (fresh.length) { FX.confetti({ count: 30 }); say(`إنجاز جديد: ${fresh.map(b => b.title).join('، ')}`); }
+    }
+    paint();
+    J.watch(el, paint);
+    const onChange = () => { if (!el.isConnected) { document.removeEventListener('yb-journey', onChange); return; } setTimeout(paint, 0); };   // repaint when the member ticks or writes something
+    document.addEventListener('yb-journey', onChange);
+    return el;
+  }
+
+  // «تقرير الأسبوع» (the admin): the week in a few lines to copy into a message. Team names and counts only.
+  function weekReportCard() {
+    const out = h('textarea', { class: 'a-sum-t', rows: 9, readOnly: true, 'aria-label': 'تقرير الأسبوع', 'data-week-report': '' });
+    const msg = h('small', { class: 'a-hint', role: 'status' });
+    const sum = (rows, k) => rows.reduce((n, t) => n + (Number(t[k]) || 0), 0);
+    const build = () => Promise.all([YB.rpc('yb_activity_board', { week: weekKey() }), YB.rpc('yb_theme_get', { week: weekKey() }), YB.rpc('yb_awards_all', {}), YB.rpc('yb_tasks_admin', {})]).then(([ab, th, aw, tk]) => {
+      const rows = ab.ok && Array.isArray(ab.data) ? ab.data : null, wk = dayOf(weekKey()).getTime();
+      const lines = [`تقرير الأسبوع — يبدأ السبت ${arDate(weekKey())}`];
+      if (th.ok && th.data && th.data.title) lines.push(`قيمة الأسبوع: ${th.data.title}`);
+      lines.push(`الفرق: ${A.teams.filter(t => t.status === 'approved').length} معتمدة، ${A.teams.filter(t => t.status === 'submitted').length} قيد المراجعة`);
+      if (rows) {
+        const quiet = rows.filter(t => !(Number(t.pledged) + Number(t.active) + Number(t.lead_tasks)));
+        lines.push(`الأعضاء الذين دخلوا بحساباتهم: ${sum(rows, 'joined')} من ${sum(rows, 'members')}`, `الوعود هذا الأسبوع: كُتب ${sum(rows, 'pledged')}، ووُفّي بـ ${sum(rows, 'kept')}`,
+          `آيات عُلّمت في كل الفرق: ${sum(rows, 'hifz_sum')}`, `أعضاء طبّقوا فعلًا هذا الأسبوع: ${sum(rows, 'active')}`, `فرق كتبت ميثاقها: ${rows.filter(t => t.pact).length} من ${rows.length}`,
+          quiet.length ? `فرق بلا نشاط هذا الأسبوع (${quiet.length}): ${quiet.map(t => t.team_name).join('، ')}` : 'كل الفرق المعتمدة نشطت هذا الأسبوع.');
+      }
+      if (aw.ok && Array.isArray(aw.data)) { const w = aw.data.filter(x => new Date(x.at).getTime() >= wk); lines.push(w.length ? `أوسمة مُنحت هذا الأسبوع (${w.length}): ${w.map(x => `${AWARD[x.kind] || ''} (${x.team_name})`).join('، ')}` : 'لم تُمنح أوسمة هذا الأسبوع.'); }
+      if (tk.ok && Array.isArray(tk.data)) tk.data.forEach(x => lines.push(`مهمة القادة «${x.title}»: أنجزها ${(x.done || []).length} من ${x.teams}`));
+      out.value = lines.join('\n');
+    });
+    const el = h('section', { class: 'a-card a-adm a-tool-w a-sum', 'aria-labelledby': 'wr-h', 'data-tool-report': '' }, h('h3', { id: 'wr-h' }, icon('file-text'), h('span', { text: 'تقرير الأسبوع' })),
+      h('p', { class: 'a-lead', text: 'ملخص الأسبوع في سطور، بأسماء الفرق والأعداد فقط. حدّثه ثم انسخه إلى رسالة أو اجتماع.' }), out,
+      h('div', { class: 'a-actions' }, btn('حدّث التقرير', 'repeat', 'btn-ghost', () => build().then(() => { msg.textContent = 'حُدّث التقرير.'; say(msg.textContent); }), { 'data-fk': 'wr-build' }),
+        btn('انسخ', 'check', 'btn-primary', async () => { await build(); msg.textContent = (await copyText(out.value)) ? 'نُسخ التقرير.' : 'تعذّر النسخ. حدّد النص وانسخه يدويًا.'; say(msg.textContent); }, { 'data-fk': 'wr-copy' })), msg);
+    build();
+    return el;
   }
 
   // «مسار المسابقة»: the four dates, where today falls, and the phase of the 12-week plan
@@ -3191,6 +3257,11 @@
       if (warn.length) body.append(h('ul', { class: 'a-warn' }, warn.map(w => h('li', {}, icon('alert'), h('span', { text: w })))));
       body.append(h('ul', { class: 'a-roster' }, ms.map(m => adminMember(m, t))));
       body.append(adminIdentity(t));
+      if (t.status === 'approved') {   // «متابعة الأعضاء» as the leader sees it, read only (0015); stays hidden on an older backend
+        const box = h('div', { class: 'a-adm-follow', 'data-admin-follow': t.id, hidden: true });
+        body.append(h('div', { class: 'a-actions' }, btn('تابع أعضاء الفريق هذا الأسبوع', 'users', 'btn-ghost', e => { const b = e.currentTarget; box.hidden = !box.hidden; b.setAttribute('aria-expanded', String(!box.hidden)); if (!box.hidden && !box.firstChild) box.append(membersFollowCard(t.id)); },
+          { 'data-fk': 'af-' + t.id, 'aria-expanded': 'false' })), box);
+      }
       body.append(regBar({ id: t.id, name: t.name, fee_status: t.fee_status, fee_receipt: t.fee_receipt, ref_code: t.ref_code, claimed: !!t.leader_id,
         waitlist: t.waitlist, wait_pos: waitPos(t), canMove: true },
         (msg, fk) => refreshAdmin(msg, fk)));
@@ -5229,7 +5300,7 @@
       box.node];
     dashLayout([
       { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [mHero, mday, nextCard(memberNext(row, ro.ok ? me : null)), memberTiles(row), mv[2], mStaff, mRun, mOpp, mChs, mHft, awardsCard(row.team_id), mBadges, mCal, mv[1], mPulse, mv[0], mv[4]] },
-      { key: 'journey', label: 'رحلتي', icon: 'route', nodes: [themeCard(), journeyCard(), pledgeCard(), deedCard(), surahCard(), teamBoardCard(row.team_id), raceCard(row.team_id), mPoints, honorsCard(), toolsCard(false)] },
+      { key: 'journey', label: 'رحلتي', icon: 'route', nodes: [themeCard(), journeyCard(), pledgeCard(), deedCard(), surahCard(), myMilestonesCard(), teamBoardCard(row.team_id), raceCard(row.team_id), mPoints, honorsCard(), toolsCard(false)] },
       feedGroup(),
       { key: 'matches', label: 'المباريات والمواعيد', icon: 'trophy', one: true, nodes: [mv[5], mv[7]] },
       { key: 'team', label: 'الفريق', icon: 'users', nodes: [mv[3], seekCard('seek')] },
