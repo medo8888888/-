@@ -44,6 +44,8 @@ export function pushMessage(kind, data) {
     week_theme: () => `قيمة هذا الأسبوع: ${clip(d.title, 50)}`,
     award: () => `نال ${team} وسامًا تشجيعيًا من إدارة المسابقة.`,
     admin_task: () => `مهمة جديدة من الإدارة: ${clip(d.title, 50)}`,
+    incident_new: () => 'سُجّلت واقعة جديدة في سجل الإصابات والطوارئ.',
+    lead_review: () => 'كتب المشرف تقييمك القيادي لهذا الأسبوع.',
     appeal_new: () => `تظلّم جديد من ${team} بانتظار البتّ.`,
     appeal_decided: () => `بُتّ في تظلّم ${team}: ${d.accepted ? 'قُبل' : 'رُفض'}.`,
   };

@@ -1805,7 +1805,7 @@
     comment_mute: 'أوقف تعليقات عضو', chat_mute: 'كتم عضوًا في غرفة القادة', chat_unmute: 'رفع الكتم في غرفة القادة', chat_purge: 'حذف رسائل من غرفة القادة', push_on: 'فعّل تنبيهات الهاتف', push_off: 'أوقف تنبيهات الهاتف',
     invite_send: 'دعا لاعبًا إلى فريقه', invite_accept: 'قبل دعوة فريق', invite_decline: 'اعتذر عن دعوة', invite_cancel: 'ألغى دعوة', seek_save: 'سجّل أنه يبحث عن فريق', seek_stop: 'أوقف البحث عن فريق',
     seek_guardian: 'وافق وليّ أمر على البحث عن فريق', seek_guardian_revoke: 'سحب وليّ أمر موافقته', attendance: 'سجّل الحضور', members_comment: 'كتب ملاحظة على القائمة', award_give: 'منح وسامًا تشجيعيًا', award_remove: 'سحب وسامًا',
-    team_logo_set: 'غيّر شعار فريق', team_logo_removed: 'أزال شعار فريق', appeal_file: 'قدّم تظلمًا', appeal_decide: 'بتّ في تظلم' };
+    team_logo_set: 'غيّر شعار فريق', team_logo_removed: 'أزال شعار فريق', appeal_file: 'قدّم تظلمًا', appeal_decide: 'بتّ في تظلم', incident_add: 'سجّل واقعة إصابة أو طارئ', incident_decide: 'قرّر في واقعة' };
   function logCard() {
     const el = h('section', { class: 'a-card a-logc', 'aria-labelledby': 'log-h', 'data-log': '', hidden: true });
     let all = false;
@@ -1971,7 +1971,7 @@
         if (focus) focusOn(tk, focus);
       });
     }
-    wrap.append(appealsDesk(false), th, aw, tk, weekReportCard());
+    wrap.append(appealsDesk(false), th, aw, tk, matchStaffDesk(), incidentsDesk(), leadReviewDesk(), weekReportCard());
     drawTheme(); drawAwards(); drawTasks();
   }
 
@@ -2109,6 +2109,164 @@
           })) : h('p', { class: 'a-empty', text: 'لم يُقدَّم أي تظلم.' }),
           h('div', { class: 'a-actions' }, btn('حدّث', 'repeat', 'btn-ghost', () => load('apd-refresh'), { 'data-fk': 'apd-refresh' })));
         if (focus) { const t = el.querySelector(`[data-fk="${focus}"]`); if (t) t.focus({ preventScroll: true }); }
+      });
+    }
+    load();
+    return el;
+  }
+
+  /* --- around a match and around the leaders (migration 0019): the referee and the adult in charge of safety (lg3,
+     lg5, lg8), the record of injuries and emergencies (lg5), the leader's notebook and the weekly leadership review
+     (leaders.txt). Hidden on an older backend. */
+  const MC_ERR = Object.assign({}, J_ERR, { head_no_return: 'تنص اللائحة: عند الاشتباه في إصابة الرأس أو الارتجاج لا يعود اللاعب للمباراة. أزل علامة «عاد للعب».', invalid_data: 'تحقق مما كتبته ثم حاول مرة أخرى.' });
+  const fField = (label, node, id) => h('div', { class: 'a-f' }, h('label', { for: id, class: 'a-l', text: label }), node);
+  const focusIn = (el, fk) => { const t = el.querySelector(`[data-fk="${fk}"]`); if (t) t.focus({ preventScroll: true }); };
+  const staffOnce = () => (S.staffP || (S.staffP = YB.rpc('yb_event_staff_list', {}).then(r => (r.ok && Array.isArray(r.data) ? r.data : null))));
+  // a team's people: who referees the next match, and who looks after safety
+  function matchStaffCard(teamId) {
+    const el = h('section', { class: 'a-card a-msf', 'aria-labelledby': 'msf-h', 'data-match-staff': '', hidden: true });
+    Promise.all([eventsOnce(), staffOnce()]).then(([evs, st]) => {
+      if (!evs || !st) return;
+      const next = evs.filter(e => e.status !== 'cancelled' && Array.isArray(e.team_ids) && e.team_ids.includes(teamId) && new Date(e.starts_at) > new Date(Date.now() - 3 * 3600e3)).find(e => st.some(x => x.event_id === e.id && (x.referee || x.safety)));
+      if (!next) return;
+      const x = st.find(q => q.event_id === next.id);
+      el.hidden = false;
+      put(el, h('h3', { id: 'msf-h' }, icon('shield'), h('span', { text: 'طاقم مباراتك القادمة' })), h('p', { class: 'a-lead', text: `${next.title} · ${fmtWhen(next.starts_at)}` }),
+        h('dl', { class: 'a-pact-d' }, [['حكم المباراة', x.referee || 'لم يُحدَّد بعد'], ['المكلّف بالسلامة', x.safety || 'لم يُحدَّد بعد'], ['حقيبة الإسعافات الأولية', x.first_aid ? 'مؤكَّدة' : 'لم تُؤكَّد بعد']].map(r => h('div', {}, h('dt', { text: r[0] }), h('dd', { text: r[1] })))),
+        h('small', { class: 'a-hint', text: 'قرارات الحكم في وقائع اللعب نهائية. لقائد الفريق أن يستفسر باحترام وفي وقت مناسب دون تعطيل اللعب.' }));
+      FX.reveal(el);
+    });
+    return el;
+  }
+  // staff: name the referee and the safety adult of each coming match
+  function matchStaffDesk() {
+    const el = h('section', { class: 'a-card a-adm a-tool-w', 'aria-labelledby': 'msd-h', 'data-staff-desk': '', hidden: true });
+    function load(focus) {
+      S.staffP = null;
+      Promise.all([eventsOnce(), staffOnce()]).then(([evs, st]) => {
+        if (!evs || !st) return;
+        const rows = evs.filter(e => e.kind === 'match' && e.status !== 'cancelled' && new Date(e.starts_at) > new Date(Date.now() - 6 * 3600e3)).slice(0, 12);
+        el.hidden = false;
+        put(el, h('h3', { id: 'msd-h' }, icon('shield'), h('span', { text: 'حكّام المباريات والسلامة' })),
+          h('p', { class: 'a-lead', text: 'تنص اللائحة على حكم لكل مباراة، وعلى حقيبة إسعافات أولية وشخص بالغ مكلّف بالسلامة. يرى أهل الفريقين الاسمين قبل المباراة.' }),
+          rows.length ? h('ul', { class: 'a-tool-l' }, rows.map(e => {
+            const x = st.find(q => q.event_id === e.id) || {}, ids = [uid('f'), uid('f'), uid('f')];
+            const rf = h('input', { id: ids[0], type: 'text', maxLength: 60, value: x.referee || '', 'data-fk': 'ms-ref-' + e.id }), sf = h('input', { id: ids[1], type: 'text', maxLength: 60, value: x.safety || '', 'data-fk': 'ms-safe-' + e.id });
+            const fa = h('input', { id: ids[2], type: 'checkbox', checked: !!x.first_aid, 'data-fk': 'ms-aid-' + e.id });
+            return h('li', { 'data-staff-row': e.id, class: x.referee ? 'ok' : '' }, h('div', { class: 'a-mf-h' }, h('b', { text: e.title }), chip(x.referee ? 'له حكم' : 'بلا حكم بعد', x.referee ? 'ok' : 'warn')), h('small', { text: fmtWhen(e.starts_at) }),
+              h('div', { class: 'a-tool-row' }, fField('حكم المباراة', rf, ids[0]), fField('المكلّف بالسلامة (بالغ)', sf, ids[1])), h('label', { class: 'a-check', for: ids[2] }, fa, h('span', { text: 'حقيبة الإسعافات الأولية جاهزة' })),
+              h('div', { class: 'a-actions' }, btn('احفظ', 'check', 'btn-primary', () => YB.rpc('yb_event_staff_set', { event_id: e.id, referee: rf.value || null, safety: sf.value || null, first_aid: fa.checked }).then(r => { if (!r.ok) { say(errMsg(r, MC_ERR)); return; } say('حُفظ طاقم المباراة.'); load('ms-save-' + e.id); }), { 'data-fk': 'ms-save-' + e.id, 'aria-label': `احفظ طاقم مباراة ${e.title}` })));
+          })) : h('p', { class: 'a-empty', text: 'لا مباريات قادمة في الجدول. أضف مواعيد المباريات من «الجدول» أولًا.' }));
+        if (focus) focusIn(el, focus);
+      });
+    }
+    load();
+    return el;
+  }
+  // staff: the record of injuries and emergencies; the admin decides whether a match continues or is replayed
+  const IN_KIND = { injury: 'إصابة', head: 'إصابة رأس أو اشتباه ارتجاج', emergency: 'طارئ' };
+  const IN_DEC = { pending: ['بانتظار قرار اللجنة', 'warn'], none: ['لا إجراء', 'ok'], continue: ['تُستكمل المباراة', 'ok'], replay: ['تُعاد المباراة', 'ok'] };
+  function incidentsDesk() {
+    const el = h('section', { class: 'a-card a-adm a-tool-w', 'aria-labelledby': 'ind-h', 'data-incidents': '', hidden: true });
+    let open = false;
+    function load(focus) {
+      YB.rpc('yb_incidents_list', {}).then(r => {
+        if (!r.ok || !r.data || !Array.isArray(r.data.rows)) return;
+        const can = r.data.can_decide === true, ids = [uid('f'), uid('f'), uid('f'), uid('f'), uid('f'), uid('f'), uid('f')], now = new Date(), pad = n => String(n).padStart(2, '0');
+        const teams = (A.teams && A.teams.length ? A.teams : (O.pub || [])).filter(t => !t.status || t.status === 'approved');
+        const kd = h('select', { id: ids[0], 'data-fk': 'in-kind' }, Object.keys(IN_KIND).map(k => h('option', { value: k, text: IN_KIND[k] })));
+        const mt = h('input', { id: ids[1], type: 'text', maxLength: 120, 'data-fk': 'in-match', placeholder: 'مثال: النور ضد الأمل' });
+        const tm = h('select', { id: ids[2], 'data-fk': 'in-team' }, [h('option', { value: '', text: 'لا فريق بعينه' })].concat(teams.map(t => h('option', { value: t.id, text: t.name }))));
+        const wn = h('input', { id: ids[3], type: 'datetime-local', 'data-fk': 'in-when', value: `${localDay(now)}T${pad(now.getHours())}:${pad(now.getMinutes())}` });
+        const sm = h('textarea', { id: ids[4], rows: 3, maxLength: 500, 'data-fk': 'in-summary', placeholder: 'ما الذي حدث؟ لا تكتب اسم الطفل: اكتب «لاعب من الفريق» أو رقم قميصه.' });
+        const ac = h('input', { id: ids[5], type: 'text', maxLength: 300, 'data-fk': 'in-action', placeholder: 'مثال: إسعاف أولي، وأُبلغ وليّ الأمر' });
+        const bk = h('input', { id: ids[6], type: 'checkbox', 'data-fk': 'in-returned' });
+        const msg = h('p', { class: 'a-live-msg', role: 'alert', hidden: true });
+        const form = h('div', { class: 'a-apl-f', hidden: !open }, fField('نوع الواقعة', kd, ids[0]), fField('المباراة', mt, ids[1]), fField('الفريق', tm, ids[2]), fField('وقت الواقعة', wn, ids[3]), fField('الواقعة', sm, ids[4]), fField('ما الذي اتُّخذ؟ (اختياري)', ac, ids[5]),
+          h('label', { class: 'a-check', for: ids[6] }, bk, h('span', { text: 'عاد اللاعب للعب' })), msg,
+          h('div', { class: 'a-actions' }, btn('سجّل الواقعة', 'check', 'btn-primary', () => {
+            const when = wn.value ? new Date(wn.value) : null;
+            if (mt.value.trim().length < 3 || sm.value.trim().length < 10 || !when || isNaN(when)) { msg.textContent = 'اكتب المباراة ووصف الواقعة (10 أحرف على الأقل).'; msg.hidden = false; say(msg.textContent); (mt.value.trim().length < 3 ? mt : sm).focus(); return; }
+            YB.rpc('yb_incident_add', { match_label: mt.value, kind: kd.value, happened_at: when.toISOString(), summary: sm.value, team_id: tm.value || null, action: ac.value || null, returned: bk.checked }).then(x => {
+              if (!x.ok) { msg.textContent = errMsg(x, MC_ERR); msg.hidden = false; say(msg.textContent); return; }
+              open = false; say('سُجّلت الواقعة.'); load('in-open');
+            });
+          }, { 'data-fk': 'in-send' })));
+        const pend = r.data.rows.filter(i => i.decision === 'pending').length;
+        el.hidden = false;
+        put(el, h('div', { class: 'a-bdgs-top' }, h('h3', { id: 'ind-h' }, icon('alert'), h('span', { text: 'سجل الإصابات والطوارئ' })), r.data.rows.length ? chip(pend ? `بانتظار القرار: ${pend}` : 'لا شيء معلّق', pend ? 'warn' : 'ok') : null),
+          h('p', { class: 'a-lead', text: 'توثّق اللائحة كل إصابة تستدعي التدخل أو طارئ يوقف المباراة، ثم تقرر اللجنة الاستكمال أو الإعادة. عند الاشتباه في إصابة الرأس لا يعود اللاعب للمباراة.' }),
+          h('div', { class: 'a-actions' }, btn(open ? 'أغلق النموذج' : 'سجّل واقعة', 'file-text', open ? 'btn-ghost' : 'btn-primary', () => { open = !open; load('in-open'); }, { 'data-fk': 'in-open', 'aria-expanded': String(open) })), form,
+          r.data.rows.length ? h('ul', { class: 'a-tool-l a-apl-l' }, r.data.rows.map(i => {
+            const nid = uid('f'), nt = h('input', { id: nid, type: 'text', maxLength: 300, 'data-fk': 'in-note-' + i.id, placeholder: 'ملاحظة القرار (اختياري)' });
+            const dec = d => YB.rpc('yb_incident_decide', { id: i.id, decision: d, note: nt.value || null }).then(x => { if (!x.ok) { say(errMsg(x, MC_ERR)); return; } say('سُجّل قرار اللجنة.'); load('in-open'); });
+            return h('li', { 'data-incident': i.id, class: i.decision }, h('div', { class: 'a-mf-h' }, h('b', { text: `${IN_KIND[i.kind] || ''} · ${i.match}` }), chip(IN_DEC[i.decision][0], IN_DEC[i.decision][1])),
+              h('small', { class: 'a-hint', text: `${i.team_name ? i.team_name + ' · ' : ''}${fmtWhen(i.happened_at)} · ${i.returned ? 'عاد اللاعب للعب' : 'لم يعد للعب'}` }), h('p', { text: i.summary }),
+              i.action ? h('p', { class: 'a-hint', text: 'ما اتُّخذ: ' + i.action }) : null, i.decision_note ? h('p', { class: 'a-mf-note', 'data-incident-note': '' }, icon('scale'), h('span', { text: 'قرار اللجنة: ' + i.decision_note })) : null,
+              can && i.decision === 'pending' ? h('div', { class: 'a-apl-d' }, fField('ملاحظة القرار', nt, nid), h('div', { class: 'a-actions' }, btn('لا إجراء', 'check', 'btn-ghost', () => dec('none'), { 'data-fk': 'in-none-' + i.id }),
+                btn('تُستكمل المباراة', 'repeat', 'btn-ghost', () => dec('continue'), { 'data-fk': 'in-cont-' + i.id }), btn('تُعاد المباراة', 'calendar', 'btn-primary', () => dec('replay'), { 'data-fk': 'in-replay-' + i.id }))) : null);
+          })) : h('p', { class: 'a-hint', text: 'لا وقائع مسجّلة. نسأل الله السلامة للجميع.' }));
+        if (focus) focusIn(el, focus);
+      });
+    }
+    load();
+    return el;
+  }
+  // the leader: «دفتر القيادة والأثر», one page a week, with the supervisor's note and the weekly review
+  const NB_FIELDS = [['task', 'المهمة الأسبوعية', 'ما المطلوب تنفيذه؟'], ['role_done', 'الدور المنفَّذ', 'ماذا فعلت؟'], ['skill', 'المهارة المكتسبة', 'ماذا تعلمت؟'], ['challenge', 'التحدي', 'ما الصعوبة؟'], ['next_step', 'التحسين القادم', 'ما الخطوة التالية؟']];
+  const NB_CRIT = ['الالتزام والانضباط', 'السلوك الإيجابي وتحمل المسؤولية', 'التواصل والعمل الجماعي', 'إدارة الأنشطة والتطبيق'];
+  const reviewBox = pg => (pg && pg.scores ? h('div', { class: 'a-nb-rev', 'data-nb-review': '' }, h('b', { text: `تقييم المشرف: ${pg.total} من 100` }),
+    h('div', { class: 'a-tb-g' }, NB_CRIT.map((c, i) => meter(c, pg.scores[i], 25, 'c' + (i + 1)))), pg.sup_note ? h('p', { class: 'a-mf-note cheer' }, icon('message'), h('span', { text: 'ملاحظة المشرف: ' + pg.sup_note })) : null) : null);
+  function notebookCard(teamId) {
+    const el = h('section', { class: 'a-card a-adm a-nb', 'aria-labelledby': 'nb-h', 'data-notebook': '', hidden: true });
+    function load(focus) {
+      YB.rpc('yb_notebook_mine', { team_id: teamId }).then(r => {
+        if (!r.ok || !Array.isArray(r.data)) return;
+        const wk = weekKey(), cur = r.data.find(x => x.week === wk) || null, past = r.data.filter(x => x.week !== wk);
+        const ins = NB_FIELDS.map(f => { const id = uid('f'), i = h('input', { id, type: 'text', maxLength: 200, 'data-fk': 'nb-' + f[0], placeholder: f[2], value: cur ? cur[f[0]] || '' : '' }); return [f, i, id]; });
+        const msg = h('p', { class: 'a-live-msg', role: 'alert', hidden: true });
+        el.hidden = false;
+        put(el, h('h3', { id: 'nb-h' }, icon('file-text'), h('span', { text: 'دفتر القيادة والأثر' })),
+          h('p', { class: 'a-lead', text: 'صفحة كل أسبوع عن تجربتك أنت في القيادة. يقرؤها مشرف المبادرة ويكتب ملاحظته في لقاء التقييم الأسبوعي. لا تكتب أسماء زملائك.' }),
+          ins.map(([f, i, id]) => fField(f[1], i, id)), msg,
+          h('div', { class: 'a-actions' }, btn(cur && cur.written ? 'حدّث صفحة هذا الأسبوع' : 'احفظ صفحة هذا الأسبوع', 'check', 'btn-primary', () => {
+            if (ins[0][1].value.trim().length < 3) { msg.textContent = 'اكتب المهمة الأسبوعية أولًا.'; msg.hidden = false; say(msg.textContent); ins[0][1].focus(); return; }
+            const a = { team_id: teamId, week: wk }; ins.forEach(([f, i]) => { a[f[0]] = i.value; });
+            YB.rpc('yb_notebook_save', a).then(x => { if (!x.ok) { msg.textContent = errMsg(x, MC_ERR); msg.hidden = false; say(msg.textContent); return; } say('حُفظت صفحة هذا الأسبوع. يقرؤها المشرف.'); load('nb-save'); });
+          }, { 'data-fk': 'nb-save' })),
+          reviewBox(cur) || h('p', { class: 'a-hint', 'data-nb-wait': '', text: 'لم يكتب المشرف تقييم هذا الأسبوع بعد. المعايير الأربعة لكل منها 25: ' + NB_CRIT.join('، ') + '.' }),
+          past.length ? h('details', { class: 'a-plg-past', 'data-nb-past': '' }, h('summary', { 'data-fk': 'nb-past', text: `صفحات سابقة (${past.length})` }), h('ol', {}, past.map(pg => h('li', {}, h('small', { text: 'أسبوع ' + arDate(pg.week) + (pg.total !== null && pg.total !== undefined ? ` · ${pg.total} من 100` : '') }),
+            h('span', { text: pg.task || 'لم تُكتب الصفحة' }), pg.next_step ? h('small', { text: 'التحسين القادم: ' + pg.next_step }) : null, pg.sup_note ? h('small', { text: 'ملاحظة المشرف: ' + pg.sup_note }) : null)))) : null);
+        if (focus) focusIn(el, focus);
+      });
+    }
+    load();
+    return el;
+  }
+  // the supervisor (the admin): «لقاء التقييم القيادي الأسبوعي»
+  function leadReviewDesk() {
+    const el = h('section', { class: 'a-card a-adm a-tool-w', 'aria-labelledby': 'lrd-h', 'data-lead-review': '', hidden: true });
+    function load(focus) {
+      YB.rpc('yb_notebook_admin', { week: weekKey() }).then(r => {
+        if (!r.ok || !Array.isArray(r.data)) return;
+        const done = r.data.filter(t => t.page && t.page.scores).length;
+        el.hidden = false;
+        put(el, h('div', { class: 'a-bdgs-top' }, h('h3', { id: 'lrd-h' }, icon('flag'), h('span', { text: 'لقاء التقييم القيادي الأسبوعي' })), r.data.length ? chip(`قُيّم ${done} من ${r.data.length}`, done === r.data.length ? 'ok' : 'warn') : null),
+          h('p', { class: 'a-lead', text: 'اقرأ صفحة كل قائد لهذا الأسبوع، ثم قيّم المعايير الأربعة (كل معيار من 25) واكتب ملاحظة قصيرة. يقرأ القائد التقييم والملاحظة في دفتره.' }),
+          r.data.length ? h('ul', { class: 'a-tool-l a-apl-l' }, r.data.map(t => {
+            const pg = t.page, nid = uid('f'), nt = h('input', { id: nid, type: 'text', maxLength: 300, value: (pg && pg.sup_note) || '', 'data-fk': 'lr-note-' + t.team_id, placeholder: 'توجيه وتقييم مختصر' });
+            const sc = NB_CRIT.map((c, i) => { const id = uid('f'), inp = h('input', { id, type: 'number', min: 0, max: 25, step: 1, inputMode: 'numeric', value: pg && pg.scores ? pg.scores[i] : '', 'data-fk': `lr-c${i + 1}-${t.team_id}` }); return [c, inp, id]; });
+            const msg = h('p', { class: 'a-live-msg', role: 'alert', hidden: true });
+            return h('li', { 'data-review-team': t.team_id, class: pg && pg.scores ? 'ok' : '' }, h('div', { class: 'a-mf-h' }, h('b', { text: `${t.team_name} · ${t.leader || ''}` }), chip(pg && pg.scores ? `${pg.total} من 100` : pg && pg.written ? 'كتب صفحته' : 'لم يكتب صفحته', pg && pg.scores ? 'ok' : pg && pg.written ? '' : 'warn')),
+              pg && pg.written ? h('dl', { class: 'a-pact-d', 'data-review-page': '' }, NB_FIELDS.filter(f => pg[f[0]]).map(f => h('div', {}, h('dt', { text: f[1] }), h('dd', { text: pg[f[0]] })))) : null,
+              h('div', { class: 'a-nb-sc' }, sc.map(([c, inp, id]) => fField(c + ' (من 25)', inp, id))), fField('ملاحظة المشرف', nt, nid), msg,
+              h('div', { class: 'a-actions' }, btn(pg && pg.scores ? 'حدّث التقييم' : 'احفظ التقييم', 'check', 'btn-primary', () => {
+                const v = sc.map(([, inp]) => (inp.value === '' ? NaN : Number(inp.value)));
+                if (v.some(n => !Number.isInteger(n) || n < 0 || n > 25)) { msg.textContent = 'اكتب المعايير الأربعة، كل منها عدد من 0 إلى 25.'; msg.hidden = false; say(msg.textContent); sc[Math.max(0, v.findIndex(n => !Number.isInteger(n) || n < 0 || n > 25))][1].focus(); return; }
+                YB.rpc('yb_notebook_review', { team_id: t.team_id, week: weekKey(), note: nt.value || null, c1: v[0], c2: v[1], c3: v[2], c4: v[3] }).then(x => { if (!x.ok) { msg.textContent = errMsg(x, MC_ERR); msg.hidden = false; say(msg.textContent); return; } say(`حُفظ تقييم ${t.team_name}: ${v[0] + v[1] + v[2] + v[3]} من 100.`); load('lr-save-' + t.team_id); });
+              }, { 'data-fk': 'lr-save-' + t.team_id, 'aria-label': `احفظ تقييم قائد ${t.team_name}` })));
+          })) : h('p', { class: 'a-empty', text: 'لا فرق معتمدة بعد.' }));
+        if (focus) focusIn(el, focus);
       });
     }
     load();
@@ -2896,6 +3054,8 @@
     if (n.kind === 'week_theme') return `قيمة هذا الأسبوع: ${d.title || ''}. افتح «رحلتي» لتقرأها.`;
     if (n.kind === 'award') return `نال ${team} وسام «${AWARD[d.kind] || 'التميز'}» من إدارة المسابقة.`;
     if (n.kind === 'admin_task') return `مهمة جديدة من الإدارة لقادة الفرق: ${d.title || ''}`;
+    if (n.kind === 'incident_new') return 'سُجّلت واقعة جديدة في سجل الإصابات والطوارئ. افتح «أدوات الإدارة».';
+    if (n.kind === 'lead_review') return `كتب المشرف تقييمك القيادي لهذا الأسبوع: ${d.total ?? ''} من 100. افتح «دفتر القيادة والأثر».`;
     if (n.kind === 'appeal_new') return `تظلّم جديد من ${team} بانتظار البتّ. افتح «أدوات الإدارة».`;
     if (n.kind === 'appeal_decided') return `بُتّ في تظلّم ${team}: ${d.accepted ? 'قُبل' : 'رُفض'}. اقرأ سبب القرار في «المباريات والمواعيد».`;
     return 'إشعار جديد.';
@@ -3752,7 +3912,7 @@
         O.comps.includes('football') ? (O.today = todayCard()) : null, O.tiles,
         (O.fbd = O.comps.includes('football') ? footballDeskCard() : null), (O.chd = O.comps.includes('chess') ? chessDeskCard((O.roles || []).reduce((m, r) => { if ((r.roles || []).includes('chess')) m[r.team_id] = r.full_name; return m; }, {})) : null),
         (O.hfd = O.comps.some(k => k === 'hifz' || k === 'fahm') ? hifzDeskCard({ teams: O.pub, canSchedule: () => goSec('dates'), roles: (O.roles || []).reduce((m, r) => { const x = m[r.team_id] || (m[r.team_id] = {}); if ((r.roles || []).includes('reciter')) x.reciter = r.full_name; if ((r.roles || []).includes('reserve')) x.reserve = r.full_name; return m; }, {}) }) : null),
-        activityCard(), comps, (O.pulse = pulseCard()), announceFeed()] },
+        O.comps.includes('football') ? matchStaffDesk() : null, O.comps.includes('football') ? incidentsDesk() : null, activityCard(), comps, (O.pulse = pulseCard()), announceFeed()] },
       feedGroup(),
       { key: 'review', label: 'طلبات التسجيل', icon: 'users', one: true, nodes: [O.comps.includes('registration') ? reviewQueue() : null, O.roles ? roleListCard() : null] },
       { key: 'results', label: 'النتائج', icon: 'flag', one: true, nodes: [games.length ? O.res.el : null] },
@@ -4992,12 +5152,12 @@
     L.sum = leadSummaryCard(() => { const mn = L.members.filter(m => isMinor(m.age)); return { team: L.team.team_name, status: STATUS[L.team.status] || L.team.status, members: L.members.length, minors: mn.length,
       got: mn.filter(m => m.consent_status === 'received').length, accepted: L.init.accepted || 0, tasks: L.lw.done(), follow: L.mf.counts || null }; });
     dashLayout([
-      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [L.hero, (L.boxes.mday = matchDayCard(t.team_id, t.team_name, 'leader')), (L.boxes.next = nextCard(leaderNext())), leaderTiles(t), L.boxes.top, L.boxes.check, L.staff, L.run, L.opp, L.chs, L.hft, awardsCard(t.team_id), L.badges, L.cal, scoresCard(), L.pulse, announceFeed()] },
+      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [L.hero, (L.boxes.mday = matchDayCard(t.team_id, t.team_name, 'leader')), (L.boxes.next = nextCard(leaderNext())), leaderTiles(t), L.boxes.top, L.boxes.check, L.staff, L.run, L.opp, matchStaffCard(t.team_id), L.chs, L.hft, awardsCard(t.team_id), L.badges, L.cal, scoresCard(), L.pulse, announceFeed()] },
       feedGroup(),
       { key: 'matches', label: 'المباريات والمواعيد', icon: 'trophy', one: true, nodes: [L.dates, L.sched.node, L.boxes.marks, appealCard(t.team_id)] },
       { key: 'team', label: 'الفريق', icon: 'users', nodes: [L.boxes.roster, L.boxes.roles, L.boxes.code, (L.style || (L.style = teamStyleCard(t), L.style.start(), L.style)).el, L.printBox] },
       { key: 'projects', label: 'المشاريع والمبادرات', icon: 'image', one: true, nodes: [L.subs.el] },
-      { key: 'lead', label: 'قيادتي', icon: 'flag', nodes: [themeCard(), adminTasksCard(t.team_id), L.mf, raceCard(t.team_id), L.lw, meetingCard(), L.init, pactCard(t.team_id), workshopCard(), L.sum] },
+      { key: 'lead', label: 'قيادتي', icon: 'flag', nodes: [themeCard(), adminTasksCard(t.team_id), L.mf, raceCard(t.team_id), notebookCard(t.team_id), L.lw, meetingCard(), L.init, pactCard(t.team_id), workshopCard(), L.sum] },
       { key: 'players', label: 'لاعبون يبحثون عن فريق', icon: 'users', one: true, nodes: [poolCard('pool')] },
       { key: 'room', label: 'غرفة القادة', icon: 'bell', one: true, nodes: [L.chat.el] },
       { key: 'guide', label: 'المسابقة والنقاط', icon: 'route', nodes: [journeyCard(), (L.points = pointsCard()), honorsCard(), toolsCard(true)] }]);
@@ -5383,7 +5543,7 @@
       row.status === 'approved' ? teamSubsView(row.team_id, row.team_name) : null,
       box.node];
     dashLayout([
-      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [mHero, mday, nextCard(memberNext(row, ro.ok ? me : null)), memberTiles(row), mv[2], mStaff, mRun, mOpp, mChs, mHft, awardsCard(row.team_id), mBadges, mCal, mv[1], mPulse, mv[0], mv[4]] },
+      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [mHero, mday, nextCard(memberNext(row, ro.ok ? me : null)), memberTiles(row), mv[2], mStaff, mRun, mOpp, matchStaffCard(row.team_id), mChs, mHft, awardsCard(row.team_id), mBadges, mCal, mv[1], mPulse, mv[0], mv[4]] },
       { key: 'journey', label: 'رحلتي', icon: 'route', nodes: [themeCard(), journeyCard(), pledgeCard(), deedCard(), surahCard(), myMilestonesCard(), teamBoardCard(row.team_id), raceCard(row.team_id), mPoints, honorsCard(), toolsCard(false)] },
       feedGroup(),
       { key: 'matches', label: 'المباريات والمواعيد', icon: 'trophy', one: true, nodes: [mv[5], mv[7]] },
@@ -5413,7 +5573,7 @@
     const pExtra = k0 ? [staffCard(k0.team_id), runCard(k0.team_id, k0.team_name), oppCard(k0.team_id, k0.team_name), chessCard(k0.team_id, k0.team_name), hifzTeamCard(k0.team_id), badgesCard({ teamId: k0.team_id, teamName: k0.team_name, status: k0.team_status }),
       calCard({ teamId: k0.team_id, teamName: k0.team_name, teamStatus: k0.team_status })] : [];
     const pPulse = pulseCard(), pPoints = pointsCard();
-    const home = [pHero, mday, nextCard(parentNext(kids)), parentTiles(kids), kids.length ? themeCard() : null, kids.length ? childJourneyCard() : null, kids.length ? awardsCard(kids[0].team_id) : null, kids.length ? raceCard(kids[0].team_id) : null, ...pExtra, scoresCard(), pPulse, announceFeed()];
+    const home = [pHero, mday, nextCard(parentNext(kids)), parentTiles(kids), kids.length ? themeCard() : null, kids.length ? childJourneyCard() : null, kids.length ? matchStaffCard(kids[0].team_id) : null, kids.length ? awardsCard(kids[0].team_id) : null, kids.length ? raceCard(kids[0].team_id) : null, ...pExtra, scoresCard(), pPulse, announceFeed()];
     const nodes = home, games = [];
     const boxes = [];
     if (!kids.length) nodes.push(h('p', { class: 'a-empty a-card', text: 'لم تربط أي ابن أو ابنة بعد. اكتب رمز الفريق واسم الطفل أدناه.' }));
@@ -6245,7 +6405,7 @@
     if (S.dashObs) { S.dashObs.disconnect(); S.dashObs = null; }
     if (S.dashMo) { S.dashMo.disconnect(); S.dashMo = null; }
     if (S.mdays) { Object.values(S.mdays).forEach(f => f()); S.mdays = null; }
-    S.boardP = null; S.stylesP = null; S.subsP = null; S.eventsP = null; S.journeyP = null; S.tbP = null; S.pastP = null; J.subs = []; J.warned = 0; S.sh = null; S.feed = null; S.lastGroups = null; S.myColor = null;
+    S.boardP = null; S.stylesP = null; S.subsP = null; S.eventsP = null; S.journeyP = null; S.tbP = null; S.pastP = null; S.staffP = null; J.subs = []; J.warned = 0; S.sh = null; S.feed = null; S.lastGroups = null; S.myColor = null;
     document.documentElement.classList.remove('is-dash');
     S.modeSet = null;
     S.focusNext = !!opts.focus;

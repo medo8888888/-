@@ -55,7 +55,7 @@ class Fake {
     this.subs = []; this.objects = new Map(); this.uploads = [];   // migration 0008 (submissions, private photos)
     this.seekers = new Map(); this.invites = []; this.transfers = false;   // migration 0012 (players looking for a team)
     this.logos = new Map();   // migration 0014 (team logos: path -> uploader)
-    this.j15 = false; this.j16 = false; this.t17 = false; this.a18 = false; this.appeals = []; this.themes = new Map(); this.awards = []; this.atasks = []; this.atDone = new Set(); this.seq17 = 0; this.nudged = new Set(); this.pledges = []; this.hifzMarks = new Map(); this.deedDays = []; this.pacts = new Map(); this.leadWeeks = new Map(); this.auditRows = [];   // migration 0015 (the journey on the account; off until a test turns it on)
+    this.j15 = false; this.j16 = false; this.t17 = false; this.a18 = false; this.appeals = []; this.c19 = false; this.evStaff = new Map(); this.incidents = []; this.leadNotes = new Map(); this.themes = new Map(); this.awards = []; this.atasks = []; this.atDone = new Set(); this.seq17 = 0; this.nudged = new Set(); this.pledges = []; this.hifzMarks = new Map(); this.deedDays = []; this.pacts = new Map(); this.leadWeeks = new Map(); this.auditRows = [];   // migration 0015 (the journey on the account; off until a test turns it on)
     this.pushSubs = []; this.pushReady = true; this.pushKey = 'B' + 'x'.repeat(86);   // migration 0013 (phone notifications)
     this.judges = new Map(); this.jscores = []; this.ascores = []; this.published = false;   // migration 0010
     this.ann = []; this.annSeq = 0; this.chat = []; this.chatSeq = 0; this.reports = []; this.mutes = new Map(); this.reads = new Map();   // migration 0009
@@ -497,6 +497,70 @@ class Fake {
       yb_post_delete: ['id'], yb_post_moderate: ['id', 'action', 'note'], yb_react: ['post_id', 'kind'], yb_comments: ['post_id'], yb_comment_post: ['post_id', 'body'],
       yb_comment_delete: ['id'], yb_comment_report: ['id', 'reason'], yb_comment_moderate: ['id', 'action'], yb_comment_mute: ['id', 'hours', 'reason'], yb_feed_reports: [],
       yb_set_members_comment: ['allow'], yb_transfer_team: ['team_id', 'new_leader', 'old_stays', 'old_role'], yb_analytics: [] };
+    /* migration 0019: the match's people, the record of injuries, the leader's notebook and review. Off unless a test sets c19. */
+    if (/^yb_(event_staff_set|event_staff_list|incident_add|incidents_list|incident_decide|notebook_save|notebook_mine|notebook_admin|notebook_review)$/.test(name)) {
+      if (!this.c19) return err(404, 'PGRST202', 'Could not find the function public.' + name);
+      const ok = d => ({ status: 200, body: d });
+      body = body || {};
+      const role = (this.profiles.find(p => p.id === me) || {}).role, isAdmin = role === 'admin';
+      const manages = c => isAdmin || this.officers.some(o => o.user_id === me && o.competition === c);
+      const leads = t => this.teams.some(x => x.id === t && x.leader_id === me);
+      const phone = t => /\d{7,}/.test(String(t || '').replace(/[\s\-()+]/g, ''));
+      const trim = t => String(t || '').replace(/\s+/g, ' ').trim();
+      if (name === 'yb_event_staff_list') {
+        const mineT = [...this.teams.filter(t => t.leader_id === me).map(t => t.id), ...this.members.filter(m => m.user_id === me).map(m => m.team_id), ...this.links.filter(l => l.parent_id === me).map(l => (this.members.find(m => m.id === l.member_id) || {}).team_id)];
+        return ok([...this.evStaff.entries()].filter(([id]) => { const e = this.events.find(x => x.id === id); return e && (isAdmin || role === 'officer' || e.team_ids.some(t => mineT.includes(t))); }).map(([event_id, v]) => ({ event_id, ...v })));
+      }
+      if (name === 'yb_event_staff_set') {
+        const e = this.events.find(x => x.id === body.event_id);
+        if (!e) return ok({ ok: false, error: 'not_found' });
+        if (!manages(e.competition)) return raise('permission_denied', '42501');
+        if (phone(body.referee) || phone(body.safety)) return ok({ ok: false, error: 'contact_not_allowed' });
+        this.evStaff.set(e.id, { referee: trim(body.referee) || null, safety: trim(body.safety) || null, first_aid: !!body.first_aid });
+        return ok({ ok: true });
+      }
+      if (name === 'yb_incidents_list' || name === 'yb_incident_add') {
+        if (!manages('football')) return raise('permission_denied', '42501');
+        if (name === 'yb_incidents_list') return ok({ can_decide: isAdmin, rows: this.incidents.slice().reverse().sort((a, b) => (b.decision === 'pending') - (a.decision === 'pending')).map(i => ({ ...i, team_name: (this.teams.find(t => t.id === i.team_id) || {}).name || null })) });
+        const sm = trim(body.summary), lb = trim(body.match_label);
+        if (!['injury', 'head', 'emergency'].includes(body.kind) || lb.length < 3 || sm.length < 10 || isNaN(new Date(body.happened_at))) return ok({ ok: false, error: 'invalid_data' });
+        if (body.kind === 'head' && body.returned) return ok({ ok: false, error: 'head_no_return' });
+        if (phone(sm) || phone(lb) || phone(body.action)) return ok({ ok: false, error: 'contact_not_allowed' });
+        const i = { id: this.incidents.length + 1, team_id: body.team_id || null, match: lb, kind: body.kind, happened_at: new Date(body.happened_at).toISOString(), summary: sm, action: trim(body.action) || null, returned: !!body.returned, decision: 'pending', decision_note: null, created_at: new Date().toISOString() };
+        this.incidents.push(i);
+        this.notify(this.profiles.filter(p => p.role === 'admin' && p.id !== me).map(p => p.id), 'incident_new', { kind: body.kind });
+        return ok({ ok: true, id: i.id });
+      }
+      if (name === 'yb_incident_decide') {
+        if (!isAdmin) return raise('permission_denied', '42501');
+        const i = this.incidents.find(x => x.id === body.id);
+        if (!['none', 'continue', 'replay'].includes(body.decision)) return ok({ ok: false, error: 'invalid_data' });
+        if (!i) return ok({ ok: false, error: 'not_found' });
+        i.decision = body.decision; i.decision_note = trim(body.note) || null;
+        return ok({ ok: true });
+      }
+      const view = n => ({ week: n.week, task: n.task, role_done: n.role_done, skill: n.skill, challenge: n.challenge, next_step: n.next_step, sup_note: n.sup_note || null, scores: n.scores || null, total: n.scores ? n.scores.reduce((a, b) => a + b, 0) : null, written: !!n.written });
+      const key = (t, w) => t + '|' + w, blank = w => ({ week: w, task: '', role_done: '', skill: '', challenge: '', next_step: '', sup_note: null, scores: null, written: false });
+      if (name === 'yb_notebook_admin') { if (!isAdmin) return raise('permission_denied', '42501'); return ok(this.teams.filter(t => t.status === 'approved').map(t => ({ team_id: t.id, team_name: t.name, leader: (this.profiles.find(p => p.id === t.leader_id) || {}).full_name || null, page: this.leadNotes.has(key(t.id, body.week)) ? view(this.leadNotes.get(key(t.id, body.week))) : null }))); }
+      if (name === 'yb_notebook_review') {
+        if (!isAdmin) return raise('permission_denied', '42501');
+        const t = this.teams.find(x => x.id === body.team_id && x.status === 'approved'), v = [body.c1, body.c2, body.c3, body.c4];
+        if (!t) return ok({ ok: false, error: 'team_not_found' });
+        if (v.some(n => !Number.isInteger(n) || n < 0 || n > 25)) return ok({ ok: false, error: 'invalid_data' });
+        const n = this.leadNotes.get(key(t.id, body.week)) || blank(body.week), fresh = !n.scores;
+        n.scores = v; n.sup_note = trim(body.note) || null; this.leadNotes.set(key(t.id, body.week), n);
+        if (fresh) this.notify([t.leader_id], 'lead_review', { total: v.reduce((a, b) => a + b, 0) });
+        return ok({ ok: true });
+      }
+      if (!leads(body.team_id)) return raise('permission_denied', '42501');
+      if (name === 'yb_notebook_mine') return ok([...this.leadNotes.entries()].filter(([k]) => k.startsWith(body.team_id + '|')).map(([, n]) => view(n)).sort((a, b) => (a.week < b.week ? 1 : -1)));
+      if (trim(body.task).length < 3) return ok({ ok: false, error: 'invalid_data' });
+      if (phone([body.task, body.role_done, body.skill, body.challenge, body.next_step].join(' '))) return ok({ ok: false, error: 'contact_not_allowed' });
+      const n = this.leadNotes.get(key(body.team_id, body.week)) || blank(body.week);
+      Object.assign(n, { task: trim(body.task), role_done: trim(body.role_done), skill: trim(body.skill), challenge: trim(body.challenge), next_step: trim(body.next_step), written: true });
+      this.leadNotes.set(key(body.team_id, body.week), n);
+      return ok({ ok: true });
+    }
     /* migration 0018: appeals (lg7). Off unless a test sets a18. */
     if (/^yb_(appeal_file|appeals_mine|appeals_admin|appeal_decide)$/.test(name)) {
       if (!this.a18) return err(404, 'PGRST202', 'Could not find the function public.' + name);
@@ -2131,7 +2195,7 @@ let memberEmail = 'sara@t.test', parentEmail = 'parent@t.test';
   check('member sees own consent status (received: set by the admin)', /استُلمت موافقة ولي الأمر/.test(mt));
   check('no admin / leader controls on the member screen', !(await M.locator('input[role=switch], form.a-add, button[data-fk=submit], .a-tabs-4').count()));
   const reqs = world.log.filter(l => l.who === world.profileByEmail(memberEmail).id).map(l => l.path.replace('/rest/v1/', ''));
-  check('member screen reads only my_team, my_roster, tournament_state and the own profile (never teams, team_members, profiles list)', reqs.every(r => /^(rpc\/(my_team|join_team|yb_theme_get|yb_team_awards|yb_journey_me|yb_team_board|yb_my_pledges|yb_week_race|yb_mark_read|yb_my_scores|yb_my_prefs|yb_feed|yb_seek_me|yb_team_staff)|my_roster|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements|yb_match_live|yb_team_style)$/.test(r)), [...new Set(reqs)].join());
+  check('member screen reads only my_team, my_roster, tournament_state and the own profile (never teams, team_members, profiles list)', reqs.every(r => /^(rpc\/(my_team|join_team|yb_event_staff_list|yb_theme_get|yb_team_awards|yb_journey_me|yb_team_board|yb_my_pledges|yb_week_race|yb_mark_read|yb_my_scores|yb_my_prefs|yb_feed|yb_seek_me|yb_team_staff)|my_roster|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements|yb_match_live|yb_team_style)$/.test(r)), [...new Set(reqs)].join());
   const tour = await M.locator('.a-sched').innerText();
   check('schedule card shows the empty state before the tournament is published', /لم تُنشر بيانات البطولة بعد/.test(tour));
   // second account tries the same name
@@ -2186,7 +2250,7 @@ let memberEmail = 'sara@t.test', parentEmail = 'parent@t.test';
   const chips = await P.locator('.a-child .a-consent .a-chip').allInnerTexts();
   check('two children: one «استُلمت», one «لم تُستلم بعد»; ONE schedule card for the shared team', chips.some(c => /^استُلمت/.test(c)) && chips.some(c => /لم تُستلم/.test(c)) && (await P.locator('.a-sched').count()) === 1);
   const preqs = world.log.filter(l => l.who === world.profileByEmail(parentEmail).id).map(l => l.path.replace('/rest/v1/', ''));
-  check('parent screen reads only my_children, tournament_state and the own profile', preqs.every(r => /^(rpc\/(link_child|yb_theme_get|yb_team_awards|yb_child_journey|yb_week_race|yb_mark_read|yb_my_scores|yb_my_judging|yb_my_prefs|yb_feed|yb_guardian_seekers|yb_team_staff)|my_children|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements|yb_match_live|yb_team_style)$/.test(r)), [...new Set(preqs)].join());
+  check('parent screen reads only my_children, tournament_state and the own profile', preqs.every(r => /^(rpc\/(link_child|yb_event_staff_list|yb_theme_get|yb_team_awards|yb_child_journey|yb_week_race|yb_mark_read|yb_my_scores|yb_my_judging|yb_my_prefs|yb_feed|yb_guardian_seekers|yb_team_staff)|my_children|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements|yb_match_live|yb_team_style)$/.test(r)), [...new Set(preqs)].join());
   check('parent console clean', P.errs.length === 0, P.errs.join('|'));
   world.P = P;
 }
@@ -5464,6 +5528,118 @@ section('appeals (0018; the regulations lg7): the leader files within 24 hours, 
   await settle(Z); await signInOk(Z, 'l0@t.test');
   await Z.waitForSelector('#sec-matches', { state: 'attached', timeout: 8000 }); await Z.waitForTimeout(300);
   check('on a backend without appeals the card stays hidden and nothing breaks', (await Z.locator('[data-appeals]:not([hidden])').count()) === 0 && Z.errs.length === 0, Z.errs.join('|'));
+}
+
+section('around a match and around the leaders (0019): the referee and safety, the record of injuries, the notebook and the weekly review');
+{
+  const fake = new Fake();
+  fake.c19 = true; fake.t17 = true; fake.a18 = true;
+  const boss = fake.addUser({ email: 'boss@t.test', name: 'محمود المشرف', role: 'member' }); fake.setAdmin('boss@t.test');
+  const ld = fake.addUser({ email: 'lc@t.test', name: 'قائد الصقور', role: 'leader' });
+  fake.addUser({ email: 'lc2@t.test', name: 'قائد النسور', role: 'leader' });
+  const kid = fake.addUser({ email: 'kc@t.test', name: 'عمر عضو الصقور', role: 'member' });
+  const of = fake.addUser({ email: 'oc@t.test', name: 'مسؤول الكرة', role: 'member' }); fake.setRole('oc@t.test', 'officer'); fake.officers.push({ user_id: of.id, competition: 'football' });
+  const TC = fake.seedTeam({ leaderEmail: 'lc@t.test', name: 'الصقور', status: 'approved', members: [{ name: 'عمر عضو الصقور', age: 14, consent: 'received' }, { name: 'ثان', age: 14 }, { name: 'ثالث', age: 14 }, { name: 'رابع', age: 14 }] });
+  const TE = fake.seedTeam({ leaderEmail: 'lc2@t.test', name: 'النسور', status: 'approved', members: Array.from({ length: 4 }, (_, i) => ({ name: `عضو النسور ${i + 1}`, age: 14 })) });
+  fake.teams.forEach(t => { t.waitlist = false; });
+  fake.members.find(m => m.full_name === 'عمر عضو الصقور').user_id = kid.id;
+  const when = new Date(Date.now() + 2 * 86400e3); when.setHours(16, 0, 0, 0);
+  const EV = fake.uid();
+  fake.events.push({ id: EV, competition: 'football', kind: 'match', title: 'الصقور ضد النسور', starts_at: when.toISOString(), place: 'ملعب الحي', team_ids: [TC.id, TE.id], category: null, status: 'scheduled', note: null });
+  const txt = async l => (await l.innerText()).replace(/\s+/g, ' ');
+  const got = (u, kind) => fake.notes.filter(n => n.user_id === u && n.kind === kind);
+  const sat = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 1) % 7)); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })();
+
+  /* ---- the football officer: the match's people, an injury ---- */
+  const O = await open(fake, { label: 'c19-officer' });
+  await settle(O); await signInOk(O, 'oc@t.test');
+  const sd = O.locator('[data-staff-desk]');
+  await sd.locator(`[data-staff-row="${EV}"]`).waitFor({ timeout: 8000 });
+  check('the football officer sees each coming match, flagged «بلا حكم بعد» in words', /الصقور ضد النسور/.test(await txt(sd)) && /بلا حكم بعد/.test(await txt(sd)) && /حكم لكل مباراة/.test(await txt(sd)));
+  await sd.locator(`[data-fk="ms-ref-${EV}"]`).fill('الأستاذ خالد');
+  await sd.locator(`[data-fk="ms-safe-${EV}"]`).fill('الأستاذ سامر');
+  await sd.locator(`[data-fk="ms-aid-${EV}"]`).check();
+  await sd.locator(`[data-fk="ms-save-${EV}"]`).click();
+  await O.waitForFunction(() => /له حكم/.test(document.querySelector('[data-staff-desk]').textContent), null, { timeout: 8000 });
+  const sv = fake.evStaff.get(EV) || {};
+  check('the referee, the safety adult and the first-aid kit are saved for that match', sv.referee === 'الأستاذ خالد' && sv.safety === 'الأستاذ سامر' && sv.first_aid === true && await O.evaluate(() => (document.activeElement.getAttribute('data-fk') || '').startsWith('ms-save-')));
+  const inc = O.locator('[data-incidents]');
+  await inc.locator('[data-fk="in-open"]').click();
+  await inc.locator('[data-fk="in-send"]').waitFor();
+  await inc.locator('[data-fk="in-kind"]').selectOption('head');
+  await inc.locator('[data-fk="in-match"]').fill('الصقور ضد النسور');
+  await inc.locator('[data-fk="in-summary"]').fill('اصطدام بالرأس في كرة مشتركة واشتباه ارتجاج.');
+  await inc.locator('[data-fk="in-returned"]').check();
+  await inc.locator('[data-fk="in-send"]').click();
+  await O.waitForFunction(() => /لا يعود اللاعب للمباراة/.test(document.querySelector('[data-incidents] .a-live-msg').textContent), null, { timeout: 8000 });
+  check('a head injury cannot be recorded with «عاد اللاعب للعب»: the rule is quoted and nothing is saved', fake.incidents.length === 0 && (await inc.locator('[data-fk="in-summary"]').inputValue()).length > 10);
+  await inc.locator('[data-fk="in-returned"]').uncheck();
+  await inc.locator('[data-fk="in-send"]').click();
+  await inc.locator('[data-incident]').first().waitFor({ timeout: 8000 });
+  check('recorded as not returning it is saved, the admin is told, and the officer has no decision buttons', fake.incidents.length === 1 && fake.incidents[0].kind === 'head' && got(boss.id, 'incident_new').length === 1 && /بانتظار قرار اللجنة/.test(await txt(inc.locator('[data-incident]').first())) && (await inc.locator('[data-fk^="in-replay-"]').count()) === 0);
+  check('officer page: no overflow, console clean', (await overflow(O)) <= 0 && O.errs.length === 0, O.errs.join('|'));
+
+  /* ---- the team sees the match's people ---- */
+  const K = await open(fake, { label: 'c19-member', mobile: true });
+  await settle(K); await signInOk(K, 'kc@t.test');
+  await K.waitForSelector('#sec-home [data-match-staff]:not([hidden])', { timeout: 8000 });
+  const ms = await txt(K.locator('[data-match-staff]'));
+  check('a member sees «طاقم مباراتك القادمة»: the referee, the safety adult, the kit', /حكم المباراة الأستاذ خالد/.test(ms) && /المكلّف بالسلامة الأستاذ سامر/.test(ms) && /حقيبة الإسعافات الأولية مؤكَّدة/.test(ms) && /الصقور ضد النسور/.test(ms) && (await K.locator('[data-incidents], [data-staff-desk], [data-notebook]').count()) === 0, ms);
+  check('member phone: no overflow, console clean', (await overflow(K)) <= 0 && K.errs.length === 0, K.errs.join('|'));
+
+  /* ---- the leader's notebook ---- */
+  const L = await open(fake, { label: 'c19-leader', mobile: true });
+  await settle(L); await signInOk(L, 'lc@t.test');
+  await L.waitForSelector('#sec-lead [data-notebook]:not([hidden])', { state: 'attached', timeout: 8000 });
+  await L.locator('[data-fk="qa-lead"]').click();
+  const nb = L.locator('[data-notebook]');
+  await nb.locator('[data-fk="nb-save"]').click();
+  check('an empty page is not saved', fake.leadNotes.size === 0 && /اكتب المهمة الأسبوعية أولًا/.test(await txt(nb)));
+  await nb.locator('[data-fk="nb-task"]').fill('إدارة فقرة النشاط العملي');
+  await nb.locator('[data-fk="nb-role_done"]').fill('شرحت اللعبة ووزعت الأدوار');
+  await nb.locator('[data-fk="nb-skill"]').fill('ضبط الوقت');
+  await nb.locator('[data-fk="nb-challenge"]').fill('تأخر عضوين');
+  await nb.locator('[data-fk="nb-next_step"]').fill('أذكّر قبل اللقاء بيوم');
+  await nb.locator('[data-fk="nb-save"]').click();
+  await L.waitForFunction(() => /حدّث صفحة هذا الأسبوع/.test(document.querySelector('[data-notebook]').textContent), null, { timeout: 8000 });
+  const pg = fake.leadNotes.get(TC.id + '|' + sat) || {};
+  check('«دفتر القيادة والأثر»: this week\'s five lines are saved, and the card says the review is not written yet', pg.task === 'إدارة فقرة النشاط العملي' && pg.skill === 'ضبط الوقت' && pg.written === true && /لم يكتب المشرف تقييم هذا الأسبوع بعد/.test(await txt(nb)) && /لا تكتب أسماء زملائك/.test(await txt(nb)));
+
+  /* ---- the admin: the review, the decision ---- */
+  const A = await open(fake, { label: 'c19-admin' });
+  await settle(A); await signInOk(A, 'boss@t.test', undefined, { home: true });
+  await A.locator('#at-tools').click();
+  const rv = A.locator('[data-lead-review]');
+  await rv.locator(`[data-review-team="${TC.id}"]`).waitFor({ timeout: 8000 });
+  const r1 = await txt(rv.locator(`[data-review-team="${TC.id}"]`)), r2 = await txt(rv.locator(`[data-review-team="${TE.id}"]`));
+  check('«لقاء التقييم القيادي الأسبوعي»: the supervisor reads the leader\'s page; a leader who wrote nothing is flagged', /قُيّم 0 من 2/.test(await txt(rv)) && /الصقور · قائد الصقور/.test(r1) && /كتب صفحته/.test(r1) && /إدارة فقرة النشاط العملي/.test(r1) && /لم يكتب صفحته/.test(r2), r1.slice(0, 200));
+  await rv.locator(`[data-fk="lr-c1-${TC.id}"]`).fill('22'); await rv.locator(`[data-fk="lr-c2-${TC.id}"]`).fill('20'); await rv.locator(`[data-fk="lr-c3-${TC.id}"]`).fill('30');
+  await rv.locator(`[data-fk="lr-save-${TC.id}"]`).click();
+  check('a criterion above 25 or left empty is refused in words', !pg.scores && /كل منها عدد من 0 إلى 25/.test(await txt(rv.locator(`[data-review-team="${TC.id}"]`))));
+  await rv.locator(`[data-fk="lr-c3-${TC.id}"]`).fill('18'); await rv.locator(`[data-fk="lr-c4-${TC.id}"]`).fill('25');
+  await rv.locator(`[data-fk="lr-note-${TC.id}"]`).fill('تقدّم واضح في إدارة الوقت');
+  await rv.locator(`[data-fk="lr-save-${TC.id}"]`).click();
+  await A.waitForFunction(() => /قُيّم 1 من 2/.test(document.querySelector('[data-lead-review]').textContent), null, { timeout: 8000 });
+  check('the four criteria and the note are saved: 85 of 100, and the leader is told once', (pg.scores || []).join(',') === '22,20,18,25' && pg.sup_note === 'تقدّم واضح في إدارة الوقت' && /85 من 100/.test(await txt(rv.locator(`[data-review-team="${TC.id}"]`))) && got(ld.id, 'lead_review').length === 1 && got(ld.id, 'lead_review')[0].data.total === 85);
+  const ai = A.locator('[data-admin-tools] [data-incidents]');
+  await ai.locator('[data-incident]').first().waitFor({ timeout: 8000 });
+  await ai.locator(`[data-fk="in-note-1"]`).fill('تُعاد المباراة يوم الجمعة');
+  await ai.locator(`[data-fk="in-replay-1"]`).click();
+  await A.waitForFunction(() => /تُعاد المباراة يوم الجمعة/.test((document.querySelector('[data-admin-tools] [data-incident-note]') || {}).textContent || ''), null, { timeout: 8000 });
+  check('the admin decides «تُعاد المباراة» with a note; the buttons give way to the decision', fake.incidents[0].decision === 'replay' && (await ai.locator('[data-fk^="in-replay-"]').count()) === 0 && /لا شيء معلّق/.test(await txt(ai)));
+  check('the admin has the match\'s people too; no overflow, console clean', (await A.locator('[data-admin-tools] [data-staff-desk] [data-staff-row]').count()) === 1 && (await overflow(A)) <= 0 && A.errs.length === 0, A.errs.join('|'));
+  await reload(L);
+  await L.waitForSelector('#sec-lead [data-nb-review]', { state: 'attached', timeout: 8000 });
+  const rb = (await L.locator('#sec-lead [data-nb-review]').textContent()).replace(/\s+/g, ' ');
+  check('the leader reads the review in the notebook: the total, the four criteria, the supervisor\'s note; what was written stays', /تقييم المشرف: 85 من 100/.test(rb) && /الالتزام والانضباط\s*22 من 25/.test(rb) && /إدارة الأنشطة والتطبيق\s*25 من 25/.test(rb) && /ملاحظة المشرف: تقدّم واضح في إدارة الوقت/.test(rb)
+    && (await L.locator('#sec-lead [data-fk="nb-task"]').inputValue()) === 'إدارة فقرة النشاط العملي' && (await overflow(L)) <= 0 && L.errs.length === 0, rb + L.errs.join('|'));
+  const fake0 = new Fake();
+  fake0.addUser({ email: 'l0@t.test', name: 'قائد قديم', role: 'leader' });
+  fake0.seedTeam({ leaderEmail: 'l0@t.test', name: 'القدامى', status: 'approved', members: Array.from({ length: 4 }, (_, i) => ({ name: `قديم ${i + 1}`, age: 14 })) });
+  const Z = await open(fake0, { label: 'c19-off' });
+  await settle(Z); await signInOk(Z, 'l0@t.test');
+  await Z.waitForSelector('#sec-lead', { state: 'attached', timeout: 8000 }); await Z.waitForTimeout(300);
+  check('on an older backend none of the three shows and nothing breaks', (await Z.locator('[data-notebook]:not([hidden]), [data-match-staff]:not([hidden]), [data-incidents]:not([hidden])').count()) === 0 && Z.errs.length === 0, Z.errs.join('|'));
 }
 
 section('network hosts and console');

@@ -525,6 +525,10 @@
 .a-apl-l>li{justify-items:stretch}
 .a-apl-l>li p{margin:0;overflow-wrap:anywhere}
 .a-apl-d{margin-top:6px;padding-top:10px;border-top:1px dashed var(--line)}
+.a-nb-rev{margin-top:14px;padding:14px;border-radius:var(--r);border:1px solid var(--line);background:color-mix(in oklab,var(--k,var(--brand)) 5%,var(--surface));display:grid;gap:10px}
+.a-nb-sc{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:0 14px;margin-top:8px}
+.a-adm .a-pact-d{margin:6px 0}
+@media (min-width:1180px){.a-app.dash .a-sec>.a-grid:not(.one)>.a-nb{grid-column:1/-1}}
 .a-adm-follow{margin-top:12px}
 .a-adm-follow>.a-card{box-shadow:none;border:1px solid var(--line)}
 @media (min-width:1180px){.a-app.dash .a-sec>.a-grid:not(.one)>.a-mym{grid-column:1/-1}}
