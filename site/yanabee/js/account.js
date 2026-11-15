@@ -1500,7 +1500,7 @@
       roles: A.members.reduce((m, x) => { const r = m[x.team_id] || (m[x.team_id] = {}); if (Array.isArray(x.roles) && x.roles.includes('reciter')) r.reciter = x.full_name; if (Array.isArray(x.roles) && x.roles.includes('reserve')) r.reserve = x.full_name; return m; }, {}) });
     const chd = chessDeskCard(A.members.reduce((m, x) => { if (Array.isArray(x.roles) && x.roles.includes('chess')) m[x.team_id] = x.full_name; return m; }, {}));
     if (!A.todayH) { A.todayH = todayCard(); A.todayH.start(); }
-    panel.append(h('div', { class: 'a-home', 'data-admin-home': '' }, hero, adminFindCard(), wait, followCard(5), nums, activityCard(), mix, cal, A.todayH, pulse, fbd, chd, hfd, logCard(), wall));
+    panel.append(h('div', { class: 'a-home', 'data-admin-home': '' }, hero, adminFindCard(), appealsDesk(true), wait, followCard(5), nums, activityCard(), mix, cal, A.todayH, pulse, fbd, chd, hfd, logCard(), wall));
     pulse.start(); cal.start(); fbd.start(); chd.start(); hfd.start();
   }
   // inside an open team card (admin): the assistant's title and the logo
@@ -1584,6 +1584,8 @@
   const J_ERR = { contact_not_allowed: 'لا تُكتب أرقام الهواتف أو عناوين البريد هنا. احذفها ثم احفظ.', no_team: 'تحتاج فريقًا ليُحفظ وعدك في حسابك.',
     invalid_data: 'تحقق مما كتبته ثم حاول مرة أخرى.', not_found: 'لا وعد مكتوب لهذا الأسبوع بعد.', too_soon: 'أُرسل تذكير اليوم. يمكنك التذكير مرة واحدة في اليوم.', team_not_found: 'اختر فريقًا معتمدًا.', member_not_found: 'هذا العضو ليس في الفريق المختار.',
     already_given: 'مُنح هذا الوسام نفسه خلال الأيام الستة الماضية.', too_many: 'بلغت المهام 30. احذف مهمة قديمة أولًا.' };
+  const AP_ERR = Object.assign({}, J_ERR, { too_late: 'انتهت مهلة التظلم: تنص اللائحة على تقديمه خلال 24 ساعة من نهاية المباراة.', too_many: 'لفريقك ثلاثة تظلمات مفتوحة. انتظر البتّ في أحدها.',
+    already_decided: 'بُتّ في هذا التظلم من قبل.', invalid_data: 'تحقق من المباراة ووقت نهايتها ووصف الواقعة (10 أحرف على الأقل).' });
   const J = {
     subs: [],   // repaint hooks of the cards on screen
     load() {
@@ -1803,7 +1805,7 @@
     comment_mute: 'أوقف تعليقات عضو', chat_mute: 'كتم عضوًا في غرفة القادة', chat_unmute: 'رفع الكتم في غرفة القادة', chat_purge: 'حذف رسائل من غرفة القادة', push_on: 'فعّل تنبيهات الهاتف', push_off: 'أوقف تنبيهات الهاتف',
     invite_send: 'دعا لاعبًا إلى فريقه', invite_accept: 'قبل دعوة فريق', invite_decline: 'اعتذر عن دعوة', invite_cancel: 'ألغى دعوة', seek_save: 'سجّل أنه يبحث عن فريق', seek_stop: 'أوقف البحث عن فريق',
     seek_guardian: 'وافق وليّ أمر على البحث عن فريق', seek_guardian_revoke: 'سحب وليّ أمر موافقته', attendance: 'سجّل الحضور', members_comment: 'كتب ملاحظة على القائمة', award_give: 'منح وسامًا تشجيعيًا', award_remove: 'سحب وسامًا',
-    team_logo_set: 'غيّر شعار فريق', team_logo_removed: 'أزال شعار فريق' };
+    team_logo_set: 'غيّر شعار فريق', team_logo_removed: 'أزال شعار فريق', appeal_file: 'قدّم تظلمًا', appeal_decide: 'بتّ في تظلم' };
   function logCard() {
     const el = h('section', { class: 'a-card a-logc', 'aria-labelledby': 'log-h', 'data-log': '', hidden: true });
     let all = false;
@@ -1969,7 +1971,7 @@
         if (focus) focusOn(tk, focus);
       });
     }
-    wrap.append(th, aw, tk, weekReportCard());
+    wrap.append(appealsDesk(false), th, aw, tk, weekReportCard());
     drawTheme(); drawAwards(); drawTasks();
   }
 
@@ -2036,6 +2038,80 @@
       h('div', { class: 'a-actions' }, btn('حدّث التقرير', 'repeat', 'btn-ghost', () => build().then(() => { msg.textContent = 'حُدّث التقرير.'; say(msg.textContent); }), { 'data-fk': 'wr-build' }),
         btn('انسخ', 'check', 'btn-primary', async () => { await build(); msg.textContent = (await copyText(out.value)) ? 'نُسخ التقرير.' : 'تعذّر النسخ. حدّد النص وانسخه يدويًا.'; say(msg.textContent); }, { 'data-fk': 'wr-copy' })), msg);
     build();
+    return el;
+  }
+
+  /* --- appeals (migration 0018; the regulations, lg7 and lg8): the team's leader files within 24 hours of the end of
+     the match; the admin decides within 48 hours with a written reason. Hidden on an older backend. */
+  const AP_COMP = { football: 'كرة القدم', chess: 'الشطرنج', other: 'غير ذلك' };
+  const AP_STATUS = { open: ['قيد النظر', 'warn'], accepted: ['قُبل', 'ok'], rejected: ['رُفض', 'bad'] };
+  const apItem = (a, extra) => h('li', { 'data-appeal': a.id, class: a.status }, h('div', { class: 'a-mf-h' }, h('b', { text: (a.team_name ? `${a.team_name} · ` : '') + a.match }), chip(AP_STATUS[a.status][0], AP_STATUS[a.status][1])),
+    h('small', { class: 'a-hint', text: `${AP_COMP[a.comp] || ''} · انتهت المباراة ${fmtWhen(a.ended_at)} · قُدّم ${fmtWhen(a.created_at)}` }),
+    h('p', { text: a.incident }), a.evidence ? h('p', { class: 'a-hint', text: 'الأدلة المتاحة: ' + a.evidence }) : null,
+    a.status === 'open' ? h('p', { class: 'a-hint', 'data-appeal-due': '', text: (new Date(a.due_at) < new Date() ? 'تجاوز مهلة البتّ (48 ساعة): كان موعده ' : 'يُبتّ فيه قبل ') + fmtWhen(a.due_at) })
+      : h('p', { class: 'a-mf-note' + (a.status === 'accepted' ? ' cheer' : ''), 'data-appeal-decision': '' }, icon('scale'), h('span', { text: 'قرار اللجنة: ' + (a.decision || '') })), extra || null);
+  // the leader: «تظلّم على مباراة»
+  function appealCard(teamId) {
+    const el = h('section', { class: 'a-card a-adm a-apl', 'aria-labelledby': 'apl-h', 'data-appeals': '', hidden: true });
+    let open = false;
+    function load(focus) {
+      YB.rpc('yb_appeals_mine', { team_id: teamId }).then(r => {
+        if (!r.ok || !Array.isArray(r.data)) return;
+        const ids = [uid('f'), uid('f'), uid('f'), uid('f'), uid('f')], now = new Date(), pad = n => String(n).padStart(2, '0');
+        const cp = h('select', { id: ids[0], 'data-fk': 'apl-comp' }, Object.keys(AP_COMP).map(k => h('option', { value: k, text: AP_COMP[k] })));
+        const mt = h('input', { id: ids[1], type: 'text', maxLength: 120, 'data-fk': 'apl-match', placeholder: 'مثال: مباراتنا ضد فريق الأمل، المجموعة أ' });
+        const en = h('input', { id: ids[2], type: 'datetime-local', 'data-fk': 'apl-ended', value: `${localDay(now)}T${pad(now.getHours())}:${pad(now.getMinutes())}` });
+        const inc = h('textarea', { id: ids[3], rows: 3, maxLength: 600, 'data-fk': 'apl-incident', placeholder: 'ما الذي حدث؟ اكتب الواقعة كما جرت.' });
+        const ev = h('input', { id: ids[4], type: 'text', maxLength: 300, 'data-fk': 'apl-evidence', placeholder: 'مثال: تسجيل مصوّر عند مشرف الفريق' });
+        const msg = h('p', { class: 'a-live-msg', role: 'alert', hidden: true });
+        const f = (label, node, id) => h('div', { class: 'a-f' }, h('label', { for: id, class: 'a-l', text: label }), node);
+        const form = h('div', { class: 'a-apl-f', hidden: !open }, f('المسابقة', cp, ids[0]), f('أي مباراة؟', mt, ids[1]), f('متى انتهت المباراة؟', en, ids[2]), f('الواقعة', inc, ids[3]), f('الأدلة المتاحة (اختياري)', ev, ids[4]), msg,
+          h('div', { class: 'a-actions' }, btn('أرسل التظلم', 'send', 'btn-primary', e => {
+            const b = e.currentTarget, when = en.value ? new Date(en.value) : null;
+            if (mt.value.trim().length < 3 || inc.value.trim().length < 10 || !when || isNaN(when)) { msg.textContent = AP_ERR.invalid_data; msg.hidden = false; say(msg.textContent); (mt.value.trim().length < 3 ? mt : inc).focus(); return; }
+            b.disabled = true;
+            YB.rpc('yb_appeal_file', { team_id: teamId, comp: cp.value, match_label: mt.value, ended_at: when.toISOString(), incident: inc.value, evidence: ev.value || null }).then(x => {
+              b.disabled = false;
+              if (!x.ok) { msg.textContent = errMsg(x, AP_ERR); msg.hidden = false; say(msg.textContent); return; }
+              open = false; say('أُرسل التظلم إلى إدارة المسابقة. يُبتّ فيه خلال 48 ساعة.'); load('apl-open');
+            });
+          }, { 'data-fk': 'apl-send' })));
+        el.hidden = false;
+        put(el, h('h3', { id: 'apl-h' }, icon('scale'), h('span', { text: 'تظلّم على مباراة' })),
+          h('ul', { class: 'a-apl-r' }, ['يقدّم مسؤول الفريق تظلمًا مكتوبًا خلال 24 ساعة من نهاية المباراة.', 'يحدد التظلم المباراة والواقعة والأدلة المتاحة.', 'يُبتّ في التظلم خلال 48 ساعة من قبل لجنة التحكيم وإدارة المسابقة.', 'قرارات الحكم في وقائع اللعب نهائية، ويُمنع الاعتراض غير اللائق.'].map(t => h('li', { text: t }))),
+          h('div', { class: 'a-actions' }, btn(open ? 'أغلق النموذج' : 'قدّم تظلمًا', 'file-text', open ? 'btn-ghost' : 'btn-primary', () => { open = !open; load('apl-open'); }, { 'data-fk': 'apl-open', 'aria-expanded': String(open) })), form,
+          r.data.length ? h('ul', { class: 'a-tool-l a-apl-l' }, r.data.map(a => apItem(a))) : h('p', { class: 'a-hint', text: 'لم يقدّم فريقك أي تظلم.' }));
+        if (focus) { const t = el.querySelector(`[data-fk="${focus}"]`); if (t) t.focus({ preventScroll: true }); }
+      });
+    }
+    load();
+    return el;
+  }
+  // the admin: «التظلمات» (open ones first; a decision needs a written reason)
+  function appealsDesk(onlyOpen) {
+    const el = h('section', { class: 'a-card a-adm a-tool-w a-apl', 'aria-labelledby': 'apd-h', 'data-appeals-desk': '', hidden: true });
+    function load(focus) {
+      YB.rpc('yb_appeals_admin', {}).then(r => {
+        if (!r.ok || !Array.isArray(r.data)) return;
+        const openN = r.data.filter(a => a.status === 'open').length;
+        if (onlyOpen && !openN) { el.hidden = true; return; }
+        el.hidden = false;
+        put(el, h('div', { class: 'a-bdgs-top' }, h('h3', { id: 'apd-h' }, icon('scale'), h('span', { text: 'التظلمات' })), chip(openN ? `بانتظار البتّ: ${openN}` : 'لا تظلمات مفتوحة', openN ? 'warn' : 'ok')),
+          h('p', { class: 'a-lead', text: 'تنص اللائحة على البتّ خلال 48 ساعة، وعلى الفصل بين التحكيم والنظر في التظلمات. اكتب سبب القرار: يقرؤه قائد الفريق. إن استدعى القرار تعديل نتيجة فعدّلها من «النتائج».' }),
+          r.data.length ? h('ul', { class: 'a-tool-l a-apl-l' }, r.data.filter(a => !onlyOpen || a.status === 'open').map(a => {
+            if (a.status !== 'open') return apItem(a);
+            const id = uid('f'), ta = h('textarea', { id, rows: 2, maxLength: 400, 'data-fk': 'apd-why-' + a.id, placeholder: 'سبب القرار، بجملة أو جملتين' });
+            const msg = h('p', { class: 'a-live-msg', role: 'alert', hidden: true });
+            const go = accept => { if (ta.value.trim().length < 5) { msg.textContent = 'اكتب سبب القرار أولًا.'; msg.hidden = false; say(msg.textContent); ta.focus(); return; }
+              YB.rpc('yb_appeal_decide', { id: a.id, accept, decision: ta.value }).then(x => { if (!x.ok) { msg.textContent = errMsg(x, AP_ERR); msg.hidden = false; say(msg.textContent); return; } say(accept ? 'قُبل التظلم، ووصل القرار لقائد الفريق.' : 'رُفض التظلم، ووصل القرار لقائد الفريق.'); load('apd-refresh'); }); };
+            return apItem(a, h('div', { class: 'a-apl-d' }, h('div', { class: 'a-f' }, h('label', { for: id, class: 'a-l', text: 'سبب القرار' }), ta), msg,
+              h('div', { class: 'a-actions' }, btn('اقبل التظلم', 'check', 'btn-primary', () => go(true), { 'data-fk': 'apd-yes-' + a.id }), btn('ارفض التظلم', 'x', 'btn-ghost', () => go(false), { 'data-fk': 'apd-no-' + a.id }))));
+          })) : h('p', { class: 'a-empty', text: 'لم يُقدَّم أي تظلم.' }),
+          h('div', { class: 'a-actions' }, btn('حدّث', 'repeat', 'btn-ghost', () => load('apd-refresh'), { 'data-fk': 'apd-refresh' })));
+        if (focus) { const t = el.querySelector(`[data-fk="${focus}"]`); if (t) t.focus({ preventScroll: true }); }
+      });
+    }
+    load();
     return el;
   }
 
@@ -2820,6 +2896,8 @@
     if (n.kind === 'week_theme') return `قيمة هذا الأسبوع: ${d.title || ''}. افتح «رحلتي» لتقرأها.`;
     if (n.kind === 'award') return `نال ${team} وسام «${AWARD[d.kind] || 'التميز'}» من إدارة المسابقة.`;
     if (n.kind === 'admin_task') return `مهمة جديدة من الإدارة لقادة الفرق: ${d.title || ''}`;
+    if (n.kind === 'appeal_new') return `تظلّم جديد من ${team} بانتظار البتّ. افتح «أدوات الإدارة».`;
+    if (n.kind === 'appeal_decided') return `بُتّ في تظلّم ${team}: ${d.accepted ? 'قُبل' : 'رُفض'}. اقرأ سبب القرار في «المباريات والمواعيد».`;
     return 'إشعار جديد.';
   }
   function inboxBox() {
@@ -4916,7 +4994,7 @@
     dashLayout([
       { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [L.hero, (L.boxes.mday = matchDayCard(t.team_id, t.team_name, 'leader')), (L.boxes.next = nextCard(leaderNext())), leaderTiles(t), L.boxes.top, L.boxes.check, L.staff, L.run, L.opp, L.chs, L.hft, awardsCard(t.team_id), L.badges, L.cal, scoresCard(), L.pulse, announceFeed()] },
       feedGroup(),
-      { key: 'matches', label: 'المباريات والمواعيد', icon: 'trophy', one: true, nodes: [L.dates, L.sched.node, L.boxes.marks] },
+      { key: 'matches', label: 'المباريات والمواعيد', icon: 'trophy', one: true, nodes: [L.dates, L.sched.node, L.boxes.marks, appealCard(t.team_id)] },
       { key: 'team', label: 'الفريق', icon: 'users', nodes: [L.boxes.roster, L.boxes.roles, L.boxes.code, (L.style || (L.style = teamStyleCard(t), L.style.start(), L.style)).el, L.printBox] },
       { key: 'projects', label: 'المشاريع والمبادرات', icon: 'image', one: true, nodes: [L.subs.el] },
       { key: 'lead', label: 'قيادتي', icon: 'flag', nodes: [themeCard(), adminTasksCard(t.team_id), L.mf, raceCard(t.team_id), L.lw, meetingCard(), L.init, pactCard(t.team_id), workshopCard(), L.sum] },

@@ -520,6 +520,11 @@
 .a-adm textarea{width:100%;box-sizing:border-box;min-height:84px;padding:10px 14px;border-radius:12px;border:1.5px solid var(--line-2);background:var(--surface-2);color:var(--ink);font:inherit;resize:vertical}
 .a-adm textarea:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 4px color-mix(in oklab,var(--brand) 18%,transparent)}
 .a-adm .a-actions{margin-top:12px}
+.a-apl-r{margin:0 0 6px;padding-inline-start:1.2em;display:grid;gap:4px;color:var(--ink-2);font-size:.92rem}
+.a-apl-f{margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+.a-apl-l>li{justify-items:stretch}
+.a-apl-l>li p{margin:0;overflow-wrap:anywhere}
+.a-apl-d{margin-top:6px;padding-top:10px;border-top:1px dashed var(--line)}
 .a-adm-follow{margin-top:12px}
 .a-adm-follow>.a-card{box-shadow:none;border:1px solid var(--line)}
 @media (min-width:1180px){.a-app.dash .a-sec>.a-grid:not(.one)>.a-mym{grid-column:1/-1}}

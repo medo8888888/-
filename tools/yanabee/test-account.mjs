@@ -55,7 +55,7 @@ class Fake {
     this.subs = []; this.objects = new Map(); this.uploads = [];   // migration 0008 (submissions, private photos)
     this.seekers = new Map(); this.invites = []; this.transfers = false;   // migration 0012 (players looking for a team)
     this.logos = new Map();   // migration 0014 (team logos: path -> uploader)
-    this.j15 = false; this.j16 = false; this.t17 = false; this.themes = new Map(); this.awards = []; this.atasks = []; this.atDone = new Set(); this.seq17 = 0; this.nudged = new Set(); this.pledges = []; this.hifzMarks = new Map(); this.deedDays = []; this.pacts = new Map(); this.leadWeeks = new Map(); this.auditRows = [];   // migration 0015 (the journey on the account; off until a test turns it on)
+    this.j15 = false; this.j16 = false; this.t17 = false; this.a18 = false; this.appeals = []; this.themes = new Map(); this.awards = []; this.atasks = []; this.atDone = new Set(); this.seq17 = 0; this.nudged = new Set(); this.pledges = []; this.hifzMarks = new Map(); this.deedDays = []; this.pacts = new Map(); this.leadWeeks = new Map(); this.auditRows = [];   // migration 0015 (the journey on the account; off until a test turns it on)
     this.pushSubs = []; this.pushReady = true; this.pushKey = 'B' + 'x'.repeat(86);   // migration 0013 (phone notifications)
     this.judges = new Map(); this.jscores = []; this.ascores = []; this.published = false;   // migration 0010
     this.ann = []; this.annSeq = 0; this.chat = []; this.chatSeq = 0; this.reports = []; this.mutes = new Map(); this.reads = new Map();   // migration 0009
@@ -497,6 +497,38 @@ class Fake {
       yb_post_delete: ['id'], yb_post_moderate: ['id', 'action', 'note'], yb_react: ['post_id', 'kind'], yb_comments: ['post_id'], yb_comment_post: ['post_id', 'body'],
       yb_comment_delete: ['id'], yb_comment_report: ['id', 'reason'], yb_comment_moderate: ['id', 'action'], yb_comment_mute: ['id', 'hours', 'reason'], yb_feed_reports: [],
       yb_set_members_comment: ['allow'], yb_transfer_team: ['team_id', 'new_leader', 'old_stays', 'old_role'], yb_analytics: [] };
+    /* migration 0018: appeals (lg7). Off unless a test sets a18. */
+    if (/^yb_(appeal_file|appeals_mine|appeals_admin|appeal_decide)$/.test(name)) {
+      if (!this.a18) return err(404, 'PGRST202', 'Could not find the function public.' + name);
+      const ok = d => ({ status: 200, body: d });
+      body = body || {};
+      const isAdmin = (this.profiles.find(p => p.id === me) || {}).role === 'admin';
+      const view = a => ({ ...a, due_at: new Date(new Date(a.created_at).getTime() + 48 * 3600e3).toISOString() });
+      if (name === 'yb_appeals_admin') { if (!isAdmin) return raise('permission_denied', '42501'); return ok(this.appeals.slice().reverse().sort((a, b) => (b.status === 'open') - (a.status === 'open')).map(a => ({ ...view(a), team_name: (this.teams.find(t => t.id === a.team_id) || {}).name }))); }
+      if (name === 'yb_appeal_decide') {
+        if (!isAdmin) return raise('permission_denied', '42501');
+        const a = this.appeals.find(x => x.id === body.id), d = String(body.decision || '').replace(/\s+/g, ' ').trim();
+        if (!a) return ok({ ok: false, error: 'not_found' });
+        if (a.status !== 'open') return ok({ ok: false, error: 'already_decided' });
+        if (d.length < 5) return ok({ ok: false, error: 'invalid_data' });
+        a.status = body.accept ? 'accepted' : 'rejected'; a.decision = d; a.decided_at = new Date().toISOString();
+        const t = this.teams.find(x => x.id === a.team_id);
+        this.notify([t.leader_id], 'appeal_decided', { team_name: t.name, accepted: !!body.accept });
+        return ok({ ok: true });
+      }
+      const t = this.teams.find(x => x.id === body.team_id && x.leader_id === me);
+      if (!t) return raise('permission_denied', '42501');
+      if (name === 'yb_appeals_mine') return ok(this.appeals.filter(a => a.team_id === t.id).slice().reverse().map(view));
+      const lb = String(body.match_label || '').trim(), inc = String(body.incident || '').trim(), e = new Date(body.ended_at);
+      if (!['football', 'chess', 'other'].includes(body.comp) || lb.length < 3 || inc.length < 10 || isNaN(e) || e > new Date(Date.now() + 300e3)) return ok({ ok: false, error: 'invalid_data' });
+      if (e < new Date(Date.now() - 24 * 3600e3)) return ok({ ok: false, error: 'too_late' });
+      if (/\d{7,}/.test((lb + inc + (body.evidence || '')).replace(/[\s\-()+]/g, ''))) return ok({ ok: false, error: 'contact_not_allowed' });
+      if (this.appeals.filter(a => a.team_id === t.id && a.status === 'open').length >= 3) return ok({ ok: false, error: 'too_many' });
+      const a = { id: this.appeals.length + 1, team_id: t.id, comp: body.comp, match: lb, ended_at: e.toISOString(), incident: inc, evidence: body.evidence || null, status: 'open', decision: null, created_at: new Date().toISOString(), decided_at: null };
+      this.appeals.push(a);
+      this.notify(this.profiles.filter(p => p.role === 'admin').map(p => p.id), 'appeal_new', { team_name: t.name });
+      return ok({ ok: true, id: a.id });
+    }
     /* migration 0017: tools for the admin (the value of the week, awards, tasks for the leaders). Off unless a test sets t17. */
     if (/^yb_(theme_set|theme_get|theme_list|award_give|award_remove|team_awards|awards_all|task_add|task_remove|tasks_admin|tasks_mine|task_tick)$/.test(name)) {
       if (!this.t17) return err(404, 'PGRST202', 'Could not find the function public.' + name);
@@ -5368,6 +5400,70 @@ section('the admin judges from the same account: «اجعلني حكمًا»');
   const jv = fake.judges.get(boss.id), axes = Array.isArray(jv) ? jv : (jv && jv.axes) || [];
   check('one press: the admin is a judge on the three axes, the offer is gone, and the judge desk lists the approved team', [...axes].sort().join(',') === 'fahm,hifz,tatbiq' && (await A.locator('[data-judge-self]').count()) === 0 && /اليقين/.test(await A.locator('#ap-judging [data-judge]').innerText()), JSON.stringify(jv));
   check('no overflow, console clean', (await overflow(A)) <= 0 && A.errs.length === 0, A.errs.join('|'));
+}
+
+section('appeals (0018; the regulations lg7): the leader files within 24 hours, the admin decides with a reason');
+{
+  const fake = new Fake();
+  fake.a18 = true; fake.t17 = true;
+  const boss = fake.addUser({ email: 'boss@t.test', name: 'محمود المشرف', role: 'member' }); fake.setAdmin('boss@t.test');
+  const ld = fake.addUser({ email: 'la8@t.test', name: 'قائد العدل', role: 'leader' });
+  const TA8 = fake.seedTeam({ leaderEmail: 'la8@t.test', name: 'العدل', status: 'approved', members: Array.from({ length: 4 }, (_, i) => ({ name: `عضو العدل ${i + 1}`, age: 14 })) });
+  fake.teams.forEach(t => { t.waitlist = false; });
+  const txt = async l => (await l.innerText()).replace(/\s+/g, ' ');
+  const got = (u, kind) => fake.notes.filter(n => n.user_id === u && n.kind === kind);
+  const L = await open(fake, { label: 'ap-leader', mobile: true });
+  await settle(L); await signInOk(L, 'la8@t.test');
+  await L.waitForSelector('#sec-matches [data-appeals]:not([hidden])', { state: 'attached', timeout: 8000 });
+  await L.locator('[data-fk="qa-matches"]').click().catch(async () => { await L.locator('.a-dock [data-dock=more]').click(); await L.locator('[data-more] [data-fk="more-matches"]').click(); });
+  const ap = L.locator('[data-appeals]');
+  await ap.locator('[data-fk="apl-open"]').waitFor({ timeout: 8000 });
+  check('the leader finds «تظلّم على مباراة» with the regulation\'s own rules, and the form closed', /خلال 24 ساعة من نهاية المباراة/.test(await txt(ap)) && /خلال 48 ساعة/.test(await txt(ap)) && (await ap.locator('[data-fk="apl-send"]').isHidden()) && /لم يقدّم فريقك أي تظلم/.test(await txt(ap)));
+  await ap.locator('[data-fk="apl-open"]').click();
+  await ap.locator('[data-fk="apl-send"]').waitFor();
+  await ap.locator('[data-fk="apl-send"]').click();
+  check('an empty appeal is not sent', fake.appeals.length === 0 && /تحقق من المباراة/.test(await txt(ap)));
+  await ap.locator('[data-fk="apl-match"]').fill('مباراتنا ضد فريق الأمل، المجموعة أ');
+  await ap.locator('[data-fk="apl-incident"]').fill('احتُسب هدف بعد صافرة النهاية ولم يُلغَ.');
+  const old = new Date(Date.now() - 30 * 3600e3), pad = n => String(n).padStart(2, '0');
+  await ap.locator('[data-fk="apl-ended"]').fill(`${old.getFullYear()}-${pad(old.getMonth() + 1)}-${pad(old.getDate())}T${pad(old.getHours())}:${pad(old.getMinutes())}`);
+  await ap.locator('[data-fk="apl-send"]').click();
+  await L.waitForFunction(() => /انتهت مهلة التظلم/.test(document.querySelector('[data-appeals]').textContent), null, { timeout: 8000 });
+  check('a match that ended more than 24 hours ago is refused, quoting the rule; what was typed stays', fake.appeals.length === 0 && (await ap.locator('[data-fk="apl-match"]').inputValue()) === 'مباراتنا ضد فريق الأمل، المجموعة أ');
+  const rec = new Date(Date.now() - 2 * 3600e3);
+  await ap.locator('[data-fk="apl-ended"]').fill(`${rec.getFullYear()}-${pad(rec.getMonth() + 1)}-${pad(rec.getDate())}T${pad(rec.getHours())}:${pad(rec.getMinutes())}`);
+  await ap.locator('[data-fk="apl-evidence"]').fill('تسجيل مصوّر عند مشرف الفريق');
+  await ap.locator('[data-fk="apl-send"]').click();
+  await ap.locator('[data-appeal]').first().waitFor({ timeout: 8000 });
+  const mineT = await txt(ap.locator('[data-appeal]').first());
+  check('within 24 hours it is filed: listed as «قيد النظر» with when it is due, and the admin is told', fake.appeals.length === 1 && /قيد النظر/.test(mineT) && /يُبتّ فيه قبل/.test(mineT) && /الأدلة المتاحة: تسجيل مصوّر/.test(mineT) && got(boss.id, 'appeal_new').length === 1 && (await ap.locator('[data-fk="apl-send"]').isHidden()), mineT);
+  check('leader phone: buttons big enough, no overflow, console clean', (await ap.locator('[data-fk="apl-open"]').evaluate(b => b.getBoundingClientRect().height)) >= 44 && (await overflow(L)) <= 0 && L.errs.length === 0, L.errs.join('|'));
+
+  const A = await open(fake, { label: 'ap-admin' });
+  await settle(A); await signInOk(A, 'boss@t.test', undefined, { home: true });
+  const hd = A.locator('[data-admin-home] [data-appeals-desk]');
+  await hd.locator('[data-appeal]').first().waitFor({ timeout: 8000 });
+  check('an open appeal shows on the admin\'s home', /بانتظار البتّ: 1/.test(await txt(hd)) && /العدل · مباراتنا ضد فريق الأمل/.test(await txt(hd)));
+  const id = fake.appeals[0].id;
+  await hd.locator(`[data-fk="apd-no-${id}"]`).click();
+  check('no decision without a written reason', fake.appeals[0].status === 'open' && /اكتب سبب القرار أولًا/.test(await txt(hd)));
+  await hd.locator(`[data-fk="apd-why-${id}"]`).fill('راجعنا تقرير الحكم: الهدف صحيح قبل الصافرة.');
+  await hd.locator(`[data-fk="apd-no-${id}"]`).click();
+  await A.waitForFunction(() => { const d = document.querySelector('[data-admin-home] [data-appeals-desk]'); return !d || d.hidden; }, null, { timeout: 8000 });
+  check('the admin rejects with a reason: saved, the leader is told, and the home card goes away', fake.appeals[0].status === 'rejected' && fake.appeals[0].decision === 'راجعنا تقرير الحكم: الهدف صحيح قبل الصافرة.' && got(ld.id, 'appeal_decided').length === 1 && got(ld.id, 'appeal_decided')[0].data.accepted === false);
+  await A.locator('#at-tools').click();
+  await A.locator('[data-admin-tools] [data-appeals-desk] [data-appeal]').first().waitFor({ timeout: 8000 });
+  check('«أدوات الإدارة» keeps the full list with each decision', /لا تظلمات مفتوحة/.test(await txt(A.locator('[data-admin-tools] [data-appeals-desk]'))) && /قرار اللجنة: راجعنا تقرير الحكم/.test(await txt(A.locator('[data-admin-tools] [data-appeals-desk] [data-appeal-decision]'))) && (await overflow(A)) <= 0 && A.errs.length === 0, A.errs.join('|'));
+  await reload(L);
+  await L.waitForSelector('#sec-matches [data-appeal-decision]', { state: 'attached', timeout: 8000 });
+  check('the leader reads «رُفض» and the committee\'s reason', /قرار اللجنة: راجعنا تقرير الحكم: الهدف صحيح قبل الصافرة\./.test(await L.locator('#sec-matches [data-appeal-decision]').textContent()) && /رُفض/.test(await L.locator('#sec-matches [data-appeal]').first().textContent()));
+  const fake0 = new Fake();
+  fake0.addUser({ email: 'l0@t.test', name: 'قائد قديم', role: 'leader' });
+  fake0.seedTeam({ leaderEmail: 'l0@t.test', name: 'القدامى', status: 'approved', members: Array.from({ length: 4 }, (_, i) => ({ name: `قديم ${i + 1}`, age: 14 })) });
+  const Z = await open(fake0, { label: 'ap-off' });
+  await settle(Z); await signInOk(Z, 'l0@t.test');
+  await Z.waitForSelector('#sec-matches', { state: 'attached', timeout: 8000 }); await Z.waitForTimeout(300);
+  check('on a backend without appeals the card stays hidden and nothing breaks', (await Z.locator('[data-appeals]:not([hidden])').count()) === 0 && Z.errs.length === 0, Z.errs.join('|'));
 }
 
 section('network hosts and console');

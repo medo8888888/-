@@ -152,6 +152,12 @@ offline with PGlite, then goes live in one apply (slice 20).
 
 36. [x] **The admin judges from the same account** (owner, 15 Nov 2026: "can't you do a built-in account"). No shared or ready-made account was created (a known password on the live site would be a hole). Instead «التحكيم» offers «حكّم بحسابك هذا» ← «اجعلني حكمًا»: one press makes the admin a judge on the three axes and the judge desk shows in the same tab. No database change. Tests: `test-account.mjs` (3 new).
 
+37. [x] **Appeals «التظلمات»** (owner, 15 Nov 2026: "why wasn't this added, see what is in the folder"; the regulations lg7 and lg8 had no screen). Migration `0018_yb_appeals.sql`, **applied live on 15 Nov 2026** (4 functions present, none runnable by visitors, the table locked).
+    - The leader, in «المباريات والمواعيد»: «تظلّم على مباراة» with the regulation's own rules; names the match, when it ended, the incident and the evidence (text only). Refused after 24 hours; at most three open appeals a team. Sees the status, when it is due (48 hours) and the committee's reason.
+    - The admin: «التظلمات» on the home when one is open, and the full list in «أدوات الإدارة». Accept or reject, always with a written reason; the leader is notified. Officers neither read nor decide (lg8: refereeing and appeals are kept apart). A decision never changes a score by itself.
+    - Tests: `supabase/tests/appeals.test.mjs` 47; `test-account.mjs` 1073 (11 new).
+    - Checked against the folder the same day and already in the app: forfeits and their scores (lg2, lg4), 3/1/0 and the tie-break order (lg6), the spirit award (lg9), groups of 4 (lg11). Not built: assigning a named referee to each match (lg3, lg8), an injury record (lg5), the leader's notebook and the weekly leadership review (leaders.txt l-notebook, l-review).
+
 **Live database, 15 Nov 2026:** the owner approved the prompts; `yb_0014_team_identity`, `yb_0015_journey`, `yb_0016_journey_social` and `yb_0017_admin_tools` are APPLIED to project `dhjmdiqausbcyhrguinl`. Checked live: 32 functions present, none runnable by visitors, 9 new tables locked with no direct grants, the logo column and the private logo bucket exist. Still to do: redeploy the `yb-push` edge function so phones show the new notification words (in-app words already work), and upload the new zip to Cloudflare.
 
 25. [ ] *(Optional)* Private chess labels, Arabic email templates, a custom domain (SPEC 4.9); 🔒 a live quiz with a buzzer for hifz and fahm, only if the owner wants it (SPEC 4.11).
