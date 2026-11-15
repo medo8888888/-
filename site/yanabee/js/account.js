@@ -2074,7 +2074,7 @@
         const ev = h('input', { id: ids[4], type: 'text', maxLength: 300, 'data-fk': 'apl-evidence', placeholder: 'مثال: تسجيل مصوّر عند مشرف الفريق' });
         const msg = h('p', { class: 'a-live-msg', role: 'alert', hidden: true });
         const f = (label, node, id) => h('div', { class: 'a-f' }, h('label', { for: id, class: 'a-l', text: label }), node);
-        const form = h('div', { class: 'a-apl-f', hidden: !open }, f('المسابقة', cp, ids[0]), f('أي مباراة؟', mt, ids[1]), f('متى انتهت المباراة؟', en, ids[2]), f('الواقعة', inc, ids[3]), f('الأدلة المتاحة (اختياري)', ev, ids[4]), msg,
+        const form = h('div', { class: 'a-apl-f', hidden: !open }, matchPicker('apl-pick', teamId, (e, end) => { mt.value = e.title; en.value = toLocalInput(end); if (AP_COMP[e.competition]) cp.value = e.competition; }), f('المسابقة', cp, ids[0]), f('أي مباراة؟', mt, ids[1]), f('متى انتهت المباراة؟', en, ids[2]), f('الواقعة', inc, ids[3]), f('الأدلة المتاحة (اختياري)', ev, ids[4]), msg,
           h('div', { class: 'a-actions' }, btn('أرسل التظلم', 'send', 'btn-primary', e => {
             const b = e.currentTarget, when = en.value ? new Date(en.value) : null;
             if (mt.value.trim().length < 3 || inc.value.trim().length < 10 || !when || isNaN(when)) { msg.textContent = AP_ERR.invalid_data; msg.hidden = false; say(msg.textContent); (mt.value.trim().length < 3 ? mt : inc).focus(); return; }
@@ -2130,6 +2130,21 @@
   const MC_ERR = Object.assign({}, J_ERR, { head_no_return: 'تنص اللائحة: عند الاشتباه في إصابة الرأس أو الارتجاج لا يعود اللاعب للمباراة. أزل علامة «عاد للعب».', invalid_data: 'تحقق مما كتبته ثم حاول مرة أخرى.' });
   const fField = (label, node, id) => h('div', { class: 'a-f' }, h('label', { for: id, class: 'a-l', text: label }), node);
   const focusIn = (el, fk) => { const t = el.querySelector(`[data-fk="${fk}"]`); if (t) t.focus({ preventScroll: true }); };
+  // «اختر من المباريات»: fills the match's name and a likely end time from the schedule, so nothing is mistyped
+  const toLocalInput = d => `${localDay(d)}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  function matchPicker(fk, teamId, onPick) {
+    const id = uid('f'), sel = h('select', { id, 'data-fk': fk }, h('option', { value: '', text: 'اكتبها بنفسي' }));
+    const box = h('div', { class: 'a-f', hidden: true, 'data-match-pick': '' }, h('label', { for: id, class: 'a-l', text: 'اختر من مباريات الجدول الأخيرة' }), sel);
+    eventsOnce().then(evs => {
+      const now = Date.now(), rows = (evs || []).filter(e => e.kind === 'match' && e.status !== 'cancelled' && (!teamId || (Array.isArray(e.team_ids) && e.team_ids.includes(teamId)))
+        && new Date(e.starts_at).getTime() < now && new Date(e.starts_at).getTime() > now - 36 * 3600e3).slice(-8).reverse();
+      if (!rows.length) return;
+      rows.forEach(e => sel.append(h('option', { value: e.id, text: `${e.title} · ${fmtWhen(e.starts_at)}` })));
+      sel.addEventListener('change', () => { const e = rows.find(x => x.id === sel.value); if (e) onPick(e, new Date(Math.min(now, new Date(e.starts_at).getTime() + 3600e3))); });
+      box.hidden = false;
+    });
+    return box;
+  }
   const staffOnce = () => (S.staffP || (S.staffP = YB.rpc('yb_event_staff_list', {}).then(r => (r.ok && Array.isArray(r.data) ? r.data : null))));
   // a team's people: who referees the next match, and who looks after safety
   function matchStaffCard(teamId) {
@@ -2191,7 +2206,7 @@
         const ac = h('input', { id: ids[5], type: 'text', maxLength: 300, 'data-fk': 'in-action', placeholder: 'مثال: إسعاف أولي، وأُبلغ وليّ الأمر' });
         const bk = h('input', { id: ids[6], type: 'checkbox', 'data-fk': 'in-returned' });
         const msg = h('p', { class: 'a-live-msg', role: 'alert', hidden: true });
-        const form = h('div', { class: 'a-apl-f', hidden: !open }, fField('نوع الواقعة', kd, ids[0]), fField('المباراة', mt, ids[1]), fField('الفريق', tm, ids[2]), fField('وقت الواقعة', wn, ids[3]), fField('الواقعة', sm, ids[4]), fField('ما الذي اتُّخذ؟ (اختياري)', ac, ids[5]),
+        const form = h('div', { class: 'a-apl-f', hidden: !open }, matchPicker('in-pick', null, e => { mt.value = e.title; }), fField('نوع الواقعة', kd, ids[0]), fField('المباراة', mt, ids[1]), fField('الفريق', tm, ids[2]), fField('وقت الواقعة', wn, ids[3]), fField('الواقعة', sm, ids[4]), fField('ما الذي اتُّخذ؟ (اختياري)', ac, ids[5]),
           h('label', { class: 'a-check', for: ids[6] }, bk, h('span', { text: 'عاد اللاعب للعب' })), msg,
           h('div', { class: 'a-actions' }, btn('سجّل الواقعة', 'check', 'btn-primary', () => {
             const when = wn.value ? new Date(wn.value) : null;

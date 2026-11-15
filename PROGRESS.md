@@ -171,6 +171,12 @@ offline with PGlite, then goes live in one apply (slice 20).
     - Member: «ابدأ من هنا» on the home (joined, write the promise, tick an ayah, record a deed); it retires when done or dismissed.
     - Tests: `test-account.mjs` 1093 (4 new).
 
+40. [x] **A real trial on the live backend, and the match picker** (owner, 15 Nov 2026: "you sign and see").
+    - Trial: three throwaway accounts (leader, member, parent) signed up through the live Auth API (sign-up is auto-confirmed: no email is sent), a team with four members was created and submitted, approved from the database side (no admin account was created), then the member, the parent and the leader ran 41 more real calls: promise, ayahs, deed, team board, race, the parent's word, the leader's follow-up, cheer, pact, duties, notebook, assistant, an appeal, plus the privacy refusals. **54 of 54 passed.** The script is not in the repo (it holds nothing secret; the publishable key comes from `make_zip.sh`).
+    - Left in the live database on purpose so the owner can look at the admin side with data in it: the team «فريق تجريبي (اختبار rs01a2)» (id 42b4947b-17db-451a-8151-ed4d7f019b15, approved) with one open appeal, and the three accounts `yb-trial-rs01a2-*@example.org`. **To remove when the owner says so.** The live database also holds one real team.
+    - Not covered by the trial: the admin's own screens with a real admin session, the phone push, and the pages in a real phone browser.
+    - Appeals and the injury record: «اختر من مباريات الجدول الأخيرة» fills the match (and for an appeal the competition and a likely end time) from the schedule. No database change. Tests: `test-account.mjs` 1095 (2 new).
+
 **Live database, 15 Nov 2026:** the owner approved the prompts; `yb_0014_team_identity`, `yb_0015_journey`, `yb_0016_journey_social` and `yb_0017_admin_tools` are APPLIED to project `dhjmdiqausbcyhrguinl`. Checked live: 32 functions present, none runnable by visitors, 9 new tables locked with no direct grants, the logo column and the private logo bucket exist. Still to do: redeploy the `yb-push` edge function so phones show the new notification words (in-app words already work), and upload the new zip to Cloudflare.
 
 25. [ ] *(Optional)* Private chess labels, Arabic email templates, a custom domain (SPEC 4.9); 🔒 a live quiz with a buzzer for hifz and fahm, only if the owner wants it (SPEC 4.11).

@@ -5485,6 +5485,9 @@ section('appeals (0018; the regulations lg7): the leader files within 24 hours, 
   fake.teams.forEach(t => { t.waitlist = false; });
   const txt = async l => (await l.innerText()).replace(/\s+/g, ' ');
   const got = (u, kind) => fake.notes.filter(n => n.user_id === u && n.kind === kind);
+  const evA = fake.uid(), evOld = fake.uid();
+  fake.events.push({ id: evA, competition: 'chess', kind: 'match', title: 'العدل ضد الأمل (شطرنج)', starts_at: new Date(Date.now() - 3 * 3600e3).toISOString(), place: null, team_ids: [TA8.id], category: null, status: 'scheduled', note: null },
+    { id: evOld, competition: 'football', kind: 'match', title: 'مباراة قديمة', starts_at: new Date(Date.now() - 80 * 3600e3).toISOString(), place: null, team_ids: [TA8.id], category: null, status: 'scheduled', note: null });
   const L = await open(fake, { label: 'ap-leader', mobile: true });
   await settle(L); await signInOk(L, 'la8@t.test');
   await L.waitForSelector('#sec-matches [data-appeals]:not([hidden])', { state: 'attached', timeout: 8000 });
@@ -5494,6 +5497,11 @@ section('appeals (0018; the regulations lg7): the leader files within 24 hours, 
   check('the leader finds «تظلّم على مباراة» with the regulation\'s own rules, and the form closed', /خلال 24 ساعة من نهاية المباراة/.test(await txt(ap)) && /خلال 48 ساعة/.test(await txt(ap)) && (await ap.locator('[data-fk="apl-send"]').isHidden()) && /لم يقدّم فريقك أي تظلم/.test(await txt(ap)));
   await ap.locator('[data-fk="apl-open"]').click();
   await ap.locator('[data-fk="apl-send"]').waitFor();
+  await ap.locator('[data-fk="apl-pick"]').waitFor({ timeout: 8000 });
+  check('the form offers the team\'s recent matches from the schedule, not the old ones', (await ap.locator('[data-fk="apl-pick"] option').count()) === 2 && /العدل ضد الأمل \(شطرنج\)/.test(await ap.locator('[data-fk="apl-pick"]').innerText()));
+  await ap.locator('[data-fk="apl-pick"]').selectOption(evA);
+  check('choosing one fills the match, the competition and a likely end time', (await ap.locator('[data-fk="apl-match"]').inputValue()) === 'العدل ضد الأمل (شطرنج)' && (await ap.locator('[data-fk="apl-comp"]').inputValue()) === 'chess' && (await ap.locator('[data-fk="apl-ended"]').inputValue()).length === 16);
+  await ap.locator('[data-fk="apl-match"]').fill('');
   await ap.locator('[data-fk="apl-send"]').click();
   check('an empty appeal is not sent', fake.appeals.length === 0 && /تحقق من المباراة/.test(await txt(ap)));
   await ap.locator('[data-fk="apl-match"]').fill('مباراتنا ضد فريق الأمل، المجموعة أ');
