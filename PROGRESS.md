@@ -150,6 +150,8 @@ offline with PGlite, then goes live in one apply (slice 20).
     - Admin, in «أدوات الإدارة»: «تقرير الأسبوع», a text to copy (value of the week, teams, promises, ayahs, quiet teams, awards, leaders' tasks); team names and counts only.
     - Tests: `test-account.mjs` 1059 (13 new).
 
+36. [x] **The admin judges from the same account** (owner, 15 Nov 2026: "can't you do a built-in account"). No shared or ready-made account was created (a known password on the live site would be a hole). Instead «التحكيم» offers «حكّم بحسابك هذا» ← «اجعلني حكمًا»: one press makes the admin a judge on the three axes and the judge desk shows in the same tab. No database change. Tests: `test-account.mjs` (3 new).
+
 **Live database, 15 Nov 2026:** the owner approved the prompts; `yb_0014_team_identity`, `yb_0015_journey`, `yb_0016_journey_social` and `yb_0017_admin_tools` are APPLIED to project `dhjmdiqausbcyhrguinl`. Checked live: 32 functions present, none runnable by visitors, 9 new tables locked with no direct grants, the logo column and the private logo bucket exist. Still to do: redeploy the `yb-push` edge function so phones show the new notification words (in-app words already work), and upload the new zip to Cloudflare.
 
 25. [ ] *(Optional)* Private chess labels, Arabic email templates, a custom domain (SPEC 4.9); 🔒 a live quiz with a buzzer for hifz and fahm, only if the owner wants it (SPEC 4.11).

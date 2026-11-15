@@ -4686,8 +4686,14 @@
       const r = await YB.rpc('yb_set_judge', { target: id, axes });
       if (!r.ok) { if (sessionLost(r)) return; return showMsg(errMsg(r)); }
       showMsg('');
+      if (id === S.uid) desk = null;   // the admin's own judge desk follows the admin's own axes
       await refresh(done, focus);
     }
+    // the admin judges from this same account: one press, no second account to create
+    const selfCard = () => (G.judges.some(j => j.user_id === S.uid) ? null : h('section', { class: 'a-card', 'data-judge-self': '', 'aria-labelledby': fk + '-sh' },
+      h('h3', { id: fk + '-sh' }, icon('scale'), h('span', { text: 'حكّم بحسابك هذا' })),
+      h('p', { class: 'a-lead', text: 'لا تحتاج حسابًا آخر. بضغطة واحدة تصبح حكمًا في المحاور الثلاثة (الحفظ، الفهم، التطبيق)، وتظهر لوحة الحكم هنا لتُدخل النقاط وأسبابها لكل فريق معتمد. تغيّر محاورك أو تزيل نفسك من قائمة الحكّام أدناه متى شئت.' }),
+      h('div', { class: 'a-actions' }, btn('اجعلني حكمًا', 'scale', 'btn-primary', () => setAxes(S.uid, ['hifz', 'fahm', 'tatbiq'], 'أصبحت حكمًا. لوحة الحكم أمامك الآن.'), { 'data-fk': fk + '-self' }))));
     function judgesCard() {
       const eligible = (A.profiles || []).filter(p => (p.role === 'parent' || p.role === 'admin') && !G.judges.some(j => j.user_id === p.id));
       const rows = G.judges.map(j => {
@@ -4775,7 +4781,7 @@
     let desk = null;
     function paint() {
       if (!desk) { desk = judgeDesk(fk + '-me'); desk.start(); }
-      put(el, ...[G.err ? h('p', { class: 'a-live-msg', role: 'alert', text: G.err }) : null, msgEl, desk.el, judgesCard(), boardCard()].filter(Boolean));
+      put(el, ...[G.err ? h('p', { class: 'a-live-msg', role: 'alert', text: G.err }) : null, msgEl, selfCard(), desk.el, judgesCard(), boardCard()].filter(Boolean));
     }
     return { el, start: async () => { put(el, skeleton()); await load(); paint(); } };
   }

@@ -5350,6 +5350,26 @@ section('«إنجازاتي» for the member, «تابع أعضاء الفريق
   check('admin: no overflow, console clean', (await overflow(A)) <= 0 && A.errs.length === 0, A.errs.join('|'));
 }
 
+section('the admin judges from the same account: «اجعلني حكمًا»');
+{
+  const fake = new Fake();
+  const boss = fake.addUser({ email: 'boss@t.test', name: 'محمود المشرف', role: 'member' }); fake.setAdmin('boss@t.test');
+  fake.addUser({ email: 'lj2@t.test', name: 'قائد اليقين', role: 'leader' });
+  const TY = fake.seedTeam({ leaderEmail: 'lj2@t.test', name: 'اليقين', status: 'approved', members: Array.from({ length: 4 }, (_, i) => ({ name: `عضو اليقين ${i + 1}`, age: 14 })) });
+  fake.teams.forEach(t => { t.waitlist = false; });
+  const A = await open(fake, { label: 'self-judge' });
+  await settle(A); await signInOk(A, 'boss@t.test', undefined, { home: true });
+  await A.locator('#at-judging').click();
+  const self = A.locator('[data-judge-self]');
+  await self.waitFor({ timeout: 8000 });
+  check('before: the admin is offered «حكّم بحسابك هذا», and no judge desk shows yet', /لا تحتاج حسابًا آخر/.test(await self.innerText()) && (await A.locator('#ap-judging [data-judge]:not([hidden])').count()) === 0 && !fake.judges.has(boss.id));
+  await self.locator('[data-fk$="-self"]').click();
+  await A.locator('#ap-judging [data-judge]:not([hidden])').waitFor({ timeout: 8000 });
+  const jv = fake.judges.get(boss.id), axes = Array.isArray(jv) ? jv : (jv && jv.axes) || [];
+  check('one press: the admin is a judge on the three axes, the offer is gone, and the judge desk lists the approved team', [...axes].sort().join(',') === 'fahm,hifz,tatbiq' && (await A.locator('[data-judge-self]').count()) === 0 && /اليقين/.test(await A.locator('#ap-judging [data-judge]').innerText()), JSON.stringify(jv));
+  check('no overflow, console clean', (await overflow(A)) <= 0 && A.errs.length === 0, A.errs.join('|'));
+}
+
 section('network hosts and console');
 check('no request to any host other than the page itself, the fake Supabase and the shell fonts', badHosts.size === 0, [...badHosts].join());
 check('no console error and no uncaught exception in any page', consoleErrors.length === 0, consoleErrors.slice(0, 5).join(' || '));
