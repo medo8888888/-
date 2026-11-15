@@ -55,7 +55,7 @@ class Fake {
     this.subs = []; this.objects = new Map(); this.uploads = [];   // migration 0008 (submissions, private photos)
     this.seekers = new Map(); this.invites = []; this.transfers = false;   // migration 0012 (players looking for a team)
     this.logos = new Map();   // migration 0014 (team logos: path -> uploader)
-    this.j15 = false; this.j16 = false; this.nudged = new Set(); this.pledges = []; this.hifzMarks = new Map(); this.deedDays = []; this.pacts = new Map(); this.leadWeeks = new Map(); this.auditRows = [];   // migration 0015 (the journey on the account; off until a test turns it on)
+    this.j15 = false; this.j16 = false; this.t17 = false; this.themes = new Map(); this.awards = []; this.atasks = []; this.atDone = new Set(); this.seq17 = 0; this.nudged = new Set(); this.pledges = []; this.hifzMarks = new Map(); this.deedDays = []; this.pacts = new Map(); this.leadWeeks = new Map(); this.auditRows = [];   // migration 0015 (the journey on the account; off until a test turns it on)
     this.pushSubs = []; this.pushReady = true; this.pushKey = 'B' + 'x'.repeat(86);   // migration 0013 (phone notifications)
     this.judges = new Map(); this.jscores = []; this.ascores = []; this.published = false;   // migration 0010
     this.ann = []; this.annSeq = 0; this.chat = []; this.chatSeq = 0; this.reports = []; this.mutes = new Map(); this.reads = new Map();   // migration 0009
@@ -497,6 +497,69 @@ class Fake {
       yb_post_delete: ['id'], yb_post_moderate: ['id', 'action', 'note'], yb_react: ['post_id', 'kind'], yb_comments: ['post_id'], yb_comment_post: ['post_id', 'body'],
       yb_comment_delete: ['id'], yb_comment_report: ['id', 'reason'], yb_comment_moderate: ['id', 'action'], yb_comment_mute: ['id', 'hours', 'reason'], yb_feed_reports: [],
       yb_set_members_comment: ['allow'], yb_transfer_team: ['team_id', 'new_leader', 'old_stays', 'old_role'], yb_analytics: [] };
+    /* migration 0017: tools for the admin (the value of the week, awards, tasks for the leaders). Off unless a test sets t17. */
+    if (/^yb_(theme_set|theme_get|theme_list|award_give|award_remove|team_awards|awards_all|task_add|task_remove|tasks_admin|tasks_mine|task_tick)$/.test(name)) {
+      if (!this.t17) return err(404, 'PGRST202', 'Could not find the function public.' + name);
+      const ok = d => ({ status: 200, body: d });
+      body = body || {};
+      const role = (this.profiles.find(p => p.id === me) || {}).role, isAdmin = role === 'admin';
+      const contact = t => /\d{7,}/.test(String(t || '').replace(/[\s\-()+]/g, '')) || /@/.test(String(t || ''));
+      const trim = t => String(t || '').replace(/\s+/g, ' ').trim();
+      const appr = () => this.teams.filter(t => t.status === 'approved');
+      const people = t => [t.leader_id, ...this.members.filter(m => m.team_id === t.id).flatMap(m => [m.user_id, ...this.links.filter(l => l.member_id === m.id).map(l => l.parent_id)])];
+      const leads = t => this.teams.some(x => x.id === t && x.leader_id === me);
+      if (name === 'yb_theme_get') return ok(this.themes.has(body.week) ? { week: body.week, ...this.themes.get(body.week) } : null);
+      if (name === 'yb_team_awards') {
+        const ms = this.members.filter(m => m.team_id === body.team_id);
+        if (!(isAdmin || role === 'officer' || leads(body.team_id) || ms.some(m => m.user_id === me) || this.links.some(l => l.parent_id === me && ms.some(m => m.id === l.member_id)))) return raise('permission_denied', '42501');
+        return ok(this.awards.filter(a => a.team_id === body.team_id).slice().reverse().map(a => { const m = this.members.find(x => x.id === a.member_id); return { id: a.id, kind: a.kind, note: a.note, at: a.at, member: m ? m.full_name.trim().split(/\s+/)[0] : null, mine: !!m && m.user_id === me }; }));
+      }
+      if (name === 'yb_tasks_mine' || name === 'yb_task_tick') {
+        if (!leads(body.team_id)) return raise('permission_denied', '42501');
+        if (name === 'yb_tasks_mine') return ok(this.atasks.map(a => ({ id: a.id, title: a.title, due: a.due, done: this.atDone.has(a.id + '|' + body.team_id) })));
+        if (!this.atasks.some(a => a.id === body.task_id)) return ok({ ok: false, error: 'not_found' });
+        if (body.done) this.atDone.add(body.task_id + '|' + body.team_id); else this.atDone.delete(body.task_id + '|' + body.team_id);
+        return ok({ ok: true });
+      }
+      if (!isAdmin) return raise('permission_denied', '42501');
+      if (name === 'yb_theme_list') return ok([...this.themes.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1)).map(([week, v]) => ({ week, ...v })));
+      if (name === 'yb_theme_set') {
+        const ti = trim(body.title), b = trim(body.body) || null;
+        if (!/^\d{4}-\d\d-\d\d$/.test(body.week || '') || new Date(body.week + 'T00:00:00').getDay() !== 6) return ok({ ok: false, error: 'invalid_data' });
+        if (!ti) { this.themes.delete(body.week); return ok({ ok: true, removed: true }); }
+        if (ti.length < 3 || ti.length > 60 || (b || '').length > 300) return ok({ ok: false, error: 'invalid_data' });
+        if (contact(ti) || contact(b)) return ok({ ok: false, error: 'contact_not_allowed' });
+        if (!this.themes.has(body.week) && new Date(body.week + 'T00:00:00') <= new Date()) this.notify(appr().flatMap(people), 'week_theme', { title: ti });
+        this.themes.set(body.week, { title: ti, body: b });
+        return ok({ ok: true });
+      }
+      if (name === 'yb_awards_all') return ok(this.awards.slice().reverse().map(a => ({ id: a.id, team_id: a.team_id, team_name: (this.teams.find(t => t.id === a.team_id) || {}).name, kind: a.kind, note: a.note, at: a.at, member: (this.members.find(m => m.id === a.member_id) || {}).full_name || null })));
+      if (name === 'yb_award_give') {
+        const t = appr().find(x => x.id === body.team_id), n = trim(body.note) || null;
+        if (!t) return ok({ ok: false, error: 'team_not_found' });
+        if (!['hifz', 'fahm', 'tatbiq', 'taawun', 'mubadara', 'iltizam', 'leader'].includes(body.kind) || (n || '').length > 120) return ok({ ok: false, error: 'invalid_data' });
+        if (n && contact(n)) return ok({ ok: false, error: 'contact_not_allowed' });
+        const mid = body.kind === 'leader' ? null : (body.member_id || null);
+        if (mid && !this.members.some(m => m.id === mid && m.team_id === t.id)) return ok({ ok: false, error: 'member_not_found' });
+        if (this.awards.some(a => a.team_id === t.id && a.kind === body.kind && a.member_id === mid)) return ok({ ok: false, error: 'already_given' });
+        const a = { id: ++this.seq17, team_id: t.id, member_id: mid, kind: body.kind, note: n, at: this.now() };
+        this.awards.push(a);
+        this.notify(people(t), 'award', { team_name: t.name, kind: body.kind });
+        return ok({ ok: true, id: a.id });
+      }
+      if (name === 'yb_award_remove') { const i = this.awards.findIndex(a => a.id === body.id); if (i < 0) return ok({ ok: false, error: 'not_found' }); this.awards.splice(i, 1); return ok({ ok: true }); }
+      if (name === 'yb_task_add') {
+        const ti = trim(body.title);
+        if (ti.length < 5 || ti.length > 120) return ok({ ok: false, error: 'invalid_data' });
+        if (contact(ti)) return ok({ ok: false, error: 'contact_not_allowed' });
+        const a = { id: ++this.seq17, title: ti, due: body.due || null, at: this.now() };
+        this.atasks.push(a);
+        this.notify(appr().map(t => t.leader_id), 'admin_task', { title: ti });
+        return ok({ ok: true, id: a.id });
+      }
+      if (name === 'yb_task_remove') { const i = this.atasks.findIndex(a => a.id === body.id); if (i < 0) return ok({ ok: false, error: 'not_found' }); this.atasks.splice(i, 1); return ok({ ok: true }); }
+      return ok(this.atasks.slice().reverse().map(a => ({ id: a.id, title: a.title, due: a.due, at: a.at, teams: appr().length, done: appr().filter(t => this.atDone.has(a.id + '|' + t.id)).map(t => t.name), waiting: appr().filter(t => !this.atDone.has(a.id + '|' + t.id)).map(t => t.name) })));
+    }
     /* migration 0015: the journey on the account, and who sees what. Off (an older backend) unless a test sets j15. */
     if (/^yb_(journey_me|pledge_save|pledge_done|hifz_set|deed_mark|team_journey|team_board|pact_save|lead_week_set|child_journey|pledge_note|activity_board|activity_log|my_pledges|pledge_cheer|pledge_nudge|week_race)$/.test(name)) {
       if (!this.j15 || (!this.j16 && /^yb_(my_pledges|pledge_cheer|pledge_nudge|week_race)$/.test(name))) return err(404, 'PGRST202', 'Could not find the function public.' + name);   // 0016 adds the last four
@@ -1909,7 +1972,7 @@ let teamId = '';
   await settle(AD);
   const stateBefore = world.count(/tournament_state/);
   await signInOk(AD, ADMIN.email);
-  check('admin screen: role badge الإدارة, thirteen tabs (الرئيسية first, with الإحصاءات, الأخبار, الجدول, النتائج, المشاريع, التواصل, التحكيم)', (await AD.locator('.a-head .a-badge').innerText()) === 'الإدارة' && /^الرئيسية.*الإحصاءات.*الأخبار.*الجدول/.test((await AD.locator('[role=tab]').allInnerTexts()).join('|').replace(/\s+/g, ' ')) && (await AD.locator('[role=tab]').count()) === 13);
+  check('admin screen: role badge الإدارة, fourteen tabs (الرئيسية first, with الإحصاءات, الأخبار, الجدول, النتائج, المشاريع, التواصل, التحكيم)', (await AD.locator('.a-head .a-badge').innerText()) === 'الإدارة' && /^الرئيسية.*الإحصاءات.*الأخبار.*الجدول/.test((await AD.locator('[role=tab]').allInnerTexts()).join('|').replace(/\s+/g, ' ')) && (await AD.locator('[role=tab]').count()) === 14);
   check('admin load reads the published board once (the home tab\'s numbers) and does not poll it', world.count(/tournament_state/) - stateBefore <= 1);
   const counts = await AD.locator('.a-counters .a-count').allInnerTexts();
   check('counters by status (1 قيد المراجعة, 0 مطلوب تعديل, total 1)', counts.some(c => /^1\s*كل الفرق/.test(c.replace(/\n/g, ' '))) && counts.some(c => /^1\s*قيد المراجعة/.test(c.replace(/\n/g, ' '))) && counts.some(c => /^0\s*مطلوب تعديل/.test(c.replace(/\n/g, ' '))) && counts.some(c => /^0\s*معتمد/.test(c.replace(/\n/g, ' '))));
@@ -2036,7 +2099,7 @@ let memberEmail = 'sara@t.test', parentEmail = 'parent@t.test';
   check('member sees own consent status (received: set by the admin)', /استُلمت موافقة ولي الأمر/.test(mt));
   check('no admin / leader controls on the member screen', !(await M.locator('input[role=switch], form.a-add, button[data-fk=submit], .a-tabs-4').count()));
   const reqs = world.log.filter(l => l.who === world.profileByEmail(memberEmail).id).map(l => l.path.replace('/rest/v1/', ''));
-  check('member screen reads only my_team, my_roster, tournament_state and the own profile (never teams, team_members, profiles list)', reqs.every(r => /^(rpc\/(my_team|join_team|yb_journey_me|yb_team_board|yb_my_pledges|yb_week_race|yb_mark_read|yb_my_scores|yb_my_prefs|yb_feed|yb_seek_me|yb_team_staff)|my_roster|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements|yb_match_live|yb_team_style)$/.test(r)), [...new Set(reqs)].join());
+  check('member screen reads only my_team, my_roster, tournament_state and the own profile (never teams, team_members, profiles list)', reqs.every(r => /^(rpc\/(my_team|join_team|yb_theme_get|yb_team_awards|yb_journey_me|yb_team_board|yb_my_pledges|yb_week_race|yb_mark_read|yb_my_scores|yb_my_prefs|yb_feed|yb_seek_me|yb_team_staff)|my_roster|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements|yb_match_live|yb_team_style)$/.test(r)), [...new Set(reqs)].join());
   const tour = await M.locator('.a-sched').innerText();
   check('schedule card shows the empty state before the tournament is published', /لم تُنشر بيانات البطولة بعد/.test(tour));
   // second account tries the same name
@@ -2091,7 +2154,7 @@ let memberEmail = 'sara@t.test', parentEmail = 'parent@t.test';
   const chips = await P.locator('.a-child .a-consent .a-chip').allInnerTexts();
   check('two children: one «استُلمت», one «لم تُستلم بعد»; ONE schedule card for the shared team', chips.some(c => /^استُلمت/.test(c)) && chips.some(c => /لم تُستلم/.test(c)) && (await P.locator('.a-sched').count()) === 1);
   const preqs = world.log.filter(l => l.who === world.profileByEmail(parentEmail).id).map(l => l.path.replace('/rest/v1/', ''));
-  check('parent screen reads only my_children, tournament_state and the own profile', preqs.every(r => /^(rpc\/(link_child|yb_child_journey|yb_week_race|yb_mark_read|yb_my_scores|yb_my_judging|yb_my_prefs|yb_feed|yb_guardian_seekers|yb_team_staff)|my_children|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements|yb_match_live|yb_team_style)$/.test(r)), [...new Set(preqs)].join());
+  check('parent screen reads only my_children, tournament_state and the own profile', preqs.every(r => /^(rpc\/(link_child|yb_theme_get|yb_team_awards|yb_child_journey|yb_week_race|yb_mark_read|yb_my_scores|yb_my_judging|yb_my_prefs|yb_feed|yb_guardian_seekers|yb_team_staff)|my_children|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements|yb_match_live|yb_team_style)$/.test(r)), [...new Set(preqs)].join());
   check('parent console clean', P.errs.length === 0, P.errs.join('|'));
   world.P = P;
 }
@@ -4256,7 +4319,7 @@ section('the phone dashboard: a bottom bar like the apps, «المزيد», and 
   await A.waitForSelector('.a-dock [data-dock=teams]', { timeout: 8000 });
   check('admin bar: الرئيسية · الفرق · الأخبار · … · المزيد', (await A.locator('.a-dock .a-dock-b[data-dock]:not([data-dock=bell]):not([data-dock=more])').allInnerTexts()).join('|') === 'الرئيسية|الفرق|الأخبار');
   await A.locator('[data-dock=more]').click();
-  check('«المزيد» lists all 13 admin tabs', (await A.locator('[data-more] .a-more-s').count()) === 13);
+  check('«المزيد» lists all 14 admin tabs', (await A.locator('[data-more] .a-more-s').count()) === 14);
   await A.locator('[data-more] [data-fk=more-people]').click();
   await A.waitForSelector('#ap-people', { timeout: 6000 }).catch(() => {});
   check('a tab from «المزيد» (الأشخاص) opens, and «المزيد» lights up', (await A.locator('#at-people').getAttribute('aria-selected')) === 'true' && await A.locator('[data-dock=more]').evaluate(b => b.classList.contains('on')));
@@ -5104,6 +5167,125 @@ section('the journey between people (0016): the leader cheers and reminds, notif
   await L2.waitForSelector('#sec-lead [data-members-follow] [data-mf]', { timeout: 8000 });
   await L2.waitForTimeout(300);
   check('with 0015 only: the follow-up works, with no cheer, no reminder and no race', (await L2.locator('[data-fk^="mf-cheer-"], [data-fk="mf-nudge"], [data-mf-cheered]').count()) === 0 && (await L2.locator('[data-race]:not([hidden])').count()) === 0 && L2.errs.length === 0, L2.errs.join('|'));
+}
+
+section('tools for the admin (0017): the value of the week, encouragement awards, tasks for the leaders');
+{
+  const fake = new Fake();
+  fake.t17 = true;
+  fake.addUser({ email: 'boss@t.test', name: 'محمود المشرف', role: 'member' }); fake.setAdmin('boss@t.test');
+  const ld = fake.addUser({ email: 'lt@t.test', name: 'قائد الفجر', role: 'leader' });
+  fake.addUser({ email: 'lu@t.test', name: 'قائد الضحى', role: 'leader' });
+  const kid = fake.addUser({ email: 'kt@t.test', name: 'إياد عضو الفجر', role: 'member' });
+  const par = fake.addUser({ email: 'pt@t.test', name: 'والد إياد', role: 'parent' });
+  const TF = fake.seedTeam({ leaderEmail: 'lt@t.test', name: 'الفجر', status: 'approved', members: [{ name: 'إياد عضو الفجر', age: 14, consent: 'received' }, { name: 'ثان', age: 14 }, { name: 'ثالث', age: 14 }, { name: 'رابع', age: 14 }] });
+  const TD = fake.seedTeam({ leaderEmail: 'lu@t.test', name: 'الضحى', status: 'approved', members: Array.from({ length: 4 }, (_, i) => ({ name: `عضو الضحى ${i + 1}`, age: 14 })) });
+  fake.teams.forEach(t => { t.waitlist = false; });
+  const row = fake.members.find(m => m.full_name === 'إياد عضو الفجر'); row.user_id = kid.id;
+  fake.links.push({ parent_id: par.id, member_id: row.id, created_at: fake.now() });
+  const txt = async l => (await l.innerText()).replace(/\s+/g, ' ');
+  const got = (u, kind) => fake.notes.filter(n => n.user_id === u && n.kind === kind);
+
+  /* ---- the admin adds ---- */
+  const A = await open(fake, { label: 't17-admin' });
+  await settle(A); await signInOk(A, 'boss@t.test', undefined, { home: true });
+  await A.locator('[data-fk="qa-tools"]').click();
+  await A.waitForSelector('[data-admin-tools] [data-fk="th-save"]', { timeout: 8000 });
+  check('the admin has «أدوات الإدارة», reachable from the welcome card, with three tools', (await A.locator('#at-tools').getAttribute('aria-selected')) === 'true' && (await A.locator('[data-tool-theme], [data-tool-awards], [data-tool-tasks]').count()) === 3 && (await A.locator('.a-counters').count()) === 0);
+  const th = A.locator('[data-tool-theme]');
+  await th.locator('[data-fk="th-save"]').click();
+  check('an empty value is not published', /اكتب عنوان القيمة/.test(await txt(th)) && fake.themes.size === 0);
+  await th.locator('[data-fk="th-title"]').fill('الصدق في القول والعمل');
+  await th.locator('[data-fk="th-body"]').fill('نقول الحق، ونفي بما نعد به.');
+  await th.locator('[data-fk="th-save"]').click();
+  await th.locator('[data-fk="th-del"]').waitFor({ timeout: 8000 });
+  check('«انشر القيمة» saves this week\'s value and tells the teams once', fake.themes.size === 1 && [...fake.themes.values()][0].title === 'الصدق في القول والعمل' && got(kid.id, 'week_theme').length === 1 && got(par.id, 'week_theme').length === 1 && got(ld.id, 'week_theme').length === 1
+    && /حدّث القيمة/.test(await txt(th)) && /الصدق في القول والعمل/.test(await txt(th.locator('[data-theme-list]'))));
+  const aw = A.locator('[data-tool-awards]');
+  await aw.locator('[data-fk="aw-note"]').fill('أتمّ حفظ السورة هذا الأسبوع');
+  await aw.locator('[data-fk="aw-team"]').selectOption(TD.id);
+  await aw.locator('[data-fk="aw-team"]').selectOption(TF.id);
+  await aw.locator('[data-fk="aw-kind"]').selectOption('hifz');
+  check('changing the team or the award keeps what was typed', (await aw.locator('[data-fk="aw-note"]').inputValue()) === 'أتمّ حفظ السورة هذا الأسبوع');
+  check('the member list follows the chosen team, the leader aside', (await aw.locator('[data-fk="aw-member"] option').allInnerTexts()).join('|') === 'الفريق كله|إياد عضو الفجر|ثان|ثالث|رابع');
+  await aw.locator('[data-fk="aw-member"]').selectOption(row.id);
+  await aw.locator('[data-fk="aw-give"]').click();
+  await aw.locator('[data-award-row]').first().waitFor({ timeout: 8000 });
+  check('«امنح الوسام» gives the member an award; the team\'s people are told (team and kind, no member name)', fake.awards.length === 1 && fake.awards[0].member_id === row.id && fake.awards[0].kind === 'hifz' && got(kid.id, 'award').length === 1 && got(par.id, 'award').length === 1
+    && JSON.stringify(Object.keys(got(kid.id, 'award')[0].data).sort()) === '["kind","team_name"]' && /وسام التميز في الحفظ — إياد عضو الفجر/.test(await txt(aw.locator('[data-award-list]'))));
+  await aw.locator('[data-fk="aw-team"]').selectOption(TF.id);
+  await aw.locator('[data-fk="aw-kind"]').selectOption('hifz');
+  await aw.locator('[data-fk="aw-member"]').selectOption(row.id);
+  await aw.locator('[data-fk="aw-give"]').click();
+  await A.waitForFunction(() => /خلال الأيام الستة/.test(document.querySelector('[data-tool-awards]').textContent), null, { timeout: 8000 });
+  check('the same award twice is refused in words', fake.awards.length === 1);
+  await aw.locator('[data-fk="aw-kind"]').selectOption('leader');
+  check('«القائد المتميز» asks for no member', !(await aw.locator('[data-fk="aw-member"]').isVisible()) && (await aw.locator('[data-aw-leader]').isVisible()));
+  await aw.locator('[data-fk="aw-give"]').click();
+  await A.waitForFunction(() => document.querySelectorAll('[data-tool-awards] [data-award-row]').length === 2, null, { timeout: 8000 });
+  const tk = A.locator('[data-tool-tasks]');
+  await tk.locator('[data-fk="tk-title"]').fill('رقمي 0791234567 للتواصل');
+  await tk.locator('[data-fk="tk-add"]').click();
+  await A.waitForFunction(() => /أرقام الهواتف/.test(document.querySelector('[data-tool-tasks]').textContent), null, { timeout: 8000 });
+  check('a task with a phone number is refused', fake.atasks.length === 0);
+  await tk.locator('[data-fk="tk-title"]').fill('سلّموا موافقات أولياء الأمور');
+  await tk.locator('[data-fk="tk-add"]').click();
+  await tk.locator('[data-task-row]').first().waitFor({ timeout: 8000 });
+  check('«أضف المهمة» adds it for every approved team and tells the leaders only', fake.atasks.length === 1 && got(ld.id, 'admin_task').length === 1 && got(kid.id, 'admin_task').length === 0 && /أنجزتها الفرق 0 من 2/.test(await txt(tk.locator('[data-task-row]').first())) && /بقي: الفجر، الضحى|بقي: الضحى، الفجر/.test(await txt(tk.locator('[data-task-waiting]'))));
+  check('the tool forms use the card\'s full width (fields are not squeezed into the middle)', await A.locator('[data-tool-theme] [data-fk="th-title"]').evaluate(i => i.getBoundingClientRect().width / i.closest('section').getBoundingClientRect().width > 0.8));
+  check('the tools\' buttons are big enough and named; no overflow; console clean', (await aw.locator('[data-fk^="aw-x-"]').first().getAttribute('aria-label')).startsWith('اسحب وسام') && (await tk.locator('[data-fk="tk-add"]').evaluate(b => b.getBoundingClientRect().height)) >= 44 && (await overflow(A)) <= 0 && A.errs.length === 0, A.errs.join('|'));
+
+  /* ---- the leader ---- */
+  const L = await open(fake, { label: 't17-leader' });
+  await settle(L); await signInOk(L, 'lt@t.test');
+  await L.waitForSelector('#sec-lead [data-admin-tasks] [data-fk^="at-"]', { timeout: 8000 });
+  await L.locator('[data-fk="qa-lead"]').click();
+  const at = L.locator('[data-admin-tasks]');
+  check('the leader finds «مهام من الإدارة» and «قيمة هذا الأسبوع» in «قيادتي»', /سلّموا موافقات أولياء الأمور/.test(await txt(at)) && /بقي 1/.test(await txt(at)) && (await L.locator('#sec-lead [data-theme-title]').innerText()) === 'الصدق في القول والعمل');
+  await at.locator('[data-fk^="at-"]').first().check();
+  await L.waitForFunction(() => /أُنجزت كلها/.test(document.querySelector('[data-admin-tasks]').textContent), null, { timeout: 8000 });
+  check('ticking it saves for the team, and focus stays on the box', fake.atDone.size === 1 && [...fake.atDone][0].endsWith('|' + TF.id) && await L.evaluate(() => (document.activeElement.getAttribute('data-fk') || '').startsWith('at-')));
+  const lw = await txt(L.locator('#sec-home [data-awards]'));
+  check('the leader\'s home shows «أوسمة الفريق»: the member by first name, and the leader\'s own', /وسام القائد المتميز لقائد الفريق/.test(lw) && /وسام التميز في الحفظ لـ إياد/.test(lw) && /أتمّ حفظ السورة هذا الأسبوع/.test(lw) && /ليست الجوائز الختامية/.test(lw), lw);
+  check('leader page: no overflow, console clean', (await overflow(L)) <= 0 && L.errs.length === 0, L.errs.join('|'));
+  await A.locator('[data-fk="at-teams"], #at-teams').first().click(); await A.locator('#at-tools').click();
+  await A.locator('[data-tool-tasks] [data-task-row]').first().waitFor({ timeout: 8000 });
+  check('back on the admin\'s side: one of two teams done, the other named', /أنجزتها الفرق 1 من 2/.test(await txt(A.locator('[data-tool-tasks] [data-task-row]').first())) && (await txt(A.locator('[data-tool-tasks] [data-task-waiting]'))) === 'بقي: الضحى');
+
+  /* ---- the member and the parent ---- */
+  const K = await open(fake, { label: 't17-member', mobile: true });
+  await settle(K); await signInOk(K, 'kt@t.test');
+  await K.waitForSelector('#sec-home [data-awards] [data-award]', { timeout: 8000 });
+  const kw = await txt(K.locator('#sec-home [data-awards]'));
+  check('the member sees the award marked «وسامك»', /وسامك/.test(kw) && (await K.locator('[data-awards] [data-award=hifz].mine').count()) === 1 && (await K.locator('[data-admin-tasks]:not([hidden]), [data-admin-tools]').count()) === 0, kw);
+  await K.locator('.a-dock [data-dock=journey]').click();
+  check('«قيمة هذا الأسبوع» opens the member\'s journey', (await K.locator('#sec-journey [data-theme-title]').innerText()) === 'الصدق في القول والعمل' && /نقول الحق، ونفي بما نعد به/.test(await K.locator('#sec-journey [data-theme-body]').innerText())
+    && await K.evaluate(() => { const s = document.querySelector('#sec-journey'); return s.querySelector('[data-theme]').compareDocumentPosition(s.querySelector('[data-pledge]')) & 4; }));
+  await K.locator('.a-dock [data-dock=bell]').click();
+  await K.waitForFunction(() => /قيمة هذا الأسبوع: الصدق في القول والعمل/.test(document.body.innerText) && /نال فريق الفجر وسام «التميز في الحفظ»/.test(document.body.innerText), null, { timeout: 8000 });
+  check('both arrive in «الإشعارات» in words', (await overflow(K)) <= 0 && K.errs.length === 0, K.errs.join('|'));
+  const P = await open(fake, { label: 't17-parent', mobile: true });
+  await settle(P); await signInOk(P, 'pt@t.test');
+  await P.waitForSelector('[data-awards] [data-award]', { timeout: 8000 });
+  check('the parent sees the value of the week and the team\'s awards', (await P.locator('[data-theme-title]').innerText()) === 'الصدق في القول والعمل' && /وسام التميز في الحفظ لـ إياد/.test(await txt(P.locator('[data-awards]'))) && (await overflow(P)) <= 0 && P.errs.length === 0, P.errs.join('|'));
+
+  /* ---- the admin takes things back ---- */
+  await A.locator('[data-tool-awards] [data-fk^="aw-x-"]').first().click();
+  await A.waitForFunction(() => document.querySelectorAll('[data-tool-awards] [data-award-row]').length === 1, null, { timeout: 8000 });
+  await A.locator('[data-tool-tasks] [data-fk^="tk-x-"]').first().click();
+  await A.waitForFunction(() => /لا مهام بعد/.test(document.querySelector('[data-tool-tasks]').textContent), null, { timeout: 8000 });
+  await A.locator('[data-tool-theme] [data-fk="th-del"]').click();
+  await A.waitForFunction(() => /انشر القيمة/.test(document.querySelector('[data-tool-theme]').textContent), null, { timeout: 8000 });
+  check('the admin can take back an award, delete a task and remove the week\'s value', fake.awards.length === 1 && fake.atasks.length === 0 && fake.themes.size === 0 && A.errs.length === 0, A.errs.join('|'));
+
+  /* ---- an older backend ---- */
+  const fake0 = new Fake();
+  fake0.addUser({ email: 'boss@t.test', name: 'محمود المشرف', role: 'member' }); fake0.setAdmin('boss@t.test');
+  const Z = await open(fake0, { label: 't17-off' });
+  await settle(Z); await signInOk(Z, 'boss@t.test', undefined, { home: true });
+  await Z.locator('#at-tools').click();
+  await Z.locator('[data-tools-off]').waitFor({ timeout: 8000 });
+  check('without the database update the tab says so plainly instead of showing broken forms', /تنتظر تحديث قاعدة البيانات/.test(await txt(Z.locator('[data-tools-off]'))) && (await Z.locator('[data-fk="th-save"], [data-fk="aw-give"], [data-fk="tk-add"]').count()) === 0 && Z.errs.length === 0, Z.errs.join('|'));
 }
 
 section('network hosts and console');

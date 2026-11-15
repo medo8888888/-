@@ -41,6 +41,9 @@ export function pushMessage(kind, data) {
     pledge_cheer: () => 'شجّعك قائد فريقك على وعدك هذا الأسبوع.',
     pledge_kept: () => `وفّى ${clip(d.first_name, 20) || 'ابنك'} بوعده هذا الأسبوع.`,
     pledge_nudge: () => `يذكّرك قائد ${team}: اكتب وعد هذا الأسبوع.`,
+    week_theme: () => `قيمة هذا الأسبوع: ${clip(d.title, 50)}`,
+    award: () => `نال ${team} وسامًا تشجيعيًا من إدارة المسابقة.`,
+    admin_task: () => `مهمة جديدة من الإدارة: ${clip(d.title, 50)}`,
   };
   const body = (T[kind] || (() => 'لديك إشعار جديد.'))();
   return { title: 'ينابيع', body, url: 'account.html', tag: 'yb-' + String(kind || 'note').replace(/[^a-z_]/g, '').slice(0, 30) };
