@@ -1885,7 +1885,7 @@
   }
   // the admin's tab «أدوات الإدارة»
   function drawAdminTools(panel) {
-    const wrap = h('div', { class: 'a-home', 'data-admin-tools': '' });
+    const wrap = h('div', { class: 'a-tools', 'data-admin-tools': '' });
     panel.append(wrap);
     const approved = A.teams.filter(t => t.status === 'approved');
     const field = (label, node, id) => h('div', { class: 'a-f' }, h('label', { for: id, class: 'a-l', text: label }), node);
@@ -1898,8 +1898,8 @@
     let thWeek = weekKey();
     function drawTheme(focus) {
       YB.rpc('yb_theme_list', {}).then(r => {
-        if (!r.ok) { put(wrap, h('section', { class: 'a-card', 'data-tools-off': '' }, h('h3', {}, icon('grid'), h('span', { text: 'أدوات الإدارة' })),
-          h('p', { class: 'a-lead', text: no15(r) ? 'هذه الأدوات تنتظر تحديث قاعدة البيانات (0017). بعد تطبيقه تظهر هنا: قيمة الأسبوع، الأوسمة، ومهام القادة.' : errMsg(r) }))); return; }
+        if (!r.ok) { put(wrap, h('div', { class: 'a-home' }, h('section', { class: 'a-card', 'data-tools-off': '' }, h('h3', {}, icon('grid'), h('span', { text: 'أدوات الإدارة' })),
+          h('p', { class: 'a-lead', text: no15(r) ? 'هذه الأدوات تنتظر تحديث قاعدة البيانات (0017). بعد تطبيقه تظهر هنا: قيمة الأسبوع، الأوسمة، ومهام القادة.' : errMsg(r) })))); return; }
         const rows = Array.isArray(r.data) ? r.data : [], cur = rows.find(x => x.week === thWeek) || null;
         const ids = [uid('f'), uid('f'), uid('f')];
         const wk = h('select', { id: ids[0], 'data-fk': 'th-week' }, [[weekKey(), 'هذا الأسبوع'], [nextSat, 'الأسبوع القادم']].map(o => h('option', { value: o[0], selected: o[0] === thWeek, text: `${o[1]} (يبدأ ${arDate(o[0])})` })));
@@ -1971,7 +1971,16 @@
         if (focus) focusOn(tk, focus);
       });
     }
-    wrap.append(appealsDesk(false), th, aw, tk, matchStaffDesk(), incidentsDesk(), leadReviewDesk(), weekReportCard());
+    // three groups instead of one long page: what the admin does every week, around the matches, and with the leaders
+    const groups = [['week', 'هذا الأسبوع', [th, aw, weekReportCard()]], ['matches', 'المباريات', [appealsDesk(false), matchStaffDesk(), incidentsDesk()]], ['leaders', 'القادة', [tk, leadReviewDesk()]]];
+    const boxes = groups.map(g => h('div', { class: 'a-home', 'data-tools-group': g[0], hidden: g[0] !== (A.toolsGroup || 'week') }, g[2]));
+    const tabs = groups.map(g => h('button', { type: 'button', class: 'a-deed-c', 'aria-pressed': String(g[0] === (A.toolsGroup || 'week')), 'data-fk': 'tg-' + g[0], onclick: () => {
+      A.toolsGroup = g[0];
+      boxes.forEach(b => { b.hidden = b.getAttribute('data-tools-group') !== g[0]; });
+      tabs.forEach(t => t.setAttribute('aria-pressed', String(t.getAttribute('data-fk') === 'tg-' + g[0])));
+      FX.reveal(boxes.find(b => !b.hidden).children);
+    } }, g[1]));
+    wrap.append(h('div', { class: 'a-deed-f a-tools-g', role: 'group', 'aria-label': 'أقسام أدوات الإدارة', 'data-tools-groups': '' }, tabs), ...boxes);
     drawTheme(); drawAwards(); drawTasks();
   }
 
@@ -2270,6 +2279,27 @@
       });
     }
     load();
+    return el;
+  }
+
+  // «ابدأ من هنا»: the first steps for a member who has just joined; it retires when they are done, or when dismissed
+  function startCard() {
+    const el = h('section', { class: 'a-card a-start', 'aria-labelledby': 'start-h', 'data-start': '', hidden: true });
+    function paint() {
+      const st = mine.get(), wk = weekKey(), off = ((dashStore.get().s || {})[S.uid || '-']);
+      const steps = [['انضممت إلى فريقك', true], ['اكتب وعد هذا الأسبوع: وعد واحد تقدر عليه', !!((st.pledges || {})[wk])], ['علّم أول آية حفظتها من سورة الصف', (st.hifz || []).length > 0], ['سجّل أول فعل طبّقته اليوم', Object.keys(st.deeds || {}).some(k => (st.deeds[k] || []).length)]];
+      const left = steps.filter(x => !x[1]).length;
+      if (off || !left) { el.hidden = true; return; }
+      el.hidden = false;
+      put(el, h('h3', { id: 'start-h' }, icon('route'), h('span', { text: 'ابدأ من هنا' })), h('p', { class: 'a-lead', text: `بقي ${left === 1 ? 'خطوة واحدة' : left === 2 ? 'خطوتان' : `${left} خطوات`} لتبدأ رحلتك. كلها في «رحلتي».` }),
+        h('ol', { class: 'a-start-l' }, steps.map((x, i) => h('li', { class: x[1] ? 'done' : '', 'data-start-step': String(i + 1) }, h('span', { class: 'a-start-n', 'aria-hidden': 'true' }, x[1] ? icon('check') : String(i + 1)), h('span', { text: x[0] }), h('span', { class: 'a-sr', text: x[1] ? ' (تمّت)' : ' (لم تتم بعد)' })))),
+        h('div', { class: 'a-actions' }, btn('افتح «رحلتي»', 'route', 'btn-primary', () => goSec('journey'), { 'data-fk': 'start-go' }),
+          h('button', { type: 'button', class: 'a-link', 'data-fk': 'start-hide', text: 'أخفِ هذه البطاقة', onclick: () => { const d = dashStore.get(); d.s = d.s || {}; d.s[S.uid || '-'] = 1; dashStore.set(d); el.hidden = true; say('أُخفيت بطاقة البداية.'); } })));
+    }
+    paint();
+    J.watch(el, paint);
+    const onChange = () => { if (!el.isConnected) { document.removeEventListener('yb-journey', onChange); return; } setTimeout(paint, 0); };
+    document.addEventListener('yb-journey', onChange);
     return el;
   }
 
@@ -3448,7 +3478,7 @@
     else drawAdminExport(panel);
     if (S.sh) put(S.sh.nav, adminTabs());
     put(A.body, A.tab === 'home' || A.tab === 'plan' || A.tab === 'tools' ? null : counters(), ...(S.sh ? [] : [adminTabs()]), panel);
-    if (A.fxTab !== A.tab) { A.fxTab = A.tab; FX.reveal(A.tab === 'home' || A.tab === 'plan' || A.tab === 'tools' ? panel.querySelectorAll('.a-home > *') : panel.children); }
+    if (A.fxTab !== A.tab) { A.fxTab = A.tab; FX.reveal(A.tab === 'home' || A.tab === 'plan' || A.tab === 'tools' ? panel.querySelectorAll('.a-home:not([hidden]) > *') : panel.children); }
     if (keep) { const f = root.querySelector(`[data-fk="${CSS.escape(keep)}"]`); if (f) f.focus({ preventScroll: true }); }
   }
 
@@ -5157,7 +5187,8 @@
       { key: 'matches', label: 'المباريات والمواعيد', icon: 'trophy', one: true, nodes: [L.dates, L.sched.node, L.boxes.marks, appealCard(t.team_id)] },
       { key: 'team', label: 'الفريق', icon: 'users', nodes: [L.boxes.roster, L.boxes.roles, L.boxes.code, (L.style || (L.style = teamStyleCard(t), L.style.start(), L.style)).el, L.printBox] },
       { key: 'projects', label: 'المشاريع والمبادرات', icon: 'image', one: true, nodes: [L.subs.el] },
-      { key: 'lead', label: 'قيادتي', icon: 'flag', nodes: [themeCard(), adminTasksCard(t.team_id), L.mf, raceCard(t.team_id), notebookCard(t.team_id), L.lw, meetingCard(), L.init, pactCard(t.team_id), workshopCard(), L.sum] },
+      { key: 'lead', label: 'قيادتي', icon: 'flag', nodes: [themeCard(), adminTasksCard(t.team_id), L.mf, notebookCard(t.team_id), L.lw, pactCard(t.team_id), L.init, L.sum, raceCard(t.team_id),
+        h('details', { class: 'a-card a-fold', 'data-lead-more': '', open: !!mine.get().meet }, h('summary', { 'data-fk': 'lead-more', text: 'أدوات اللقاء والورشة (مؤقّت اللقاء الأسبوعي، وأنشطة «الفعل لا القول»)' }), h('div', { class: 'a-fold-b' }, meetingCard(), workshopCard()))] },
       { key: 'players', label: 'لاعبون يبحثون عن فريق', icon: 'users', one: true, nodes: [poolCard('pool')] },
       { key: 'room', label: 'غرفة القادة', icon: 'bell', one: true, nodes: [L.chat.el] },
       { key: 'guide', label: 'المسابقة والنقاط', icon: 'route', nodes: [journeyCard(), (L.points = pointsCard()), honorsCard(), toolsCard(true)] }]);
@@ -5543,7 +5574,7 @@
       row.status === 'approved' ? teamSubsView(row.team_id, row.team_name) : null,
       box.node];
     dashLayout([
-      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [mHero, mday, nextCard(memberNext(row, ro.ok ? me : null)), memberTiles(row), mv[2], mStaff, mRun, mOpp, matchStaffCard(row.team_id), mChs, mHft, awardsCard(row.team_id), mBadges, mCal, mv[1], mPulse, mv[0], mv[4]] },
+      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [mHero, mday, nextCard(memberNext(row, ro.ok ? me : null)), startCard(), memberTiles(row), mv[2], mStaff, mRun, mOpp, matchStaffCard(row.team_id), mChs, mHft, awardsCard(row.team_id), mBadges, mCal, mv[1], mPulse, mv[0], mv[4]] },
       { key: 'journey', label: 'رحلتي', icon: 'route', nodes: [themeCard(), journeyCard(), pledgeCard(), deedCard(), surahCard(), myMilestonesCard(), teamBoardCard(row.team_id), raceCard(row.team_id), mPoints, honorsCard(), toolsCard(false)] },
       feedGroup(),
       { key: 'matches', label: 'المباريات والمواعيد', icon: 'trophy', one: true, nodes: [mv[5], mv[7]] },

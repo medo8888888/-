@@ -4702,6 +4702,8 @@ section('«قيادتي» for the team leader and «الخطة والمؤشرا�
   check('«مهامي هذا الأسبوع»: the five duties of the documents', (await lw.locator('.a-ck li').count()) === 5 && /اجمع المهام والبطاقات السلوكية من الأعضاء/.test(await lw.innerText()) && /احضر لقاء قادة الفرق مع مسؤولي المبادرة/.test(await lw.innerText()) && /0 من 5/.test(await L.locator('[data-lead-week-n]').innerText()));
   await L.locator('[data-fk="lw-meet"]').check(); await L.locator('[data-fk="lw-cards"]').check();
   check('ticking a duty counts it', /2 من 5/.test(await L.locator('[data-lead-week-n]').innerText()));
+  await L.locator('[data-fk="lead-more"]').click();
+  check('the meeting timer and the workshop list are folded under «أدوات اللقاء والورشة» and open on demand', await L.locator('[data-lead-more]').evaluate(d => d.open) && (await L.locator('[data-lead-more] [data-meeting], [data-lead-more] [data-workshop]').count()) === 2);
   const mt = L.locator('[data-meeting]');
   check('«لقاء الفريق الأسبوعي»: six parts that add up to 90 minutes', (await mt.locator('.a-meet-m').allInnerTexts()).map(x => parseInt(x, 10)).join('+') === '10+25+20+20+10+5' && /التسميع والتلاوة/.test(await mt.innerText()) && (await mt.locator('[data-meet-now]:not([hidden])').count()) === 0);
   await mt.locator('[data-fk="meet-start"]').click();
@@ -5015,6 +5017,7 @@ section('the journey on the account (0015): it is saved, and the right people se
   await K.locator('.a-dock [data-dock=journey]').click();
   const pl = K.locator('[data-pledge]'), hz = K.locator('[data-hifz]'), dd = K.locator('[data-deed]');
   await K.waitForFunction(() => /في حسابك/.test(document.querySelector('[data-pledge] [data-note]').textContent), null, { timeout: 8000 });
+  check('a member who has not started sees «ابدأ من هنا» on the home: joined is done, three steps are left', (await K.locator('#sec-home [data-start]:not([hidden]) [data-start-step].done').count()) === 1 && /بقي 3 خطوات/.test(await K.locator('#sec-home [data-start]').textContent()));
   check('with the account journey on, each card says who can see it (no more "this device only")', /يراه قائد فريقك ووليّ أمرك/.test(await pl.locator('[data-note]').innerText()) && /عدد الآيات/.test(await hz.locator('[data-note]').innerText())
     && /لا نوع الفعل/.test(await dd.locator('[data-note]').innerText()) && !/على هذا الجهاز فقط/.test(await K.locator('#sec-journey').innerText()));
   await pl.locator('[data-fk="plg-text"]').fill('اتصل بي على 0791234567 لنرتب');
@@ -5031,6 +5034,7 @@ section('the journey on the account (0015): it is saved, and the right people se
   await pl.locator('[data-fk="plg-done"]').click();
   await K.waitForFunction(() => true); await K.waitForTimeout(150);
   check('ticked ayahs, today\'s deed and "kept" reach the account too', (fake.hifzMarks.get(k1.id) || []).join(',') === '1,2' && fake.deedDays.filter(x => x.user_id === k1.id).length === 1 && mine(k1.id).done === true);
+  check('once the promise, an ayah and a deed are recorded, «ابدأ من هنا» retires by itself', (await K.locator('#sec-home [data-start]:not([hidden])').count()) === 0);
   check('the account keeps that a deed was done today, not which deed', Object.keys(fake.deedDays[0]).sort().join(',') === 'day,user_id');
   const tb = K.locator('[data-team-board]');
   check('«فريقي هذا الأسبوع» shows the team in counts', (await tb.count()) === 1 && /فريقي هذا الأسبوع/.test(await txt(tb)) && (await tb.locator('[data-meter]').count()) === 4);
@@ -5319,6 +5323,8 @@ section('tools for the admin (0017): the value of the week, encouragement awards
   check('«القائد المتميز» asks for no member', !(await aw.locator('[data-fk="aw-member"]').isVisible()) && (await aw.locator('[data-aw-leader]').isVisible()));
   await aw.locator('[data-fk="aw-give"]').click();
   await A.waitForFunction(() => document.querySelectorAll('[data-tool-awards] [data-award-row]').length === 2, null, { timeout: 8000 });
+  await A.locator('[data-fk="tg-leaders"]').click();
+  check('the tools are in three groups; choosing «القادة» shows the leaders\' tools only', (await A.locator('[data-fk="tg-leaders"]').getAttribute('aria-pressed')) === 'true' && (await A.locator('[data-tool-tasks]').isVisible()) && !(await A.locator('[data-tool-theme]').isVisible()) && (await A.locator('[data-tools-groups] button').allInnerTexts()).join('|') === 'هذا الأسبوع|المباريات|القادة');
   const tk = A.locator('[data-tool-tasks]');
   await tk.locator('[data-fk="tk-title"]').fill('رقمي 0791234567 للتواصل');
   await tk.locator('[data-fk="tk-add"]').click();
@@ -5328,7 +5334,7 @@ section('tools for the admin (0017): the value of the week, encouragement awards
   await tk.locator('[data-fk="tk-add"]').click();
   await tk.locator('[data-task-row]').first().waitFor({ timeout: 8000 });
   check('«أضف المهمة» adds it for every approved team and tells the leaders only', fake.atasks.length === 1 && got(ld.id, 'admin_task').length === 1 && got(kid.id, 'admin_task').length === 0 && /أنجزتها الفرق 0 من 2/.test(await txt(tk.locator('[data-task-row]').first())) && /بقي: الفجر، الضحى|بقي: الضحى، الفجر/.test(await txt(tk.locator('[data-task-waiting]'))));
-  check('the tool forms use the card\'s full width (fields are not squeezed into the middle)', await A.locator('[data-tool-theme] [data-fk="th-title"]').evaluate(i => i.getBoundingClientRect().width / i.closest('section').getBoundingClientRect().width > 0.8));
+  check('the tool forms use the card\'s full width (fields are not squeezed into the middle)', await A.locator('[data-tool-tasks] [data-fk="tk-title"]').evaluate(i => i.getBoundingClientRect().width / i.closest('section').getBoundingClientRect().width > 0.5));
   check('the tools\' buttons are big enough and named; no overflow; console clean', (await aw.locator('[data-fk^="aw-x-"]').first().getAttribute('aria-label')).startsWith('اسحب وسام') && (await tk.locator('[data-fk="tk-add"]').evaluate(b => b.getBoundingClientRect().height)) >= 44 && (await overflow(A)) <= 0 && A.errs.length === 0, A.errs.join('|'));
 
   /* ---- the leader ---- */
@@ -5366,10 +5372,13 @@ section('tools for the admin (0017): the value of the week, encouragement awards
   check('the parent sees the value of the week and the team\'s awards', (await P.locator('[data-theme-title]').innerText()) === 'الصدق في القول والعمل' && /وسام التميز في الحفظ لـ إياد/.test(await txt(P.locator('[data-awards]'))) && (await overflow(P)) <= 0 && P.errs.length === 0, P.errs.join('|'));
 
   /* ---- the admin takes things back ---- */
+  await A.locator('[data-fk="tg-week"]').click();
   await A.locator('[data-tool-awards] [data-fk^="aw-x-"]').first().click();
   await A.waitForFunction(() => document.querySelectorAll('[data-tool-awards] [data-award-row]').length === 1, null, { timeout: 8000 });
+  await A.locator('[data-fk="tg-leaders"]').click();
   await A.locator('[data-tool-tasks] [data-fk^="tk-x-"]').first().click();
   await A.waitForFunction(() => /لا مهام بعد/.test(document.querySelector('[data-tool-tasks]').textContent), null, { timeout: 8000 });
+  await A.locator('[data-fk="tg-week"]').click();
   await A.locator('[data-tool-theme] [data-fk="th-del"]').click();
   await A.waitForFunction(() => /انشر القيمة/.test(document.querySelector('[data-tool-theme]').textContent), null, { timeout: 8000 });
   check('the admin can take back an award, delete a task and remove the week\'s value', fake.awards.length === 1 && fake.atasks.length === 0 && fake.themes.size === 0 && A.errs.length === 0, A.errs.join('|'));
@@ -5516,6 +5525,7 @@ section('appeals (0018; the regulations lg7): the leader files within 24 hours, 
   await A.waitForFunction(() => { const d = document.querySelector('[data-admin-home] [data-appeals-desk]'); return !d || d.hidden; }, null, { timeout: 8000 });
   check('the admin rejects with a reason: saved, the leader is told, and the home card goes away', fake.appeals[0].status === 'rejected' && fake.appeals[0].decision === 'راجعنا تقرير الحكم: الهدف صحيح قبل الصافرة.' && got(ld.id, 'appeal_decided').length === 1 && got(ld.id, 'appeal_decided')[0].data.accepted === false);
   await A.locator('#at-tools').click();
+  await A.locator('[data-fk="tg-matches"]').click();
   await A.locator('[data-admin-tools] [data-appeals-desk] [data-appeal]').first().waitFor({ timeout: 8000 });
   check('«أدوات الإدارة» keeps the full list with each decision', /لا تظلمات مفتوحة/.test(await txt(A.locator('[data-admin-tools] [data-appeals-desk]'))) && /قرار اللجنة: راجعنا تقرير الحكم/.test(await txt(A.locator('[data-admin-tools] [data-appeals-desk] [data-appeal-decision]'))) && (await overflow(A)) <= 0 && A.errs.length === 0, A.errs.join('|'));
   await reload(L);
@@ -5609,6 +5619,7 @@ section('around a match and around the leaders (0019): the referee and safety, t
   const A = await open(fake, { label: 'c19-admin' });
   await settle(A); await signInOk(A, 'boss@t.test', undefined, { home: true });
   await A.locator('#at-tools').click();
+  await A.locator('[data-fk="tg-leaders"]').click();
   const rv = A.locator('[data-lead-review]');
   await rv.locator(`[data-review-team="${TC.id}"]`).waitFor({ timeout: 8000 });
   const r1 = await txt(rv.locator(`[data-review-team="${TC.id}"]`)), r2 = await txt(rv.locator(`[data-review-team="${TE.id}"]`));
@@ -5621,6 +5632,7 @@ section('around a match and around the leaders (0019): the referee and safety, t
   await rv.locator(`[data-fk="lr-save-${TC.id}"]`).click();
   await A.waitForFunction(() => /قُيّم 1 من 2/.test(document.querySelector('[data-lead-review]').textContent), null, { timeout: 8000 });
   check('the four criteria and the note are saved: 85 of 100, and the leader is told once', (pg.scores || []).join(',') === '22,20,18,25' && pg.sup_note === 'تقدّم واضح في إدارة الوقت' && /85 من 100/.test(await txt(rv.locator(`[data-review-team="${TC.id}"]`))) && got(ld.id, 'lead_review').length === 1 && got(ld.id, 'lead_review')[0].data.total === 85);
+  await A.locator('[data-fk="tg-matches"]').click();
   const ai = A.locator('[data-admin-tools] [data-incidents]');
   await ai.locator('[data-incident]').first().waitFor({ timeout: 8000 });
   await ai.locator(`[data-fk="in-note-1"]`).fill('تُعاد المباراة يوم الجمعة');

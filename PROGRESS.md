@@ -164,6 +164,13 @@ offline with PGlite, then goes live in one apply (slice 20).
     - leaders.txt l-notebook, l-review: «دفتر القيادة والأثر» in «قيادتي» (one page a week: task, role, skill, difficulty, next step; about the leader's own learning, no peers' names) and «لقاء التقييم القيادي الأسبوعي» for the admin (four criteria of 25 each and a short note; the leader reads the total and the note).
     - Tests: `supabase/tests/match-care.test.mjs` 73; `test-account.mjs` 1089 (16 new).
 
+39. [x] **Tidying before more features** (owner, 15 Nov 2026: "ok do" to the plan: check live, then simplify). No database change.
+    - Live contract check (read only): every function `account.js` and `yb-api.js` call (123 names, plus the journey ones sent through helpers) exists on the live project and is executable by signed-in users. Compared by eye against `pg_proc`; nothing missing. This is not a trial with real people: nobody has signed in as a leader, a member or a parent on the live site yet.
+    - «أدوات الإدارة» is three groups instead of one long page: «هذا الأسبوع» (value of the week, awards, weekly report), «المباريات» (appeals, referees and safety, injuries), «القادة» (tasks, the weekly review). The choice is kept while the admin moves between tabs.
+    - «قيادتي»: the weekly cards first (follow-up, notebook, duties, pact, initiatives, summary); the meeting timer and the workshop list are folded under «أدوات اللقاء والورشة», which opens by itself while a meeting timer runs.
+    - Member: «ابدأ من هنا» on the home (joined, write the promise, tick an ayah, record a deed); it retires when done or dismissed.
+    - Tests: `test-account.mjs` 1093 (4 new).
+
 **Live database, 15 Nov 2026:** the owner approved the prompts; `yb_0014_team_identity`, `yb_0015_journey`, `yb_0016_journey_social` and `yb_0017_admin_tools` are APPLIED to project `dhjmdiqausbcyhrguinl`. Checked live: 32 functions present, none runnable by visitors, 9 new tables locked with no direct grants, the logo column and the private logo bucket exist. Still to do: redeploy the `yb-push` edge function so phones show the new notification words (in-app words already work), and upload the new zip to Cloudflare.
 
 25. [ ] *(Optional)* Private chess labels, Arabic email templates, a custom domain (SPEC 4.9); 🔒 a live quiz with a buzzer for hifz and fahm, only if the owner wants it (SPEC 4.11).
