@@ -55,7 +55,7 @@ class Fake {
     this.subs = []; this.objects = new Map(); this.uploads = [];   // migration 0008 (submissions, private photos)
     this.seekers = new Map(); this.invites = []; this.transfers = false;   // migration 0012 (players looking for a team)
     this.logos = new Map();   // migration 0014 (team logos: path -> uploader)
-    this.j15 = false; this.j16 = false; this.t17 = false; this.a18 = false; this.appeals = []; this.c19 = false; this.evStaff = new Map(); this.incidents = []; this.leadNotes = new Map(); this.themes = new Map(); this.awards = []; this.atasks = []; this.atDone = new Set(); this.seq17 = 0; this.nudged = new Set(); this.pledges = []; this.hifzMarks = new Map(); this.deedDays = []; this.pacts = new Map(); this.leadWeeks = new Map(); this.auditRows = [];   // migration 0015 (the journey on the account; off until a test turns it on)
+    this.j15 = false; this.j16 = false; this.t17 = false; this.a18 = false; this.appeals = []; this.i20 = false; this.meetings = new Map(); this.leadMeets = new Map(); this.survey = new Map(); this.surveyOpen = false; this.oaths = new Map(); this.c19 = false; this.evStaff = new Map(); this.incidents = []; this.leadNotes = new Map(); this.themes = new Map(); this.awards = []; this.atasks = []; this.atDone = new Set(); this.seq17 = 0; this.nudged = new Set(); this.pledges = []; this.hifzMarks = new Map(); this.deedDays = []; this.pacts = new Map(); this.leadWeeks = new Map(); this.auditRows = [];   // migration 0015 (the journey on the account; off until a test turns it on)
     this.pushSubs = []; this.pushReady = true; this.pushKey = 'B' + 'x'.repeat(86);   // migration 0013 (phone notifications)
     this.judges = new Map(); this.jscores = []; this.ascores = []; this.published = false;   // migration 0010
     this.ann = []; this.annSeq = 0; this.chat = []; this.chatSeq = 0; this.reports = []; this.mutes = new Map(); this.reads = new Map();   // migration 0009
@@ -497,6 +497,83 @@ class Fake {
       yb_post_delete: ['id'], yb_post_moderate: ['id', 'action', 'note'], yb_react: ['post_id', 'kind'], yb_comments: ['post_id'], yb_comment_post: ['post_id', 'body'],
       yb_comment_delete: ['id'], yb_comment_report: ['id', 'reason'], yb_comment_moderate: ['id', 'action'], yb_comment_mute: ['id', 'hours', 'reason'], yb_feed_reports: [],
       yb_set_members_comment: ['allow'], yb_transfer_team: ['team_id', 'new_leader', 'old_stays', 'old_role'], yb_analytics: [] };
+    /* migration 0020: attendance, the parents' survey, the judge's oath. Off unless a test sets i20. */
+    if (/^yb_(attend_get|attend_save|attend_mine|lead_meet_get|lead_meet_save|attend_board|survey_mine|survey_save|survey_open|survey_board|judge_oath_mine|judge_oath_take|judge_oaths)$/.test(name)) {
+      if (!this.i20) return err(404, 'PGRST202', 'Could not find the function public.' + name);
+      const ok = d => ({ status: 200, body: d });
+      body = body || {};
+      const isAdmin = (this.profiles.find(p => p.id === me) || {}).role === 'admin';
+      const leads = t => this.teams.some(x => x.id === t && x.leader_id === me);
+      const okT = () => this.teams.filter(t => t.status === 'approved').sort((x, y) => x.name.localeCompare(y.name, 'ar'));
+      const roster = t => this.members.filter(m => m.team_id === t).sort((x, y) => x.full_name.localeCompare(y.full_name, 'ar'));
+      const meets = t => [...this.meetings.entries()].filter(([k]) => k.startsWith(t + '|')).map(([k, v]) => ({ week: k.split('|')[1], ...v })).sort((x, y) => (x.week < y.week ? 1 : -1));
+      const came = id => [...this.meetings.values()].filter(v => v.ids.includes(id)).length;
+      const leadOf = t => { const all = [...this.leadMeets.values()]; return { held: all.filter(l => l.invited.includes(t)).length, came: all.filter(l => l.teams.includes(t)).length }; };
+      const weekOk = w => /^\d{4}-\d\d-\d\d$/.test(String(w || '')) && new Date(w + 'T00:00:00').getDay() === 6 && (Date.now() - new Date(w + 'T00:00:00').getTime()) < 15 * 86400e3 && new Date(w + 'T00:00:00').getTime() < Date.now() + 2 * 86400e3;
+      if (name === 'yb_attend_get') {
+        if (!leads(body.team_id) && !isAdmin) return raise('permission_denied', '42501');
+        const ms = meets(body.team_id), cur = this.meetings.get(body.team_id + '|' + body.week);
+        return ok({ week: body.week, saved: !!cur, members: roster(body.team_id).map(m => ({ member_id: m.id, name: m.full_name, present: !!cur && cur.ids.includes(m.id), came: came(m.id) })),
+          history: ms.map(x => ({ week: x.week, present: x.present, expected: x.expected })), meetings: ms.length, present: ms.reduce((n, x) => n + x.present, 0), expected: ms.reduce((n, x) => n + x.expected, 0), lead: leadOf(body.team_id) });
+      }
+      if (name === 'yb_attend_save') {
+        if (!leads(body.team_id)) return raise('permission_denied', '42501');
+        const t = this.teams.find(x => x.id === body.team_id), ids = [...new Set(body.present_ids || [])], rs = roster(body.team_id);
+        if (t.status !== 'approved') return ok({ ok: false, error: 'team_not_approved' });
+        if (!weekOk(body.week) || ids.some(i => !rs.some(m => m.id === i))) return ok({ ok: false, error: 'invalid_data' });
+        if (!ids.length) { this.meetings.delete(body.team_id + '|' + body.week); return ok({ ok: true, cleared: true }); }
+        this.meetings.set(body.team_id + '|' + body.week, { expected: rs.length, present: ids.length, ids });
+        return ok({ ok: true, present: ids.length, expected: rs.length });
+      }
+      if (name === 'yb_attend_mine') {
+        const one = m => ({ held: meets(m.team_id).length, came: came(m.id) }), mm = this.members.find(m => m.user_id === me);
+        return ok({ me: mm ? one(mm) : null, children: this.links.filter(l => l.parent_id === me).map(l => this.members.find(m => m.id === l.member_id)).filter(Boolean).map(m => ({ member_id: m.id, name: m.full_name, ...one(m) })) });
+      }
+      if (name === 'yb_lead_meet_get' || name === 'yb_lead_meet_save' || name === 'yb_attend_board' || name === 'yb_survey_open' || name === 'yb_survey_board' || name === 'yb_judge_oaths') { if (!isAdmin) return raise('permission_denied', '42501'); }
+      if (name === 'yb_lead_meet_get') {
+        const cur = this.leadMeets.get(body.week);
+        return ok({ week: body.week, saved: !!cur, teams: okT().map(t => ({ team_id: t.id, team_name: t.name, leader: (this.profiles.find(p => p.id === t.leader_id) || {}).full_name, present: !!cur && cur.teams.includes(t.id), ...leadOf(t.id) })) });
+      }
+      if (name === 'yb_lead_meet_save') {
+        const ids = [...new Set(body.team_ids || [])], all = okT().map(t => t.id);
+        if (!weekOk(body.week) || ids.some(i => !all.includes(i))) return ok({ ok: false, error: 'invalid_data' });
+        if (!ids.length) { this.leadMeets.delete(body.week); return ok({ ok: true, cleared: true }); }
+        this.leadMeets.set(body.week, { invited: all, teams: ids });
+        return ok({ ok: true, present: ids.length, expected: all.length });
+      }
+      if (name === 'yb_attend_board') {
+        return ok({ lead_meets: this.leadMeets.size, teams: okT().map(t => { const ms = meets(t.id), last2 = ms.slice(0, 2), l = leadOf(t.id);
+          return { team_id: t.id, team_name: t.name, members: roster(t.id).length, meetings: ms.length, present: ms.reduce((n, x) => n + x.present, 0), expected: ms.reduce((n, x) => n + x.expected, 0), last_week: ms.length ? ms[0].week : null,
+            recent: new Set(last2.flatMap(x => x.ids)).size, lead_held: l.held, lead_came: l.came, match_marked: 0, match_present: 0 }; }) });
+      }
+      const linked = () => this.links.some(l => l.parent_id === me);
+      if (name === 'yb_survey_mine') return ok({ eligible: linked(), open: this.surveyOpen, answer: this.survey.get(me) || null });
+      if (name === 'yb_survey_save') {
+        if (!linked()) return raise('permission_denied', '42501');
+        if (!this.surveyOpen) return ok({ ok: false, error: 'survey_closed' });
+        if ([body.q1, body.q2, body.q3].some(v => !Number.isInteger(v) || v < 1 || v > 5)) return ok({ ok: false, error: 'invalid_data' });
+        const n = String(body.note || '').replace(/\s+/g, ' ').trim();
+        if (/\d{7,}/.test(n.replace(/[\s\-()+]/g, ''))) return ok({ ok: false, error: 'contact_not_allowed' });
+        this.survey.set(me, { q1: body.q1, q2: body.q2, q3: body.q3, note: n || null });
+        return ok({ ok: true });
+      }
+      if (name === 'yb_survey_open') {
+        if (body.open && !this.surveyOpen) this.notify([...new Set(this.links.map(l => l.parent_id))].filter(u => u !== me), 'survey_open', {});
+        this.surveyOpen = !!body.open;
+        return ok({ ok: true, open: this.surveyOpen });
+      }
+      if (name === 'yb_survey_board') {
+        const all = [...this.survey.values()], av = k => Math.round(all.reduce((n, x) => n + x[k], 0) / all.length * 10) / 10;
+        return ok({ open: this.surveyOpen, parents: new Set(this.links.map(l => l.parent_id)).size, answers: all.length, satisfied: all.filter(x => x.q3 >= 4).length, avg: all.length ? [av('q1'), av('q2'), av('q3')] : null, notes: all.map(x => x.note).filter(Boolean).sort() });
+      }
+      if (name === 'yb_judge_oath_mine') return ok({ judge: this.judges.has(me), sworn_at: this.oaths.get(me) || null });
+      if (name === 'yb_judge_oath_take') {
+        if (!this.judges.has(me)) return raise('permission_denied', '42501');
+        if (!this.oaths.has(me)) this.oaths.set(me, new Date().toISOString());
+        return ok({ ok: true, sworn_at: this.oaths.get(me) });
+      }
+      if (name === 'yb_judge_oaths') return ok([...this.oaths.entries()].map(([user_id, sworn_at]) => ({ user_id, sworn_at })));
+    }
     /* migration 0019: the match's people, the record of injuries, the leader's notebook and review. Off unless a test sets c19. */
     if (/^yb_(event_staff_set|event_staff_list|incident_add|incidents_list|incident_decide|notebook_save|notebook_mine|notebook_admin|notebook_review)$/.test(name)) {
       if (!this.c19) return err(404, 'PGRST202', 'Could not find the function public.' + name);
@@ -2195,7 +2272,7 @@ let memberEmail = 'sara@t.test', parentEmail = 'parent@t.test';
   check('member sees own consent status (received: set by the admin)', /استُلمت موافقة ولي الأمر/.test(mt));
   check('no admin / leader controls on the member screen', !(await M.locator('input[role=switch], form.a-add, button[data-fk=submit], .a-tabs-4').count()));
   const reqs = world.log.filter(l => l.who === world.profileByEmail(memberEmail).id).map(l => l.path.replace('/rest/v1/', ''));
-  check('member screen reads only my_team, my_roster, tournament_state and the own profile (never teams, team_members, profiles list)', reqs.every(r => /^(rpc\/(my_team|join_team|yb_event_staff_list|yb_theme_get|yb_team_awards|yb_journey_me|yb_team_board|yb_my_pledges|yb_week_race|yb_mark_read|yb_my_scores|yb_my_prefs|yb_feed|yb_seek_me|yb_team_staff)|my_roster|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements|yb_match_live|yb_team_style)$/.test(r)), [...new Set(reqs)].join());
+  check('member screen reads only my_team, my_roster, tournament_state and the own profile (never teams, team_members, profiles list)', reqs.every(r => /^(rpc\/(my_team|join_team|yb_attend_mine|yb_event_staff_list|yb_theme_get|yb_team_awards|yb_journey_me|yb_team_board|yb_my_pledges|yb_week_race|yb_mark_read|yb_my_scores|yb_my_prefs|yb_feed|yb_seek_me|yb_team_staff)|my_roster|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements|yb_match_live|yb_team_style)$/.test(r)), [...new Set(reqs)].join());
   const tour = await M.locator('.a-sched').innerText();
   check('schedule card shows the empty state before the tournament is published', /لم تُنشر بيانات البطولة بعد/.test(tour));
   // second account tries the same name
@@ -2250,7 +2327,7 @@ let memberEmail = 'sara@t.test', parentEmail = 'parent@t.test';
   const chips = await P.locator('.a-child .a-consent .a-chip').allInnerTexts();
   check('two children: one «استُلمت», one «لم تُستلم بعد»; ONE schedule card for the shared team', chips.some(c => /^استُلمت/.test(c)) && chips.some(c => /لم تُستلم/.test(c)) && (await P.locator('.a-sched').count()) === 1);
   const preqs = world.log.filter(l => l.who === world.profileByEmail(parentEmail).id).map(l => l.path.replace('/rest/v1/', ''));
-  check('parent screen reads only my_children, tournament_state and the own profile', preqs.every(r => /^(rpc\/(link_child|yb_event_staff_list|yb_theme_get|yb_team_awards|yb_child_journey|yb_week_race|yb_mark_read|yb_my_scores|yb_my_judging|yb_my_prefs|yb_feed|yb_guardian_seekers|yb_team_staff)|my_children|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements|yb_match_live|yb_team_style)$/.test(r)), [...new Set(preqs)].join());
+  check('parent screen reads only my_children, tournament_state and the own profile', preqs.every(r => /^(rpc\/(link_child|yb_attend_mine|yb_survey_mine|yb_event_staff_list|yb_theme_get|yb_team_awards|yb_child_journey|yb_week_race|yb_mark_read|yb_my_scores|yb_my_judging|yb_my_prefs|yb_feed|yb_guardian_seekers|yb_team_staff)|my_children|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements|yb_match_live|yb_team_style)$/.test(r)), [...new Set(preqs)].join());
   check('parent console clean', P.errs.length === 0, P.errs.join('|'));
   world.P = P;
 }
@@ -5324,7 +5401,7 @@ section('tools for the admin (0017): the value of the week, encouragement awards
   await aw.locator('[data-fk="aw-give"]').click();
   await A.waitForFunction(() => document.querySelectorAll('[data-tool-awards] [data-award-row]').length === 2, null, { timeout: 8000 });
   await A.locator('[data-fk="tg-leaders"]').click();
-  check('the tools are in three groups; choosing «القادة» shows the leaders\' tools only', (await A.locator('[data-fk="tg-leaders"]').getAttribute('aria-pressed')) === 'true' && (await A.locator('[data-tool-tasks]').isVisible()) && !(await A.locator('[data-tool-theme]').isVisible()) && (await A.locator('[data-tools-groups] button').allInnerTexts()).join('|') === 'هذا الأسبوع|المباريات|القادة');
+  check('the tools are in four groups; choosing «القادة» shows the leaders\' tools only', (await A.locator('[data-fk="tg-leaders"]').getAttribute('aria-pressed')) === 'true' && (await A.locator('[data-tool-tasks]').isVisible()) && !(await A.locator('[data-tool-theme]').isVisible()) && (await A.locator('[data-tools-groups] button').allInnerTexts()).join('|') === 'هذا الأسبوع|المباريات|القادة|الأثر');
   const tk = A.locator('[data-tool-tasks]');
   await tk.locator('[data-fk="tk-title"]').fill('رقمي 0791234567 للتواصل');
   await tk.locator('[data-fk="tk-add"]').click();
@@ -5660,6 +5737,191 @@ section('around a match and around the leaders (0019): the referee and safety, t
   await settle(Z); await signInOk(Z, 'l0@t.test');
   await Z.waitForSelector('#sec-lead', { state: 'attached', timeout: 8000 }); await Z.waitForTimeout(300);
   check('on an older backend none of the three shows and nothing breaks', (await Z.locator('[data-notebook]:not([hidden]), [data-match-staff]:not([hidden]), [data-incidents]:not([hidden])').count()) === 0 && Z.errs.length === 0, Z.errs.join('|'));
+}
+
+section('what the documents measure (0020): attendance, the member\'s week, the parents\' survey, the impact report, the judge\'s oath');
+{
+  const fake = new Fake();
+  fake.i20 = true; fake.j15 = true; fake.j16 = true; fake.t17 = true;
+  const boss = fake.addUser({ email: 'boss@t.test', name: 'محمود المشرف', role: 'member' }); fake.setAdmin('boss@t.test');
+  fake.addUser({ email: 'li@t.test', name: 'قائد الصقور', role: 'leader' });
+  fake.addUser({ email: 'li2@t.test', name: 'قائد النسور', role: 'leader' });
+  const kid = fake.addUser({ email: 'ki@t.test', name: 'عمر عضو الصقور', role: 'member' });
+  const par = fake.addUser({ email: 'pi@t.test', name: 'ولي عمر', role: 'parent' });
+  const jdg = fake.addUser({ email: 'ji@t.test', name: 'الحكم سعيد', role: 'parent' });
+  const TS = fake.seedTeam({ leaderEmail: 'li@t.test', name: 'الصقور', status: 'approved', members: [{ name: 'عمر عضو الصقور', age: 14, consent: 'received' }, { name: 'ثان', age: 14 }, { name: 'ثالث', age: 14 }, { name: 'رابع', age: 14 }] });
+  const TN = fake.seedTeam({ leaderEmail: 'li2@t.test', name: 'النسور', status: 'approved', members: Array.from({ length: 4 }, (_, i) => ({ name: `عضو النسور ${i + 1}`, age: 14 })) });
+  fake.teams.forEach(t => { t.waitlist = false; });
+  const kidRow = fake.members.find(m => m.full_name === 'عمر عضو الصقور'); kidRow.user_id = kid.id;
+  fake.links.push({ parent_id: par.id, member_id: kidRow.id });
+  fake.judges.set(jdg.id, ['hifz', 'fahm']);
+  const sat = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 1) % 7)); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })();
+  fake.themes.set(sat, { title: 'الوفاء بالوعد', body: null });
+  const when = new Date(Date.now() + 2 * 86400e3); when.setHours(16, 0, 0, 0);
+  fake.events.push({ id: fake.uid(), competition: 'football', kind: 'match', title: 'الصقور ضد النسور', starts_at: when.toISOString(), place: 'ملعب الحي', team_ids: [TS.id, TN.id], category: null, status: 'scheduled', note: null });
+  const txt = async l => (await l.innerText()).replace(/\s+/g, ' ');
+  const got = (u, kind) => fake.notes.filter(n => n.user_id === u && n.kind === kind);
+  const nS = fake.members.filter(m => m.team_id === TS.id).length;
+
+  /* ---- the leader: the attendance sheet and the week's message ---- */
+  const L = await open(fake, { label: 'i20-leader', mobile: true });
+  await settle(L); await signInOk(L, 'li@t.test');
+  const att = L.locator('#sec-lead [data-attendance]');
+  await att.locator('[data-fk="att-save"]').waitFor({ state: 'attached', timeout: 8000 });
+  check('«حضور لقاء الأسبوع» lists the whole roster, nobody ticked, and says nothing is recorded yet', (await att.locator('.a-att-l input[type=checkbox]').count()) === nS && (await att.locator('.a-att-l input:checked').count()) === 0 && (await att.locator('[data-att-none]').count()) === 1 && /80%/.test(await txt(att)));
+  await att.locator('[data-fk="att-save"]').evaluate(b => b.click());
+  await L.waitForTimeout(150);
+  check('saving with nobody ticked asks to tick first, and saves nothing', /علّم من حضر أولًا/.test(await txt(att)) && fake.meetings.size === 0);
+  await att.locator(`[data-fk="att-${kidRow.id}"]`).evaluate(b => b.click());
+  await att.locator('.a-att-l input:not(:checked)').first().evaluate(b => b.click());
+  check('the count follows the ticks', new RegExp(`2 من ${nS}`).test(await att.locator('[data-tick-count]').textContent()));
+  await att.locator('[data-fk="att-save"]').evaluate(b => b.click());
+  await att.locator('[data-meter="att-team"]').waitFor({ state: 'attached', timeout: 8000 });
+  const m1 = fake.meetings.get(TS.id + '|' + sat);
+  check('saved: this week\'s meeting holds the two who came, out of the roster', !!m1 && m1.present === 2 && m1.expected === nS && m1.ids.includes(kidRow.id));
+  check('the card shows the team\'s rate against the 80% target, and the button now says «حدّث الحضور»', new RegExp(`حضور الفريق ${Math.round(2 / nS * 100)}%`).test(await txt(att)) && /حدّث الحضور/.test(await txt(att.locator('[data-fk="att-save"]'))));
+  await att.locator('[data-fk="att-w-prev"]').evaluate(b => b.click());
+  await L.waitForFunction(() => { const b = document.querySelector('[data-attendance] [data-fk="att-w-prev"]'); return b && b.getAttribute('aria-pressed') === 'true'; }, null, { timeout: 8000 });
+  check('last week opens an empty sheet', (await att.locator('.a-att-l input:checked').count()) === 0 && /احفظ الحضور/.test(await txt(att.locator('[data-fk="att-save"]'))));
+  await att.locator('[data-fk="att-all"]').evaluate(b => b.click());
+  check('«علّم الجميع» ticks the whole roster', (await att.locator('.a-att-l input:checked').count()) === nS);
+  await att.locator('[data-fk="att-save"]').evaluate(b => b.click());
+  await att.locator('[data-att-past]').waitFor({ state: 'attached', timeout: 8000 });
+  check('two meetings are recorded and listed', fake.meetings.size === 2 && /اللقاءات المسجّلة \(2\)/.test(await txt(att.locator('[data-att-past] summary'))) && new RegExp(`حضر 2 من 2`).test(await txt(att.locator('.a-att-l'))));
+  const tm = L.locator('#sec-lead [data-team-message]');
+  await tm.locator('[data-fk="tm-build"]').evaluate(b => b.click());
+  await L.waitForFunction(() => /حضور لقائنا الأخير/.test((document.querySelector('[data-team-msg]') || {}).value || ''), null, { timeout: 8000 });
+  const tmv = await tm.locator('[data-team-msg]').inputValue();
+  check('«رسالة الأسبوع للفريق» carries the team, the value of the week, the next date and the last meeting', /فريق الصقور/.test(tmv) && /قيمة هذا الأسبوع: الوفاء بالوعد/.test(tmv) && /موعدنا القادم: الصقور ضد النسور/.test(tmv) && /ملعب الحي/.test(tmv) && /حضور لقائنا الأخير: 2 من/.test(tmv), tmv);
+  check('with counts only: no member is named in it', !/عمر|ثان|ثالث|رابع/.test(tmv));
+  check('the leader page: no overflow on a phone, console clean', (await overflow(L)) <= 0 && L.errs.length === 0, L.errs.join('|'));
+
+  /* ---- the member: «أسبوعي في سطور» and the attendance count ---- */
+  const K = await open(fake, { label: 'i20-member', mobile: true });
+  await settle(K); await signInOk(K, 'ki@t.test');
+  await K.locator('#sec-home [data-start]').waitFor({ state: 'attached', timeout: 8000 });
+  await K.waitForTimeout(300);
+  check('while «ابدأ من هنا» shows, the week card waits', (await K.locator('#sec-home [data-start]:not([hidden])').count()) === 1 && (await K.locator('#sec-home [data-my-week]:not([hidden])').count()) === 0);
+  await K.locator('[data-fk="start-hide"]').evaluate(b => b.click());
+  const mw = K.locator('#sec-home [data-my-week]:not([hidden])');
+  await mw.locator('[data-myw="attend"]').waitFor({ state: 'attached', timeout: 8000 });
+  check('then «أسبوعي في سطور» shows the promise, the days, the ayahs and the meetings', /لم تكتبه بعد/.test(await txt(mw.locator('[data-myw="pledge"]'))) && /0 من 7/.test(await txt(mw.locator('[data-myw="deeds"]'))) && /حضرت 2 من 2/.test(await txt(mw.locator('[data-myw="attend"]'))) && /اكتب وعد الأسبوع/.test(await txt(mw.locator('[data-fk="myw-go"]'))));
+  const am = K.locator('#sec-journey [data-attend-mine]:not([hidden])');
+  await am.waitFor({ state: 'attached', timeout: 8000 });
+  check('«رحلتي» shows the member\'s own count: 2 of 2', /2 من 2/.test(await txt(am.locator('[data-meter="attm-me"]'))));
+  check('the member page: no overflow on a phone, console clean', (await overflow(K)) <= 0 && K.errs.length === 0, K.errs.join('|'));
+
+  /* ---- the parent: the child's count; the survey is closed ---- */
+  const P = await open(fake, { label: 'i20-parent', mobile: true });
+  await settle(P); await signInOk(P, 'pi@t.test');
+  const pam = P.locator('[data-attend-mine]:not([hidden])');
+  await pam.waitFor({ state: 'attached', timeout: 8000 });
+  check('the parent reads their child\'s attendance by name', /حضور عمر عضو الصقور/.test(await txt(pam)) && /2 من 2/.test(await txt(pam)));
+  check('the survey does not show while it is closed', (await P.locator('[data-survey]:not([hidden])').count()) === 0);
+
+  /* ---- the admin: «الأثر» ---- */
+  const A = await open(fake, { label: 'i20-admin' });
+  await settle(A); await signInOk(A, 'boss@t.test', undefined, { home: true });
+  await A.locator('#at-tools').click();
+  await A.locator('[data-fk="tg-impact"]').click();
+  const ab = A.locator('[data-attend-board]');
+  await ab.locator(`[data-att-team="${TS.id}"]`).waitFor({ timeout: 8000 });
+  const rate = Math.round((2 + nS) / (2 * nS) * 100);
+  check('«حضور الفرق»: the team that recorded shows its rate, the other shows «لم يسجّل» and is named as quiet', new RegExp(`${rate}%`).test(await txt(ab.locator(`[data-att-team="${TS.id}"]`))) && /لم يسجّل/.test(await txt(ab.locator(`[data-att-team="${TN.id}"]`))) && /النسور/.test(await txt(ab.locator('[data-att-quiet]'))));
+  check('no child is named on the admin\'s board', !/عمر|ثان|ثالث|رابع/.test(await txt(ab)));
+  const ir = A.locator('[data-tool-impact]');
+  await A.waitForFunction(() => /نسبة الحضور/.test((document.querySelector('[data-impact-report]') || {}).value || ''), null, { timeout: 8000 });
+  const irv = await ir.locator('[data-impact-report]').inputValue();
+  check('«تقرير الأثر» puts each indicator against its target', new RegExp(`نسبة الحضور: ${rate}%`).test(irv) && /المستهدف 80% فأكثر من اللقاءات/.test(irv) && /استمرارية المشاركة: 100%/.test(irv) && /المبادرات الميدانية/.test(irv) && /الفرق المعتمدة: 2 من 12/.test(irv) && /الدروس المستفادة/.test(irv), irv);
+  check('totals only: no team and no child is named in it', !/الصقور|النسور|عمر/.test(irv));
+  check('the table marks what is met and what is below target', (await ir.locator('[data-kpi="ok"]').count()) >= 1 && (await ir.locator('[data-kpi="none"]').count()) >= 1 && /لا بيانات بعد/.test(await txt(ir.locator('[data-impact-kpis]'))));
+  const sd = A.locator('[data-survey-desk]');
+  await sd.locator('[data-fk="svd-toggle"]').waitFor({ timeout: 8000 });
+  check('the survey desk starts closed, with nobody answered of one linked parent', /مغلق/.test(await txt(sd)) && /0 من 1/.test(await txt(sd.locator('[data-meter="svd-answers"]'))));
+  await sd.locator('[data-fk="svd-toggle"]').click();
+  await A.waitForFunction(() => /أغلق الاستبيان/.test((document.querySelector('[data-survey-desk] [data-fk="svd-toggle"]') || {}).textContent || ''), null, { timeout: 8000 });
+  check('opening it tells the linked parent, and only them', fake.surveyOpen === true && got(par.id, 'survey_open').length === 1 && got(jdg.id, 'survey_open').length === 0);
+  await A.locator('[data-fk="tg-leaders"]').click();
+  const lm = A.locator('[data-lead-meet]');
+  await lm.locator(`[data-fk="lm-${TS.id}"]`).waitFor({ timeout: 8000 });
+  check('«حضور لقاء القادة» lists each approved team\'s leader', /قائد الصقور/.test(await txt(lm)) && /قائد النسور/.test(await txt(lm)) && /90%/.test(await txt(lm)));
+  await lm.locator(`[data-fk="lm-${TS.id}"]`).check();
+  await lm.locator('[data-fk="lm-save"]').click();
+  await A.waitForFunction(() => /حدّث الحضور/.test((document.querySelector('[data-lead-meet] [data-fk="lm-save"]') || {}).textContent || ''), null, { timeout: 8000 });
+  const lmv = fake.leadMeets.get(sat);
+  check('saved: one leader of two came', !!lmv && lmv.teams.length === 1 && lmv.teams[0] === TS.id && lmv.invited.length === 2 && /حضر 1 من 1/.test(await txt(lm)));
+  await A.locator('#at-judging').click();
+  const jr = A.locator(`#ap-judging [data-judge-row="${jdg.id}"]`);
+  await jr.waitFor({ timeout: 8000 });
+  check('beside the judge\'s name: «لم يؤدِّ القسم بعد»', (await jr.locator('[data-judge-oath="no"]').count()) === 1 && /لم يؤدِّ القسم بعد/.test(await txt(jr)));
+  check('the admin page: no overflow, console clean', (await overflow(A)) <= 0 && A.errs.length === 0, A.errs.join('|'));
+
+  /* ---- the parent answers the survey ---- */
+  await reload(P);
+  const sv = P.locator('[data-survey]:not([hidden])');
+  await sv.locator('[data-fk="sv-send"]').waitFor({ state: 'attached', timeout: 8000 });
+  check('once open, the survey shows three questions on a scale of five, and waits for the answer', (await sv.locator('[data-sv-q]').count()) === 3 && (await sv.locator('input[type=radio]').count()) === 15 && /بانتظار رأيك/.test(await txt(sv)) && /لا يظهر اسمك/.test(await txt(sv)));
+  await sv.locator('[data-fk="sv-send"]').evaluate(b => b.click());
+  await P.waitForTimeout(150);
+  check('sending with a question unanswered asks for the three, and saves nothing', /أجب عن الأسئلة الثلاثة أولًا/.test(await txt(sv)) && fake.survey.size === 0);
+  for (const k of ['sv-q1-5', 'sv-q2-4', 'sv-q3-5']) await sv.locator(`[data-fk="${k}"]`).evaluate(b => b.click());
+  await sv.locator('[data-fk="sv-note"]').fill('صار ابني يحافظ على وعده.');
+  await sv.locator('[data-fk="sv-send"]').evaluate(b => b.click());
+  await P.waitForFunction(() => /وصل رأيك/.test((document.querySelector('[data-survey]') || {}).textContent || ''), null, { timeout: 8000 });
+  const ans = fake.survey.get(par.id);
+  check('the answer is kept and reads back ticked', !!ans && ans.q1 === 5 && ans.q2 === 4 && ans.q3 === 5 && ans.note === 'صار ابني يحافظ على وعده.' && (await P.locator('[data-survey] [data-fk="sv-q2-4"]').isChecked()) && /حدّث رأيي/.test(await txt(P.locator('[data-survey] [data-fk="sv-send"]'))));
+  check('the parent page: no overflow on a phone, console clean', (await overflow(P)) <= 0 && P.errs.length === 0, P.errs.join('|'));
+  await A.locator('#at-tools').click();
+  await A.locator('[data-fk="tg-impact"]').click();
+  await A.locator('[data-impact-report]').waitFor({ timeout: 8000 });
+  await A.locator('[data-fk="ir-build"]').click();
+  await A.waitForFunction(() => /رضا أولياء الأمور: 100%/.test((document.querySelector('[data-impact-report]') || {}).value || ''), null, { timeout: 8000 });
+  const irv2 = await A.locator('[data-impact-report]').inputValue();
+  check('the report then carries the parents\' satisfaction, the response rate and what they wrote, without a name', /رضا أولياء الأمور: 100% راضون/.test(irv2) && /أجاب 1 من 1/.test(irv2) && /«صار ابني يحافظ على وعده\.»/.test(irv2) && !/ولي عمر/.test(irv2), irv2);
+  const sd2 = A.locator('[data-survey-desk]');
+  check('the survey desk shows the averages and the line, never who wrote it', /5 من 5/.test(await txt(sd2.locator('[data-svd-avg]'))) && /1 من 1/.test(await txt(sd2.locator('[data-meter="svd-sat"]'))) && (await sd2.locator('[data-svd-notes]').count()) === 1 && !/ولي عمر/.test(await txt(sd2)));
+
+  /* ---- the judge: the oath before the first score ---- */
+  const J = await open(fake, { label: 'i20-judge', mobile: true });
+  await settle(J); await signInOk(J, 'ji@t.test');
+  const jd = J.locator('[data-judge]:not([hidden])');
+  await jd.locator('[data-oath]').waitFor({ state: 'attached', timeout: 8000 });
+  check('a judge first meets «قسم الحكم»: the oath, what it means, and no score field', /قسم الحكم/.test(await txt(jd)) && /أقسم بالله العظيم أن أحكّم بالعدل والأمانة، وأن أقول الحق/.test(await txt(jd.locator('[data-oath]'))) && (await jd.locator('.a-judge-pts').count()) === 0 && (await jd.locator('[data-jteam]').count()) === 0 && !fake.oaths.has(jdg.id));
+  await jd.locator('[data-fk="pjdg-oath"]').evaluate(b => b.click());
+  await jd.locator('[data-meter="judge-progress"]').waitFor({ state: 'attached', timeout: 8000 });
+  check('after «أُقسم على ذلك» the account keeps it and the desk opens with the teams', fake.oaths.has(jdg.id) && (await jd.locator('[data-jteam]').count()) === 2 && (await jd.locator('[data-oath-done]').count()) === 1 && (await jd.locator('[data-oath]').count()) === 0);
+  check('the desk shows how much is judged (0 of 4) and offers the next team', /0 من 4/.test(await txt(jd.locator('[data-meter="judge-progress"]'))) && /افتح الفريق التالي: (الصقور|النسور)/.test(await txt(jd.locator('[data-fk="pjdg-next"]'))));
+  await jd.locator('[data-fk="pjdg-next"]').evaluate(b => b.click());
+  await J.waitForFunction(() => !!document.querySelector('[data-judge] details[open] .a-judge-pts'), null, { timeout: 8000 });
+  check('«افتح الفريق التالي» opens that team\'s criteria', (await jd.locator('details[open] .a-judge-pts').count()) === 2);
+  await reload(J);
+  await J.locator('[data-judge]:not([hidden]) [data-meter="judge-progress"]').waitFor({ state: 'attached', timeout: 8000 });
+  check('the oath is asked once: after a reload the desk opens directly', (await J.locator('[data-judge] [data-oath]').count()) === 0 && (await J.locator('[data-judge] [data-oath-done]').count()) === 1);
+  check('the judge page: no overflow on a phone, console clean', (await overflow(J)) <= 0 && J.errs.length === 0, J.errs.join('|'));
+  await A.locator('#at-judging').click();
+  await reload(A);
+  await A.locator('#at-judging').click();
+  await A.locator(`#ap-judging [data-judge-row="${jdg.id}"] [data-judge-oath="yes"]`).waitFor({ timeout: 8000 });
+  check('the admin then reads «أدّى القسم» beside the judge', /أدّى القسم/.test(await txt(A.locator(`#ap-judging [data-judge-row="${jdg.id}"]`))));
+  await reload(L);
+  await L.locator('#sec-lead [data-meter="att-lead"]').waitFor({ state: 'attached', timeout: 8000 });
+  check('the leader reads their own count at the leaders\' meeting: 1 of 1', /1 من 1/.test(await txt(L.locator('#sec-lead [data-meter="att-lead"]'))));
+
+  /* ---- an older backend ---- */
+  const fake0 = new Fake();
+  fake0.addUser({ email: 'l0@t.test', name: 'قائد قديم', role: 'leader' });
+  const pj0 = fake0.addUser({ email: 'j0@t.test', name: 'حكم قديم', role: 'parent' });
+  fake0.seedTeam({ leaderEmail: 'l0@t.test', name: 'القدامى', status: 'approved', members: Array.from({ length: 4 }, (_, i) => ({ name: `قديم ${i + 1}`, age: 14 })) });
+  fake0.teams.forEach(t => { t.waitlist = false; });
+  fake0.judges.set(pj0.id, ['hifz']);
+  const Z = await open(fake0, { label: 'i20-off' });
+  await settle(Z); await signInOk(Z, 'l0@t.test');
+  await Z.waitForSelector('#sec-lead [data-team-message]', { state: 'attached', timeout: 8000 }); await Z.waitForTimeout(300);
+  check('on an older backend the attendance sheet stays hidden, the week\'s message still works, and nothing breaks', (await Z.locator('[data-attendance]:not([hidden])').count()) === 0 && /فريق القدامى/.test(await Z.locator('[data-team-msg]').inputValue()) && Z.errs.length === 0, Z.errs.join('|'));
+  const Z2 = await open(fake0, { label: 'i20-off-judge' });
+  await settle(Z2); await signInOk(Z2, 'j0@t.test');
+  await Z2.locator('[data-judge]:not([hidden]) [data-jteam]').first().waitFor({ state: 'attached', timeout: 8000 });
+  check('and a judge goes straight to the desk: there is no oath to keep', (await Z2.locator('[data-judge] [data-oath]').count()) === 0 && Z2.errs.length === 0, Z2.errs.join('|'));
 }
 
 section('network hosts and console');

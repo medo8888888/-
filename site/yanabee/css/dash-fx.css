@@ -661,3 +661,28 @@ html.is-dash body{background-image:radial-gradient(900px 480px at 100% -8%,color
   body:has([data-admin-plan]) .a-side,body:has([data-admin-plan]) .a-head,body:has([data-admin-plan]) .a-dock,body:has([data-admin-plan]) .a-ops,body:has([data-admin-plan]) .a-dec,body:has([data-admin-plan]) .a-tg .a-actions{display:none!important}
   .a-hero2,.a-pulse,.a-bdgs,.a-run,.fx-confetti,.a-dock-pill{display:none!important}
 }
+
+/* --- attendance sheets, the member's week, the parents' survey, the judge's oath (migration 0020) */
+.a-att-l{list-style:none;margin:10px 0 6px;padding:0;display:grid;gap:6px;grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
+.a-att-l .a-check{display:flex;align-items:flex-start;gap:10px;width:100%;min-height:44px;padding:8px 10px;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--surface)}
+.a-att-l .a-check:has(input:checked){border-color:color-mix(in oklab,var(--brand) 55%,var(--line));background:color-mix(in oklab,var(--brand) 7%,var(--surface))}
+.a-att-l .a-check input{flex:none;margin-top:4px}
+.a-att-l .a-check span{display:grid;min-width:0}
+.a-att-l .a-check b{font-weight:600;overflow-wrap:anywhere}
+.a-att-l .a-check small{color:var(--ink-2);font-size:.86rem}
+.a-myw-l{list-style:none;margin:0 0 12px;padding:0;display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}
+.a-myw-l li{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--surface-2);min-width:0}
+.a-myw-l li.ok{border-color:color-mix(in oklab,var(--brand) 50%,var(--line))}
+.a-myw-l li.warn{border-color:color-mix(in oklab,var(--sun) 60%,var(--line))}
+.a-myw-i{flex:none;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--surface);color:var(--brand)}
+.a-myw-i svg{width:18px;height:18px}
+.a-myw-l div{display:grid;min-width:0}
+.a-myw-l b{font-weight:600}
+.a-myw-l small{color:var(--ink-2);overflow-wrap:anywhere}
+.a-sv-q{border:1px solid var(--line);border-radius:var(--r-sm);padding:10px 12px;margin:0 0 10px;min-width:0}
+.a-sv-q legend{font-weight:600;padding:0 6px}
+.a-sv-s{display:flex;flex-wrap:wrap;gap:6px}
+.a-sv-s .a-check{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:6px 10px;border-radius:999px;border:1px solid var(--line);background:var(--surface)}
+.a-sv-s .a-check:has(input:checked){border-color:var(--brand);background:color-mix(in oklab,var(--brand) 10%,var(--surface))}
+.a-oath{margin:12px 0;padding:16px 18px;border-radius:var(--r-sm);border:1px solid color-mix(in oklab,var(--sun) 55%,var(--line));background:color-mix(in oklab,var(--sun) 9%,var(--surface))}
+.a-oath p{margin:0;font-size:1.08rem;line-height:2;font-weight:600}

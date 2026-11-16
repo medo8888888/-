@@ -1972,7 +1972,7 @@
       });
     }
     // three groups instead of one long page: what the admin does every week, around the matches, and with the leaders
-    const groups = [['week', 'هذا الأسبوع', [th, aw, weekReportCard()]], ['matches', 'المباريات', [appealsDesk(false), matchStaffDesk(), incidentsDesk()]], ['leaders', 'القادة', [tk, leadReviewDesk()]]];
+    const groups = [['week', 'هذا الأسبوع', [th, aw, weekReportCard()]], ['matches', 'المباريات', [appealsDesk(false), matchStaffDesk(), incidentsDesk()]], ['leaders', 'القادة', [tk, leadReviewDesk(), leadMeetDesk()]], ['impact', 'الأثر', [impactReportCard(), attendBoardCard(), surveyDesk()]]];
     const boxes = groups.map(g => h('div', { class: 'a-home', 'data-tools-group': g[0], hidden: g[0] !== (A.toolsGroup || 'week') }, g[2]));
     const tabs = groups.map(g => h('button', { type: 'button', class: 'a-deed-c', 'aria-pressed': String(g[0] === (A.toolsGroup || 'week')), 'data-fk': 'tg-' + g[0], onclick: () => {
       A.toolsGroup = g[0];
@@ -2309,7 +2309,7 @@
       put(el, h('h3', { id: 'start-h' }, icon('route'), h('span', { text: 'ابدأ من هنا' })), h('p', { class: 'a-lead', text: `بقي ${left === 1 ? 'خطوة واحدة' : left === 2 ? 'خطوتان' : `${left} خطوات`} لتبدأ رحلتك. كلها في «رحلتي».` }),
         h('ol', { class: 'a-start-l' }, steps.map((x, i) => h('li', { class: x[1] ? 'done' : '', 'data-start-step': String(i + 1) }, h('span', { class: 'a-start-n', 'aria-hidden': 'true' }, x[1] ? icon('check') : String(i + 1)), h('span', { text: x[0] }), h('span', { class: 'a-sr', text: x[1] ? ' (تمّت)' : ' (لم تتم بعد)' })))),
         h('div', { class: 'a-actions' }, btn('افتح «رحلتي»', 'route', 'btn-primary', () => goSec('journey'), { 'data-fk': 'start-go' }),
-          h('button', { type: 'button', class: 'a-link', 'data-fk': 'start-hide', text: 'أخفِ هذه البطاقة', onclick: () => { const d = dashStore.get(); d.s = d.s || {}; d.s[S.uid || '-'] = 1; dashStore.set(d); el.hidden = true; say('أُخفيت بطاقة البداية.'); } })));
+          h('button', { type: 'button', class: 'a-link', 'data-fk': 'start-hide', text: 'أخفِ هذه البطاقة', onclick: () => { const d = dashStore.get(); d.s = d.s || {}; d.s[S.uid || '-'] = 1; dashStore.set(d); el.hidden = true; say('أُخفيت بطاقة البداية.'); try { document.dispatchEvent(new Event('yb-journey')); } catch (e) { /* old browser */ } } })));
     }
     paint();
     J.watch(el, paint);
@@ -2317,6 +2317,290 @@
     document.addEventListener('yb-journey', onChange);
     return el;
   }
+
+  /* --- what the documents measure (migration 0020): attendance at the team's weekly meeting and at the leaders'
+     meeting (method.txt m-kpis: 80 %; leaders.txt: 90 %), the parents' survey at the end (85 % satisfied), the impact
+     report, and the judge's oath. Every card stays hidden on an older backend. */
+  const IM_ERR = Object.assign({}, J_ERR, { team_not_approved: 'يُسجَّل الحضور بعد اعتماد الفريق.', survey_closed: 'الاستبيان مغلق الآن.', invalid_data: 'تحقق مما اخترته ثم حاول مرة أخرى.' });
+  const pctOf = (n, of) => (Number(of) > 0 ? Math.round(Number(n) / Number(of) * 100) : 0);
+  const lastWeekKey = () => localDay(new Date(dayOf(weekKey()).getTime() - 7 * 86400000 + 12 * 3600000));
+  const weekTabs = (cur, fk, pick) => h('div', { class: 'a-deed-f', role: 'group', 'aria-label': 'الأسبوع' }, [[weekKey(), 'هذا الأسبوع', 'now'], [lastWeekKey(), 'الأسبوع الماضي', 'prev']].map(w =>
+    h('button', { type: 'button', class: 'a-deed-c', 'aria-pressed': String(w[0] === cur), 'data-fk': `${fk}-${w[2]}`, onclick: () => pick(w[0], `${fk}-${w[2]}`) }, `${w[1]} · ${shortDay(dayOf(w[0]))}`)));
+  // a sheet of names to tick. rows: [id, title, sub, checked]
+  function tickSheet(rows, fk) {
+    const boxes = rows.map(r => { const id = uid('f'); return [r, h('input', { type: 'checkbox', id, value: r[0], checked: !!r[3], 'data-fk': `${fk}-${r[0]}` }), id]; });
+    const count = h('b', { 'data-tick-count': '' });
+    const sync = () => { count.textContent = `${boxes.filter(b => b[1].checked).length} من ${boxes.length}`; };
+    boxes.forEach(b => b[1].addEventListener('change', sync)); sync();
+    const el = h('div', {}, h('ul', { class: 'a-att-l' }, boxes.map(([r, cb, id]) => h('li', {}, h('label', { class: 'a-check', for: id }, cb, h('span', {}, h('b', { text: r[1] }), r[2] ? h('small', { text: r[2] }) : null))))),
+      h('p', { class: 'a-hint' }, h('span', { text: 'الحاضرون: ' }), count));
+    return { el, picked: () => boxes.filter(b => b[1].checked).map(b => b[0][0]), all: on => { boxes.forEach(b => { b[1].checked = on; }); sync(); } };
+  }
+  // the leader: «حضور لقاء الأسبوع»
+  function attendanceCard(teamId) {
+    const el = h('section', { class: 'a-card a-adm a-att', 'aria-labelledby': 'att-h', 'data-attendance': '', hidden: true });
+    let wk = weekKey();
+    function load(focus) {
+      YB.rpc('yb_attend_get', { team_id: teamId, week: wk }).then(r => {
+        if (!r.ok || !r.data || !Array.isArray(r.data.members)) return;
+        const d = r.data, rate = pctOf(d.present, d.expected), msg = h('p', { class: 'a-live-msg', role: 'alert', hidden: true });
+        const sheet = tickSheet(d.members.map(m => [m.member_id, m.name, d.meetings ? `حضر ${m.came} من ${d.meetings}` : '', m.present]), 'att');
+        const fail = t => { msg.textContent = t; msg.hidden = false; say(t); };
+        el.hidden = false;
+        el.rate = d.meetings ? { present: d.present, expected: d.expected, last: (d.history || [])[0] || null } : null;
+        put(el, h('div', { class: 'a-bdgs-top' }, h('h3', { id: 'att-h' }, icon('user-check'), h('span', { text: 'حضور لقاء الأسبوع' })), d.meetings ? chip(`حضور الفريق ${rate}%`, rate >= 80 ? 'ok' : 'warn') : null),
+          h('p', { class: 'a-lead', text: 'علّم من حضر لقاء فريقك ثم احفظ. المستهدف حضور 80% فأكثر من اللقاءات. يرى كل عضو عدد لقاءاته هو، ويرى وليّ الأمر حضور ابنه، وترى الإدارة نسبة الفريق فقط.' }),
+          weekTabs(wk, 'att-w', (w, fk) => { wk = w; load(fk); }), sheet.el, msg,
+          h('div', { class: 'a-actions' }, btn(d.saved ? 'حدّث الحضور' : 'احفظ الحضور', 'check', 'btn-primary', e => {
+            const ids = sheet.picked(), b = e.currentTarget;
+            if (!ids.length && !d.saved) return fail('علّم من حضر أولًا ثم احفظ.');
+            b.disabled = true;
+            YB.rpc('yb_attend_save', { team_id: teamId, week: wk, present_ids: ids }).then(x => {
+              b.disabled = false;
+              if (!x.ok) return fail(errMsg(x, IM_ERR));
+              say(x.data && x.data.cleared ? 'حُذف تسجيل هذا الأسبوع: لم يُعقد لقاء.' : `حُفظ الحضور: ${ids.length} من ${d.members.length}.`);
+              load('att-save');
+            });
+          }, { 'data-fk': 'att-save' }), btn('علّم الجميع', 'users', 'btn-ghost', () => sheet.all(true), { 'data-fk': 'att-all' })),
+          d.meetings ? meter('حضور الفريق في اللقاءات المسجّلة', d.present, d.expected, 'att-team') : h('p', { class: 'a-hint', 'data-att-none': '', text: 'لم يُسجَّل أي لقاء بعد.' }),
+          d.lead && d.lead.held ? meter('حضورك لقاء القادة مع مسؤولي المبادرة', d.lead.came, d.lead.held, 'att-lead') : null,
+          (d.history || []).length > 1 ? h('details', { class: 'a-plg-past', 'data-att-past': '' }, h('summary', { 'data-fk': 'att-past', text: `اللقاءات المسجّلة (${d.history.length})` }),
+            h('ol', {}, d.history.map(x => h('li', {}, h('small', { text: 'أسبوع ' + arDate(x.week) }), h('span', { text: `حضر ${x.present} من ${x.expected}` }))))) : null);
+        if (focus) focusIn(el, focus);
+      });
+    }
+    load();
+    return el;
+  }
+  // the member's own count, and a parent's children
+  function attendMineCard() {
+    const el = h('section', { class: 'a-card a-attm', 'aria-labelledby': 'attm-h', 'data-attend-mine': '', hidden: true });
+    YB.rpc('yb_attend_mine', {}).then(r => {
+      if (!r.ok || !r.data) return;
+      const rows = [];
+      if (r.data.me && r.data.me.held) rows.push(meter('حضرتَ من لقاءات فريقك', r.data.me.came, r.data.me.held, 'attm-me'));
+      (r.data.children || []).filter(c => c.held).forEach(c => rows.push(meter(`حضور ${c.name}`, c.came, c.held, 'attm-' + c.member_id)));
+      if (!rows.length) return;
+      el.hidden = false;
+      put(el, h('h3', { id: 'attm-h' }, icon('user-check'), h('span', { text: 'حضور لقاءات الفريق' })),
+        h('p', { class: 'a-lead', text: 'يسجّله قائد الفريق بعد كل لقاء أسبوعي. المستهدف حضور 80% فأكثر من اللقاءات.' }), rows);
+      FX.reveal(el);
+    });
+    return el;
+  }
+  // the member's home: «أسبوعي في سطور» (the promise, the days of practice, the ayahs, the meetings), once the first steps are done
+  function myWeekCard(hide) {
+    const el = h('section', { class: 'a-card a-myw', 'aria-labelledby': 'myw-h', 'data-my-week': '', hidden: true });
+    let att = null;
+    function paint() {
+      if (hide && hide()) { el.hidden = true; return; }
+      const loc = mine.get(), wk = weekKey(), pl = (loc.pledges || {})[wk] || null, sat = dayOf(wk).getTime();
+      let days = 0;
+      for (let i = 0; i < 7; i++) if (((loc.deeds || {})[localDay(new Date(sat + i * 86400000 + 12 * 3600000))] || []).length) days++;
+      const n = (loc.hifz || []).length;
+      const rows = [['pledge', 'hand-heart', 'وعد الأسبوع', pl ? (pl.done ? 'وفّيت بوعدك. بارك الله فيك.' : 'كتبته، وبقي الوفاء به.') : 'لم تكتبه بعد.', pl ? (pl.done ? 'ok' : '') : 'warn'],
+        ['deeds', 'check', 'أيام طبّقت فيها', `${days} من 7 هذا الأسبوع`, days >= 4 ? 'ok' : ''],
+        ['hifz', 'star', 'آيات علّمتها من سورة الصف', String(n), n ? 'ok' : ''],
+        att ? ['attend', 'user-check', 'لقاءات الفريق', `حضرت ${att.came} من ${att.held}`, pctOf(att.came, att.held) >= 80 ? 'ok' : ''] : null].filter(Boolean);
+      el.hidden = false;
+      put(el, h('h3', { id: 'myw-h' }, icon('route'), h('span', { text: 'أسبوعي في سطور' })),
+        h('ul', { class: 'a-myw-l' }, rows.map(x => h('li', { 'data-myw': x[0], class: x[4] }, h('span', { class: 'a-myw-i', 'aria-hidden': 'true' }, icon(x[1])), h('div', {}, h('b', { text: x[2] }), h('small', { text: x[3] }))))),
+        h('div', { class: 'a-actions' }, btn(pl ? 'افتح «رحلتي»' : 'اكتب وعد الأسبوع', 'route', pl ? 'btn-ghost' : 'btn-primary', () => goSec('journey'), { 'data-fk': 'myw-go' })));
+    }
+    paint();
+    J.watch(el, paint);
+    const onChange = () => { if (!el.isConnected) { document.removeEventListener('yb-journey', onChange); return; } setTimeout(paint, 0); };
+    document.addEventListener('yb-journey', onChange);
+    YB.rpc('yb_attend_mine', {}).then(r => { if (r.ok && r.data && r.data.me && r.data.me.held) { att = r.data.me; paint(); } });
+    return el;
+  }
+  // the leader: «رسالة الأسبوع للفريق», ready to paste in the team's group. Counts only; the leader may edit before copying.
+  function teamMessageCard(o) {
+    const out = h('textarea', { class: 'a-sum-t', rows: 8, 'aria-label': 'رسالة الأسبوع للفريق', 'data-team-msg': '' });
+    const msg = h('small', { class: 'a-hint', role: 'status' });
+    const build = () => Promise.all([YB.rpc('yb_theme_get', { week: weekKey() }), eventsOnce(), YB.rpc('yb_tasks_mine', { team_id: o.teamId })]).then(([th, evs, tk]) => {
+      const now = Date.now(), f = o.follow(), a = o.att();
+      const next = (evs || []).filter(e => e.status !== 'cancelled' && new Date(e.starts_at).getTime() > now && ((e.team_ids || []).includes(o.teamId) || !(e.team_ids || []).length)).slice(0, 2);
+      const lines = [`${teamWord(o.team())} — أسبوع ${arDate(weekKey())}`];
+      if (th.ok && th.data && th.data.title) lines.push(`قيمة هذا الأسبوع: ${th.data.title}${th.data.body ? ' — ' + th.data.body : ''}`);
+      next.forEach((e, i) => lines.push(`${i ? 'ثم' : 'موعدنا القادم'}: ${e.title} · ${fmtWhen(e.starts_at)}${e.place ? ' · ' + e.place : ''}`));
+      if (f && f.members) lines.push(f.pledged < f.members ? `وعد الأسبوع: كتبه ${f.pledged} من ${f.members}. من لم يكتب وعده فليكتبه اليوم في «رحلتي».` : 'وعد الأسبوع: كتبه الجميع. بقي الوفاء به.');
+      if (a && a.last) lines.push(`حضور لقائنا الأخير: ${a.last.present} من ${a.last.expected}. نلتقي كلنا في اللقاء القادم.`);
+      if (tk.ok && Array.isArray(tk.data)) tk.data.filter(t => !t.done).slice(0, 3).forEach(t => lines.push(`مطلوب من فريقنا: ${t.title}${t.due ? ' (قبل ' + arDate(t.due) + ')' : ''}`));
+      lines.push('ادخلوا حساباتكم في موقع ينابيع وسجّلوا حفظكم وتطبيقكم.');
+      out.value = lines.join('\n');
+    });
+    const el = h('section', { class: 'a-card a-sum', 'aria-labelledby': 'tm-h', 'data-team-message': '' }, h('h3', { id: 'tm-h' }, icon('message'), h('span', { text: 'رسالة الأسبوع للفريق' })),
+      h('p', { class: 'a-lead', text: 'رسالة جاهزة لمجموعة فريقك: قيمة الأسبوع، والموعد القادم، وما بقي. فيها أعداد فقط بلا أسماء. عدّلها كما تحب ثم انسخها.' }), out,
+      h('div', { class: 'a-actions' }, btn('حدّث الرسالة', 'repeat', 'btn-ghost', () => build().then(() => { msg.textContent = 'حُدّثت الرسالة.'; say(msg.textContent); }), { 'data-fk': 'tm-build' }),
+        btn('انسخ', 'check', 'btn-primary', async () => { msg.textContent = (await copyText(out.value)) ? 'نُسخت الرسالة.' : 'تعذّر النسخ. حدّد النص وانسخه يدويًا.'; say(msg.textContent); }, { 'data-fk': 'tm-copy' })), msg);
+    el.start = build;
+    build();
+    return el;
+  }
+  // the parent: «استبيان أولياء الأمور», when the admin opens it
+  const SV_Q = [['q1', 'لاحظتُ تحسّنًا في سلوك ابني وقيمه منذ بدء المسابقة.'], ['q2', 'صار ابني أكثر انضباطًا وتعاونًا مع من حوله.'], ['q3', 'أنا راضٍ عن المسابقة بوجه عام.']];
+  const SV_SCALE = ['لا أوافق أبدًا', 'لا أوافق', 'محايد', 'أوافق', 'أوافق تمامًا'];
+  function surveyCard() {
+    const el = h('section', { class: 'a-card a-adm a-sv', 'aria-labelledby': 'sv-h', 'data-survey': '', hidden: true });
+    function load(focus) {
+      YB.rpc('yb_survey_mine', {}).then(r => {
+        if (!r.ok || !r.data || !r.data.eligible || (!r.data.open && !r.data.answer)) { el.hidden = true; return; }
+        const d = r.data, a = d.answer || {}, name = uid('sv'), msg = h('p', { class: 'a-live-msg', role: 'alert', hidden: true });
+        const qs = SV_Q.map(q => {
+          const ins = SV_SCALE.map((s, i) => { const id = uid('f'); return [h('input', { type: 'radio', id, name: name + q[0], value: i + 1, checked: a[q[0]] === i + 1, disabled: !d.open, 'data-fk': `sv-${q[0]}-${i + 1}` }), id, s]; });
+          return [q, ins, h('fieldset', { class: 'a-sv-q', 'data-sv-q': q[0] }, h('legend', { text: q[1] }), h('div', { class: 'a-sv-s' }, ins.map(([inp, id, s]) => h('label', { class: 'a-check', for: id }, inp, h('span', { text: s }))))) ];
+        });
+        const nid = uid('f'), note = h('textarea', { id: nid, rows: 2, maxLength: 300, disabled: !d.open, 'data-fk': 'sv-note', placeholder: 'اختياري: ما الذي تغيّر؟ وما الذي نحسّنه؟' });
+        note.value = a.note || '';
+        el.hidden = false;
+        put(el, h('div', { class: 'a-bdgs-top' }, h('h3', { id: 'sv-h' }, icon('message'), h('span', { text: 'استبيان أولياء الأمور' })), chip(d.answer ? 'وصل رأيك' : 'بانتظار رأيك', d.answer ? 'ok' : 'warn')),
+          h('p', { class: 'a-lead', text: 'ثلاثة أسئلة قصيرة عن أثر المسابقة على ابنك. تقرأ الإدارة النتائج مجموعةً، ولا يظهر اسمك بجانب إجابتك.' }),
+          qs.map(x => x[2]), fField('كلمة تضيفها', note, nid), msg,
+          d.open ? h('div', { class: 'a-actions' }, btn(d.answer ? 'حدّث رأيي' : 'أرسل رأيي', 'send', 'btn-primary', e => {
+            const b = e.currentTarget, v = qs.map(x => { const on = x[1].find(i => i[0].checked); return on ? Number(on[0].value) : null; }), miss = v.findIndex(n => !n);
+            if (miss >= 0) { msg.textContent = 'أجب عن الأسئلة الثلاثة أولًا.'; msg.hidden = false; say(msg.textContent); qs[miss][1][0][0].focus(); return; }
+            b.disabled = true;
+            YB.rpc('yb_survey_save', { q1: v[0], q2: v[1], q3: v[2], note: note.value || null }).then(x => {
+              b.disabled = false;
+              if (!x.ok) { msg.textContent = errMsg(x, IM_ERR); msg.hidden = false; say(msg.textContent); return; }
+              say('وصل رأيك. جزاك الله خيرًا.'); load('sv-send');
+            });
+          }, { 'data-fk': 'sv-send' })) : h('p', { class: 'a-hint', 'data-sv-closed': '', text: 'أُغلق الاستبيان. شكرًا لمشاركتك.' }));
+        if (focus) focusIn(el, focus);
+      });
+    }
+    load();
+    return el;
+  }
+  // the admin, «الأثر»: the leaders' weekly meeting
+  function leadMeetDesk() {
+    const el = h('section', { class: 'a-card a-adm a-tool-w a-att', 'aria-labelledby': 'lm-h', 'data-lead-meet': '', hidden: true });
+    let wk = weekKey();
+    function load(focus) {
+      YB.rpc('yb_lead_meet_get', { week: wk }).then(r => {
+        if (!r.ok || !r.data || !Array.isArray(r.data.teams)) return;
+        const d = r.data, msg = h('p', { class: 'a-live-msg', role: 'alert', hidden: true });
+        const sheet = tickSheet(d.teams.map(t => [t.team_id, t.leader || '—', `${t.team_name}${t.held ? ` · حضر ${t.came} من ${t.held}` : ''}`, t.present]), 'lm');
+        const fail = t => { msg.textContent = t; msg.hidden = false; say(t); };
+        el.hidden = false;
+        put(el, h('h3', { id: 'lm-h' }, icon('flag'), h('span', { text: 'حضور لقاء القادة الأسبوعي' })),
+          h('p', { class: 'a-lead', text: 'تنص اللائحة على لقاء حضوري أسبوعي يجمع قادة الفرق بمسؤولي المبادرة، والمستهدف للقائد حضور 90%. علّم القادة الذين حضروا ثم احفظ. يرى كل قائد عدد لقاءاته.' }),
+          weekTabs(wk, 'lm-w', (w, fk) => { wk = w; load(fk); }),
+          d.teams.length ? sheet.el : h('p', { class: 'a-empty', text: 'لا فرق معتمدة بعد.' }), msg,
+          d.teams.length ? h('div', { class: 'a-actions' }, btn(d.saved ? 'حدّث الحضور' : 'احفظ الحضور', 'check', 'btn-primary', e => {
+            const ids = sheet.picked(), b = e.currentTarget;
+            if (!ids.length && !d.saved) return fail('علّم من حضر أولًا ثم احفظ.');
+            b.disabled = true;
+            YB.rpc('yb_lead_meet_save', { week: wk, team_ids: ids }).then(x => {
+              b.disabled = false;
+              if (!x.ok) return fail(errMsg(x, IM_ERR));
+              say(x.data && x.data.cleared ? 'حُذف تسجيل هذا الأسبوع: لم يُعقد لقاء القادة.' : `حُفظ حضور القادة: ${ids.length} من ${d.teams.length}.`);
+              load('lm-save');
+            });
+          }, { 'data-fk': 'lm-save' }), btn('علّم الجميع', 'users', 'btn-ghost', () => sheet.all(true), { 'data-fk': 'lm-all' })) : null);
+        if (focus) focusIn(el, focus);
+      });
+    }
+    load();
+    return el;
+  }
+  // every approved team's attendance: the members at the weekly meeting, the leader at the leaders' meeting, the team at its matches
+  function attendBoardCard() {
+    const el = h('section', { class: 'a-card a-adm a-tool-w', 'aria-labelledby': 'ab-h', 'data-attend-board': '', hidden: true });
+    function load(focus) {
+      YB.rpc('yb_attend_board', {}).then(r => {
+        if (!r.ok || !r.data || !Array.isArray(r.data.teams)) return;
+        const ts = r.data.teams, sum = k => ts.reduce((n, t) => n + (Number(t[k]) || 0), 0), rate = pctOf(sum('present'), sum('expected'));
+        const fresh = [weekKey(), lastWeekKey()], quiet = ts.filter(t => !fresh.includes(t.last_week));
+        el.hidden = false;
+        put(el, h('div', { class: 'a-bdgs-top' }, h('h3', { id: 'ab-h' }, icon('chart'), h('span', { text: 'حضور الفرق' })), sum('expected') ? chip(`الحضور العام ${rate}%`, rate >= 80 ? 'ok' : 'warn') : chip('لا لقاءات مسجّلة', 'muted')),
+          h('p', { class: 'a-lead', text: 'يسجّل كل قائد حضور لقاء فريقه. المستهدف 80% فأكثر من اللقاءات. تظهر هنا النسب فقط، بلا أسماء الأعضاء.' }),
+          ts.length ? h('ul', { class: 'a-tool-l a-apl-l' }, ts.map(t => h('li', { 'data-att-team': t.team_id, class: t.meetings && pctOf(t.present, t.expected) >= 80 ? 'ok' : '' }, h('div', { class: 'a-mf-h' }, h('b', { text: t.team_name }),
+            t.meetings ? chip(`${pctOf(t.present, t.expected)}%`, pctOf(t.present, t.expected) >= 80 ? 'ok' : 'warn') : chip('لم يسجّل', 'muted')),
+            t.meetings ? meter(`حضور الأعضاء في ${t.meetings === 1 ? 'لقاء واحد' : t.meetings === 2 ? 'لقاءين' : t.meetings + ' لقاءات'}`, t.present, t.expected, 'ab-' + t.team_id) : null,
+            h('small', { class: 'a-hint', text: [t.last_week ? 'آخر لقاء مسجّل: أسبوع ' + arDate(t.last_week) : 'لم يسجّل قائد الفريق أي لقاء', t.lead_held ? `القائد حضر ${t.lead_came} من ${t.lead_held} في لقاء القادة` : null,
+              t.match_marked ? `الفريق حضر ${t.match_present} من ${t.match_marked} من مواعيده` : null].filter(Boolean).join(' · ') })))) : h('p', { class: 'a-empty', text: 'لا فرق معتمدة بعد.' }),
+          quiet.length && ts.length ? h('p', { class: 'a-hint', 'data-att-quiet': '', text: `لم تسجّل حضورًا منذ أسبوعين (${quiet.length}): ${quiet.map(t => t.team_name).join('، ')}` }) : null,
+          h('div', { class: 'a-actions' }, btn('حدّث', 'repeat', 'btn-ghost', () => load('ab-refresh'), { 'data-fk': 'ab-refresh' })));
+        if (focus) focusIn(el, focus);
+      });
+    }
+    load();
+    return el;
+  }
+  // the parents' survey: open it, close it, read the numbers and the lines (never who wrote them)
+  function surveyDesk() {
+    const el = h('section', { class: 'a-card a-adm a-tool-w', 'aria-labelledby': 'svd-h', 'data-survey-desk': '', hidden: true });
+    function load(focus) {
+      YB.rpc('yb_survey_board', {}).then(r => {
+        if (!r.ok || !r.data) return;
+        const d = r.data, msg = h('p', { class: 'a-live-msg', role: 'alert', hidden: true });
+        el.hidden = false;
+        put(el, h('div', { class: 'a-bdgs-top' }, h('h3', { id: 'svd-h' }, icon('message'), h('span', { text: 'استبيان أولياء الأمور' })), chip(d.open ? 'مفتوح' : 'مغلق', d.open ? 'ok' : 'muted')),
+          h('p', { class: 'a-lead', text: 'ثلاثة أسئلة من 1 إلى 5 يجيب عنها وليّ الأمر المرتبط بابنه. المستهدف: رضا 85% فأكثر، واستجابة 80% فأكثر. افتحه في نهاية المسابقة؛ يصل إشعار لكل وليّ أمر عند فتحه.' }),
+          meter('أجابوا من أولياء الأمور المرتبطين', d.answers, d.parents, 'svd-answers'),
+          d.answers ? meter('راضون (4 أو 5 في السؤال الأخير)', d.satisfied, d.answers, 'svd-sat') : null,
+          d.avg ? h('ul', { class: 'a-tool-l', 'data-svd-avg': '' }, SV_Q.map((q, i) => h('li', {}, h('span', { text: q[1] }), h('b', { text: `${d.avg[i]} من 5` })))) : null,
+          (d.notes || []).length ? h('details', { class: 'a-plg-past', 'data-svd-notes': '' }, h('summary', { 'data-fk': 'svd-notes', text: `ما كتبه أولياء الأمور (${d.notes.length})، بلا أسماء` }), h('ol', {}, d.notes.map(n => h('li', {}, h('span', { text: n }))))) : null, msg,
+          h('div', { class: 'a-actions' }, btn(d.open ? 'أغلق الاستبيان' : 'افتح الاستبيان وأبلغ أولياء الأمور', d.open ? 'lock' : 'megaphone', d.open ? 'btn-ghost' : 'btn-primary', e => {
+            const b = e.currentTarget; b.disabled = true;
+            YB.rpc('yb_survey_open', { open: !d.open }).then(x => { b.disabled = false; if (!x.ok) { msg.textContent = errMsg(x, IM_ERR); msg.hidden = false; say(msg.textContent); return; } say(d.open ? 'أُغلق الاستبيان. تبقى الإجابات محفوظة.' : 'فُتح الاستبيان، ووصل إشعار لأولياء الأمور.'); load('svd-toggle'); });
+          }, { 'data-fk': 'svd-toggle' })));
+        if (focus) focusIn(el, focus);
+      });
+    }
+    load();
+    return el;
+  }
+  // «تقرير الأثر» (competition.txt: 25 - 30 January): the method's indicators against their targets, in lines to copy
+  // for partners and sponsors. Totals only: no team is named, no child is named.
+  function impactReportCard() {
+    const out = h('textarea', { class: 'a-sum-t', rows: 14, 'aria-label': 'تقرير الأثر', 'data-impact-report': '' });
+    const msg = h('small', { class: 'a-hint', role: 'status' });
+    const kp = h('div', { 'data-impact-kpis': '' });
+    const build = () => Promise.all([YB.rpc('yb_attend_board', {}), YB.rpc('yb_survey_board', {}), YB.rpc('yb_activity_board', { week: weekKey() }), adminSubs(), YB.rpc('yb_awards_all', {})]).then(([ab, sv, act, subs, aw]) => {
+      const ok = A.teams.filter(t => t.status === 'approved'), people = ok.reduce((n, t) => n + membersOf(t.id).length, 0);
+      const ts = ab.ok && ab.data && Array.isArray(ab.data.teams) ? ab.data.teams : null, sum = (rows, k) => rows.reduce((n, t) => n + (Number(t[k]) || 0), 0);
+      const acc = id => (subs || []).filter(x => x.team_id === id && x.status === 'accepted').length;
+      const rows = [];   // [indicator, target text, value text, state: ok | low | none]
+      const add = (name, target, has, value, hit) => rows.push([name, target, has ? value : 'لا بيانات بعد', has ? (hit ? 'ok' : 'low') : 'none']);
+      if (ts) {
+        const rec = ts.filter(t => t.meetings), pr = sum(ts, 'present'), ex = sum(ts, 'expected'), lh = sum(ts, 'lead_held'), lc = sum(ts, 'lead_came');
+        add('نسبة الحضور', '80% فأكثر من اللقاءات', ex > 0, `${pctOf(pr, ex)}% (${sum(ts, 'meetings')} لقاء مسجّل في ${rec.length} من ${ts.length} فريقًا)`, pctOf(pr, ex) >= 80);
+        add('استمرارية المشاركة', '85% فأكثر من المسجلين', rec.length > 0, `${pctOf(sum(rec, 'recent'), sum(rec, 'members'))}% حضروا أحد آخر لقاءين`, pctOf(sum(rec, 'recent'), sum(rec, 'members')) >= 85);
+        add('حضور القادة لقاءهم الأسبوعي', '90%', lh > 0, `${pctOf(lc, lh)}% (${ab.data.lead_meets} لقاء)`, pctOf(lc, lh) >= 90);
+      }
+      const three = ok.filter(t => acc(t.id) >= 3).length;
+      add('المبادرات الميدانية', '3 مبادرات مكتملة لكل فريق', ok.length > 0, `${three} من ${ok.length} فريقًا أكملت ثلاثًا (المقبول كله: ${ok.reduce((n, t) => n + acc(t.id), 0)})`, ok.length > 0 && three === ok.length);
+      if (sv.ok && sv.data) {
+        add('رضا أولياء الأمور', '85% فأكثر', sv.data.answers > 0, `${pctOf(sv.data.satisfied, sv.data.answers)}% راضون`, pctOf(sv.data.satisfied, sv.data.answers) >= 85);
+        add('استجابة أولياء الأمور', '80% فأكثر', sv.data.parents > 0 && sv.data.answers > 0, `${pctOf(sv.data.answers, sv.data.parents)}% (أجاب ${sv.data.answers} من ${sv.data.parents})`, pctOf(sv.data.answers, sv.data.parents) >= 80);
+      }
+      const word = { ok: 'تحقق', low: 'دون المستهدف', none: '' };
+      const lines = [`تقرير الأثر — مسابقة ينابيع (حتى ${new Date().toLocaleDateString('ar-u-nu-latn', { day: 'numeric', month: 'long', year: 'numeric' })})`, '',
+        'المشاركة', `- الفرق المعتمدة: ${ok.length} من ${EXPECTED} مستهدفة`, `- المشاركون: ${people} (المستهدف 60 – 84)`, '', 'مؤشرات الأثر'];
+      rows.forEach(x => lines.push(`- ${x[0]}: ${x[2]} — المستهدف ${x[1]}${word[x[3]] ? ' — ' + word[x[3]] : ''}`));
+      lines.push('- إتقان الحفظ والفهم: يُؤخذ من نتائج لجنة التحكيم بعد إعلانها (المستهدف 80% من المشاركين)');
+      const ar = act.ok && Array.isArray(act.data) ? act.data : null;
+      if (ar) lines.push('', 'القيم والعمل', `- آيات علّمها الأعضاء في حساباتهم: ${sum(ar, 'hifz_sum')}`, `- وعود هذا الأسبوع: كُتب ${sum(ar, 'pledged')} ووُفّي بـ ${sum(ar, 'kept')}`, `- فرق كتبت ميثاقها: ${ar.filter(t => t.pact).length} من ${ar.length}`);
+      if (aw.ok && Array.isArray(aw.data)) lines.push(`${ar ? '' : '\nالقيم والعمل\n'}- أوسمة تشجيعية مُنحت: ${aw.data.length}`);
+      if (sv.ok && sv.data && (sv.data.notes || []).length) lines.push('', 'مما كتبه أولياء الأمور (بلا أسماء)', ...sv.data.notes.slice(0, 5).map(n => `- «${n}»`));
+      lines.push('', 'الدروس المستفادة', '- (يكتبها فريق الإدارة)');
+      out.value = lines.join('\n');
+      put(kp, h('table', { class: 'a-tg-t' }, h('thead', {}, h('tr', {}, ['المؤشر', 'المستهدف', 'المتحقق', ''].map(x => h('th', { scope: 'col', text: x })))),
+        h('tbody', {}, rows.map(x => h('tr', { 'data-kpi': x[3] }, h('th', { scope: 'row', text: x[0] }), h('td', { text: x[1] }), h('td', {}, h('b', { text: x[2] })), h('td', {}, x[3] === 'none' ? null : chip(word[x[3]], x[3] === 'ok' ? 'ok' : 'warn')))))));
+    });
+    const el = h('section', { class: 'a-card a-adm a-tool-w a-sum', 'aria-labelledby': 'ir-h', 'data-tool-impact': '' }, h('h3', { id: 'ir-h' }, icon('landmark'), h('span', { text: 'تقرير الأثر' })),
+      h('p', { class: 'a-lead', text: 'مؤشرات الأثر في منهجية البرنامج مقابل مستهدفاتها، من بيانات الموقع. أرقام مجموعة فقط: لا اسم فريق ولا اسم طفل، فيصلح للشركاء والداعمين. أضف «الدروس المستفادة» بعد النسخ.' }), kp, out,
+      h('div', { class: 'a-actions' }, btn('حدّث التقرير', 'repeat', 'btn-ghost', () => build().then(() => { msg.textContent = 'حُدّث التقرير.'; say(msg.textContent); }), { 'data-fk': 'ir-build' }),
+        btn('انسخ', 'check', 'btn-primary', async () => { await build(); msg.textContent = (await copyText(out.value)) ? 'نُسخ التقرير.' : 'تعذّر النسخ. حدّد النص وانسخه يدويًا.'; say(msg.textContent); }, { 'data-fk': 'ir-copy' })), msg);
+    build();
+    return el;
+  }
+  // the judge's oath: given once before the first score. The account keeps it; on an older backend this device does.
+  const OATH = 'أقسم بالله العظيم أن أحكّم بالعدل والأمانة، وأن أقول الحق في كل درجة أكتبها، فلا أحابي فريقًا ولا أظلم فريقًا، وأن أكتب سبب كل درجة بصدق، وألا أحكّم فريقًا لي فيه ابن أو قريب، وأن أحفظ سرّ الدرجات حتى تعلن الإدارة النتائج.';
+  const OATH_MEANS = ['الدرجة لما رأيته وسمعته فقط، لا لاسم الفريق ولا لمن يقوده.', 'سبب كل درجة يقرؤه الفريق بعد إعلان النتائج، دون اسمك.', 'لا يطّلع أحد على الدرجات قبل أن تعلنها الإدارة.'];
 
   // «مسار المسابقة»: the four dates, where today falls, and the phase of the 12-week plan
   function journeyCard() {
@@ -3100,6 +3384,7 @@
     if (n.kind === 'award') return `نال ${team} وسام «${AWARD[d.kind] || 'التميز'}» من إدارة المسابقة.`;
     if (n.kind === 'admin_task') return `مهمة جديدة من الإدارة لقادة الفرق: ${d.title || ''}`;
     if (n.kind === 'incident_new') return 'سُجّلت واقعة جديدة في سجل الإصابات والطوارئ. افتح «أدوات الإدارة».';
+    if (n.kind === 'survey_open') return 'فتحت الإدارة استبيان أولياء الأمور: ثلاثة أسئلة قصيرة عن أثر المسابقة على ابنك. تجده في حسابك.';
     if (n.kind === 'lead_review') return `كتب المشرف تقييمك القيادي لهذا الأسبوع: ${d.total ?? ''} من 100. افتح «دفتر القيادة والأثر».`;
     if (n.kind === 'appeal_new') return `تظلّم جديد من ${team} بانتظار البتّ. افتح «أدوات الإدارة».`;
     if (n.kind === 'appeal_decided') return `بُتّ في تظلّم ${team}: ${d.accepted ? 'قُبل' : 'رُفض'}. اقرأ سبب القرار في «المباريات والمواعيد».`;
@@ -4879,6 +5164,28 @@
       const r = await YB.rpc('yb_my_judging', {});
       J.data = r.ok && r.data && typeof r.data === 'object' ? r.data : null;
       if (!r.ok) sessionLost(r);
+      if (J.oath === undefined && J.data && Array.isArray(J.data.axes) && J.data.axes.length) {   // migration 0020; on an older backend there is no oath to give
+        const o = await YB.rpc('yb_judge_oath_mine', {});
+        J.oath = o.ok && o.data ? (o.data.sworn_at || null) : false;
+      }
+    }
+    function oathCard() {
+      const msg = h('p', { class: 'a-live-msg', role: 'alert', hidden: true });
+      put(el, h('h3', { id: fk + '-h' }, icon('scale'), h('span', { text: 'قسم الحكم' })),
+        h('p', { class: 'a-lead', text: 'قبل أن تكتب أول درجة، اقرأ القسم وأدِّه مرة واحدة. يُحفظ في حسابك أنك أدّيته ومتى، وتراه إدارة المسابقة بجانب اسمك.' }),
+        h('blockquote', { class: 'a-oath', 'data-oath': '' }, h('p', { text: OATH })),
+        h('ul', { class: 'a-apl-r' }, OATH_MEANS.map(x => h('li', { text: x }))), msg,
+        h('div', { class: 'a-actions' }, btn('أُقسم على ذلك', 'scale', 'btn-primary', e => {
+          const b = e.currentTarget; b.disabled = true;
+          YB.rpc('yb_judge_oath_take', {}).then(x => {
+            b.disabled = false;
+            if (!x.ok) { if (sessionLost(x)) return; msg.textContent = errMsg(x); msg.hidden = false; say(msg.textContent); return; }
+            J.oath = (x.data && x.data.sworn_at) || new Date().toISOString();
+            say('أدّيت القسم. وفّقك الله للعدل.');
+            paint(fk + '-next');
+          });
+        }, { 'data-fk': fk + '-oath' })));
+      el.hidden = false;
     }
     function critRow(t, c) {
       const s = (t.scores || {})[c.k] || null;
@@ -4932,9 +5239,17 @@
     }
     function paint(focus) {
       if (!J.data || !Array.isArray(J.data.axes) || !J.data.axes.length) { el.hidden = true; return; }
+      if (J.oath === null && !J.data.published) return oathCard();
+      const crits = CRIT.filter(c => J.data.axes.includes(c.axis)), mineT = (J.data.teams || []).filter(t => !t.conflict);
+      const doneN = mineT.reduce((n, t) => n + crits.filter(c => (t.scores || {})[c.k]).length, 0), total = mineT.length * crits.length;
+      const nextT = mineT.find(t => crits.some(c => !(t.scores || {})[c.k]));
       put(el, h('h3', { id: fk + '-h' }, icon('scale'), h('span', { text: 'التحكيم' })),
         h('p', { class: 'a-lead', text: `اختارتك الإدارة حكمًا في: ${J.data.axes.map(a => AXIS[a]).join('، ')}. اكتب سبب كل درجة؛ يقرؤه الفريق بعد إعلان النتائج دون اسمك.` }),
         J.data.published ? h('p', { class: 'a-note', text: 'أُعلنت النتائج، فالدرجات مقفلة الآن.' }) : null,
+        J.oath ? h('p', { class: 'a-hint', 'data-oath-done': '', text: `أدّيت قسم التحكيم يوم ${shortDay(J.oath)}: العدل والأمانة وقول الحق في كل درجة.` }) : null,
+        total ? meter('ما قيّمته حتى الآن', doneN, total, 'judge-progress') : null,
+        total && !J.data.published ? (nextT ? h('div', { class: 'a-actions' }, btn(`افتح الفريق التالي: ${nextT.name}`, 'arrow-left', 'btn-ghost', () => { J.open[nextT.team_id] = true; paint('jt-' + nextT.team_id); }, { 'data-fk': fk + '-next' }))
+          : h('p', { class: 'a-note', 'data-judge-all': '', text: 'أتممت تقييم كل الفرق. راجع درجاتك وأسبابها قبل أن تعلن الإدارة النتائج.' })) : null,
         (J.data.teams || []).length ? h('div', { class: 'a-list' }, J.data.teams.map(teamBox)) : h('p', { class: 'a-empty', text: 'لا فرق معتمدة للتحكيم بعد.' }));
       el.hidden = false;
       if (focus) { const f = el.querySelector(`[data-fk="${CSS.escape(focus)}"]`); if (f) f.focus({ preventScroll: true }); }
@@ -4950,8 +5265,9 @@
     const showMsg = t => { msgEl.textContent = t || ''; msgEl.hidden = !t; if (t) say(t); };
     const focusFk = k => { const f = el.querySelector(`[data-fk="${CSS.escape(k)}"]`); if (f) f.focus({ preventScroll: true }); };
     async function load() {
-      const [a, b] = await Promise.all([YB.rpc('yb_judges_list', {}), YB.rpc('yb_results_board', {})]);
+      const [a, b, c] = await Promise.all([YB.rpc('yb_judges_list', {}), YB.rpc('yb_results_board', {}), YB.rpc('yb_judge_oaths', {})]);
       G.judges = a.ok && Array.isArray(a.data) ? a.data : [];
+      G.oaths = c.ok && Array.isArray(c.data) ? c.data.map(x => x.user_id) : null;   // null on an older backend
       G.board = b.ok && b.data && typeof b.data === 'object' ? b.data : null;
       G.err = !a.ok ? errMsg(a) : !b.ok ? errMsg(b) : '';
       if (!a.ok) sessionLost(a);
@@ -4982,7 +5298,8 @@
       const rows = G.judges.map(j => {
         const ax = axisBoxes(j.axes || [], j.full_name || '');
         return h('li', { class: 'a-judge-row', 'data-judge-row': j.user_id },
-          h('div', { class: 'a-judge-top' }, h('b', { text: j.full_name || '—' }), chip(roleWord(j.role), 'muted'), chip(`${j.scored} درجة`, 'brand')),
+          h('div', { class: 'a-judge-top' }, h('b', { text: j.full_name || '—' }), chip(roleWord(j.role), 'muted'), chip(`${j.scored} درجة`, 'brand'),
+            G.oaths ? h('span', { 'data-judge-oath': G.oaths.includes(j.user_id) ? 'yes' : 'no' }, chip(G.oaths.includes(j.user_id) ? 'أدّى القسم' : 'لم يؤدِّ القسم بعد', G.oaths.includes(j.user_id) ? 'ok' : 'warn')) : null),
           ax, h('div', { class: 'a-actions' },
             btn('احفظ المحاور', 'check', 'btn-ghost', () => {
               const a = picked(ax);
@@ -5193,7 +5510,8 @@
     L.opp = oppCard(t.team_id, t.team_name); L.cal = calCard({ teamId: t.team_id, teamName: t.team_name, teamStatus: t.status });
     L.badges = badgesCard({ teamId: t.team_id, teamName: t.team_name, status: t.status, roster: () => { const mn = L.members.filter(m => isMinor(m.age)); return { members: L.members.length, minors: mn.length, got: mn.filter(m => m.consent_status === 'received').length }; } });
     L.pulse = pulseCard();
-    L.lw = leadWeekCard(t.team_id); L.mf = membersFollowCard(t.team_id); L.init = initiativesCard(t);
+    L.lw = leadWeekCard(t.team_id); L.mf = membersFollowCard(t.team_id); L.init = initiativesCard(t); L.att = attendanceCard(t.team_id);
+    L.tmsg = teamMessageCard({ teamId: t.team_id, team: () => L.team.team_name, follow: () => L.mf.counts || null, att: () => L.att.rate || null });
     L.sum = leadSummaryCard(() => { const mn = L.members.filter(m => isMinor(m.age)); return { team: L.team.team_name, status: STATUS[L.team.status] || L.team.status, members: L.members.length, minors: mn.length,
       got: mn.filter(m => m.consent_status === 'received').length, accepted: L.init.accepted || 0, tasks: L.lw.done(), follow: L.mf.counts || null }; });
     dashLayout([
@@ -5202,7 +5520,7 @@
       { key: 'matches', label: 'المباريات والمواعيد', icon: 'trophy', one: true, nodes: [L.dates, L.sched.node, L.boxes.marks, appealCard(t.team_id)] },
       { key: 'team', label: 'الفريق', icon: 'users', nodes: [L.boxes.roster, L.boxes.roles, L.boxes.code, (L.style || (L.style = teamStyleCard(t), L.style.start(), L.style)).el, L.printBox] },
       { key: 'projects', label: 'المشاريع والمبادرات', icon: 'image', one: true, nodes: [L.subs.el] },
-      { key: 'lead', label: 'قيادتي', icon: 'flag', nodes: [themeCard(), adminTasksCard(t.team_id), L.mf, notebookCard(t.team_id), L.lw, pactCard(t.team_id), L.init, L.sum, raceCard(t.team_id),
+      { key: 'lead', label: 'قيادتي', icon: 'flag', nodes: [themeCard(), adminTasksCard(t.team_id), L.mf, L.att, L.tmsg, notebookCard(t.team_id), L.lw, pactCard(t.team_id), L.init, L.sum, raceCard(t.team_id),
         h('details', { class: 'a-card a-fold', 'data-lead-more': '', open: !!mine.get().meet }, h('summary', { 'data-fk': 'lead-more', text: 'أدوات اللقاء والورشة (مؤقّت اللقاء الأسبوعي، وأنشطة «الفعل لا القول»)' }), h('div', { class: 'a-fold-b' }, meetingCard(), workshopCard()))] },
       { key: 'players', label: 'لاعبون يبحثون عن فريق', icon: 'users', one: true, nodes: [poolCard('pool')] },
       { key: 'room', label: 'غرفة القادة', icon: 'bell', one: true, nodes: [L.chat.el] },
@@ -5589,8 +5907,8 @@
       row.status === 'approved' ? teamSubsView(row.team_id, row.team_name) : null,
       box.node];
     dashLayout([
-      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [mHero, mday, nextCard(memberNext(row, ro.ok ? me : null)), startCard(), memberTiles(row), mv[2], mStaff, mRun, mOpp, matchStaffCard(row.team_id), mChs, mHft, awardsCard(row.team_id), mBadges, mCal, mv[1], mPulse, mv[0], mv[4]] },
-      { key: 'journey', label: 'رحلتي', icon: 'route', nodes: [themeCard(), journeyCard(), pledgeCard(), deedCard(), surahCard(), myMilestonesCard(), teamBoardCard(row.team_id), raceCard(row.team_id), mPoints, honorsCard(), toolsCard(false)] },
+      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [mHero, mday, nextCard(memberNext(row, ro.ok ? me : null)), ...(() => { const sc = startCard(); return [sc, myWeekCard(() => !sc.hidden)]; })(), memberTiles(row), mv[2], mStaff, mRun, mOpp, matchStaffCard(row.team_id), mChs, mHft, awardsCard(row.team_id), mBadges, mCal, mv[1], mPulse, mv[0], mv[4]] },
+      { key: 'journey', label: 'رحلتي', icon: 'route', nodes: [themeCard(), journeyCard(), pledgeCard(), deedCard(), surahCard(), myMilestonesCard(), attendMineCard(), teamBoardCard(row.team_id), raceCard(row.team_id), mPoints, honorsCard(), toolsCard(false)] },
       feedGroup(),
       { key: 'matches', label: 'المباريات والمواعيد', icon: 'trophy', one: true, nodes: [mv[5], mv[7]] },
       { key: 'team', label: 'الفريق', icon: 'users', nodes: [mv[3], seekCard('seek')] },
@@ -5619,7 +5937,7 @@
     const pExtra = k0 ? [staffCard(k0.team_id), runCard(k0.team_id, k0.team_name), oppCard(k0.team_id, k0.team_name), chessCard(k0.team_id, k0.team_name), hifzTeamCard(k0.team_id), badgesCard({ teamId: k0.team_id, teamName: k0.team_name, status: k0.team_status }),
       calCard({ teamId: k0.team_id, teamName: k0.team_name, teamStatus: k0.team_status })] : [];
     const pPulse = pulseCard(), pPoints = pointsCard();
-    const home = [pHero, mday, nextCard(parentNext(kids)), parentTiles(kids), kids.length ? themeCard() : null, kids.length ? childJourneyCard() : null, kids.length ? matchStaffCard(kids[0].team_id) : null, kids.length ? awardsCard(kids[0].team_id) : null, kids.length ? raceCard(kids[0].team_id) : null, ...pExtra, scoresCard(), pPulse, announceFeed()];
+    const home = [pHero, mday, nextCard(parentNext(kids)), parentTiles(kids), kids.length ? themeCard() : null, kids.length ? surveyCard() : null, kids.length ? childJourneyCard() : null, kids.length ? attendMineCard() : null, kids.length ? matchStaffCard(kids[0].team_id) : null, kids.length ? awardsCard(kids[0].team_id) : null, kids.length ? raceCard(kids[0].team_id) : null, ...pExtra, scoresCard(), pPulse, announceFeed()];
     const nodes = home, games = [];
     const boxes = [];
     if (!kids.length) nodes.push(h('p', { class: 'a-empty a-card', text: 'لم تربط أي ابن أو ابنة بعد. اكتب رمز الفريق واسم الطفل أدناه.' }));
