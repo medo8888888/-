@@ -27,11 +27,24 @@ execSync('python3 tools/yanabee/build.py account tournament', { cwd: ROOT, stdio
 
 /* ---------------------------------------------------------------- static server for the site */
 const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json', '.webmanifest': 'application/json' };
+// the "/*" block of _headers (written by build_pwa.py), with Supabase's hosts replaced by the fake one
+const SITE_HEADERS = (() => {
+  const out = {}, lines = fs.readFileSync(path.join(SITE, '_headers'), 'utf8').split('\n');
+  let on = false;
+  for (const l of lines) {
+    if (/^\S/.test(l)) { on = l.trim() === '/*'; continue; }
+    const m = on && l.match(/^\s+([\w-]+):\s*(.+)$/);
+    if (m) out[m[1]] = m[2].replace(/https:\/\/\*\.supabase\.co/g, 'https://fake.supabase.test').replace(/wss:\/\/\*\.supabase\.co/g, 'wss://fake.supabase.test');
+  }
+  return out;
+})();
 const server = http.createServer((req, res) => {
   const rel = decodeURIComponent(new URL(req.url, 'http://x').pathname).replace(/^\/+/, '') || 'index.html';
   const file = path.join(SITE, rel);
   if (!file.startsWith(SITE) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.writeHead(404); res.end('not found'); return; }
-  res.writeHead(200, { 'content-type': TYPES[path.extname(file)] || 'application/octet-stream' });
+  const hdr = { 'content-type': TYPES[path.extname(file)] || 'application/octet-stream' };
+  if (path.extname(file) === '.html') Object.assign(hdr, SITE_HEADERS);   // the production security headers, so every check below runs under them
+  res.writeHead(200, hdr);
   res.end(fs.readFileSync(file));
 });
 await new Promise(r => server.listen(0, '127.0.0.1', r));
@@ -55,7 +68,7 @@ class Fake {
     this.subs = []; this.objects = new Map(); this.uploads = [];   // migration 0008 (submissions, private photos)
     this.seekers = new Map(); this.invites = []; this.transfers = false;   // migration 0012 (players looking for a team)
     this.logos = new Map();   // migration 0014 (team logos: path -> uploader)
-    this.j15 = false; this.j16 = false; this.t17 = false; this.a18 = false; this.appeals = []; this.i20 = false; this.meetings = new Map(); this.leadMeets = new Map(); this.survey = new Map(); this.surveyOpen = false; this.oaths = new Map(); this.c19 = false; this.evStaff = new Map(); this.incidents = []; this.leadNotes = new Map(); this.themes = new Map(); this.awards = []; this.atasks = []; this.atDone = new Set(); this.seq17 = 0; this.nudged = new Set(); this.pledges = []; this.hifzMarks = new Map(); this.deedDays = []; this.pacts = new Map(); this.leadWeeks = new Map(); this.auditRows = [];   // migration 0015 (the journey on the account; off until a test turns it on)
+    this.j15 = false; this.j16 = false; this.t17 = false; this.a18 = false; this.appeals = []; this.p21 = false; this.pvReqs = []; this.pvSeq = 0; this.i20 = false; this.meetings = new Map(); this.leadMeets = new Map(); this.survey = new Map(); this.surveyOpen = false; this.oaths = new Map(); this.c19 = false; this.evStaff = new Map(); this.incidents = []; this.leadNotes = new Map(); this.themes = new Map(); this.awards = []; this.atasks = []; this.atDone = new Set(); this.seq17 = 0; this.nudged = new Set(); this.pledges = []; this.hifzMarks = new Map(); this.deedDays = []; this.pacts = new Map(); this.leadWeeks = new Map(); this.auditRows = [];   // migration 0015 (the journey on the account; off until a test turns it on)
     this.pushSubs = []; this.pushReady = true; this.pushKey = 'B' + 'x'.repeat(86);   // migration 0013 (phone notifications)
     this.judges = new Map(); this.jscores = []; this.ascores = []; this.published = false;   // migration 0010
     this.ann = []; this.annSeq = 0; this.chat = []; this.chatSeq = 0; this.reports = []; this.mutes = new Map(); this.reads = new Map();   // migration 0009
@@ -497,6 +510,61 @@ class Fake {
       yb_post_delete: ['id'], yb_post_moderate: ['id', 'action', 'note'], yb_react: ['post_id', 'kind'], yb_comments: ['post_id'], yb_comment_post: ['post_id', 'body'],
       yb_comment_delete: ['id'], yb_comment_report: ['id', 'reason'], yb_comment_moderate: ['id', 'action'], yb_comment_mute: ['id', 'hours', 'reason'], yb_feed_reports: [],
       yb_set_members_comment: ['allow'], yb_transfer_team: ['team_id', 'new_leader', 'old_stays', 'old_role'], yb_analytics: [] };
+    /* migration 0021: photo consent, a copy of one's data, privacy requests. Off unless a test sets p21. */
+    if (/^yb_(photo_consent_mine|photo_consent_set|photo_consent_board|my_data|privacy_request|privacy_mine|privacy_admin|privacy_close)$/.test(name)) {
+      if (!this.p21) return err(404, 'PGRST202', 'Could not find the function public.' + name);
+      const ok = d => ({ status: 200, body: d });
+      body = body || {};
+      const prof = this.profiles.find(p => p.id === me) || {}, isAdmin = prof.role === 'admin';
+      const pc = m => m.photo_consent || 'pending';
+      const tName = id => (this.teams.find(t => t.id === id) || {}).name;
+      const teamOk = t => !this.members.some(m => m.team_id === t && ((Number(m.age || 0) < 18 && pc(m) !== 'yes') || pc(m) === 'no'));
+      if (name === 'yb_photo_consent_mine') {
+        const kids = this.links.filter(l => l.parent_id === me).map(l => this.members.find(m => m.id === l.member_id)).filter(Boolean).map(m => ({ member_id: m.id, name: m.full_name, team: tName(m.team_id), photo_consent: pc(m), can_set: true, who: 'child' }));
+        const self = this.members.filter(m => m.user_id === me).map(m => ({ member_id: m.id, name: m.full_name, team: tName(m.team_id), photo_consent: pc(m), can_set: Number(m.age || 0) >= 18, who: 'self' }));
+        return ok([...kids, ...self]);
+      }
+      if (name === 'yb_photo_consent_set') {
+        const m = this.members.find(x => x.id === body.member_id);
+        if (!m) return ok({ ok: false, error: 'not_found' });
+        const who = this.links.some(l => l.parent_id === me && l.member_id === m.id) ? 'parent' : (m.user_id === me && Number(m.age || 0) >= 18) ? 'self' : isAdmin ? 'admin' : null;
+        if (!who) return raise('permission_denied', '42501');
+        if (!['yes', 'no', 'pending'].includes(body.value) || (body.value === 'pending' && who !== 'admin')) return ok({ ok: false, error: 'invalid_data' });
+        m.photo_consent = body.value;
+        return ok({ ok: true, photo_consent: body.value, team_photos_public: teamOk(m.team_id) });
+      }
+      if (name === 'yb_photo_consent_board') {
+        if (!isAdmin) return raise('permission_denied', '42501');
+        return ok(this.teams.filter(t => ['submitted', 'approved'].includes(t.status)).sort((x, y) => x.name.localeCompare(y.name, 'ar')).map(t => { const ms = this.members.filter(m => m.team_id === t.id);
+          return { team_id: t.id, team_name: t.name, members: ms.length, yes: ms.filter(m => pc(m) === 'yes').length, no: ms.filter(m => pc(m) === 'no').length, missing: ms.filter(m => Number(m.age || 0) < 18 && pc(m) === 'pending').length, public_ok: teamOk(t.id),
+            rows: ms.slice().sort((x, y) => x.full_name.localeCompare(y.full_name, 'ar')).map(m => ({ member_id: m.id, name: m.full_name, age: m.age ?? null, photo_consent: pc(m) })) }; }));
+      }
+      if (name === 'yb_my_data') return ok({ generated_at: new Date().toISOString(), profile: { full_name: prof.full_name, email: prof.email, role: prof.role },
+        membership: this.members.filter(m => m.user_id === me).map(m => ({ team: tName(m.team_id), full_name: m.full_name, photo_consent: pc(m) })),
+        children: this.links.filter(l => l.parent_id === me).map(l => this.members.find(m => m.id === l.member_id)).filter(Boolean).map(m => ({ full_name: m.full_name, team: tName(m.team_id) })),
+        requests: this.pvReqs.filter(q => q.user_id === me).map(q => ({ kind: q.kind, status: q.status })) });
+      if (name === 'yb_privacy_request') {
+        const n = String(body.note || '').replace(/\s+/g, ' ').trim();
+        if (!['delete', 'correct', 'other'].includes(body.kind) || (body.kind !== 'delete' && n.length < 5)) return ok({ ok: false, error: 'invalid_data' });
+        if (this.pvReqs.filter(q => q.user_id === me && q.status === 'open').length >= 2) return ok({ ok: false, error: 'too_many_open' });
+        const q = { id: ++this.pvSeq, user_id: me, kind: body.kind, note: n || null, status: 'open', reply: null, created_at: new Date().toISOString() };
+        this.pvReqs.push(q);
+        this.notify(this.profiles.filter(x => x.role === 'admin' && x.id !== me).map(x => x.id), 'privacy_request', { kind: body.kind });
+        return ok({ ok: true, id: q.id });
+      }
+      if (name === 'yb_privacy_mine') return ok(this.pvReqs.filter(q => q.user_id === me).slice().reverse().map(({ user_id, ...q }) => q));
+      if (!isAdmin) return raise('permission_denied', '42501');
+      if (name === 'yb_privacy_admin') return ok(this.pvReqs.slice().reverse().sort((x, y) => (y.status === 'open') - (x.status === 'open')).map(q => { const u = this.profiles.find(x => x.id === q.user_id) || {}; return { ...q, full_name: u.full_name, email: u.email, role: u.role }; }));
+      if (name === 'yb_privacy_close') {
+        const q = this.pvReqs.find(x => x.id === body.id), t = String(body.reply || '').replace(/\s+/g, ' ').trim();
+        if (!q) return ok({ ok: false, error: 'not_found' });
+        if (q.status !== 'open') return ok({ ok: false, error: 'already_decided' });
+        if (t.length < 5) return ok({ ok: false, error: 'invalid_data' });
+        Object.assign(q, { status: body.done ? 'done' : 'declined', reply: t, handled_at: new Date().toISOString() });
+        this.notify([q.user_id], 'privacy_done', { kind: q.kind, done: !!body.done });
+        return ok({ ok: true });
+      }
+    }
     /* migration 0020: attendance, the parents' survey, the judge's oath. Off unless a test sets i20. */
     if (/^yb_(attend_get|attend_save|attend_mine|lead_meet_get|lead_meet_save|attend_board|survey_mine|survey_save|survey_open|survey_board|judge_oath_mine|judge_oath_take|judge_oaths)$/.test(name)) {
       if (!this.i20) return err(404, 'PGRST202', 'Could not find the function public.' + name);
@@ -1969,7 +2037,8 @@ section('signed out: login, sign-up, reset');
   check('role radios are a required group, none preselected', (await p.locator('#panel-signup input[name=role]:checked').count()) === 0 && (await p.locator('#panel-signup input[name=role][required]').count()) === 3);
   check('sign-up autocomplete: name / email / new-password', (await p.locator('#panel-signup input[name=name]').getAttribute('autocomplete')) === 'name' && (await p.locator('#panel-signup input[name=email]').getAttribute('autocomplete')) === 'email' && (await p.locator('#panel-signup input[name=password]').getAttribute('autocomplete')) === 'new-password');
   const notice = await p.locator('#panel-signup .a-privacy').innerText();
-  check('notice: paper guardian consent still needed (content line) + link to register.html#c-consent', notice.includes('تُملأ نسخة منفصلة لكل مشارك قاصر') && (await p.locator('#panel-signup .a-privacy a').getAttribute('href')) === 'register.html#c-consent');
+  check('the sign-up notice links the privacy notice', (await p.locator('#panel-signup .a-privacy a[href="privacy.html"]').count()) === 1);
+  check('notice: paper guardian consent still needed (content line) + link to register.html#c-consent', notice.includes('تُملأ نسخة منفصلة لكل مشارك قاصر') && (await p.locator('#panel-signup .a-privacy a').first().getAttribute('href')) === 'register.html#c-consent');
   check('notice: only team names are shown publicly', /أسماء الفرق المعتمدة فقط/.test(notice));
   // validation
   await p.locator('#panel-signup button[type=submit]').click();
@@ -3534,7 +3603,7 @@ section('projects and initiatives (0008): the leader documents with private phot
   /* the admin picks it for the home page (the owner's rule), after a consent reminder */
   check('accepted work is not on the home page until the admin picks it', !fake.subs[0].featured && (await A.locator(`[data-sub="${s0.id}"] [data-featured]`).count()) === 0);
   await A.locator(`[data-fk="sfeat-${s0.id}"]`).click();
-  check('«اعرضه في الصفحة الرئيسية» first asks about the parents\' consent (nothing sent yet)', /موافقة الأهل/.test(await A.locator(`[data-fk="sfeat-${s0.id}"]`).innerText()) && !fake.subs[0].featured);
+  check('«اعرضه في الصفحة الرئيسية» asks for a second press (nothing sent yet); photo consent is checked by the database', /اضغط مرة أخرى للعرض/.test(await A.locator(`[data-fk="sfeat-${s0.id}"]`).innerText()) && !fake.subs[0].featured);
   await A.locator(`[data-fk="sfeat-${s0.id}"]`).click();
   await A.waitForSelector(`[data-sub="${s0.id}"] [data-featured]`, { timeout: 8000 });
   check('the second press shows it on the home page; the card says so', fake.subs[0].featured === true && /أخفِه من الصفحة الرئيسية/.test(await A.locator(`[data-fk="sfeat-${s0.id}"]`).innerText()));
@@ -4440,7 +4509,7 @@ section('the phone dashboard: a bottom bar like the apps, «المزيد», and 
   check('«المزيد» opens a dialog with the name and role', await sheet.isVisible() && (await sheet.getAttribute('aria-modal')) === 'true' && /قائد النجوم/.test(await sheet.innerText()) && /قائد الفريق/.test(await sheet.innerText()));
   const secs = await sheet.locator('.a-more-s').allInnerTexts();
   check('…every section of the dashboard', secs.length === 9 && ['نظرة عامة', 'الأخبار', 'المباريات والمواعيد', 'الفريق', 'المشاريع والمبادرات', 'قيادتي', 'لاعبون يبحثون عن فريق', 'غرفة القادة', 'المسابقة والنقاط'].every(s => secs.some(x => x.includes(s))), secs.join('|'));
-  check('…and the account: تخصيص لوحتي, تغيير كلمة المرور, الموقع العام, تسجيل الخروج', ['تخصيص لوحتي', 'تغيير كلمة المرور', 'الموقع العام', 'تسجيل الخروج'].every(s => sheet.locator('.a-more-a', { hasText: s }).count().then(n => n === 1)) && (await sheet.locator('.a-more-a').count()) === 4);
+  check('…and the account: تخصيص لوحتي, تغيير كلمة المرور, الخصوصية وبياناتي, الموقع العام, تسجيل الخروج', ['تخصيص لوحتي', 'تغيير كلمة المرور', 'الخصوصية وبياناتي', 'الموقع العام', 'تسجيل الخروج'].every(s => sheet.locator('.a-more-a', { hasText: s }).count().then(n => n === 1)) && (await sheet.locator('.a-more-a').count()) === 5);
   check('…no «ثبّت» while the phone offers no install', !(await sheet.locator('[data-fk=more-install]').count()));
   check('focus is inside the dialog', await P.evaluate(() => !!document.activeElement.closest('[data-more]')));
   await P.keyboard.press('Escape');
@@ -5401,7 +5470,7 @@ section('tools for the admin (0017): the value of the week, encouragement awards
   await aw.locator('[data-fk="aw-give"]').click();
   await A.waitForFunction(() => document.querySelectorAll('[data-tool-awards] [data-award-row]').length === 2, null, { timeout: 8000 });
   await A.locator('[data-fk="tg-leaders"]').click();
-  check('the tools are in four groups; choosing «القادة» shows the leaders\' tools only', (await A.locator('[data-fk="tg-leaders"]').getAttribute('aria-pressed')) === 'true' && (await A.locator('[data-tool-tasks]').isVisible()) && !(await A.locator('[data-tool-theme]').isVisible()) && (await A.locator('[data-tools-groups] button').allInnerTexts()).join('|') === 'هذا الأسبوع|المباريات|القادة|الأثر');
+  check('the tools are in five groups; choosing «القادة» shows the leaders\' tools only', (await A.locator('[data-fk="tg-leaders"]').getAttribute('aria-pressed')) === 'true' && (await A.locator('[data-tool-tasks]').isVisible()) && !(await A.locator('[data-tool-theme]').isVisible()) && (await A.locator('[data-tools-groups] button').allInnerTexts()).join('|') === 'هذا الأسبوع|المباريات|القادة|الأثر|الخصوصية');
   const tk = A.locator('[data-tool-tasks]');
   await tk.locator('[data-fk="tk-title"]').fill('رقمي 0791234567 للتواصل');
   await tk.locator('[data-fk="tk-add"]').click();
@@ -5922,6 +5991,113 @@ section('what the documents measure (0020): attendance, the member\'s week, the 
   await settle(Z2); await signInOk(Z2, 'j0@t.test');
   await Z2.locator('[data-judge]:not([hidden]) [data-jteam]').first().waitFor({ state: 'attached', timeout: 8000 });
   check('and a judge goes straight to the desk: there is no oath to keep', (await Z2.locator('[data-judge] [data-oath]').count()) === 0 && Z2.errs.length === 0, Z2.errs.join('|'));
+}
+
+section('privacy and security (0021): photo consent, a copy of one\'s data, requests, the notice, the content policy');
+{
+  const fake = new Fake();
+  fake.p21 = true; fake.t17 = true;   // the tools tab needs 0017
+  const boss = fake.addUser({ email: 'boss@t.test', name: 'محمود المشرف', role: 'member' }); fake.setAdmin('boss@t.test');
+  fake.addUser({ email: 'lp@t.test', name: 'قائد الصقور', role: 'leader' });
+  const kid = fake.addUser({ email: 'kp@t.test', name: 'عمر عضو الصقور', role: 'member' });
+  const par = fake.addUser({ email: 'pp@t.test', name: 'ولي عمر', role: 'parent' });
+  const TS = fake.seedTeam({ leaderEmail: 'lp@t.test', name: 'الصقور', status: 'approved', members: [{ name: 'عمر عضو الصقور', age: 14, consent: 'received' }, { name: 'سالم أحمد', age: 13 }, { name: 'يوسف علي', age: 15 }, { name: 'زيد محمود', age: 14 }] });
+  fake.teams.forEach(t => { t.waitlist = false; });
+  const kidRow = fake.members.find(m => m.full_name === 'عمر عضو الصقور'); kidRow.user_id = kid.id;
+  fake.links.push({ parent_id: par.id, member_id: kidRow.id });
+  const txt = async l => (await l.innerText()).replace(/\s+/g, ' ');
+  const got = (u, kind) => fake.notes.filter(n => n.user_id === u && n.kind === kind);
+
+  /* ---- the parent, on a phone: the panel from «المزيد» ---- */
+  const P = await open(fake, { label: 'p21-parent', mobile: true });
+  await settle(P); await signInOk(P, 'pp@t.test');
+  await P.locator('.a-dock [data-dock=more]').click();
+  await P.locator('[data-more] [data-fk=more-priv]').click();
+  const pv = P.locator('[data-privacy]:not([hidden])');
+  await pv.locator(`[data-pc="${kidRow.id}"]`).waitFor({ timeout: 8000 });
+  check('«الخصوصية وبياناتي» opens from «المزيد» on a phone, with the notice linked', (await pv.locator('a[href="privacy.html"]').count()) === 1 && /الخصوصية وبياناتي/.test(await txt(pv)));
+  check('the parent sees their child\'s photo consent, not given yet, with both answers offered', /عمر عضو الصقور/.test(await txt(pv.locator(`[data-pc="${kidRow.id}"]`))) && /لم تُعطَ بعد/.test(await txt(pv.locator(`[data-pc="${kidRow.id}"]`)))
+    && (await pv.locator(`[data-fk="pc-yes-${kidRow.id}"]`).count()) === 1 && (await pv.locator(`[data-fk="pc-no-${kidRow.id}"]`).count()) === 1);
+  await pv.locator(`[data-fk="pc-yes-${kidRow.id}"]`).click();
+  await P.waitForFunction(id => { const b = document.querySelector(`[data-privacy] [data-fk="pc-yes-${id}"]`); return b && b.getAttribute('aria-pressed') === 'true'; }, kidRow.id, { timeout: 8000 });
+  check('«أوافق على التصوير والنشر» is kept and shown', kidRow.photo_consent === 'yes' && /وافق على التصوير والنشر/.test(await txt(pv.locator(`[data-pc="${kidRow.id}"]`))));
+  const [dl] = await Promise.all([P.waitForEvent('download', { timeout: 8000 }), pv.locator('[data-fk="pv-copy"]').click()]);
+  const dlText = fs.readFileSync(await dl.path(), 'utf8');
+  check('«نزّل نسخة من بياناتي» gives a JSON file with the account and the linked child', /^yanabee-my-data-\d{4}-\d\d-\d\d\.json$/.test(dl.suggestedFilename()) && JSON.parse(dlText).profile.email === 'pp@t.test' && /عمر عضو الصقور/.test(dlText), dl.suggestedFilename());
+  await pv.locator('[data-fk="pv-kind"]').selectOption('correct');
+  await pv.locator('[data-fk="pv-send"]').click();
+  await P.waitForTimeout(150);
+  check('a correction without details is refused before sending', /اكتب ما تطلبه بجملة واضحة/.test(await txt(pv)) && fake.pvReqs.length === 0);
+  await pv.locator('[data-fk="pv-note"]').fill('اسم ابني مكتوب عمر، والصحيح عمر بن خالد.');
+  await pv.locator('[data-fk="pv-send"]').click();
+  await pv.locator('[data-privacy-mine] [data-pv]').first().waitFor({ timeout: 8000 });
+  check('the request is sent, listed as «قيد المراجعة», and the admin is told', fake.pvReqs.length === 1 && fake.pvReqs[0].kind === 'correct' && /قيد المراجعة/.test(await txt(pv.locator('[data-privacy-mine]'))) && got(boss.id, 'privacy_request').length === 1);
+  check('the parent page: no overflow on a phone, console clean', (await overflow(P)) <= 0 && P.errs.length === 0, P.errs.join('|'));
+
+  /* ---- the child: reads their own answer, may not change it ---- */
+  const K = await open(fake, { label: 'p21-member', hash: '#privacy' });
+  await settle(K); await signInOk(K, 'kp@t.test');
+  const kv = K.locator('[data-privacy]:not([hidden])');
+  await kv.locator(`[data-pc="${kidRow.id}"]`).waitFor({ timeout: 8000 });
+  check('account.html#privacy opens the panel; a child reads their own answer with no button to change it', /أنا \(الصقور\)/.test(await txt(kv)) && /وافق على التصوير والنشر/.test(await txt(kv)) && (await kv.locator('[data-fk^="pc-"]').count()) === 0 && /يعطيها وليّ أمرك/.test(await txt(kv)));
+  await kv.locator('[data-fk="priv-close"]').click();
+  check('«أغلق» closes the panel and returns to the header button', (await K.locator('[data-privacy]').isHidden()) && (await K.evaluate(() => document.activeElement && document.activeElement.getAttribute('data-fk'))) === 'priv-open');
+
+  /* ---- the admin: the request, the photo consents ---- */
+  const A = await open(fake, { label: 'p21-admin' });
+  await settle(A); await signInOk(A, 'boss@t.test', undefined, { home: true });
+  const home = A.locator('[data-admin-home] [data-privacy-desk]:not([hidden])');
+  await home.waitFor({ timeout: 8000 });
+  check('the admin\'s home shows the open request, with who asked and when it is due', /بانتظار الرد: 1/.test(await txt(home)) && /pp@t\.test/.test(await txt(home)) && /يُرد عليه قبل/.test(await txt(home)));
+  await A.locator('#at-tools').click();
+  await A.locator('[data-fk="tg-privacy"]').click();
+  const pd = A.locator('[data-admin-tools] [data-privacy-desk]');
+  const q1 = fake.pvReqs[0].id;
+  await pd.locator(`[data-fk="pvd-yes-${q1}"]`).waitFor({ timeout: 8000 });
+  await pd.locator(`[data-fk="pvd-yes-${q1}"]`).click();
+  await A.waitForTimeout(150);
+  check('closing without a written answer is refused', /اكتب الرد أولًا/.test(await txt(pd)) && fake.pvReqs[0].status === 'open');
+  await pd.locator(`[data-fk="pvd-why-${q1}"]`).fill('صُحّح الاسم في كشف الفريق.');
+  await pd.locator(`[data-fk="pvd-yes-${q1}"]`).click();
+  await A.waitForFunction(() => /لا طلبات مفتوحة/.test((document.querySelector('[data-admin-tools] [data-privacy-desk]') || {}).textContent || ''), null, { timeout: 8000 });
+  check('the answer is kept, and the parent is told', fake.pvReqs[0].status === 'done' && fake.pvReqs[0].reply === 'صُحّح الاسم في كشف الفريق.' && got(par.id, 'privacy_done').length === 1);
+  const pcd = A.locator('[data-photo-desk]');
+  await pcd.locator(`[data-pc-team="${TS.id}"]`).waitFor({ timeout: 8000 });
+  check('«موافقات التصوير والنشر»: the team\'s photos are not public yet, with how many are missing', /صور 0 من 1 فرق تظهر للزوار/.test(await txt(pcd)) && /تنقص 4/.test(await txt(pcd.locator(`[data-pc-team="${TS.id}"] summary`))));
+  const sal = fake.members.find(m => m.full_name === 'سالم أحمد');
+  await pcd.locator(`[data-pc-team="${TS.id}"] summary`).click();
+  await pcd.locator(`[data-fk="pc-yes-${sal.id}"]`).click();
+  await A.waitForFunction(() => /تنقص 3/.test((document.querySelector('[data-photo-desk]') || {}).textContent || ''), null, { timeout: 8000 });
+  check('the admin records a paper form; the count follows and the team stays open', sal.photo_consent === 'yes' && (await pcd.locator(`[data-pc-team="${TS.id}"]`).getAttribute('open')) !== null);
+  check('the admin page: no overflow, console clean', (await overflow(A)) <= 0 && A.errs.length === 0, A.errs.join('|'));
+
+  /* ---- the notice, the links to it, the content policy ---- */
+  const N = await open(null, { label: 'p21-notice', path: 'privacy.html', config: 'none' });
+  await N.waitForSelector('#p-what', { timeout: 8000 });
+  check('privacy.html lists what is kept, who sees it, the photos, the rights and the protection', (await N.evaluate(() => ['p-who', 'p-what', 'p-see', 'p-photos', 'p-where', 'p-keep', 'p-rights', 'p-kids', 'p-security'].every(id => document.getElementById(id)))) && (await N.locator('section#p-what table tr').count()) >= 10 && /لا نبيع البيانات/.test(await txt(N.locator('#p-what'))) && (await N.locator('a[href="account.html#privacy"]').count()) >= 1);
+  check('the notice: no overflow, console clean', (await overflow(N)) <= 0 && N.errs.length === 0, N.errs.join('|'));
+  const indexHtml = fs.readFileSync(path.join(SITE, 'index.html'), 'utf8'), regHtml = fs.readFileSync(path.join(SITE, 'register.html'), 'utf8');
+  check('every page\'s footer and the registration form link the notice', /<footer[\s\S]*href="privacy\.html"/.test(indexHtml) && /data-priv-link[^>]*>[^<]*<a href="privacy\.html"/.test(regHtml));
+  const raw = await (await browser.newContext()).newPage();
+  const resp = await raw.goto(ORIGIN + '/privacy.html');
+  const hd = resp.headers();
+  check('the pages are sent with the security headers', hd['x-frame-options'] === 'DENY' && /frame-ancestors 'none'/.test(hd['content-security-policy'] || '') && /camera=\(\)/.test(hd['permissions-policy'] || '') && /max-age=/.test(hd['strict-transport-security'] || ''));
+  const blocked = await raw.evaluate(() => new Promise(r => {
+    document.addEventListener('securitypolicyviolation', e => r('blocked:' + e.effectiveDirective), { once: true });
+    const s = document.createElement('script'); s.textContent = 'window.__injected = 1'; document.head.append(s);
+    setTimeout(() => r(window.__injected ? 'ran' : 'silent'), 600);
+  }));
+  check('the content policy blocks an injected inline script', /^blocked:script-src/.test(blocked), blocked);
+  await raw.context().close();
+
+  /* ---- an older backend ---- */
+  const fake0 = new Fake();
+  fake0.addUser({ email: 'p0@t.test', name: 'ولي قديم', role: 'parent' });
+  const Z = await open(fake0, { label: 'p21-off' });
+  await settle(Z); await signInOk(Z, 'p0@t.test');
+  await Z.locator('[data-fk="priv-open"]').click();
+  await Z.waitForSelector('[data-privacy]:not([hidden]) a[href="privacy.html"]', { timeout: 8000 });
+  check('on an older backend the panel still links the notice, offers nothing it cannot keep, and nothing breaks', (await Z.locator('[data-privacy] [data-photo-consent], [data-privacy] [data-fk="pv-copy"], [data-privacy] [data-privacy-req]').count()) === 0 && Z.errs.length === 0, Z.errs.join('|'));
 }
 
 section('network hosts and console');

@@ -15,6 +15,7 @@ What the service worker does (site/yanabee/sw.js):
 - A new upload changes the version, the new worker replaces the old one and deletes the old saved copies;
   js/pwa.js then offers «حدّث» to the open pages.
 """
+import base64
 import hashlib
 import json
 import re
@@ -60,7 +61,46 @@ HEADERS = '''# Cloudflare Pages response headers (written by tools/yanabee/build
 /*
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: DENY
+  Strict-Transport-Security: max-age=31536000
+  Cross-Origin-Opener-Policy: same-origin
+  Permissions-Policy: camera=(), geolocation=(), payment=(), usb=(), microphone=(self)
+  Content-Security-Policy: __CSP__
 '''
+
+# The content security policy. Scripts: this site's files and the few inline scripts of the pages, each allowed by
+# its hash (computed from the built pages, so a changed script is refused until the site is rebuilt). Style
+# attributes are used by the pages, hence 'unsafe-inline' for styles only. The database, accounts and photos are on
+# Supabase; fonts on Google Fonts; the assistant on /api/ of this site. No page may be framed by another site.
+SUPABASE_SRC = 'https://*.supabase.co wss://*.supabase.co'
+INLINE_SCRIPT = re.compile(r'<script(?![^>]*\bsrc=)(?![^>]*type="application/(?:ld\+)?json")[^>]*>(.*?)</script>', re.S)
+
+
+def script_hashes():
+    seen = set()
+    for f in sorted(SITE.glob('*.html')):
+        for body in INLINE_SCRIPT.findall(f.read_text(encoding='utf-8')):
+            seen.add("'sha256-" + base64.b64encode(hashlib.sha256(body.encode('utf-8')).digest()).decode() + "'")
+    return sorted(seen)
+
+
+def csp():
+    return '; '.join([
+        "default-src 'self'",
+        "script-src 'self' " + ' '.join(script_hashes()),
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "font-src 'self' https://fonts.gstatic.com data:",
+        "img-src 'self' data: blob: https://*.supabase.co",
+        "media-src 'self' blob: data:",
+        "connect-src 'self' " + SUPABASE_SRC,
+        "worker-src 'self'",
+        "manifest-src 'self'",
+        "frame-src 'none'",
+        "frame-ancestors 'none'",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
+    ])
 
 SW = r'''/* ينابيع: the service worker of the installable site. Written by tools/yanabee/build_pwa.py: do not edit by hand.
    It answers only GET requests to this site. Accounts, the database and photos live on Supabase (another host)
@@ -228,7 +268,7 @@ def build():
     if missing:
         raise SystemExit('build_pwa: missing ' + ', '.join(missing))
     (SITE / 'manifest.webmanifest').write_text(json.dumps(MANIFEST, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-    (SITE / '_headers').write_text(HEADERS, encoding='utf-8')
+    (SITE / '_headers').write_text(HEADERS.replace('__CSP__', csp()), encoding='utf-8')
     # the version follows every file of the site (not only the saved ones): any upload refreshes the saved copies
     h = hashlib.sha256()
     for f in sorted(p for p in SITE.rglob('*') if p.is_file() and p.name not in ('sw.js',) and '__pycache__' not in p.parts):

@@ -329,7 +329,7 @@
     const roleSet = h('fieldset', { class: 'a-roles', 'aria-describedby': legend }, h('legend', { class: 'a-l', id: legend, text: 'نوع الحساب' }), h('div', { class: 'a-role-grid' }, radios));
     const notice = h('p', { class: 'a-privacy' }, icon('shield'), h('span', {},
       W.consentNote ? W.consentNote + ' ' : '', 'تبقى هذه الموافقة الورقية مطلوبة مع الحساب: ', h('a', { href: 'register.html#c-consent', text: W.consentTitle || 'موافقة ولي الأمر' }),
-      '. وما يظهر للعموم هو أسماء الفرق المعتمدة فقط.'));
+      '. وما يظهر للعموم هو أسماء الفرق المعتمدة فقط. ', h('a', { href: 'privacy.html', 'data-fk': 'su-privacy', text: 'كيف نحفظ بياناتكم ومن يراها' }), '.'));
     const signForm = h('form', { class: 'a-form', 'aria-label': 'إنشاء حساب جديد' }, sName, sEmail, sPass, roleSet, notice,
       h('div', { class: 'a-actions' }, submitBtn('إنشاء الحساب', 'user-check')));
     const signDone = h('div', { class: 'a-done', role: 'status', hidden: true });
@@ -475,6 +475,10 @@
     };
     paintAvatar();
     const cust = settingsPanel(profile, paintAvatar);
+    const priv = privacyPanel();
+    const privBtn = h('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'aria-expanded': 'false', 'aria-controls': 'privacy', 'data-fk': 'priv-open',
+      onclick: () => { if (priv.hidden) { priv.open(); privBtn.setAttribute('aria-expanded', 'true'); } else priv.close(); } }, icon('shield'), h('span', { text: 'الخصوصية' }));
+    priv.onclose = () => { privBtn.setAttribute('aria-expanded', 'false'); backTo(privBtn); };
     const custBtn = h('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'aria-expanded': 'false', 'data-fk': 'cust-open',
       onclick: () => { if (cust.hidden) { cust.open(); custBtn.setAttribute('aria-expanded', 'true'); } else cust.close(); } }, icon('sparkles'), h('span', { text: 'تخصيص' }));
     cust.onclose = () => { custBtn.setAttribute('aria-expanded', 'false'); backTo(custBtn); };
@@ -484,18 +488,20 @@
         h('h2', { text: profile.full_name || 'حسابي', tabindex: '-1', 'data-focus': '' }),
         h('div', { class: 'a-who-m' }, h('span', { class: 'a-badge r-' + profile.role, text: roleName }), h('small', { class: 'a-mail', dir: 'ltr', text: profile.email || '' }),
           h('small', { class: 'a-today', text: (() => { try { return new Date().toLocaleDateString('ar-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'long' }); } catch (e) { return ''; } })() }))),
-      h('div', { class: 'a-head-b' }, inbox.bell, custBtn, pwBtn, outBtn));
+      h('div', { class: 'a-head-b' }, inbox.bell, custBtn, privBtn, pwBtn, outBtn));
     const nav = h('nav', { class: 'a-side-nav', 'aria-label': 'أقسام حسابي' });
     const side = h('aside', { class: 'a-side' },
       h('a', { class: 'a-brand', href: 'index.html', 'aria-label': 'ينابيع: الموقع العام' }, h('b', { text: 'ينابيع' }), h('small', { text: 'لوحتي' })),
       nav,
       h('a', { class: 'a-side-out', href: 'index.html' }, icon('arrow-left'), h('span', { text: 'الموقع العام' })));
-    const main = h('div', { class: 'a-main' }, head, inbox.panel, cust, pwWrap, flash, body);
+    const main = h('div', { class: 'a-main' }, head, inbox.panel, cust, priv, pwWrap, flash, body);
+    if (location.hash === '#privacy') requestAnimationFrame(() => { if (priv.hidden) privBtn.click(); });   // from the notice's «الخصوصية وبياناتي»
     dockRef = phoneDock({
       nav, bell: inbox.bell, panel: inbox.panel,
       who: () => h('div', { class: 'a-more-who' }, avatar.cloneNode(true), h('div', {}, h('b', { text: profile.full_name || 'حسابي' }), h('span', { class: 'a-badge r-' + profile.role, text: roleName }))),
       cust: () => { if (cust.hidden) custBtn.click(); requestAnimationFrame(() => cust.scrollIntoView({ block: 'start' })); },
       pw: () => toggle(true),
+      priv: () => { if (priv.hidden) privBtn.click(); else priv.scrollIntoView({ block: 'start' }); },
       out: () => outBtn.click(), outLabel: DEMO && DEMO.active ? 'خروج من التجربة' : 'تسجيل الخروج'
     });
     const el = h('div', { class: 'a-app dash a-role-' + profile.role }, side, main, dockRef.el);
@@ -597,6 +603,7 @@
         h('div', { class: 'a-more-list' },
           act('sparkles', 'تخصيص لوحتي', 'more-cust', o.cust),
           act('lock', 'تغيير كلمة المرور', 'more-pw', o.pw),
+          o.priv ? act('shield', 'الخصوصية وبياناتي', 'more-priv', o.priv) : null,
           pwa ? act('download', 'ثبّت ينابيع على هاتفك', 'more-install', () => window.YBPWA.install(moreB)) : null,
           h('a', { class: 'a-more-a', href: 'index.html' }, icon('home'), h('span', { text: 'الموقع العام' })),
           act('x', o.outLabel, 'more-out', o.out)));
@@ -1500,7 +1507,7 @@
       roles: A.members.reduce((m, x) => { const r = m[x.team_id] || (m[x.team_id] = {}); if (Array.isArray(x.roles) && x.roles.includes('reciter')) r.reciter = x.full_name; if (Array.isArray(x.roles) && x.roles.includes('reserve')) r.reserve = x.full_name; return m; }, {}) });
     const chd = chessDeskCard(A.members.reduce((m, x) => { if (Array.isArray(x.roles) && x.roles.includes('chess')) m[x.team_id] = x.full_name; return m; }, {}));
     if (!A.todayH) { A.todayH = todayCard(); A.todayH.start(); }
-    panel.append(h('div', { class: 'a-home', 'data-admin-home': '' }, hero, adminFindCard(), appealsDesk(true), wait, followCard(5), nums, activityCard(), mix, cal, A.todayH, pulse, fbd, chd, hfd, logCard(), wall));
+    panel.append(h('div', { class: 'a-home', 'data-admin-home': '' }, hero, adminFindCard(), appealsDesk(true), privacyDesk(true), wait, followCard(5), nums, activityCard(), mix, cal, A.todayH, pulse, fbd, chd, hfd, logCard(), wall));
     pulse.start(); cal.start(); fbd.start(); chd.start(); hfd.start();
   }
   // inside an open team card (admin): the assistant's title and the logo
@@ -1972,7 +1979,7 @@
       });
     }
     // three groups instead of one long page: what the admin does every week, around the matches, and with the leaders
-    const groups = [['week', 'هذا الأسبوع', [th, aw, weekReportCard()]], ['matches', 'المباريات', [appealsDesk(false), matchStaffDesk(), incidentsDesk()]], ['leaders', 'القادة', [tk, leadReviewDesk(), leadMeetDesk()]], ['impact', 'الأثر', [impactReportCard(), attendBoardCard(), surveyDesk()]]];
+    const groups = [['week', 'هذا الأسبوع', [th, aw, weekReportCard()]], ['matches', 'المباريات', [appealsDesk(false), matchStaffDesk(), incidentsDesk()]], ['leaders', 'القادة', [tk, leadReviewDesk(), leadMeetDesk()]], ['impact', 'الأثر', [impactReportCard(), attendBoardCard(), surveyDesk()]], ['privacy', 'الخصوصية', [privacyDesk(false), photoConsentDesk()]]];
     const boxes = groups.map(g => h('div', { class: 'a-home', 'data-tools-group': g[0], hidden: g[0] !== (A.toolsGroup || 'week') }, g[2]));
     const tabs = groups.map(g => h('button', { type: 'button', class: 'a-deed-c', 'aria-pressed': String(g[0] === (A.toolsGroup || 'week')), 'data-fk': 'tg-' + g[0], onclick: () => {
       A.toolsGroup = g[0];
@@ -2601,6 +2608,138 @@
   // the judge's oath: given once before the first score. The account keeps it; on an older backend this device does.
   const OATH = 'أقسم بالله العظيم أن أحكّم بالعدل والأمانة، وأن أقول الحق في كل درجة أكتبها، فلا أحابي فريقًا ولا أظلم فريقًا، وأن أكتب سبب كل درجة بصدق، وألا أحكّم فريقًا لي فيه ابن أو قريب، وأن أحفظ سرّ الدرجات حتى تعلن الإدارة النتائج.';
   const OATH_MEANS = ['الدرجة لما رأيته وسمعته فقط، لا لاسم الفريق ولا لمن يقوده.', 'سبب كل درجة يقرؤه الفريق بعد إعلان النتائج، دون اسمك.', 'لا يطّلع أحد على الدرجات قبل أن تعلنها الإدارة.'];
+
+  /* --- privacy (migration 0021): photo consent, a copy of one's data, requests to delete or correct it. The panel
+     opens from the header («الخصوصية») or from account.html#privacy; on an older backend it shows the notice only. */
+  const PV_ERR = Object.assign({}, J_ERR, { too_many_open: 'لديك طلبان مفتوحان. انتظر رد الإدارة عليهما أولًا.', invalid_data: 'اكتب ما تطلبه بجملة واضحة (5 أحرف على الأقل).', already_decided: 'رُدّ على هذا الطلب من قبل.' });
+  const PV_KIND = { delete: 'حذف بياناتي', correct: 'تصحيح بيان', other: 'طلب آخر عن بياناتي' };
+  const PV_STATUS = { open: ['قيد المراجعة', 'warn'], done: ['نُفّذ', 'ok'], declined: ['لم يُنفّذ', 'bad'] };
+  const PC_WORD = { yes: ['وافق على التصوير والنشر', 'ok'], no: ['لم يوافق على التصوير', 'bad'], pending: ['لم تُعطَ بعد', 'warn'] };
+  function downloadJson(obj, name) {
+    const url = URL.createObjectURL(new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' }));
+    const a = h('a', { href: url, download: name, hidden: true });
+    document.body.append(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1500);
+  }
+  function privacyPanel() {
+    const el = h('section', { class: 'a-card a-priv', hidden: true, id: 'privacy', 'aria-labelledby': 'priv-h', 'data-privacy': '' });
+    let open = false;
+    const close = () => { el.hidden = true; if (el.onclose) el.onclose(); };
+    async function load(focus) {
+      const [pc, mine] = await Promise.all([YB.rpc('yb_photo_consent_mine', {}), YB.rpc('yb_privacy_mine', {})]);
+      const has = pc.ok && Array.isArray(pc.data), msg = h('p', { class: 'a-live-msg', role: 'alert', hidden: true });
+      const fail = (t, at) => { msg.textContent = t; msg.hidden = false; say(t); if (at) at.focus(); };
+      const photo = has && pc.data.length ? h('div', { class: 'a-priv-b', 'data-photo-consent': '' }, h('h4', { text: 'موافقة التصوير والنشر' }),
+        h('p', { class: 'a-hint', text: 'منفصلة عن موافقة المشاركة. لا تظهر صور مشاريع الفريق للزوار إلا بعد موافقة أولياء أمور كل القاصرين فيه، وتختفي فور سحب أي موافقة.' }),
+        h('ul', { class: 'a-tool-l' }, pc.data.map(r => h('li', { 'data-pc': r.member_id },
+          h('div', { class: 'a-mf-h' }, h('b', { text: r.who === 'self' ? `أنا (${r.team})` : `${r.name} (${r.team})` }), chip(PC_WORD[r.photo_consent][0], PC_WORD[r.photo_consent][1])),
+          r.can_set ? h('div', { class: 'a-actions' }, ['yes', 'no'].map(v => btn(v === 'yes' ? 'أوافق على التصوير والنشر' : 'لا أوافق', v === 'yes' ? 'check' : 'x', r.photo_consent === v ? 'btn-primary' : 'btn-ghost', () => {
+            YB.rpc('yb_photo_consent_set', { member_id: r.member_id, value: v }).then(x => {
+              if (!x.ok) return fail(errMsg(x, PV_ERR));
+              say(v === 'yes' ? 'حُفظت موافقتك على التصوير والنشر.' : 'حُفظ رفضك للتصوير والنشر. لن تظهر صور الفريق للزوار.');
+              load(`pc-${v}-${r.member_id}`);
+            });
+          }, { 'data-fk': `pc-${v}-${r.member_id}`, 'aria-pressed': String(r.photo_consent === v) }))) : h('small', { class: 'a-hint', text: 'يعطيها وليّ أمرك من حسابه، أو على الاستمارة الورقية لدى إدارة المسابقة.' }))))) : null;
+      let reqBox = null;
+      if (mine.ok && Array.isArray(mine.data)) {
+        const ids = [uid('f'), uid('f')];
+        const kind = h('select', { id: ids[0], 'data-fk': 'pv-kind' }, Object.keys(PV_KIND).map(k => h('option', { value: k, text: PV_KIND[k] })));
+        const note = h('textarea', { id: ids[1], rows: 2, maxLength: 500, 'data-fk': 'pv-note', placeholder: 'مثال: اسم ابني مكتوب خطأ، والصحيح ...' });
+        reqBox = h('div', { class: 'a-priv-b', 'data-privacy-req': '' }, h('h4', { text: 'طلب حذف أو تصحيح' }),
+          h('p', { class: 'a-hint', text: 'يصل الطلب إلى إدارة المسابقة، وترد عليه كتابةً خلال 30 يومًا على الأكثر. حذف بيانات مشارك قد يعني خروجه من المسابقة.' }),
+          fField('نوع الطلب', kind, ids[0]), fField('التفاصيل', note, ids[1]),
+          h('div', { class: 'a-actions' }, btn('أرسل الطلب', 'send', 'btn-primary', e => {
+            const b = e.currentTarget;
+            if (kind.value !== 'delete' && note.value.trim().length < 5) return fail(PV_ERR.invalid_data, note);
+            b.disabled = true;
+            YB.rpc('yb_privacy_request', { kind: kind.value, note: note.value || null }).then(x => {
+              b.disabled = false;
+              if (!x.ok) return fail(errMsg(x, PV_ERR));
+              say('وصل طلبك إلى إدارة المسابقة.'); load('pv-send');
+            });
+          }, { 'data-fk': 'pv-send' })),
+          mine.data.length ? h('ul', { class: 'a-tool-l a-apl-l', 'data-privacy-mine': '' }, mine.data.map(q => h('li', { 'data-pv': q.id }, h('div', { class: 'a-mf-h' }, h('b', { text: PV_KIND[q.kind] }), chip(PV_STATUS[q.status][0], PV_STATUS[q.status][1])),
+            h('small', { class: 'a-hint', text: 'أُرسل ' + fmtWhen(q.created_at) }), q.note ? h('p', { text: q.note }) : null,
+            q.reply ? h('p', { class: 'a-mf-note', 'data-pv-reply': '' }, icon('message'), h('span', { text: 'رد الإدارة: ' + q.reply })) : null))) : null);
+      }
+      const copy = mine.ok ? h('div', { class: 'a-priv-b' }, h('h4', { text: 'نسخة من بياناتي' }),
+        h('p', { class: 'a-hint', text: 'ملف فيه كل ما يحفظه الموقع عنك: الحساب والفريق والوعود والآيات والحضور والمنشورات والطلبات.' }),
+        h('div', { class: 'a-actions' }, btn('نزّل نسخة من بياناتي', 'download', 'btn-ghost', () => {
+          YB.rpc('yb_my_data', {}).then(x => {
+            if (!x.ok || !x.data) return fail(errMsg(x, PV_ERR));
+            downloadJson(x.data, `yanabee-my-data-${localDay(new Date())}.json`);
+            say('نُزّلت نسخة من بياناتك.');
+          });
+        }, { 'data-fk': 'pv-copy' }))) : null;
+      put(el, h('div', { class: 'a-bdgs-top' }, h('h3', { id: 'priv-h' }, icon('lock'), h('span', { text: 'الخصوصية وبياناتي' })),
+          h('button', { type: 'button', class: 'a-link', 'data-fk': 'priv-close', text: 'أغلق', onclick: close })),
+        h('p', { class: 'a-lead' }, 'ما يجمعه الموقع، ومن يراه، ومدة حفظه، وحقوقك: ', h('a', { href: 'privacy.html', text: 'الخصوصية وحماية البيانات' }), '.'),
+        photo, copy, reqBox, msg);
+      if (focus) focusIn(el, focus);
+    }
+    el.open = () => { el.hidden = false; open = true; load('priv-close').then(() => el.scrollIntoView({ block: 'start' })); };
+    el.close = close;
+    return el;
+  }
+  // the admin: «طلبات الخصوصية» (open ones first; an answer is written)
+  function privacyDesk(onlyOpen) {
+    const el = h('section', { class: 'a-card a-adm a-tool-w a-apl', 'aria-labelledby': 'pvd-h', 'data-privacy-desk': '', hidden: true });
+    function load(focus) {
+      YB.rpc('yb_privacy_admin', {}).then(r => {
+        if (!r.ok || !Array.isArray(r.data)) return;
+        const openN = r.data.filter(q => q.status === 'open').length;
+        if (onlyOpen && !openN) { el.hidden = true; return; }
+        el.hidden = false;
+        put(el, h('div', { class: 'a-bdgs-top' }, h('h3', { id: 'pvd-h' }, icon('lock'), h('span', { text: 'طلبات الخصوصية' })), chip(openN ? `بانتظار الرد: ${openN}` : 'لا طلبات مفتوحة', openN ? 'warn' : 'ok')),
+          h('p', { class: 'a-lead', text: 'طلبات حذف البيانات أو تصحيحها. نفّذ الطلب أولًا (عدّل البيان، أو احذف العضو من فريقه)، ثم اكتب الرد: يقرؤه صاحب الطلب. المهلة 30 يومًا. الحسابات مشتركة مع تطبيق آخر، فلا يُحذف الحساب نفسه من هنا.' }),
+          r.data.length ? h('ul', { class: 'a-tool-l a-apl-l' }, r.data.filter(q => !onlyOpen || q.status === 'open').map(q => {
+            const id = uid('f'), why = h('input', { id, type: 'text', maxLength: 500, 'data-fk': 'pvd-why-' + q.id, placeholder: 'مثال: صُحّح الاسم في كشف الفريق.' });
+            const msg = h('p', { class: 'a-live-msg', role: 'alert', hidden: true });
+            const decide = done => {
+              if (why.value.trim().length < 5) { msg.textContent = 'اكتب الرد أولًا: يقرؤه صاحب الطلب.'; msg.hidden = false; say(msg.textContent); why.focus(); return; }
+              YB.rpc('yb_privacy_close', { id: q.id, done, reply: why.value }).then(x => { if (!x.ok) { msg.textContent = errMsg(x, PV_ERR); msg.hidden = false; say(msg.textContent); return; } say('أُرسل الرد إلى صاحب الطلب.'); load('pvd-refresh'); });
+            };
+            const due = new Date(new Date(q.created_at).getTime() + 30 * 86400e3);
+            return h('li', { 'data-pvd': q.id, class: q.status }, h('div', { class: 'a-mf-h' }, h('b', { text: `${PV_KIND[q.kind]} · ${q.full_name || '—'}` }), chip(PV_STATUS[q.status][0], PV_STATUS[q.status][1])),
+              h('small', { class: 'a-hint', dir: 'auto', text: `${q.email || ''} · أُرسل ${fmtWhen(q.created_at)}` }), q.note ? h('p', { text: q.note }) : null,
+              q.status === 'open' ? [h('p', { class: 'a-hint', text: (due < new Date() ? 'تجاوز مهلة الرد: كانت ' : 'يُرد عليه قبل ') + fmtWhen(due.toISOString()) }), fField('الرد', why, id), msg,
+                h('div', { class: 'a-actions' }, btn('نُفّذ', 'check', 'btn-primary', () => decide(true), { 'data-fk': 'pvd-yes-' + q.id }), btn('لن يُنفّذ', 'x', 'btn-ghost', () => decide(false), { 'data-fk': 'pvd-no-' + q.id }))]
+                : h('p', { class: 'a-mf-note' }, icon('message'), h('span', { text: 'الرد: ' + (q.reply || '') })));
+          })) : h('p', { class: 'a-hint', text: 'لا طلبات بعد.' }),
+          onlyOpen ? null : h('div', { class: 'a-actions' }, btn('حدّث', 'repeat', 'btn-ghost', () => load('pvd-refresh'), { 'data-fk': 'pvd-refresh' })));
+        if (focus) focusIn(el, focus);
+      });
+    }
+    load();
+    return el;
+  }
+  // the admin: photo consent per team; record a paper form
+  function photoConsentDesk() {
+    const el = h('section', { class: 'a-card a-adm a-tool-w', 'aria-labelledby': 'pcd-h', 'data-photo-desk': '', hidden: true });
+    let openTeam = null;
+    function load(focus) {
+      YB.rpc('yb_photo_consent_board', {}).then(r => {
+        if (!r.ok || !Array.isArray(r.data)) return;
+        const okN = r.data.filter(t => t.public_ok).length;
+        el.hidden = false;
+        put(el, h('div', { class: 'a-bdgs-top' }, h('h3', { id: 'pcd-h' }, icon('image'), h('span', { text: 'موافقات التصوير والنشر' })), chip(`صور ${okN} من ${r.data.length} فرق تظهر للزوار`, okN === r.data.length ? 'ok' : 'warn')),
+          h('p', { class: 'a-lead', text: 'لا تظهر صور مشاريع الفريق في الصفحة الرئيسية إلا بعد موافقة أولياء أمور كل القاصرين فيه. يعطيها وليّ الأمر من حسابه؛ سجّل هنا الاستمارات الورقية. العمر غير المعروف يُعامل معاملة القاصر.' }),
+          r.data.length ? h('ul', { class: 'a-tool-l a-apl-l' }, r.data.map(t => {
+            const d = h('details', { 'data-pc-team': t.team_id, open: openTeam === t.team_id });
+            d.addEventListener('toggle', () => { if (d.open) openTeam = t.team_id; });
+            d.append(h('summary', { 'data-fk': 'pct-' + t.team_id }, h('b', { text: t.team_name }), ' ', chip(t.public_ok ? 'الصور تظهر للزوار' : t.no ? `رفض ${t.no}` : `تنقص ${t.missing}`, t.public_ok ? 'ok' : 'warn')),
+              h('ul', { class: 'a-tool-l' }, (t.rows || []).map(m => h('li', { 'data-pc-row': m.member_id }, h('div', { class: 'a-mf-h' }, h('span', { text: m.name + (m.age === null || m.age === undefined ? ' (العمر غير معروف)' : m.age < 18 ? '' : ' (بالغ)') }), chip(PC_WORD[m.photo_consent][0], PC_WORD[m.photo_consent][1])),
+                h('div', { class: 'a-actions' }, [['yes', 'وافق (ورقيًا)'], ['no', 'رفض'], ['pending', 'امسح']].map(([v, label]) => btn(label, v === 'yes' ? 'check' : v === 'no' ? 'x' : 'repeat', 'btn-ghost', () => {
+                  YB.rpc('yb_photo_consent_set', { member_id: m.member_id, value: v }).then(x => { if (!x.ok) { say(errMsg(x, PV_ERR)); return; } say(`حُفظ: ${m.name}.`); openTeam = t.team_id; load(`pc-${v}-${m.member_id}`); });
+                }, { 'data-fk': `pc-${v}-${m.member_id}`, 'aria-pressed': String(m.photo_consent === v) })))))));
+            return h('li', {}, d);
+          })) : h('p', { class: 'a-empty', text: 'لا فرق بعد.' }));
+        if (focus) focusIn(el, focus);
+      });
+    }
+    load();
+    return el;
+  }
 
   // «مسار المسابقة»: the four dates, where today falls, and the phase of the 12-week plan
   function journeyCard() {
@@ -3385,6 +3524,8 @@
     if (n.kind === 'admin_task') return `مهمة جديدة من الإدارة لقادة الفرق: ${d.title || ''}`;
     if (n.kind === 'incident_new') return 'سُجّلت واقعة جديدة في سجل الإصابات والطوارئ. افتح «أدوات الإدارة».';
     if (n.kind === 'survey_open') return 'فتحت الإدارة استبيان أولياء الأمور: ثلاثة أسئلة قصيرة عن أثر المسابقة على ابنك. تجده في حسابك.';
+    if (n.kind === 'privacy_request') return `طلب جديد عن البيانات الشخصية (${({ delete: 'حذف', correct: 'تصحيح', other: 'آخر' })[d.kind] || ''}). افتح «أدوات الإدارة» ← «الخصوصية»؛ المهلة 30 يومًا.`;
+    if (n.kind === 'privacy_done') return 'ردّت إدارة المسابقة على طلبك بشأن بياناتك. افتح «الخصوصية» في أعلى حسابك.';
     if (n.kind === 'lead_review') return `كتب المشرف تقييمك القيادي لهذا الأسبوع: ${d.total ?? ''} من 100. افتح «دفتر القيادة والأثر».`;
     if (n.kind === 'appeal_new') return `تظلّم جديد من ${team} بانتظار البتّ. افتح «أدوات الإدارة».`;
     if (n.kind === 'appeal_decided') return `بُتّ في تظلّم ${team}: ${d.accepted ? 'قُبل' : 'رُفض'}. اقرأ سبب القرار في «المباريات والمواعيد».`;
@@ -5109,10 +5250,10 @@
       const b = x.featured
         ? btn('أخفِه من الصفحة الرئيسية', 'eye', 'btn-ghost', () => go(false), { 'data-fk': 'sfeat-' + x.id })
         : armed(btn('اعرضه في الصفحة الرئيسية', 'eye', 'btn-ghost', null, { 'data-fk': 'sfeat-' + x.id }),
-          'تأكدت من موافقة الأهل على الصور؟ اضغط للعرض', () => go(true));
+          'اضغط مرة أخرى للعرض', () => go(true));
       return h('div', { class: 'a-pj-feature' },
-        h('p', { class: 'a-hint', text: x.featured ? 'يراه زوار الموقع الآن مع صوره (اسم الفريق والعمل فقط، بلا أسماء الأعضاء).'
-          : 'يبقى خاصًا حتى تختار عرضه. قبل العرض تأكد أن أولياء أمور من يظهر في الصور موافقون.' }), msg, b);
+        h('p', { class: 'a-hint', text: (x.featured ? 'يراه زوار الموقع الآن (اسم الفريق والعمل فقط، بلا أسماء الأعضاء).' : 'يبقى خاصًا حتى تختار عرضه.')
+          + ' تظهر صوره للزوار فقط بعد موافقة أولياء أمور كل القاصرين في الفريق على التصوير («أدوات الإدارة» ← «الخصوصية»).' }), msg, b);
     }
     function paint() {
       const waiting = R.rows.filter(x => x.status === 'submitted').length;

@@ -686,3 +686,9 @@ html.is-dash body{background-image:radial-gradient(900px 480px at 100% -8%,color
 .a-sv-s .a-check:has(input:checked){border-color:var(--brand);background:color-mix(in oklab,var(--brand) 10%,var(--surface))}
 .a-oath{margin:12px 0;padding:16px 18px;border-radius:var(--r-sm);border:1px solid color-mix(in oklab,var(--sun) 55%,var(--line));background:color-mix(in oklab,var(--sun) 9%,var(--surface))}
 .a-oath p{margin:0;font-size:1.08rem;line-height:2;font-weight:600}
+
+/* --- privacy (migration 0021): the panel under the header, its blocks */
+.a-priv{scroll-margin-top:16px}
+.a-priv-b{border-top:1px dashed var(--line);margin-top:14px;padding-top:12px}
+.a-priv-b h4{margin:0 0 4px;font-size:1rem}
+.a-priv .a-lead a{font-weight:600}

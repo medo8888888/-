@@ -8,7 +8,7 @@ here. Entry point: python3 tools/yanabee/build.py — see docs/YANABEE.md.
 import html as _html
 import re
 
-from content import COMP, LEADERS, METHOD, PLATFORM, QURAN, ROOT  # noqa: F401  (re-exported for page modules)
+from content import COMP, LEADERS, METHOD, PLATFORM, PRIVACY, QURAN, ROOT  # noqa: F401  (re-exported for page modules)
 
 SITE = ROOT / 'site' / 'yanabee'
 
@@ -183,9 +183,10 @@ PAGES = [
     ('method.html', 'منهجية التطبيق', 'route'),
     ('tournament.html', 'لوحة البطولة', 'chart'),
     ('account.html', 'حسابي', 'user'),
+    ('privacy.html', 'الخصوصية وحماية البيانات', 'lock'),
 ]
 PAGE_LABEL = {f: label for f, label, _ in PAGES}
-TOP_HIDE = {'register.html', 'leaders.html', 'method.html', 'tournament.html', 'account.html'}  # in the menu sheet and footer, not the top bar
+TOP_HIDE = {'register.html', 'leaders.html', 'method.html', 'tournament.html', 'account.html', 'privacy.html'}  # in the menu sheet and footer, not the top bar
 TOP_PARENT = {'register.html': 'competition.html', 'method.html': 'quran.html', 'tournament.html': 'competition.html'}
 
 # Platform sections -> page. Quran sections all live on quran.html.
@@ -209,7 +210,7 @@ SEC_ICON = {'s1': 'eye', 's2': 'users', 's3': 'accessibility', 's4': 'megaphone'
 
 # The newer documents: every (sub)section id -> its page (registration and consent live on register.html).
 DOC_PAGE = {}
-for _doc, _page in ((COMP, 'competition.html'), (LEADERS, 'leaders.html'), (METHOD, 'method.html')):
+for _doc, _page in ((COMP, 'competition.html'), (LEADERS, 'leaders.html'), (METHOD, 'method.html'), (PRIVACY, 'privacy.html')):
     for _s in _doc.sections:
         _pg = 'register.html' if _s.id in ('c-form', 'c-consent') else 'tournament.html' if _s.id == 'c-format' else _page
         DOC_PAGE[_s.id] = _pg

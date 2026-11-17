@@ -63,7 +63,7 @@ def form():
               f'<p class="f-note admin-note">{t(fee.items[0].text)} <small>(تُعبّأ عند السداد لدى مسؤول التسجيل)</small></p>', 5)
     pledges = ''.join(f'<label class="chk"><input type="checkbox" name="pledge{i}" required><span>{t(it.text)}</span></label>'
                       for i, it in enumerate(pl.items))
-    p6 = part(pl, pledges, 6)
+    p6 = part(pl, pledges + '<p class="f-hint" data-priv-link>كيف نحفظ بيانات الفريق وأولياء الأمور ومن يراها: <a href="privacy.html">الخصوصية وحماية البيانات</a>.</p>', 6)
     p7 = part(adm, blocks_html(adm) + '<p class="f-hint">تملؤه إدارة المسابقة بعد مراجعة الاستمارة.</p>', 7)
     from feat_team_builder import html as team_builder  # feature «team-builder»: sits in <main> right before #c-form
     return team_builder() + f'''

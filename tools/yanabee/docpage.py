@@ -29,7 +29,7 @@ def ayah(text):
     return f'<blockquote class="dp-ayah rv"><p>{t(text)}</p></blockquote>'
 
 
-DOC_KICKER = {'c-': 'المسابقة الأولى · سورة الصف', 'l-': 'المرحلة الثانية · إعداد القادة', 'm-': 'ملحق المنهجية'}
+DOC_KICKER = {'p-': 'الخصوصية وحماية البيانات', 'c-': 'المسابقة الأولى · سورة الصف', 'l-': 'المرحلة الثانية · إعداد القادة', 'm-': 'ملحق المنهجية'}
 
 
 def head(node, icon=None, level=2, sub=''):

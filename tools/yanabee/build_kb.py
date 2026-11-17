@@ -42,7 +42,7 @@ Writes two generated files (never edit them by hand — docs/YANABEE.md, law 7):
 import json
 import re
 
-from content import COMP, DOCS, LEADERS, METHOD, PLATFORM, QURAN, ROOT
+from content import COMP, DOCS, LEADERS, METHOD, PLATFORM, PRIVACY, QURAN, ROOT
 from core import ICONS, PAGES, SEC_ICON, SITE, TEAMS, link_for, split_kicker, strip_colon
 
 KB_JS = SITE / 'data' / 'kb.js'
@@ -55,8 +55,8 @@ SUB_ICON = {
     'followup': 'calendar', 'periodic': 'award', 'annual': 'trophy', 'levels': 'layers', 'kpis': 'chart',
 }
 PAGE_TONE = {'index.html': 'brand', 'teams.html': 'accent', 'operations.html': 'sky', 'quran.html': 't1', 'learn.html': 'sun',
-             'lab.html': 'accent', 'competition.html': 't5', 'register.html': 't5', 'leaders.html': 'sky', 'method.html': 't1', 'tournament.html': 't5', 'account.html': 'brand'}
-EXTRA_DOCS = [('comp', COMP, 'الوثيقة الثالثة'), ('leaders', LEADERS, 'الوثيقة الرابعة'), ('method', METHOD, 'الوثيقة الخامسة')]
+             'lab.html': 'accent', 'competition.html': 't5', 'register.html': 't5', 'leaders.html': 'sky', 'method.html': 't1', 'tournament.html': 't5', 'account.html': 'brand', 'privacy.html': 'sky'}
+EXTRA_DOCS = [('comp', COMP, 'الوثيقة الثالثة'), ('leaders', LEADERS, 'الوثيقة الرابعة'), ('method', METHOD, 'الوثيقة الخامسة'), ('privacy', PRIVACY, 'إشعار الموقع')]
 UI_ICONS = ['search', 'sparkles', 'arrow-left', 'file-text', 'x', 'book-open', 'users', 'home', 'shield', 'gauge']
 
 
@@ -181,7 +181,7 @@ def knowledge_text():
         node_lines(s, 2)
     for _, D, ordinal in EXTRA_DOCS:
         out.append('')
-        out.append(f"# {ordinal}: {D.meta['title']} — {D.meta['subtitle']} ({D.meta['project']})")
+        out.append(f"# {ordinal}: {D.meta['title']} — {D.meta['subtitle']} ({D.meta['project']})" + (f" · آخر تحديث {D.meta['updated']}" if 'updated' in D.meta else ''))
         for s in D.sections:
             node_lines(s, 2)
     text = '\n'.join(out).strip() + '\n'
