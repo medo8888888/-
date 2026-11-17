@@ -1831,6 +1831,18 @@ const PHONE = { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch:
 const consoleErrors = [];
 const badHosts = new Set();
 const FONT_HOST = /(^|\.)(fonts\.googleapis\.com|fonts\.gstatic\.com)$/;
+// a stand-in for the Have I Been Pwned range API (k-anonymity): knows LEAKED, pads every answer, can be 'down'
+const PWNED = { down: false, urls: [], headers: [], LEAKED: ['Leaked-Password-99'] };
+const sha1Hex = t => crypto.createHash('sha1').update(t, 'utf8').digest('hex').toUpperCase();
+function pwnedRoute(r) {
+  PWNED.urls.push(r.request().url()); PWNED.headers.push(r.request().headers());
+  if (PWNED.down) return r.abort();
+  const prefix = (r.request().url().match(/\/range\/([0-9A-F]{5})$/) || [])[1];
+  if (!prefix) return r.fulfill({ status: 400, body: 'bad' });
+  const lines = PWNED.LEAKED.map(sha1Hex).filter(x => x.startsWith(prefix)).map(x => x.slice(5) + ':42');
+  for (let i = 0; i < 6; i++) lines.push(crypto.randomBytes(18).toString('hex').toUpperCase().slice(0, 35) + ':0');
+  return r.fulfill({ status: 200, headers: { 'content-type': 'text/plain', 'access-control-allow-origin': '*', 'access-control-allow-headers': 'Add-Padding' }, body: lines.join('\r\n') });
+}
 
 async function open(fake, { path: pth = 'account.html', hash = '', config = 'ok', viewport = { width: 1280, height: 900 }, colorScheme = 'light', mobile = false, label = '' } = {}) {
   const ctx = await browser.newContext({ ...(mobile ? PHONE : { viewport }), colorScheme, reducedMotion: 'reduce', permissions: ['clipboard-read', 'clipboard-write'], acceptDownloads: true });
@@ -1838,9 +1850,10 @@ async function open(fake, { path: pth = 'account.html', hash = '', config = 'ok'
   page.errs = [];
   page.on('pageerror', e => { page.errs.push(e.message); consoleErrors.push(`${label}: ${e.message}`); });
   page.on('console', m => { if (m.type() === 'error' && !/fonts\.g|ERR_FAILED|net::|Failed to load resource/.test(m.text() + (m.location() && m.location().url || ''))) { page.errs.push(m.text()); consoleErrors.push(`${label}: ${m.text()}`); } });
-  page.on('request', r => { try { const h = new URL(r.url()).host; if (h !== new URL(ORIGIN).host && h !== 'fake.supabase.test' && !FONT_HOST.test(h) && !r.url().startsWith('data:') && !r.url().startsWith('blob:')) badHosts.add(h); } catch (e) { /* ignore */ } });
+  page.on('request', r => { try { const h = new URL(r.url()).host; if (h !== new URL(ORIGIN).host && h !== 'fake.supabase.test' && h !== 'api.pwnedpasswords.com' && !FONT_HOST.test(h) && !r.url().startsWith('data:') && !r.url().startsWith('blob:')) badHosts.add(h); } catch (e) { /* ignore */ } });
   await page.route(/fonts\.g(oogleapis|static)\.com/, r => r.abort());
   if (fake) await page.route(`${FAKE_URL}/**`, r => fake.handle(r));
+  await page.route('https://api.pwnedpasswords.com/**', pwnedRoute);
   if (config === 'ok') {
     // yb-config.js (loaded later by the page) assigns the empty config; the setter keeps ours
     await page.addInitScript(([url, key]) => { const cfg = { url, anonKey: key }; Object.defineProperty(window, 'YB_CONFIG', { configurable: true, get: () => cfg, set: () => {} }); }, [FAKE_URL, ANON]);
@@ -2064,9 +2077,27 @@ section('signed out: login, sign-up, reset');
   await p.locator('#panel-signup input[name=password]').fill('Nour-Sadaqa-7341');
   await p.locator('#panel-signup button[type=submit]').click();
   check('no role chosen → asked to choose a role, first card focused', /اختر نوع الحساب/.test(await p.locator('#panel-signup .a-err').innerText()) && fake.count(/signup/) === 0);
-  await p.locator('#panel-signup input[name=email]').fill('known@t.test');
+  // a password from public breaches (checked by k-anonymity: 5 characters of its SHA-1 leave the page, nothing else)
+  await p.locator('#panel-signup input[name=email]').fill('fresh@t.test');
   await p.locator('#panel-signup input[name=role][value=member]').check({ force: true });
+  await p.locator('#panel-signup input[name=password]').fill('Leaked-Password-99');
+  PWNED.urls.length = 0; PWNED.headers.length = 0;
   await p.locator('#panel-signup button[type=submit]').click();
+  await p.waitForFunction(() => /تسريبات/.test((document.querySelector('#panel-signup .a-err') || {}).textContent || ''), null, { timeout: 5000 }).catch(() => {});
+  check('a password found in data breaches is refused, nothing sent to sign-up', /تسريبات بيانات/.test(await p.locator('#panel-signup .a-err').innerText()) && fake.count(/signup/) === 0);
+  check('the breach check sends only the first 5 characters of the SHA-1, padded, never the password or the e-mail',
+    PWNED.urls.length === 1 && PWNED.urls[0] === 'https://api.pwnedpasswords.com/range/' + sha1Hex('Leaked-Password-99').slice(0, 5)
+    && !PWNED.urls[0].includes('Leaked') && !PWNED.urls[0].includes('fresh') && PWNED.headers[0]['add-padding'] === 'true', PWNED.urls.join(' '));
+  // the service is down: the password is not blocked by it (the server still answers)
+  PWNED.down = true;
+  await p.locator('#panel-signup input[name=email]').fill('known@t.test');
+  await p.locator('#panel-signup button[type=submit]').click();
+  await p.waitForFunction(() => /مسجَّل من قبل/.test((document.querySelector('#panel-signup .a-err') || {}).textContent || ''), null, { timeout: 8000 }).catch(() => {});
+  check('breach service unreachable → sign-up is not blocked by it', /مسجَّل من قبل/.test(await p.locator('#panel-signup .a-err').innerText()) && fake.count(/signup/) === 1);
+  PWNED.down = false;
+  await p.locator('#panel-signup input[name=password]').fill('Nour-Sadaqa-7341');
+  await p.locator('#panel-signup button[type=submit]').click();
+  for (let i = 0; i < 60 && fake.count(/signup/) < 2; i++) await p.waitForTimeout(100);
   await p.waitForSelector('#panel-signup .a-err:not([hidden])');
   check('existing e-mail → «مسجَّل من قبل» (server answer mapped to Arabic)', /مسجَّل من قبل/.test(await p.locator('#panel-signup .a-err').innerText()));
   check('no console error while signed out', p.errs.length === 0, p.errs.join('|'));

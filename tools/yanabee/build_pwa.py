@@ -92,7 +92,7 @@ def csp():
         "font-src 'self' data:",
         "img-src 'self' data: blob: https://*.supabase.co",
         "media-src 'self' blob: data:",
-        "connect-src 'self' " + SUPABASE_SRC,
+        "connect-src 'self' " + SUPABASE_SRC + " https://api.pwnedpasswords.com",
         "worker-src 'self'",
         "manifest-src 'self'",
         "frame-src 'none'",

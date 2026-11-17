@@ -280,6 +280,15 @@
       || (user.length >= 4 && low.includes(user))) return 'كلمة المرور سهلة التخمين. اختر كلمة أطول تمزج حروفًا وأرقامًا، ولا تكون اسمك أو بريدك أو أرقامًا متتالية.';
     return '';
   }
+  // A password found in public data breaches is refused (YB.passwordLeaked: only 5 characters of its SHA-1 leave the
+  // device). If the check cannot answer, the password is not blocked; the rules above still apply.
+  // every rule for a new password: '' when it may be used, else the message to show
+  async function pwProblem(pw, email) {
+    const weak = weakPw(pw, email);
+    if (weak) return weak;
+    const r = YB.passwordLeaked ? await YB.passwordLeaked(pw) : null;
+    return r && r.leaked ? 'كلمة المرور هذه ظهرت في تسريبات بيانات منشورة على الإنترنت، فقد يجرّبها من يحاول اختراق الحسابات. اختر كلمة أخرى لم تستعملها في مواقع أخرى.' : '';
+  }
   // the date of privacy.html (content/yanabee/privacy.txt @updated): a new date asks every account to read it again
   const NOTICE_V = '2026-11-17';
   // signs the person out after `minutes` without using the page; a warning two minutes before
@@ -380,6 +389,8 @@
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showErr(signForm, YB.errorText('invalid_email'), sEmail.input);
       if (weakPw(pass, email)) return showErr(signForm, weakPw(pass, email), sPass.input);
       if (!role) return showErr(signForm, 'اختر نوع الحساب: قائد فريق أو عضو أو ولي أمر.', radios[0].querySelector('input'));
+      const leaked = await pwProblem(pass, email);
+      if (leaked) return showErr(signForm, leaked, sPass.input);
       showErr(signForm, '');
       const r = await YB.signUp({ email, password: pass, fullName: name, role });
       if (!r.ok) return showErr(signForm, errMsg(r), r.error === 'user_already_exists' ? sEmail.input : null);
@@ -452,8 +463,11 @@
     const p2 = field({ label: 'أعد كتابة كلمة المرور', name: 'confirm', type: 'password', auto: 'new-password', required: true, dir: 'ltr' });
     const form = h('form', { class: 'a-form', 'aria-label': 'كلمة مرور جديدة' }, p1, p2, h('div', { class: 'a-actions' }, submitBtn('حفظ كلمة المرور', 'check')));
     bind(form, async () => {
-      if (weakPw(p1.input.value, ((YB.session() || {}).user || {}).email)) return showErr(form, weakPw(p1.input.value, ((YB.session() || {}).user || {}).email), p1.input);
+      const mail = ((YB.session() || {}).user || {}).email;
+      if (weakPw(p1.input.value, mail)) return showErr(form, weakPw(p1.input.value, mail), p1.input);
       if (p1.input.value !== p2.input.value) return showErr(form, 'كلمتا المرور غير متطابقتين.', p2.input);
+      const bad = await pwProblem(p1.input.value, mail);
+      if (bad) return showErr(form, bad, p1.input);
       showErr(form, '');
       const r = await YB.updatePassword(p1.input.value);
       if (!r.ok) { if (sessionLost(r)) return; return showErr(form, errMsg(r), p1.input); }
@@ -478,6 +492,8 @@
     bind(pwForm, async () => {
       if (weakPw(p1.input.value, profile.email)) return showErr(pwForm, weakPw(p1.input.value, profile.email), p1.input);
       if (p1.input.value !== p2.input.value) return showErr(pwForm, 'كلمتا المرور غير متطابقتين.', p2.input);
+      const bad = await pwProblem(p1.input.value, profile.email);
+      if (bad) return showErr(pwForm, bad, p1.input);
       showErr(pwForm, '');
       const r = await YB.updatePassword(p1.input.value);
       if (!r.ok) { if (sessionLost(r)) return; return showErr(pwForm, errMsg(r), p1.input); }
@@ -2663,6 +2679,7 @@
     return el;
   }
   // the judge's oath: given once before the first score. The account keeps it; on an older backend this device does.
+  // Wording approved by the owner on 17 Nov 2026 ("just do it"); a new wording only needs this string changed.
   const OATH = 'أقسم بالله العظيم أن أحكّم بالعدل والأمانة، وأن أقول الحق في كل درجة أكتبها، فلا أحابي فريقًا ولا أظلم فريقًا، وأن أكتب سبب كل درجة بصدق، وألا أحكّم فريقًا لي فيه ابن أو قريب، وأن أحفظ سرّ الدرجات حتى تعلن الإدارة النتائج.';
   const OATH_MEANS = ['الدرجة لما رأيته وسمعته فقط، لا لاسم الفريق ولا لمن يقوده.', 'سبب كل درجة يقرؤه الفريق بعد إعلان النتائج، دون اسمك.', 'لا يطّلع أحد على الدرجات قبل أن تعلنها الإدارة.'];
 

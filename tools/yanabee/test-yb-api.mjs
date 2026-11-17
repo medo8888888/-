@@ -21,7 +21,7 @@ const ARABIC = /[؀-ۿ]/;
 const URL_BASE = 'https://proj.supabase.co';
 const ANON = 'anon-key-for-tests';
 
-function makeEnv({ config = { url: URL_BASE, anonKey: ANON }, stored, storageThrows = false, location, abort = false, pre } = {}) {
+function makeEnv({ config = { url: URL_BASE, anonKey: ANON }, stored, storageThrows = false, location, abort = false, pre, webcrypto = false } = {}) {
   const clock = { t: 1_800_000_000_000, id: 0, timers: new Map() };
   const setT = (fn, ms) => { const id = ++clock.id; clock.timers.set(id, { fn, at: clock.t + (ms || 0) }); return id; };
   const clearT = (id) => { clock.timers.delete(id); };
@@ -95,6 +95,7 @@ function makeEnv({ config = { url: URL_BASE, anonKey: ANON }, stored, storageThr
     history: { replaceState: (...a) => replaced.push(a) }
   };
   if (location) sandbox.location = location;
+  if (webcrypto) { sandbox.crypto = globalThis.crypto; sandbox.TextEncoder = TextEncoder; sandbox.Uint8Array = Uint8Array; }
   if (abort) {
     sandbox.AbortController = class { constructor() { const ls = []; this.signal = { aborted: false, addEventListener: (t, f) => ls.push(f) }; this._ls = ls; } abort() { this.signal.aborted = true; this._ls.forEach((f) => f()); } };
   }
@@ -132,7 +133,8 @@ test('static: config file and source hygiene', async () => {
   ok((API_SRC.match(/service_role/g) || []).length === 1 && /o\.role === 'service_role'/.test(API_SRC), 'yb-api.js mentions service_role only in the guard that refuses such a key');
   ok(!/^\s*(import|export)\s|require\(/m.test(API_SRC), 'classic script: no modules');
   ok(/^\(function \(\) \{/m.test(API_SRC) && /window\.YB = YB;/.test(API_SRC), 'IIFE exposing window.YB');
-  ok(!/['"`]https?:\/\//.test(API_SRC), 'no hard-coded URL string literal (only YB_CONFIG.url is contacted)');
+  ok(!/['"`]https?:\/\//.test(API_SRC.replace("'https://api.pwnedpasswords.com/range/'", '')), 'no hard-coded URL string literal except the breached-password range API (otherwise only YB_CONFIG.url is contacted)');
+  ok((API_SRC.match(/['"`]https?:\/\//g) || []).length === 1, '…and that one appears once');
   ok(!/XMLHttpRequest|sendBeacon|WebSocket|EventSource|importScripts/.test(API_SRC), 'fetch is the only network primitive');
 });
 
@@ -916,6 +918,44 @@ test('never logs, never leaks tokens', async () => {
   const e2 = makeEnv({ stored: storedSession(p) });
   ok(!JSON.stringify(e2.YB.session()).includes('acc0') && !JSON.stringify(e2.YB.session()).includes('ref0'), 'restored session() has no tokens either');
   ok(!Object.keys(e2.YB).some((k) => /token|secret|key/i.test(k)), 'the YB object has no token/key properties');
+});
+
+/* ===================================================================== */
+test('passwordLeaked: k-anonymity check against breached passwords', async () => {
+  const { createHash } = await import('node:crypto');
+  const H = (t) => createHash('sha1').update(t, 'utf8').digest('hex').toUpperCase();
+  const leaked = 'Leaked-Password-99', fine = 'Nour-Sadaqa-7341';
+  const range = (pw, n) => [H(pw).slice(5) + ':' + n, 'ABCDEF0123456789ABCDEF0123456789ABC:0', '0123456789ABCDEF0123456789ABCDEF012:0'].join('\r\n');
+  // works with no Supabase configuration at all
+  const e = makeEnv({ config: { url: '', anonKey: '' }, webcrypto: true, abort: true });
+  e.on('GET', 'api.pwnedpasswords.com/range/' + H(leaked).slice(0, 5), { body: range(leaked, 3861) });
+  eq(await e.YB.passwordLeaked(leaked), { checked: true, leaked: true, count: 3861 }, 'a breached password is found');
+  const c = e.calls[e.calls.length - 1];
+  eq(c.url, 'https://api.pwnedpasswords.com/range/' + H(leaked).slice(0, 5), 'only the 5-character SHA-1 prefix is in the request');
+  ok(!c.url.includes(leaked) && c.body === undefined, 'the password itself is never sent');
+  eq(c.headers['Add-Padding'], 'true', 'asks for a padded answer');
+  ok(!('Authorization' in c.headers) && !('apikey' in c.headers), 'no Supabase key or token goes to the outside service');
+  e.on('GET', 'api.pwnedpasswords.com/range/' + H(fine).slice(0, 5), { body: range(leaked, 5).replace(H(leaked).slice(5), 'F'.repeat(35)) });
+  eq(await e.YB.passwordLeaked(fine), { checked: true, leaked: false, count: 0 }, 'a password not in the list passes');
+  // padding rows with count 0 never count as leaked
+  e.on('GET', 'api.pwnedpasswords.com/range/' + H('Pad-Only-Row-11').slice(0, 5), { body: range('Pad-Only-Row-11', 0) });
+  eq((await e.YB.passwordLeaked('Pad-Only-Row-11')).leaked, false, 'a padding row (count 0) is not a leak');
+  // the service failing never blocks
+  const e2 = makeEnv({ webcrypto: true, abort: true });
+  e2.on('GET', 'api.pwnedpasswords.com', { throws: new TypeError('Failed to fetch') });
+  eq(await e2.YB.passwordLeaked(leaked), { checked: false, leaked: false, count: 0 }, 'network failure → unknown, not blocked');
+  const e3 = makeEnv({ webcrypto: true, abort: true });
+  e3.on('GET', 'api.pwnedpasswords.com', { status: 503, body: 'down' });
+  eq(await e3.YB.passwordLeaked(leaked), { checked: false, leaked: false, count: 0 }, 'service error → unknown, not blocked');
+  const e4 = makeEnv({ webcrypto: true, abort: true });
+  e4.on('GET', 'api.pwnedpasswords.com', { hang: true });
+  const pending = e4.YB.passwordLeaked(leaked);
+  for (let i = 0; i < 200 && !e4.calls.length; i++) await new Promise((r) => setTimeout(r, 5));
+  await e4.advance(4100);
+  eq(await pending, { checked: false, leaked: false, count: 0 }, 'no answer in 4 s → unknown, not blocked');
+  const e5 = makeEnv({});
+  eq(await e5.YB.passwordLeaked(leaked), { checked: false, leaked: false, count: 0 }, 'a browser without WebCrypto → unknown');
+  eq(e5.calls.length, 0, '…and nothing is sent');
 });
 
 /* ===================================================================== */

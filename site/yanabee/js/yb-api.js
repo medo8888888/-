@@ -470,6 +470,39 @@
     });
   }
 
+  // Is this password in the public lists of breached passwords (Have I Been Pwned)? Supabase's "leaked password
+  // protection" does the same on paid plans; this is the site's own. k-anonymity: only the first 5 hex characters of the
+  // password's SHA-1 are sent (no e-mail, no cookies, no referrer); the padded answer is matched here. Resolves
+  // { checked, leaked, count }: checked is false when the browser or the service could not answer in 4 s, and then the
+  // password is NOT blocked. Works without the Supabase configuration.
+  var PWNED_RANGE = 'https://api.pwnedpasswords.com/range/';
+  function passwordLeaked(pw) {
+    var unknown = { checked: false, leaked: false, count: 0 };
+    var subtle = typeof crypto !== 'undefined' && crypto && crypto.subtle;
+    if (!subtle || typeof TextEncoder !== 'function' || typeof fetch !== 'function') return Promise.resolve(unknown);
+    var hex, ctl = null, timer = null;
+    return Promise.resolve().then(function () {
+      return subtle.digest('SHA-1', new TextEncoder().encode(String(pw || '')));
+    }).then(function (buf) {
+      hex = Array.prototype.map.call(new Uint8Array(buf), function (b) { return (b < 16 ? '0' : '') + b.toString(16); }).join('').toUpperCase();
+      var init = { method: 'GET', headers: { 'Add-Padding': 'true' }, credentials: 'omit', referrerPolicy: 'no-referrer', cache: 'no-store' };
+      try { if (typeof AbortController === 'function') { ctl = new AbortController(); init.signal = ctl.signal; timer = setTimeout(function () { ctl.abort(); }, 4000); } } catch (e) { ctl = null; }
+      return fetch(PWNED_RANGE + hex.slice(0, 5), init);
+    }).then(function (res) {
+      if (!res || !res.ok) return null;
+      return res.text();
+    }).then(function (text) {
+      if (timer) clearTimeout(timer);
+      if (typeof text !== 'string') return unknown;
+      var rest = hex.slice(5), lines = text.split('\n');
+      for (var i = 0; i < lines.length; i++) {
+        var parts = lines[i].trim().split(':');
+        if (parts[0] === rest) { var n = parseInt(parts[1], 10) || 0; return { checked: true, leaked: n > 0, count: n }; }
+      }
+      return { checked: true, leaked: false, count: 0 };
+    }, function () { if (timer) clearTimeout(timer); return unknown; });
+  }
+
   function loadProfile() {
     if (!configured || !state.session) return Promise.resolve(null);
     var id = state.session.user.id;
@@ -677,7 +710,7 @@
     session: publicSession,
     onAuth: onAuth,
     signUp: signUp, signIn: signIn, signOut: signOut, isShared: function () { return !!state.shared; },
-    resetPassword: resetPassword, updatePassword: updatePassword, loadProfile: loadProfile,
+    resetPassword: resetPassword, updatePassword: updatePassword, passwordLeaked: passwordLeaked, loadProfile: loadProfile,
     q: q, insert: insert, update: update, remove: remove, rpc: rpc,
     upload: upload, signedUrls: signedUrls, removeFiles: removeFiles,
     getState: getState, publishState: publishState,

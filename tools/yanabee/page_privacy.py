@@ -7,7 +7,7 @@ from core import PAGE_LABEL, PRIVACY as P, btn, cta, ic, page, page_hero, t
 from docpage import blocks_html, head, sec
 
 PAGE = 'privacy.html'
-ICON = {'p-who': 'landmark', 'p-what': 'file-text', 'p-see': 'eye', 'p-photos': 'image', 'p-where': 'home', 'p-keep': 'clock',
+ICON = {'p-who': 'landmark', 'p-what': 'file-text', 'p-basis': 'check', 'p-see': 'eye', 'p-photos': 'image', 'p-where': 'home', 'p-keep': 'clock',
         'p-rights': 'scale', 'p-kids': 'users', 'p-security': 'shield', 'p-change': 'repeat'}
 CHIPS = [('#p-what', 'ما نجمعه'), ('#p-see', 'من يرى ماذا'), ('#p-photos', 'الصور'), ('#p-rights', 'حقوقكم'), ('#p-security', 'الحماية')]
 
