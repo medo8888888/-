@@ -118,6 +118,7 @@ const fake = new Fake();
   check('no send button before the form is checked', !(await p.isVisible('[data-send-box]')));
   await checkForm(p);
   check('a checked form shows «أرسل التسجيل»', await p.isVisible('[data-send]'));
+  await p.mouse.move(0, 0);   // a pointer parked on the button's edge makes its hover lift flicker
   await p.click('[data-send]');
   await p.waitForSelector('[data-sent]:not([hidden])');
   const regs = fake.calls.filter(c => c.path.endsWith('yb_register_team'));
@@ -154,6 +155,7 @@ const fake = new Fake();
   section('sending the same form again');
   await p.evaluate(() => { document.querySelector('[data-sent]').hidden = true; });
   await checkForm(p);
+  await p.mouse.move(0, 0);   // a pointer parked on the button's edge makes its hover lift flicker
   await p.click('[data-send]');
   await p.waitForSelector('[data-sent]:not([hidden])');
   check('a repeated send says it arrived before, same number', /وصل طلبكم من قبل/.test(await p.textContent('[data-sent] h4')) && (await p.textContent('[data-sent] [data-ref]')) === 'YN-K7M2-QW10');
@@ -168,17 +170,20 @@ section('errors while sending');
   f2.fail = 'team_name_taken';
   const { ctx, p } = await open(f2);
   await checkForm(p);
+  await p.mouse.move(0, 0);   // a pointer parked on the button's edge makes its hover lift flicker
   await p.click('[data-send]');
   await p.waitForSelector('[data-send-err]:not([hidden])');
   check('a server refusal shows its Arabic text', (await p.textContent('[data-send-err]')) === 'هذا الاسم مستخدم لفريق آخر. اختر اسمًا مختلفًا.');
   check('no receipt after a refusal', !(await p.isVisible('[data-sent]')));
   check('the send button is usable again', await p.isEnabled('[data-send]'));
   f2.fail = null; f2.offline = true;
+  await p.mouse.move(0, 0);   // a pointer parked on the button's edge makes its hover lift flicker
   await p.click('[data-send]');
   await p.waitForFunction(() => /تحقق من الاتصال/.test(document.querySelector('[data-send-err]').textContent));
   check('a network failure says the data is kept and to try again', /بياناتك محفوظة في هذا المتصفح/.test(await p.textContent('[data-send-err]')));
   f2.offline = false;
   await p.fill('[data-reg] [name=team]', '');
+  await p.mouse.move(0, 0);   // a pointer parked on the button's edge makes its hover lift flicker
   await p.click('[data-send]');
   check('a form changed into an invalid one asks to check it first', /تحقق من الاستمارة/.test(await p.textContent('[data-send-err]')));
   check('nothing was saved on this device', (await p.evaluate(() => localStorage.getItem('yanabee-reg-sent'))) === null);
@@ -262,6 +267,7 @@ section('390px phone');
   Object.assign(fake.teams[0], { status: 'submitted', note: null, claimed: false });
   const { ctx, p } = await open(fake, { mobile: true });
   await checkForm(p);
+  await p.mouse.move(0, 0);   // a pointer parked on the button's edge makes its hover lift flicker
   await p.click('[data-send]');
   await p.waitForSelector('[data-sent]:not([hidden])');
   await p.click('[data-go-track]');

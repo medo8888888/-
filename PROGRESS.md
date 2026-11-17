@@ -195,6 +195,13 @@ offline with PGlite, then goes live in one apply (slice 20).
     - Not done here (owner's settings): leaked-password protection in Supabase Auth (it also applies to the other app). Fonts still load from Google Fonts (said in the notice); self-hosting them would remove that.
     - Tests: `privacy.test.mjs` 76; `test-account.mjs` 1161; 21 backend suites green; test-ui 59, register-online 62, pwa 89, the feature suites green. test-wow fails 3–4 checks on a Chromium view-transition error; it fails the same way on the previous commit (254/258), so it is not from this change.
 
+43. [x] **Security round 2** (owner, 17 Nov 2026: "ok see more and do it and show me screen"). Migration `0022_yb_notice_ack.sql`, APPLIED live as `yb_0022_notice_ack` (checked: 3 functions closed to visitors, the table locked).
+    - Fonts served from the site (`css/fonts.css`, `fonts/*.woff2`, Arabic and Latin subsets, 546 KB, SIL OFL): no visitor's address goes to Google; the content policy allows only this site and Supabase. The notice (p-where) says so.
+    - «جهاز مشترك» at sign-in: the session lives in sessionStorage only (yb-api `signIn(email, pw, { shared })`, `YB.isShared()`), forgotten when the browser closes, and the account signs out after 15 idle minutes. The admin signs out after 60 idle minutes (children's data). A warning two minutes before, with «ما زلت هنا»; the sign-in page then says why.
+    - Each account accepts the privacy notice once per version (`NOTICE_V` in account.js = the date in privacy.txt; change both together). The admin's privacy desk shows how many accounts accepted. Hidden on an older backend.
+    - Easy passwords are refused at sign-up and on change (common ones, repeated or consecutive digits, the e-mail's name). Test accounts now use a strong password.
+    - Tests: `notice.test.mjs` 18; `test-account.mjs` 1180 (19 new); 22 backend suites green; yb-api 459.
+
 **Live database, 15 Nov 2026:** the owner approved the prompts; `yb_0014_team_identity`, `yb_0015_journey`, `yb_0016_journey_social` and `yb_0017_admin_tools` are APPLIED to project `dhjmdiqausbcyhrguinl`. Checked live: 32 functions present, none runnable by visitors, 9 new tables locked with no direct grants, the logo column and the private logo bucket exist. Still to do: redeploy the `yb-push` edge function so phones show the new notification words (in-app words already work), and upload the new zip to Cloudflare.
 
 25. [ ] *(Optional)* Private chess labels, Arabic email templates, a custom domain (SPEC 4.9); 🔒 a live quiz with a buzzer for hifz and fahm, only if the owner wants it (SPEC 4.11).

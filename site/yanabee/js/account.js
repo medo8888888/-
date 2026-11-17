@@ -269,8 +269,43 @@
     ['member', 'عضو في فريق', 'user', 'تنضم إلى فريقك برمز يعطيه لك القائد.'],
     ['parent', 'ولي أمر', 'hand-heart', 'تتابع ابنك أو ابنتك المشارك برمز الفريق.']];
 
+  /* --- security: passwords that are easy to guess, the privacy notice's version, sign-out when idle */
+  const COMMON_PW = ['12345678', '123456789', '1234567890', '87654321', '12341234', '11223344', '00000000', '11111111', 'password', 'password1',
+    'passw0rd', 'qwertyui', 'qwerty123', 'asdfghjk', 'abcd1234', 'abc12345', 'iloveyou', 'admin123', 'welcome1', 'yanabee', 'yanabee1', 'ينابيع'];
+  function weakPw(pw, email) {
+    const p = String(pw || ''), low = p.toLowerCase(), user = String(email || '').split('@')[0].toLowerCase();
+    if (p.length < 8) return YB.errorText('weak_password');
+    const digits = '01234567890', rev = '09876543210';
+    if (COMMON_PW.some(c => low === c || low.startsWith(c) && low.length <= c.length + 2) || /^(.)\1+$/.test(p) || (/^\d+$/.test(p) && (digits.includes(p) || rev.includes(p)))
+      || (user.length >= 4 && low.includes(user))) return 'كلمة المرور سهلة التخمين. اختر كلمة أطول تمزج حروفًا وأرقامًا، ولا تكون اسمك أو بريدك أو أرقامًا متتالية.';
+    return '';
+  }
+  // the date of privacy.html (content/yanabee/privacy.txt @updated): a new date asks every account to read it again
+  const NOTICE_V = '2026-11-17';
+  // signs the person out after `minutes` without using the page; a warning two minutes before
+  function idleGuard(minutes, why) {
+    if (S.idle) S.idle.stop();
+    if (!minutes) return;
+    let last = Date.now(), warned = false;
+    const text = h('span', {});
+    const bar = h('div', { class: 'a-idle', role: 'alert', hidden: true, 'data-idle': '' }, icon('clock'), text,
+      h('button', { type: 'button', class: 'btn btn-primary btn-sm', 'data-fk': 'idle-stay', onclick: () => poke() }, icon('check'), h('span', { text: 'ما زلت هنا' })));
+    document.body.append(bar);
+    const poke = () => { last = Date.now(); if (warned) { warned = false; bar.hidden = true; } };
+    const evs = ['pointerdown', 'keydown', 'wheel', 'touchstart'];
+    evs.forEach(e => document.addEventListener(e, poke, { capture: true, passive: true }));
+    const stop = () => { clearInterval(t); evs.forEach(e => document.removeEventListener(e, poke, { capture: true })); bar.remove(); S.idle = null; };
+    const t = setInterval(() => {
+      const idle = Date.now() - last, lim = minutes * 60000;
+      if (idle >= lim) { stop(); S.outMsg = `خرجت تلقائيًا بعد ${minutes} دقيقة دون استخدام، ${why}. ادخل من جديد.`; YB.signOut(); return; }
+      if (idle >= lim - 120000 && !warned) { warned = true; text.textContent = `لم تستخدم حسابك منذ مدة. ستخرج تلقائيًا بعد دقيقتين ${why}.`; bar.hidden = false; say(text.textContent); }
+    }, 5000);
+    S.idle = { stop, minutes };
+  }
+
   function viewSignedOut(opts) {
     opts = opts || {};
+    if (S.idle) S.idle.stop();
     const hashMode = () => (location.hash === '#signup' ? 'signup' : location.hash === '#reset' ? 'reset' : 'login');
     let mode = opts.mode || hashMode();
     const tabs = [], panels = {};
@@ -283,14 +318,19 @@
     const lEmail = field({ label: 'البريد الإلكتروني', name: 'email', type: 'email', auto: 'username', required: true, dir: 'ltr', spell: false, cap: 'none', mode: 'email' });
     const lPass = field({ label: 'كلمة المرور', name: 'password', type: 'password', auto: 'current-password', required: true, dir: 'ltr' });
     const forgot = h('button', { type: 'button', class: 'a-link', text: 'نسيت كلمة المرور؟', onclick: () => go('reset', true) });
-    const loginForm = h('form', { class: 'a-form', 'aria-label': 'تسجيل الدخول' }, lEmail, lPass,
+    const sharedId = uid('f'), sharedCb = h('input', { type: 'checkbox', id: sharedId, name: 'shared', 'data-fk': 'login-shared' });
+    const shared = h('label', { class: 'a-check a-shared', for: sharedId }, sharedCb, h('span', {}, h('b', { text: 'جهاز مشترك' }),
+      h('small', { text: 'حاسوب المدرسة أو المكتبة أو هاتف غيرك: لا يُحفظ دخولك بعد إغلاق المتصفح، وتخرج تلقائيًا بعد 15 دقيقة دون استخدام.' })));
+    const outMsg = S.outMsg ? h('div', { class: 'a-banner warn', role: 'status', 'data-idle-out': '' }, icon('clock'), h('span', { text: S.outMsg })) : null;
+    S.outMsg = '';
+    const loginForm = h('form', { class: 'a-form', 'aria-label': 'تسجيل الدخول' }, outMsg, lEmail, lPass, shared,
       h('div', { class: 'a-actions' }, submitBtn('دخول', 'check'), forgot));
     bind(loginForm, async () => {
       const email = lEmail.input.value.trim(), pass = lPass.input.value;
       if (!email) return showErr(loginForm, 'اكتب بريدك الإلكتروني.', lEmail.input);
       if (!pass) return showErr(loginForm, 'اكتب كلمة المرور.', lPass.input);
       showErr(loginForm, '');
-      const r = await YB.signIn(email, pass);
+      const r = await YB.signIn(email, pass, { shared: sharedCb.checked });
       if (!r.ok) return showErr(loginForm, errMsg(r), r.error === 'invalid_credentials' ? lPass.input : null);
       lPass.input.value = ''; // the auth event (YB.onAuth) draws the role screen
     });
@@ -338,7 +378,7 @@
       const role = (signForm.querySelector('input[name=role]:checked') || {}).value;
       if (name.length < 2) return showErr(signForm, 'اكتب اسمك الكامل (حرفان على الأقل).', sName.input);
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showErr(signForm, YB.errorText('invalid_email'), sEmail.input);
-      if (pass.length < 8) return showErr(signForm, YB.errorText('weak_password'), sPass.input);
+      if (weakPw(pass, email)) return showErr(signForm, weakPw(pass, email), sPass.input);
       if (!role) return showErr(signForm, 'اختر نوع الحساب: قائد فريق أو عضو أو ولي أمر.', radios[0].querySelector('input'));
       showErr(signForm, '');
       const r = await YB.signUp({ email, password: pass, fullName: name, role });
@@ -412,7 +452,7 @@
     const p2 = field({ label: 'أعد كتابة كلمة المرور', name: 'confirm', type: 'password', auto: 'new-password', required: true, dir: 'ltr' });
     const form = h('form', { class: 'a-form', 'aria-label': 'كلمة مرور جديدة' }, p1, p2, h('div', { class: 'a-actions' }, submitBtn('حفظ كلمة المرور', 'check')));
     bind(form, async () => {
-      if (p1.input.value.length < 8) return showErr(form, YB.errorText('weak_password'), p1.input);
+      if (weakPw(p1.input.value, ((YB.session() || {}).user || {}).email)) return showErr(form, weakPw(p1.input.value, ((YB.session() || {}).user || {}).email), p1.input);
       if (p1.input.value !== p2.input.value) return showErr(form, 'كلمتا المرور غير متطابقتين.', p2.input);
       showErr(form, '');
       const r = await YB.updatePassword(p1.input.value);
@@ -436,7 +476,7 @@
       h('div', { class: 'a-actions' }, submitBtn('حفظ', 'check'), h('button', { type: 'button', class: 'a-link', text: 'إلغاء', onclick: () => toggle(false) })));
     pwWrap.append(h('h3', { text: 'تغيير كلمة المرور' }), pwForm);
     bind(pwForm, async () => {
-      if (p1.input.value.length < 8) return showErr(pwForm, YB.errorText('weak_password'), p1.input);
+      if (weakPw(p1.input.value, profile.email)) return showErr(pwForm, weakPw(p1.input.value, profile.email), p1.input);
       if (p1.input.value !== p2.input.value) return showErr(pwForm, 'كلمتا المرور غير متطابقتين.', p2.input);
       showErr(pwForm, '');
       const r = await YB.updatePassword(p1.input.value);
@@ -494,7 +534,24 @@
       h('a', { class: 'a-brand', href: 'index.html', 'aria-label': 'ينابيع: الموقع العام' }, h('b', { text: 'ينابيع' }), h('small', { text: 'لوحتي' })),
       nav,
       h('a', { class: 'a-side-out', href: 'index.html' }, icon('arrow-left'), h('span', { text: 'الموقع العام' })));
-    const main = h('div', { class: 'a-main' }, head, inbox.panel, cust, priv, pwWrap, flash, body);
+    const notice = h('section', { class: 'a-card a-notice-ack', hidden: true, 'aria-labelledby': 'nack-h', 'data-notice-ack': '' });
+    YB.rpc('yb_notice_state', { version: NOTICE_V }).then(r => {
+      if (!r.ok || !r.data || r.data.at) return;   // read already, or an older backend
+      const msg = h('p', { class: 'a-live-msg', role: 'alert', hidden: true });
+      put(notice, h('h3', { id: 'nack-h' }, icon('shield'), h('span', { text: 'إشعار الخصوصية' })),
+        h('p', { class: 'a-lead' }, 'قبل المتابعة، اقرأ كيف نحفظ بياناتك وبيانات الأبناء، ومن يراها، وما حقوقك: ', h('a', { href: 'privacy.html', 'data-fk': 'nack-read', text: 'الخصوصية وحماية البيانات' }), '.'), msg,
+        h('div', { class: 'a-actions' }, btn('قرأته وأوافق', 'check', 'btn-primary', e => {
+          const b = e.currentTarget; b.disabled = true;
+          YB.rpc('yb_notice_ack', { version: NOTICE_V }).then(x => {
+            b.disabled = false;
+            if (!x.ok) { msg.textContent = errMsg(x); msg.hidden = false; say(msg.textContent); return; }
+            notice.hidden = true; say('شكرًا. حُفظ أنك قرأت إشعار الخصوصية.');
+          });
+        }, { 'data-fk': 'nack-ok' })));
+      notice.hidden = false;
+    });
+    const main = h('div', { class: 'a-main' }, head, inbox.panel, notice, cust, priv, pwWrap, flash, body);
+    idleGuard(YB.isShared && YB.isShared() ? 15 : profile.role === 'admin' ? 60 : 0, YB.isShared && YB.isShared() ? 'لأن هذا جهاز مشترك' : 'لحماية بيانات المشاركين');
     if (location.hash === '#privacy') requestAnimationFrame(() => { if (priv.hidden) privBtn.click(); });   // from the notice's «الخصوصية وبياناتي»
     dockRef = phoneDock({
       nav, bell: inbox.bell, panel: inbox.panel,
@@ -2685,13 +2742,14 @@
   function privacyDesk(onlyOpen) {
     const el = h('section', { class: 'a-card a-adm a-tool-w a-apl', 'aria-labelledby': 'pvd-h', 'data-privacy-desk': '', hidden: true });
     function load(focus) {
-      YB.rpc('yb_privacy_admin', {}).then(r => {
+      Promise.all([YB.rpc('yb_privacy_admin', {}), onlyOpen ? Promise.resolve(null) : YB.rpc('yb_notice_board', { version: NOTICE_V })]).then(([r, nb]) => {
         if (!r.ok || !Array.isArray(r.data)) return;
         const openN = r.data.filter(q => q.status === 'open').length;
         if (onlyOpen && !openN) { el.hidden = true; return; }
         el.hidden = false;
         put(el, h('div', { class: 'a-bdgs-top' }, h('h3', { id: 'pvd-h' }, icon('lock'), h('span', { text: 'طلبات الخصوصية' })), chip(openN ? `بانتظار الرد: ${openN}` : 'لا طلبات مفتوحة', openN ? 'warn' : 'ok')),
           h('p', { class: 'a-lead', text: 'طلبات حذف البيانات أو تصحيحها. نفّذ الطلب أولًا (عدّل البيان، أو احذف العضو من فريقه)، ثم اكتب الرد: يقرؤه صاحب الطلب. المهلة 30 يومًا. الحسابات مشتركة مع تطبيق آخر، فلا يُحذف الحساب نفسه من هنا.' }),
+          nb && nb.ok && nb.data ? meter('قرأ إشعار الخصوصية الحالي ووافق عليه', nb.data.acked, nb.data.accounts, 'notice-acked') : null,
           r.data.length ? h('ul', { class: 'a-tool-l a-apl-l' }, r.data.filter(q => !onlyOpen || q.status === 'open').map(q => {
             const id = uid('f'), why = h('input', { id, type: 'text', maxLength: 500, 'data-fk': 'pvd-why-' + q.id, placeholder: 'مثال: صُحّح الاسم في كشف الفريق.' });
             const msg = h('p', { class: 'a-live-msg', role: 'alert', hidden: true });

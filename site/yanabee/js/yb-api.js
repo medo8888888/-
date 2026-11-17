@@ -48,9 +48,12 @@
   function notConfigured() { return Promise.resolve({ ok: false, error: 'not_configured' }); }
 
   /* --------------------------------------------------------------- storage */
+  // A session signed in on a shared device (a school or library computer) lives in sessionStorage only: it is
+  // forgotten when the browser closes and never written to the device's lasting storage.
+  function sharedRaw() { try { return sessionStorage.getItem(STORE_KEY); } catch (e) { return null; } }
   function readStore() {
     try {
-      var raw = localStorage.getItem(STORE_KEY);
+      var raw = sharedRaw() || localStorage.getItem(STORE_KEY);
       if (!raw) return null;
       var o = JSON.parse(raw);
       if (isObj(o) && typeof o.access_token === 'string' && o.access_token &&
@@ -67,8 +70,9 @@
   }
   function writeStore(s) {
     try {
-      if (s) localStorage.setItem(STORE_KEY, JSON.stringify(s));
-      else localStorage.removeItem(STORE_KEY);
+      if (s && state.shared) { sessionStorage.setItem(STORE_KEY, JSON.stringify(s)); localStorage.removeItem(STORE_KEY); }
+      else if (s) localStorage.setItem(STORE_KEY, JSON.stringify(s));
+      else { localStorage.removeItem(STORE_KEY); try { sessionStorage.removeItem(STORE_KEY); } catch (e2) { /* blocked */ } }
     } catch (e) { /* private mode / blocked: keep the session in memory only */ }
   }
 
@@ -421,8 +425,9 @@
     });
   }
 
-  function signIn(email, password) {
+  function signIn(email, password, opts) {
     if (!configured) return notConfigured();
+    state.shared = !!(opts && opts.shared);
     return http('POST', '/auth/v1/token?grant_type=password', { body: { email: String(email || '').trim(), password: String(password || '') } })
       .then(function (r) {
         if (!r.ok || !isObj(r.data) || !r.data.access_token) {
@@ -671,7 +676,7 @@
     linkError: null,              // e.g. 'otp_expired' when the e-mail link was refused
     session: publicSession,
     onAuth: onAuth,
-    signUp: signUp, signIn: signIn, signOut: signOut,
+    signUp: signUp, signIn: signIn, signOut: signOut, isShared: function () { return !!state.shared; },
     resetPassword: resetPassword, updatePassword: updatePassword, loadProfile: loadProfile,
     q: q, insert: insert, update: update, remove: remove, rpc: rpc,
     upload: upload, signedUrls: signedUrls, removeFiles: removeFiles,
@@ -681,6 +686,7 @@
 
   /* ---------------------------------------------------------------- start up */
   if (configured) {
+    state.shared = !!sharedRaw();
     state.session = readStore();
 
     try {   // keep several tabs in step

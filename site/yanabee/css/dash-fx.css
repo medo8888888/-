@@ -692,3 +692,15 @@ html.is-dash body{background-image:radial-gradient(900px 480px at 100% -8%,color
 .a-priv-b{border-top:1px dashed var(--line);margin-top:14px;padding-top:12px}
 .a-priv-b h4{margin:0 0 4px;font-size:1rem}
 .a-priv .a-lead a{font-weight:600}
+
+/* --- security round 2: shared device at sign-in, the idle warning, the privacy notice card */
+.a-shared{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface-2);margin:4px 0 8px}
+.a-shared input{flex:none;margin-top:5px}
+.a-shared span{display:grid;gap:2px}
+.a-shared small{color:var(--ink-2);font-size:.86rem;line-height:1.6}
+.a-idle{position:fixed;inset-inline:12px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:60;display:flex;align-items:center;gap:10px;flex-wrap:wrap;max-width:560px;margin-inline:auto;padding:12px 14px;border-radius:var(--r-sm);background:var(--surface);color:var(--ink);border:1px solid color-mix(in oklab,var(--sun) 60%,var(--line));box-shadow:0 10px 30px rgba(0,0,0,.18)}
+.a-idle[hidden]{display:none}
+.a-idle span{flex:1 1 220px}
+.a-notice-ack{border-color:color-mix(in oklab,var(--brand) 45%,var(--line))}
+.a-banner.warn{background:color-mix(in oklab,var(--sun) 12%,var(--surface));border-color:color-mix(in oklab,var(--sun) 55%,var(--line));color:var(--ink)}
+.a-banner.warn .i{color:var(--sun)}

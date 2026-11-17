@@ -26,7 +26,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 execSync('python3 tools/yanabee/build.py account tournament', { cwd: ROOT, stdio: 'pipe' }); // account.html and tournament.html (nothing else is rebuilt)
 
 /* ---------------------------------------------------------------- static server for the site */
-const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json', '.webmanifest': 'application/json' };
+const TYPES = { '.woff2': 'font/woff2', '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json', '.webmanifest': 'application/json' };
 // the "/*" block of _headers (written by build_pwa.py), with Supabase's hosts replaced by the fake one
 const SITE_HEADERS = (() => {
   const out = {}, lines = fs.readFileSync(path.join(SITE, '_headers'), 'utf8').split('\n');
@@ -68,7 +68,7 @@ class Fake {
     this.subs = []; this.objects = new Map(); this.uploads = [];   // migration 0008 (submissions, private photos)
     this.seekers = new Map(); this.invites = []; this.transfers = false;   // migration 0012 (players looking for a team)
     this.logos = new Map();   // migration 0014 (team logos: path -> uploader)
-    this.j15 = false; this.j16 = false; this.t17 = false; this.a18 = false; this.appeals = []; this.p21 = false; this.pvReqs = []; this.pvSeq = 0; this.i20 = false; this.meetings = new Map(); this.leadMeets = new Map(); this.survey = new Map(); this.surveyOpen = false; this.oaths = new Map(); this.c19 = false; this.evStaff = new Map(); this.incidents = []; this.leadNotes = new Map(); this.themes = new Map(); this.awards = []; this.atasks = []; this.atDone = new Set(); this.seq17 = 0; this.nudged = new Set(); this.pledges = []; this.hifzMarks = new Map(); this.deedDays = []; this.pacts = new Map(); this.leadWeeks = new Map(); this.auditRows = [];   // migration 0015 (the journey on the account; off until a test turns it on)
+    this.j15 = false; this.j16 = false; this.t17 = false; this.a18 = false; this.appeals = []; this.n22 = false; this.acks = new Map(); this.p21 = false; this.pvReqs = []; this.pvSeq = 0; this.i20 = false; this.meetings = new Map(); this.leadMeets = new Map(); this.survey = new Map(); this.surveyOpen = false; this.oaths = new Map(); this.c19 = false; this.evStaff = new Map(); this.incidents = []; this.leadNotes = new Map(); this.themes = new Map(); this.awards = []; this.atasks = []; this.atDone = new Set(); this.seq17 = 0; this.nudged = new Set(); this.pledges = []; this.hifzMarks = new Map(); this.deedDays = []; this.pacts = new Map(); this.leadWeeks = new Map(); this.auditRows = [];   // migration 0015 (the journey on the account; off until a test turns it on)
     this.pushSubs = []; this.pushReady = true; this.pushKey = 'B' + 'x'.repeat(86);   // migration 0013 (phone notifications)
     this.judges = new Map(); this.jscores = []; this.ascores = []; this.published = false;   // migration 0010
     this.ann = []; this.annSeq = 0; this.chat = []; this.chatSeq = 0; this.reports = []; this.mutes = new Map(); this.reads = new Map();   // migration 0009
@@ -78,7 +78,7 @@ class Fake {
   uid() { return crypto.randomUUID(); }
   now() { return new Date(1_790_000_000_000 + (++this.tick) * 1000).toISOString(); }
   /* ---- test helpers ---- */
-  addUser({ email, password = 'Passw0rd!', name = '', role = 'member', confirmed = true }) {
+  addUser({ email, password = 'Nour-Sadaqa-7341', name = '', role = 'member', confirmed = true }) {
     const id = this.uid();
     this.users.push({ id, email, password, confirmed });
     const r = ['leader', 'member', 'parent'].includes(role) ? role : 'member';
@@ -510,6 +510,16 @@ class Fake {
       yb_post_delete: ['id'], yb_post_moderate: ['id', 'action', 'note'], yb_react: ['post_id', 'kind'], yb_comments: ['post_id'], yb_comment_post: ['post_id', 'body'],
       yb_comment_delete: ['id'], yb_comment_report: ['id', 'reason'], yb_comment_moderate: ['id', 'action'], yb_comment_mute: ['id', 'hours', 'reason'], yb_feed_reports: [],
       yb_set_members_comment: ['allow'], yb_transfer_team: ['team_id', 'new_leader', 'old_stays', 'old_role'], yb_analytics: [] };
+    /* migration 0022: reading the privacy notice. Off unless a test sets n22. */
+    if (/^yb_notice_(state|ack|board)$/.test(name)) {
+      if (!this.n22) return err(404, 'PGRST202', 'Could not find the function public.' + name);
+      body = body || {};
+      const key = me + '|' + body.version, ok = d => ({ status: 200, body: d });
+      if (name === 'yb_notice_state') return ok({ version: body.version, at: this.acks.get(key) || null });
+      if (name === 'yb_notice_ack') { if (!/^\d{4}-\d\d-\d\d$/.test(String(body.version || ''))) return ok({ ok: false, error: 'invalid_data' }); if (!this.acks.has(key)) this.acks.set(key, new Date().toISOString()); return ok({ ok: true, at: this.acks.get(key) }); }
+      if ((this.profiles.find(x => x.id === me) || {}).role !== 'admin') return raise('permission_denied', '42501');
+      return ok({ version: body.version, accounts: this.profiles.length, acked: [...this.acks.keys()].filter(k => k.endsWith('|' + body.version)).length });
+    }
     /* migration 0021: photo consent, a copy of one's data, privacy requests. Off unless a test sets p21. */
     if (/^yb_(photo_consent_mine|photo_consent_set|photo_consent_board|my_data|privacy_request|privacy_mine|privacy_admin|privacy_close)$/.test(name)) {
       if (!this.p21) return err(404, 'PGRST202', 'Could not find the function public.' + name);
@@ -1849,7 +1859,7 @@ const settle = async p => { await p.waitForFunction(() => document.querySelector
 const overflow = p => p.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 const live = p => p.locator('[data-live]').innerText();
 
-async function signIn(p, email, password = 'Passw0rd!') {
+async function signIn(p, email, password = 'Nour-Sadaqa-7341') {
   await p.locator('#panel-login form[aria-label="تسجيل الدخول"] input[name=email]').fill(email);
   await p.locator('#panel-login form[aria-label="تسجيل الدخول"] input[name=password]').fill(password);
   await p.locator('#panel-login form[aria-label="تسجيل الدخول"] button[type=submit]').click();
@@ -1866,7 +1876,7 @@ async function signInOk(p, email, password, o = {}) {
     await sleep(40);
   }
 }
-async function signUp(p, { name, email, password = 'Passw0rd!', role }) {
+async function signUp(p, { name, email, password = 'Nour-Sadaqa-7341', role }) {
   await p.locator('#panel-signup input[name=name]').fill(name);
   await p.locator('#panel-signup input[name=email]').fill(email);
   await p.locator('#panel-signup input[name=password]').fill(password);
@@ -1949,7 +1959,7 @@ section('signed out: login, sign-up, reset');
   check('login tab selected by default, tabs دخول / حساب جديد', (await p.locator('#tab-login').getAttribute('aria-selected')) === 'true' && /دخول/.test(await p.locator('#tab-login').innerText()) && /حساب جديد/.test(await p.locator('#tab-signup').innerText()));
   check('signup panel hidden, login panel shown', await p.locator('#panel-login').isVisible() && !(await p.locator('#panel-signup').isVisible()));
   check('login fields have labels and proper autocomplete', (await p.locator('#panel-login form[aria-label="تسجيل الدخول"] input[name=email]').getAttribute('autocomplete')) === 'username' && (await p.locator('#panel-login form[aria-label="تسجيل الدخول"] input[name=password]').getAttribute('autocomplete')) === 'current-password'
-    && (await p.locator('#panel-login form[aria-label="تسجيل الدخول"] label[for]').count()) === 2);
+    && (await p.locator('#panel-login form[aria-label="تسجيل الدخول"] label[for]').count()) === 3);
   // password show/hide
   const pw = p.locator('#panel-login form[aria-label="تسجيل الدخول"] input[name=password]');
   await pw.fill('abc12345');
@@ -2045,7 +2055,13 @@ section('signed out: login, sign-up, reset');
   check('empty sign-up → name error first', /اسمك الكامل/.test(await p.locator('#panel-signup .a-err').innerText()));
   await signUp(p, { name: 'تجربة', email: 'x@t.test', password: 'short' });
   check('password < 8 → weak-password message, no request', /8 أحرف/.test(await p.locator('#panel-signup .a-err').innerText()) && fake.count(/signup/) === 0);
-  await p.locator('#panel-signup input[name=password]').fill('Passw0rd!');
+  await p.locator('#panel-signup input[name=email]').fill('xtest@t.test');
+  for (const [bad, why] of [['Passw0rd!', 'a common password'], ['12345678', 'consecutive digits'], ['aaaaaaaa', 'one repeated letter'], ['xtest2024', 'the e-mail\'s name']]) {
+    await p.locator('#panel-signup input[name=password]').fill(bad);
+    await p.locator('#panel-signup button[type=submit]').click();
+    check(`an easy password is refused before sending (${why})`, /سهلة التخمين/.test(await p.locator('#panel-signup .a-err').innerText()) && fake.count(/signup/) === 0);
+  }
+  await p.locator('#panel-signup input[name=password]').fill('Nour-Sadaqa-7341');
   await p.locator('#panel-signup button[type=submit]').click();
   check('no role chosen → asked to choose a role, first card focused', /اختر نوع الحساب/.test(await p.locator('#panel-signup .a-err').innerText()) && fake.count(/signup/) === 0);
   await p.locator('#panel-signup input[name=email]').fill('known@t.test');
@@ -2341,7 +2357,7 @@ let memberEmail = 'sara@t.test', parentEmail = 'parent@t.test';
   check('member sees own consent status (received: set by the admin)', /استُلمت موافقة ولي الأمر/.test(mt));
   check('no admin / leader controls on the member screen', !(await M.locator('input[role=switch], form.a-add, button[data-fk=submit], .a-tabs-4').count()));
   const reqs = world.log.filter(l => l.who === world.profileByEmail(memberEmail).id).map(l => l.path.replace('/rest/v1/', ''));
-  check('member screen reads only my_team, my_roster, tournament_state and the own profile (never teams, team_members, profiles list)', reqs.every(r => /^(rpc\/(my_team|join_team|yb_attend_mine|yb_event_staff_list|yb_theme_get|yb_team_awards|yb_journey_me|yb_team_board|yb_my_pledges|yb_week_race|yb_mark_read|yb_my_scores|yb_my_prefs|yb_feed|yb_seek_me|yb_team_staff)|my_roster|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements|yb_match_live|yb_team_style)$/.test(r)), [...new Set(reqs)].join());
+  check('member screen reads only my_team, my_roster, tournament_state and the own profile (never teams, team_members, profiles list)', reqs.every(r => /^(rpc\/(my_team|join_team|yb_attend_mine|yb_notice_state|yb_event_staff_list|yb_theme_get|yb_team_awards|yb_journey_me|yb_team_board|yb_my_pledges|yb_week_race|yb_mark_read|yb_my_scores|yb_my_prefs|yb_feed|yb_seek_me|yb_team_staff)|my_roster|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements|yb_match_live|yb_team_style)$/.test(r)), [...new Set(reqs)].join());
   const tour = await M.locator('.a-sched').innerText();
   check('schedule card shows the empty state before the tournament is published', /لم تُنشر بيانات البطولة بعد/.test(tour));
   // second account tries the same name
@@ -2396,7 +2412,7 @@ let memberEmail = 'sara@t.test', parentEmail = 'parent@t.test';
   const chips = await P.locator('.a-child .a-consent .a-chip').allInnerTexts();
   check('two children: one «استُلمت», one «لم تُستلم بعد»; ONE schedule card for the shared team', chips.some(c => /^استُلمت/.test(c)) && chips.some(c => /لم تُستلم/.test(c)) && (await P.locator('.a-sched').count()) === 1);
   const preqs = world.log.filter(l => l.who === world.profileByEmail(parentEmail).id).map(l => l.path.replace('/rest/v1/', ''));
-  check('parent screen reads only my_children, tournament_state and the own profile', preqs.every(r => /^(rpc\/(link_child|yb_attend_mine|yb_survey_mine|yb_event_staff_list|yb_theme_get|yb_team_awards|yb_child_journey|yb_week_race|yb_mark_read|yb_my_scores|yb_my_judging|yb_my_prefs|yb_feed|yb_guardian_seekers|yb_team_staff)|my_children|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements|yb_match_live|yb_team_style)$/.test(r)), [...new Set(preqs)].join());
+  check('parent screen reads only my_children, tournament_state and the own profile', preqs.every(r => /^(rpc\/(link_child|yb_attend_mine|yb_survey_mine|yb_notice_state|yb_event_staff_list|yb_theme_get|yb_team_awards|yb_child_journey|yb_week_race|yb_mark_read|yb_my_scores|yb_my_judging|yb_my_prefs|yb_feed|yb_guardian_seekers|yb_team_staff)|my_children|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements|yb_match_live|yb_team_style)$/.test(r)), [...new Set(preqs)].join());
   check('parent console clean', P.errs.length === 0, P.errs.join('|'));
   world.P = P;
 }
@@ -2801,8 +2817,8 @@ const SHOTS = path.join(process.env.ACCOUNT_SHOTS || '', '');
           const lsAll = await P.evaluate(() => JSON.stringify({ l: { ...localStorage }, s: { ...sessionStorage } }));
           if (email) {
             const sess = JSON.parse(await P.evaluate(() => localStorage.getItem('yanabee-session-v1')));
-            check(`${label}: tokens and password never appear in the DOM or the address bar`, !dom.includes(sess.access_token) && !dom.includes(sess.refresh_token) && !dom.includes('Passw0rd!') && !(await P.evaluate(() => location.href)).includes(sess.access_token));
-            check(`${label}: only the YB session (and theme, and the app's page count) is in storage; no password anywhere`, !lsAll.includes('Passw0rd!') && Object.keys(JSON.parse(lsAll).l).every(k => ['yanabee-session-v1', 'yanabee-theme', 'yanabee-pwa', 'yanabee-dash'].includes(k)) && !/token|@|pass/i.test((JSON.parse(lsAll).l['yanabee-pwa'] || '') + (JSON.parse(lsAll).l['yanabee-dash'] || '')) && !Object.keys(JSON.parse(lsAll).s).some(k => /token|pass/i.test(k)), lsAll.slice(0, 200));
+            check(`${label}: tokens and password never appear in the DOM or the address bar`, !dom.includes(sess.access_token) && !dom.includes(sess.refresh_token) && !dom.includes('Nour-Sadaqa-7341') && !(await P.evaluate(() => location.href)).includes(sess.access_token));
+            check(`${label}: only the YB session (and theme, and the app's page count) is in storage; no password anywhere`, !lsAll.includes('Nour-Sadaqa-7341') && Object.keys(JSON.parse(lsAll).l).every(k => ['yanabee-session-v1', 'yanabee-theme', 'yanabee-pwa', 'yanabee-dash'].includes(k)) && !/token|@|pass/i.test((JSON.parse(lsAll).l['yanabee-pwa'] || '') + (JSON.parse(lsAll).l['yanabee-dash'] || '')) && !Object.keys(JSON.parse(lsAll).s).some(k => /token|pass/i.test(k)), lsAll.slice(0, 200));
           }
           const kidsIn = kids.filter(k => dom.includes(k.name)).length;
           const expected = { signedout: 0, signup: 0, admin: 6, leader: 6, member: 6, parent: 2 }[name];
@@ -2828,11 +2844,11 @@ section('keyboard');
   await P.locator('#tab-login').focus();
   const order = [];
   for (let i = 0; i < 6; i++) { await P.keyboard.press('Tab'); order.push(await P.evaluate(() => { const e = document.activeElement; return e.name || e.getAttribute('aria-label') || e.textContent.trim().slice(0, 12); })); }
-  check('Tab order in the login form: e-mail → password → show-password → دخول → نسيت كلمة المرور', order[0] === 'email' && order[1] === 'password' && /إظهار/.test(order[2]) && /دخول/.test(order[3]) && /نسيت/.test(order[4]), order.join(' | '));
+  check('Tab order in the login form: e-mail → password → show-password → shared device → دخول → نسيت كلمة المرور', order[0] === 'email' && order[1] === 'password' && /إظهار/.test(order[2]) && order[3] === 'shared' && /دخول/.test(order[4]) && /نسيت/.test(order[5]), order.join(' | '));
   await P.locator('#panel-login form[aria-label="تسجيل الدخول"] input[name=email]').focus();
   await P.keyboard.type('k@t.test');
   await P.keyboard.press('Tab');
-  await P.keyboard.type('Passw0rd!');
+  await P.keyboard.type('Nour-Sadaqa-7341');
   await P.keyboard.press('Enter');
   await P.waitForSelector('.a-app', { timeout: 8000 });
   await settle(P);
@@ -6098,6 +6114,80 @@ section('privacy and security (0021): photo consent, a copy of one\'s data, requ
   await Z.locator('[data-fk="priv-open"]').click();
   await Z.waitForSelector('[data-privacy]:not([hidden]) a[href="privacy.html"]', { timeout: 8000 });
   check('on an older backend the panel still links the notice, offers nothing it cannot keep, and nothing breaks', (await Z.locator('[data-privacy] [data-photo-consent], [data-privacy] [data-fk="pv-copy"], [data-privacy] [data-privacy-req]').count()) === 0 && Z.errs.length === 0, Z.errs.join('|'));
+}
+
+section('security round 2: local fonts, a shared device and signing out when idle, reading the privacy notice, easy passwords');
+{
+  const fake = new Fake();
+  fake.n22 = true; fake.p21 = true; fake.t17 = true;
+  const boss = fake.addUser({ email: 'boss@t.test', name: 'محمود المشرف', role: 'member' }); fake.setAdmin('boss@t.test');
+  const par = fake.addUser({ email: 'pn@t.test', name: 'ولي سالم', role: 'parent' });
+  const txt = async l => (await l.innerText()).replace(/\s+/g, ' ');
+  const fontReq = [];
+
+  /* ---- a parent on a school computer ---- */
+  const P = await open(fake, { label: 'n22-shared' });
+  P.on('request', r => { if (/fonts\.(googleapis|gstatic)\.com|\.woff2/.test(r.url())) fontReq.push(r.url()); });
+  await settle(P);
+  await P.clock.install();
+  check('the sign-in form offers «جهاز مشترك», unticked', (await P.locator('[data-fk="login-shared"]').count()) === 1 && !(await P.locator('[data-fk="login-shared"]').isChecked()) && /15 دقيقة/.test(await txt(P.locator('.a-shared'))));
+  await P.locator('#panel-login form[aria-label="تسجيل الدخول"] input[name=email]').fill('pn@t.test');
+  await P.locator('#panel-login form[aria-label="تسجيل الدخول"] input[name=password]').fill('Nour-Sadaqa-7341');
+  await P.locator('[data-fk="login-shared"]').check();
+  await P.locator('#panel-login form[aria-label="تسجيل الدخول"] button[type=submit]').click();
+  await P.waitForSelector('[data-notice-ack]:not([hidden])', { timeout: 8000 });
+  const store = await P.evaluate(() => ({ local: localStorage.getItem('yanabee-session-v1'), session: sessionStorage.getItem('yanabee-session-v1') }));
+  check('on a shared device the session is kept in this tab only, never in the device\'s lasting storage', store.local === null && !!store.session && JSON.parse(store.session).user.email === 'pn@t.test');
+  const nk = P.locator('[data-notice-ack]');
+  check('first visit: «إشعار الخصوصية» asks to read the notice, with the link', /إشعار الخصوصية/.test(await txt(nk)) && (await nk.locator('a[href="privacy.html"]').count()) === 1);
+  await nk.locator('[data-fk="nack-ok"]').click();
+  await P.waitForFunction(() => document.querySelector('[data-notice-ack]').hidden, null, { timeout: 8000 });
+  check('«قرأته وأوافق» is kept on the account, and the card leaves', fake.acks.get(par.id + '|2026-11-17') !== undefined);
+  await P.clock.fastForward('13:30');
+  await P.waitForSelector('[data-idle]:not([hidden])', { timeout: 8000 });
+  check('after 13 idle minutes a warning says the account signs out in two minutes', /ستخرج تلقائيًا بعد دقيقتين لأن هذا جهاز مشترك/.test(await txt(P.locator('[data-idle]'))));
+  await P.locator('[data-fk="idle-stay"]').click();
+  check('«ما زلت هنا» keeps the session and hides the warning', (await P.locator('[data-idle]').isHidden()) && !!(await P.evaluate(() => sessionStorage.getItem('yanabee-session-v1'))));
+  await P.clock.fastForward('15:30');
+  await P.waitForSelector('#panel-login [data-idle-out]', { timeout: 8000 });
+  check('15 idle minutes later the account signs out by itself and says why', /خرجت تلقائيًا بعد 15 دقيقة دون استخدام، لأن هذا جهاز مشترك/.test(await txt(P.locator('[data-idle-out]')))
+    && !(await P.evaluate(() => sessionStorage.getItem('yanabee-session-v1') || localStorage.getItem('yanabee-session-v1'))) && (await P.locator('[data-idle]').count()) === 0);
+  check('the shared-device pages: console clean', P.errs.length === 0, P.errs.join('|'));
+
+  /* ---- the same parent, signing in again: the notice is not asked again ---- */
+  await P.locator('#panel-login form[aria-label="تسجيل الدخول"] input[name=email]').fill('pn@t.test');
+  await P.locator('#panel-login form[aria-label="تسجيل الدخول"] input[name=password]').fill('Nour-Sadaqa-7341');
+  await P.locator('#panel-login form[aria-label="تسجيل الدخول"] button[type=submit]').click();
+  await P.waitForSelector('[data-account-root] .a-head', { timeout: 8000 }); await P.waitForTimeout(400);
+  check('a normal sign-in keeps the session on the device, and the notice already read is not asked again', !!(await P.evaluate(() => localStorage.getItem('yanabee-session-v1'))) && (await P.locator('[data-notice-ack]:not([hidden])').count()) === 0);
+  await P.clock.fastForward('30:00');
+  await P.waitForTimeout(300);
+  check('on a personal device a parent is not signed out for being idle', (await P.locator('[data-account-root] .a-head').count()) === 1 && (await P.locator('[data-idle]:not([hidden])').count()) === 0);
+
+  /* ---- the admin ---- */
+  const A = await open(fake, { label: 'n22-admin' });
+  await settle(A);
+  await A.clock.install();
+  await signInOk(A, 'boss@t.test', undefined, { home: true });
+  await A.locator('#at-tools').click();
+  await A.locator('[data-fk="tg-privacy"]').click();
+  await A.locator('[data-meter="notice-acked"]').waitFor({ timeout: 8000 });
+  check('the admin reads how many accounts accepted the current notice', /1 من 2/.test(await txt(A.locator('[data-meter="notice-acked"]'))));
+  await A.clock.fastForward('58:30');
+  await A.waitForSelector('[data-idle]:not([hidden])', { timeout: 8000 });
+  check('the admin, who sees children\'s data, is warned after 58 idle minutes', /لحماية بيانات المشاركين/.test(await txt(A.locator('[data-idle]'))));
+  await A.clock.fastForward('02:00');
+  await A.waitForSelector('#panel-login [data-idle-out]', { timeout: 8000 });
+  check('and signed out at 60', /بعد 60 دقيقة/.test(await txt(A.locator('[data-idle-out]'))));
+
+  /* ---- fonts and the policy ---- */
+  const N = await open(null, { label: 'n22-fonts', path: 'index.html', config: 'none' });
+  N.on('request', r => { if (/fonts\.(googleapis|gstatic)\.com|\.woff2/.test(r.url())) fontReq.push(r.url()); });
+  await N.reload(); await N.waitForLoadState('networkidle');
+  const usedFont = await N.evaluate(() => document.fonts.check('16px "Readex Pro"', 'ينابيع') && document.fonts.check('16px "IBM Plex Sans Arabic"', 'ينابيع'));
+  check('the fonts come from this site: no request to Google, and the Arabic fonts load', fontReq.length > 0 && fontReq.every(u => u.startsWith(ORIGIN + '/fonts/')) && usedFont, fontReq.slice(0, 3).join(' '));
+  const hdr = fs.readFileSync(path.join(SITE, '_headers'), 'utf8');
+  check('the content policy no longer allows Google\'s hosts', !/googleapis|gstatic/.test(hdr) && /font-src 'self' data:/.test(hdr));
 }
 
 section('network hosts and console');

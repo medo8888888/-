@@ -71,7 +71,7 @@ HEADERS = '''# Cloudflare Pages response headers (written by tools/yanabee/build
 # The content security policy. Scripts: this site's files and the few inline scripts of the pages, each allowed by
 # its hash (computed from the built pages, so a changed script is refused until the site is rebuilt). Style
 # attributes are used by the pages, hence 'unsafe-inline' for styles only. The database, accounts and photos are on
-# Supabase; fonts on Google Fonts; the assistant on /api/ of this site. No page may be framed by another site.
+# Supabase; fonts on this site; the assistant on /api/ of this site. No page may be framed by another site.
 SUPABASE_SRC = 'https://*.supabase.co wss://*.supabase.co'
 INLINE_SCRIPT = re.compile(r'<script(?![^>]*\bsrc=)(?![^>]*type="application/(?:ld\+)?json")[^>]*>(.*?)</script>', re.S)
 
@@ -88,8 +88,8 @@ def csp():
     return '; '.join([
         "default-src 'self'",
         "script-src 'self' " + ' '.join(script_hashes()),
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-        "font-src 'self' https://fonts.gstatic.com data:",
+        "style-src 'self' 'unsafe-inline'",
+        "font-src 'self' data:",
         "img-src 'self' data: blob: https://*.supabase.co",
         "media-src 'self' blob: data:",
         "connect-src 'self' " + SUPABASE_SRC,
