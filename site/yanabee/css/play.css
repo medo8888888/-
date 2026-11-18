@@ -30,7 +30,9 @@
 .yb-pass.full{border-color:var(--leaf)}
 .yb-pass.full .yb-pass-ic{box-shadow:0 0 0 4px color-mix(in oklab,var(--leaf) 30%,transparent)}
 @media (max-width:860px){.yb-pass{inset-inline-start:12px;bottom:calc(var(--tab-h) + 12px);padding-inline:8px 12px}}
-@media (max-width:420px){.yb-pass{gap:7px}.yb-pass-ic{width:24px;height:24px}.yb-d{width:13px;height:17px}.yb-pass-drops{gap:2px}}
+/* phones: the chip shrinks to the drop and the count so it never covers what is behind it; the sign-in page (forms) has none */
+@media (max-width:860px){.yb-pass{gap:6px;padding-inline:6px 10px}.yb-pass-drops{display:none}
+  body[data-page="account.html"] .yb-pass{display:none}}
 
 /* ---------- toast ---------- */
 .yb-toast{position:fixed;inset-inline:0;margin-inline:auto;width:max-content;max-width:calc(100vw - 32px);bottom:calc(var(--tab-h) + 74px);z-index:430;
