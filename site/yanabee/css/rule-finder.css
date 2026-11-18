@@ -1,0 +1,42 @@
+/* rule-finder: «ماذا لو؟ ابحث في اللائحة» (competition.html #c-league). Markup: tools/yanabee/feat_rule_finder.py,
+   behaviour: js/rule-finder.js. Tokens only, so both themes follow base.css. */
+.rf[hidden],.rf-rows[hidden]{display:none!important}
+.rf{margin:0 0 22px;padding:18px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow-sm);min-width:0}
+.rf-h{display:flex;align-items:center;gap:10px;font-size:1.15rem;margin-bottom:12px}
+.rf-h .i{color:var(--brand)}
+.rf-bar{display:flex;gap:8px;align-items:stretch}
+.rf-q{flex:1;min-width:0;min-height:48px;padding:10px 16px;border-radius:999px;border:1px solid var(--line-2);background:var(--surface-2);color:var(--ink);font-size:1rem}
+.rf-q::placeholder{color:var(--muted)}
+.rf-q:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-color:var(--brand)}
+.rf-x{flex:none;width:48px;height:48px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line-2);background:var(--surface-2);color:var(--ink-2)}
+.rf-x:hover{color:var(--brand);border-color:var(--brand)}
+/* chips: one row that scrolls inside itself on phones (the page never scrolls sideways) */
+.rf-chips{display:flex;gap:8px;margin-top:12px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;padding-block:2px 6px;-webkit-overflow-scrolling:touch}
+.rf-chip{flex:none;min-height:44px;padding:8px 16px;border-radius:999px;border:1px solid var(--line-2);background:var(--surface-2);color:var(--ink-2);font-size:.95rem;font-weight:500;white-space:nowrap;transition:border-color .15s,color .15s,background-color .15s}
+.rf-chip:hover{border-color:var(--brand);color:var(--brand)}
+.rf-chip[aria-pressed=true]{background:var(--brand);border-color:var(--brand);color:var(--on-brand)}
+.rf-rows{flex-wrap:wrap;overflow:visible}
+.rf-rows .rf-chip{white-space:normal;text-align:start}
+.rf-more{display:inline-flex;align-items:center;gap:8px;min-height:44px;margin-top:6px;padding:6px 10px;border-radius:12px;color:var(--brand);font-weight:600;font-size:.95rem}
+.rf-more .i{transition:transform .15s}
+.rf-more[aria-expanded=true] .i{transform:rotate(180deg)}
+.rf-out:empty{display:none}
+.rf-out{margin-top:14px}
+.rf-note{color:var(--muted);font-size:.95rem;margin-bottom:10px}
+.rf-link{display:inline;min-height:44px;color:var(--brand);font-weight:600;text-decoration:underline;text-underline-offset:3px;padding:10px 2px}
+.rf-list{display:grid;gap:10px}
+.rf-card{padding:14px 16px;border-radius:var(--r-sm);background:var(--surface-2);border:1px solid var(--line);border-inline-start:4px solid var(--brand);animation:rf-in .15s ease both;min-width:0;overflow-wrap:anywhere}
+@keyframes rf-in{from{opacity:0}}
+.rf-ch{display:block;color:var(--muted);font-weight:600;font-size:.82rem;font-family:var(--font-h)}
+.rf-text{color:var(--ink);margin-top:4px}
+.rf-row{display:grid;gap:6px;margin-top:4px}
+.rf-row dt{font-size:.82rem;font-weight:600;color:var(--muted);font-family:var(--font-h)}
+.rf-row dd{color:var(--ink)}
+.rf-dec dd{font-weight:600;color:var(--head)}
+.rf-card mark{background:color-mix(in oklab,var(--sun) 24%,transparent);color:var(--head);border-radius:4px;padding-inline:1px}
+[data-theme=dark] .rf-card mark{background:color-mix(in oklab,var(--sun) 30%,transparent)}
+.rf-open{display:inline-flex;align-items:center;min-height:44px;margin-top:4px;color:var(--brand);font-weight:600;text-decoration:underline;text-underline-offset:3px}
+@media(prefers-reduced-motion:reduce){.rf-card{animation:none}.rf-chip,.rf-more .i{transition:none}}
+@media(max-width:520px){.rf{padding:14px}}
+@media print{.rf{display:none!important}}
+@media(min-width:700px){.rf-row{grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:6px 18px}}

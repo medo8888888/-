@@ -1,0 +1,49 @@
+/* ad-maker — «خصّص الإعلان لجهتك» (competition.html, #c-ad).
+   Markup: tools/yanabee/feat_ad_maker.py (+ the wrapped blanks in page_competition.ad()). Behaviour: js/ad-maker.js. */
+.ad-maker{max-width:860px;margin:0 0 16px;padding:clamp(16px,3vw,24px);border-radius:var(--r-lg);background:var(--surface);
+  border:1px solid var(--line);box-shadow:var(--shadow-sm);display:grid;gap:14px;min-width:0}
+.ad-maker[hidden],.ad-maker [hidden]{display:none!important}
+.adm-h{display:flex;gap:10px;align-items:center;margin:0;font-size:1.1rem;color:var(--head)}
+.adm-h .i{color:var(--brand)}
+.adm-kind{margin:0;padding:0;border:0;min-width:0}
+.adm-kind legend{font-weight:600;color:var(--head);font-size:.94rem;margin-bottom:6px}
+.adm-pills{display:flex;flex-wrap:wrap;gap:8px}
+.adm-pill{position:relative;display:inline-flex}
+.adm-pill input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer}
+.adm-pill span{display:inline-flex;align-items:center;min-height:44px;padding:8px 18px;border-radius:999px;border:1.5px solid var(--line-2);
+  background:var(--surface-2);color:var(--ink-2);font:600 .92rem var(--font-h);transition:border-color .2s,background-color .2s,color .2s}
+.adm-pill input:checked+span{border-color:var(--brand);background:color-mix(in oklab,var(--brand) 14%,var(--surface));color:var(--brand)}
+.adm-pill input:focus-visible+span{outline:3px solid var(--accent);outline-offset:2px}
+.adm-pill:hover span{border-color:var(--brand)}
+.adm-fields{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:640px){.adm-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.adm-f{display:grid;gap:6px;min-width:0;align-content:start}
+.adm-f label{font-weight:600;color:var(--head);font-size:.94rem}
+.adm-f input{width:100%;min-height:44px;padding:10px 12px;border-radius:12px;border:1.5px solid var(--line-2);background:var(--surface-2);color:var(--ink);font:inherit}
+.adm-f input[dir=ltr]{text-align:left}
+.adm-f input:focus-visible{outline:none;border-color:var(--brand);box-shadow:0 0 0 4px color-mix(in oklab,var(--brand) 18%,transparent)}
+.adm-hint{color:var(--muted);font-size:.84rem;line-height:1.6}
+.ad-maker-note{display:flex;gap:8px;align-items:flex-start;margin:0;padding:10px 14px;border-radius:var(--r-sm);background:var(--surface-2);
+  border:1px solid var(--line);color:var(--ink-2);font-size:.9rem;line-height:1.8}
+.ad-maker-note>.i{flex:none;color:var(--sun);margin-top:4px;width:18px;height:18px}
+.ad-maker-note b{display:block;color:var(--head);font-family:var(--font-h)}
+.ad-maker-note small{color:var(--muted);font-size:.84rem;font-weight:600}
+.adm-actions{display:flex;gap:10px;flex-wrap:wrap}
+.adm-actions .btn{min-height:44px}
+.adm-status{margin:0;min-height:1.7em;color:var(--ink-2);font-weight:600;font-size:.94rem;line-height:1.7}
+.adm-manual{width:100%;min-height:160px;padding:10px 12px;border-radius:12px;border:1.5px solid var(--brand);background:var(--surface-2);color:var(--ink);font:.9rem/1.8 var(--font);resize:vertical}
+@media (max-width:640px){.adm-actions .btn{flex:1 1 100%;justify-content:center}}
+
+/* the two blanks on the poster: isolated (a Latin-digit number keeps its order) and marked on screen */
+[data-ad-kind],[data-ad-org],[data-ad-wa]{unicode-bidi:isolate}
+.js [data-ad-org],.js [data-ad-wa]{padding-inline:3px;border-radius:6px;background:color-mix(in oklab,var(--sun) 14%,transparent);
+  box-shadow:inset 0 -2px 0 color-mix(in oklab,var(--sun) 55%,transparent);transition:background-color .2s}
+.js [data-ad-org].is-filled,.js [data-ad-wa].is-filled,.js [data-ad-kind].is-filled{background:color-mix(in oklab,var(--brand) 12%,transparent);
+  box-shadow:inset 0 -2px 0 color-mix(in oklab,var(--brand) 55%,transparent);font-weight:600;color:var(--head)}
+.js [data-ad-kind].is-filled{padding-inline:3px;border-radius:6px}
+@media (prefers-reduced-motion:reduce){.ad-maker *,[data-ad-org],[data-ad-wa]{transition:none!important}}
+
+@media print{
+  .ad-maker{display:none!important}
+  .js [data-ad-org],.js [data-ad-wa],.js [data-ad-kind]{background:none!important;box-shadow:none!important;padding:0!important}
+}

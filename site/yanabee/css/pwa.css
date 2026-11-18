@@ -1,0 +1,68 @@
+/* ينابيع as a phone app: the install banner, the iPhone how-to, the connection notice, the update toast and the
+   offline page (js/pwa.js). Loaded on every page. */
+[data-pwa-install][hidden],.pwa-net:not(.on){display:none!important}
+.pwa-x{display:inline-grid;place-items:center;flex:none;width:44px;height:44px;border:0;border-radius:12px;background:none;color:var(--ink-2);cursor:pointer}
+.pwa-x .i{width:20px;height:20px}
+.pwa-x:hover{background:var(--surface-2)}
+.pwa-x:focus-visible,.pwa-banner .btn:focus-visible,.pwa-toast .btn:focus-visible,.pwa-ok:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+.pwa-app-ic{flex:none;border-radius:12px;box-shadow:0 2px 8px rgba(7,36,51,.16)}
+.pwa-banner .btn,.pwa-toast .btn{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:8px 14px;border-radius:12px;font-size:.92rem;white-space:nowrap}
+.pwa-banner .btn .i,.pwa-toast .btn .i{width:18px;height:18px}
+
+/* the banner sits above the bottom bar (the site's tab bar, or the dashboard's) */
+.pwa-banner{position:fixed;z-index:95;inset-inline:12px;bottom:calc(var(--dock-h,var(--tab-h,0px)) + 12px);display:flex;align-items:center;gap:10px;
+  padding:10px 10px 10px 8px;border:1px solid var(--line);border-radius:18px;background:var(--surface);color:var(--ink);box-shadow:var(--shadow-lg);
+  transform:translateY(16px);opacity:0;transition:transform .35s var(--ease),opacity .35s var(--ease)}
+.pwa-banner.on{transform:none;opacity:1}
+/* the site's tab bar has a raised middle button (the assistant): keep clear of it */
+html:not(.is-dash) .pwa-banner,html:not(.is-dash) .pwa-toast{bottom:calc(var(--tab-h,0px) + 32px)}
+.pwa-banner-t{flex:1;min-width:0;display:grid;gap:2px}
+.pwa-banner-t b{font-size:.98rem}
+.pwa-banner-t small{color:var(--ink-2);font-size:.8rem;line-height:1.5}
+
+/* the iPhone how-to: a bottom sheet */
+html.pwa-lock{overflow:hidden}
+.pwa-sheet{position:fixed;inset:0;z-index:180;display:grid;align-items:end;justify-items:center}
+.pwa-sheet-bg{position:absolute;inset:0;background:rgba(4,19,26,.5);opacity:0;transition:opacity .3s}
+.pwa-sheet.on .pwa-sheet-bg{opacity:1}
+.pwa-sheet-p{position:relative;width:min(560px,100%);max-height:92vh;overflow-y:auto;display:grid;gap:14px;padding:18px 18px calc(18px + env(safe-area-inset-bottom));
+  border-radius:24px 24px 0 0;background:var(--surface);color:var(--ink);box-shadow:var(--shadow-lg);transform:translateY(30px);transition:transform .35s var(--ease)}
+.pwa-sheet.on .pwa-sheet-p{transform:none}
+.pwa-sheet-p:focus{outline:none}
+.pwa-sheet-head{display:flex;align-items:flex-start;gap:12px}
+.pwa-sheet-head>div{flex:1;min-width:0}
+.pwa-sheet-head h2{margin:0;font-size:1.15rem}
+.pwa-sheet-head p{margin:4px 0 0;color:var(--ink-2);font-size:.9rem}
+.pwa-steps{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.pwa-step{display:flex;gap:12px;align-items:flex-start;padding:12px;border:1px solid var(--line);border-radius:16px;background:var(--surface-2)}
+.pwa-step-n{flex:none;display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--brand);color:#fff;font-weight:700}
+[data-theme=dark] .pwa-step-n{color:#04131a}
+.pwa-step b{display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:1rem}
+.pwa-step small{display:block;margin-top:2px;color:var(--ink-2);font-size:.86rem;line-height:1.6}
+.pwa-key{display:inline-grid;place-items:center;width:32px;height:32px;border-radius:9px;background:var(--surface);border:1px solid var(--line);color:#0a84ff}
+.pwa-key .i{width:19px;height:19px}
+.pwa-note{margin:0;padding:10px 12px;border-radius:12px;background:color-mix(in oklab,var(--brand) 10%,var(--surface));font-size:.88rem}
+.pwa-ok{justify-self:stretch;min-height:48px}
+
+/* connection notice and toasts */
+.pwa-net{position:fixed;z-index:175;top:calc(10px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;
+  max-width:calc(100% - 24px);padding:8px 14px;border-radius:999px;background:#7a2e0e;color:#fff;font-size:.88rem;box-shadow:0 8px 24px -8px rgba(0,0,0,.4)}
+.pwa-net.ok{background:#16653a}
+.pwa-net .i{width:18px;height:18px;flex:none}
+.pwa-toast{position:fixed;z-index:176;inset-inline:12px;bottom:calc(var(--dock-h,var(--tab-h,0px)) + 12px);display:flex;align-items:center;gap:10px;max-width:520px;margin-inline:auto;
+  padding:8px 8px 8px 14px;border-radius:16px;background:#04202a;color:#fff;box-shadow:var(--shadow-lg);opacity:0;transform:translateY(12px);transition:opacity .3s,transform .3s var(--ease)}
+.pwa-toast.on{opacity:1;transform:none}
+.pwa-toast>span{flex:1;font-size:.92rem}
+.pwa-toast .pwa-x{color:#cfe4e6}
+.pwa-toast .pwa-x:hover{background:rgba(255,255,255,.08)}
+
+/* the offline page */
+.pwa-off-ic{display:inline-grid;place-items:center;width:84px;height:84px;margin-bottom:8px;border-radius:26px;background:var(--surface);border:1px solid var(--line);color:var(--brand)}
+.pwa-off-ic .i{width:40px;height:40px}
+.pwa-saved{margin:28px auto 0;max-width:420px;text-align:start}
+.pwa-saved h2{font-size:1rem;margin:0 0 8px}
+.pwa-saved ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.pwa-saved a{display:flex;min-height:44px;align-items:center;padding:8px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);text-decoration:none}
+
+@media (prefers-reduced-motion:reduce){.pwa-banner,.pwa-sheet-p,.pwa-sheet-bg,.pwa-toast{transition:none}}
+@media print{.pwa-banner,.pwa-toast,.pwa-net,.pwa-sheet{display:none!important}}
