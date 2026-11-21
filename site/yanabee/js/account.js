@@ -2052,7 +2052,8 @@
       });
     }
     // three groups instead of one long page: what the admin does every week, around the matches, and with the leaders
-    const groups = [['week', 'هذا الأسبوع', [th, aw, weekReportCard()]], ['matches', 'المباريات', [appealsDesk(false), matchStaffDesk(), incidentsDesk()]], ['leaders', 'القادة', [tk, leadReviewDesk(), leadMeetDesk()]], ['impact', 'الأثر', [impactReportCard(), attendBoardCard(), surveyDesk()]], ['privacy', 'الخصوصية', [privacyDesk(false), photoConsentDesk()]]];
+    const groups = [['week', 'هذا الأسبوع', [th, aw, weekReportCard()]], ['matches', 'المباريات', [appealsDesk(false), matchStaffDesk(), incidentsDesk()]], ['leaders', 'القادة', [tk, leadReviewDesk(), leadMeetDesk()]], ['impact', 'الأثر', [impactReportCard(), attendBoardCard(), surveyDesk()]], ['privacy', 'الخصوصية', [privacyDesk(false), photoConsentDesk()]],
+      ['closing', 'الختام', [honoursDesk(), ceremonyCard(), certCard(true), teamReportCard(null, A.teams.filter(t => t.status === 'approved' && !t.waitlist).map(t => ({ id: t.id, name: t.name })))]]];
     const boxes = groups.map(g => h('div', { class: 'a-home', 'data-tools-group': g[0], hidden: g[0] !== (A.toolsGroup || 'week') }, g[2]));
     const tabs = groups.map(g => h('button', { type: 'button', class: 'a-deed-c', 'aria-pressed': String(g[0] === (A.toolsGroup || 'week')), 'data-fk': 'tg-' + g[0], onclick: () => {
       A.toolsGroup = g[0];
@@ -2678,6 +2679,359 @@
     build();
     return el;
   }
+  /* --- the closing (migration 0023; owner, 20 Nov 2026: certificates and honours, the closing-ceremony show, the weekly
+     parent summary). Every card stays hidden on an older backend (the function is missing). Certificates and reports are
+     printed from this page (no new window): A4, «حفظ بصيغة PDF» gives a file. */
+  const HON_AXIS = { hifz: 'الحفظ', fahm: 'الفهم', tatbiq: 'تطبيق القيم', taawun: 'التعاون', mubadara: 'المبادرة' };
+  const honTitle = (k, ax) => (k === 'trip' ? 'رحلة المتميزين' : k === 'leader' ? 'جائزة القائد المتميز' : `وسام التميز في ${HON_AXIS[ax] || ''}`);
+  const HO_ERR = Object.assign({}, J_ERR, { already_given: 'مُنح هذا التكريم لهذا الشخص من قبل.', member_not_found: 'اختر عضوًا من الفريق نفسه.', team_not_found: 'الفريق ليس من الفرق المشاركة.',
+    no_leader: 'لا قائد مسجّلًا لهذا الفريق.', invalid_data: 'اكتب سبب التكريم بجملة واضحة (3 أحرف على الأقل، 200 على الأكثر).', nothing_to_announce: 'امنح تكريمًا واحدًا على الأقل قبل الإعلان.', not_found: 'لم يعد هذا التكريم موجودًا.' });
+  const PLACE_AR = ['', 'المركز الأول', 'المركز الثاني', 'المركز الثالث'], MEDAL = ['', '🥇', '🥈', '🥉'];
+  // the competition's own verse (competition.txt, the announcement): printed on every certificate
+  const CERT_AYAH = '﴿كَبُرَ مَقْتًا عِندَ اللَّهِ أَن تَقُولُوا مَا لَا تَفْعَلُونَ﴾';
+  const COMP_NAME = 'المسابقة الأولى لمشروع ينابيع: حفظ، فهم، تطبيق — سورة الصف';
+  const todayAr = () => new Date().toLocaleDateString('ar-u-nu-latn', { day: 'numeric', month: 'long', year: 'numeric' });
+  const pts = n => { const x = Number(n) || 0; return Number.isInteger(x) ? String(x) : x.toFixed(1); };
+  function printSheets(nodes, kind) {
+    const old = document.querySelector('.a-print-sheet');
+    if (old) old.remove();
+    const sheet = h('div', { class: 'a-print-sheet a-ps-' + kind, 'data-print-sheet': kind }, nodes);
+    document.body.append(sheet);
+    document.documentElement.classList.add('yb-print-sheet');
+    const off = () => { document.documentElement.classList.remove('yb-print-sheet'); sheet.remove(); window.removeEventListener('afterprint', off); };
+    window.addEventListener('afterprint', off);
+    window.print();
+  }
+  // one certificate (A4 landscape): o = { kind, title, pre, name, line }
+  function certNode(o) {
+    return h('section', { class: 'a-cert', 'data-cert': o.kind },
+      h('div', { class: 'a-cert-in' },
+        h('p', { class: 'a-cert-org', text: 'مشروع ينابيع' }),
+        h('h2', { class: 'a-cert-t', text: o.title }),
+        h('p', { class: 'a-cert-pre', text: o.pre }),
+        h('p', { class: 'a-cert-name', text: o.name }),
+        h('p', { class: 'a-cert-line', text: o.line }),
+        h('p', { class: 'a-cert-ayah', text: CERT_AYAH }),
+        h('div', { class: 'a-cert-sign' }, h('span', { text: 'إدارة مشروع ينابيع' }), h('span', { text: 'الجهة الشريكة' })),
+        h('p', { class: 'a-cert-date', text: 'حُرّرت في ' + todayAr() })));
+  }
+  const certPart = p => certNode({ kind: 'part', title: 'شهادة مشاركة', pre: 'تشهد إدارة مشروع ينابيع بمشاركة', name: p.name,
+    line: p.is_leader ? `في قيادة ${teamWord(p.team_name)} في ${COMP_NAME}، تقديرًا لتحويل القول إلى عمل.` : `ضمن ${teamWord(p.team_name)} في ${COMP_NAME}، تقديرًا للالتزام والعمل الجماعي.` });
+  const certPlace = t => certNode({ kind: 'place', title: 'شهادة تقدير', pre: 'تشهد إدارة مشروع ينابيع بحصول', name: teamWord(t.team_name),
+    line: `على ${PLACE_AR[t.rank]} في ${COMP_NAME}، بمجموع ${pts(t.total)} من 100 نقطة.` });
+  const certHonour = x => certNode({ kind: 'honour', title: 'شهادة تكريم', pre: 'تشهد إدارة مشروع ينابيع بمنح', name: x.name || '',
+    line: `${honTitle(x.kind, x.axis)}${x.kind === 'leader' ? ' في قيادة ' : '، ضمن '}${teamWord(x.team_name)}، في ${COMP_NAME}.` });
+
+  // the honours desk tells the certificates and the ceremony card when an honour is given, taken back or announced
+  const honoursChanged = () => document.dispatchEvent(new CustomEvent('yb-honours'));
+  const onHonours = (el, fn) => { const f = () => { if (!el.isConnected) { document.removeEventListener('yb-honours', f); return; } fn(); }; document.addEventListener('yb-honours', f); };
+  // «الشهادات» (the admin) / «شهاداتي» (everyone else): whatever yb_cert_list allows the person to print
+  function certCard(admin) {
+    const el = h('section', { class: 'a-card a-crt' + (admin ? ' a-adm a-tool-w' : ''), 'aria-labelledby': 'crt-h', 'data-certs': '', hidden: true });
+    if (admin) onHonours(el, () => load());
+    const load = () => YB.rpc('yb_cert_list', {}).then(r => {
+      if (!r.ok || !r.data || !Array.isArray(r.data.people)) return;
+      const d = r.data;
+      const part = d.people.map(p => ({ key: 'p-' + p.member_id, label: p.name, sub: teamWord(p.team_name) + (p.is_leader ? ' · القائد' : ''), node: () => certPart(p) }));
+      const places = (d.teams || []).filter(t => t.rank >= 1 && t.rank <= 3 && Number(t.total) > 0).map(t => ({ key: 't-' + t.team_id, label: `${MEDAL[t.rank]} ${teamWord(t.team_name)}`, sub: `${PLACE_AR[t.rank]} · ${pts(t.total)} نقطة`, node: () => certPlace(t) }));
+      const hons = (d.honours || []).map((x, i) => ({ key: 'h-' + i, label: x.name || '', sub: `${honTitle(x.kind, x.axis)} · ${teamWord(x.team_name)}`, node: () => certHonour(x) }));
+      if (!part.length && !places.length && !hons.length) return;
+      el.hidden = false;
+      const group = (title, items, key, fold) => {
+        if (!items.length) return null;
+        const list = h('ul', { class: 'a-tool-l a-crt-l' }, items.map(i => h('li', { 'data-cert-row': i.key }, h('div', {}, h('b', { text: i.label }), h('small', { class: 'a-hint', text: i.sub })),
+          btn('اطبع', 'printer', 'btn-ghost', () => printSheets([i.node()], 'certs'), { 'data-fk': 'crt-' + i.key, 'aria-label': `اطبع الشهادة: ${i.label}` }))));
+        return h('div', { class: 'a-crt-g', 'data-cert-group': key }, h('div', { class: 'a-mf-h' }, h('b', { text: `${title} (${items.length})` }),
+          items.length > 1 ? btn('اطبع الكل', 'printer', 'btn-primary', () => printSheets(items.map(i => i.node()), 'certs'), { 'data-fk': 'crt-all-' + key }) : null),
+          fold ? h('details', { class: 'a-plg-past' }, h('summary', { 'data-fk': 'crt-open-' + key, text: 'اعرض الأسماء' }), list) : list);
+      };
+      put(el, h('h3', { id: 'crt-h' }, icon('award'), h('span', { text: admin ? 'الشهادات' : 'شهاداتي' })),
+        h('p', { class: 'a-lead', text: admin ? 'شهادة مشاركة لكل عضو، وشهادات المراكز الثلاثة الأولى، وشهادات التكريم. تُطبع على ورق A4 بالعرض؛ اختر «حفظ بصيغة PDF» في نافذة الطباعة لتحصل على ملف.'
+          : 'اطبعها أو احفظها ملف PDF من نافذة الطباعة. تصلح للتعليق في البيت أو المدرسة.' }),
+        group('شهادات المشاركة', part, 'part', admin && part.length > 6), group('شهادات المراكز', places, 'place'), group('شهادات التكريم', hons, 'honour'),
+        !admin && !d.published ? h('p', { class: 'a-hint', 'data-cert-wait': 'place', text: 'تظهر شهادة المركز بعد أن تعلن الإدارة النتائج.' }) : null,
+        !admin && !d.announced ? h('p', { class: 'a-hint', 'data-cert-wait': 'honour', text: 'تظهر شهادات التكريم بعد أن تعلنها الإدارة.' }) : null);
+    });
+    load();
+    return el;
+  }
+
+  // «التكريمات» (the admin): the five medals, the trip and the outstanding leader, from the numbers the site holds
+  const HON_KINDS = [['trip', 'رحلة المتميزين'], ['hifz', 'وسام الحفظ'], ['fahm', 'وسام الفهم'], ['tatbiq', 'وسام تطبيق القيم'], ['taawun', 'وسام التعاون'], ['mubadara', 'وسام المبادرة'], ['leader', 'القائد المتميز']];
+  function honoursDesk() {
+    const el = h('section', { class: 'a-card a-adm a-tool-w', 'aria-labelledby': 'hod-h', 'data-honours-desk': '', hidden: true });
+    let pick = 'trip', open = null;
+    const facts = {
+      trip: m => [m.held ? `حضر ${m.came} من ${m.held} لقاءات` : 'لا لقاءات مسجّلة', m.pledges ? `وفّى بـ ${m.kept} من ${m.pledges} وعود` : null, m.deed_days ? `${m.deed_days} يوم تطبيق` : null],
+      hifz: m => [`${m.hifz} من ${AYAHS} آية`, m.kept ? `وفّى بـ ${m.kept} وعود` : null],
+      fahm: m => [`أوسمة الفهم في الموسم: ${(m.awards || {}).fahm || 0}`, `${m.hifz} من ${AYAHS} آية`],
+      tatbiq: m => [`${m.deed_days} يوم تطبيق`, `وفّى بـ ${m.kept} من ${m.pledges} وعود`, (m.awards || {}).tatbiq ? `أوسمة التطبيق: ${m.awards.tatbiq}` : null],
+      taawun: m => [`أوسمة التعاون في الموسم: ${(m.awards || {}).taawun || 0}`, m.held ? `حضر ${m.came} من ${m.held} لقاءات` : null],
+      mubadara: m => [`أوسمة المبادرة في الموسم: ${(m.awards || {}).mubadara || 0}`, m.kept ? `وفّى بـ ${m.kept} وعود` : null],
+      leader: l => [l.expected ? `حضور الفريق ${pctOf(l.present, l.expected)}%` : 'لا حضور مسجّل', l.notes ? `${l.notes} صفحة في دفتر القائد` : null, l.review != null ? `تقييم المشرف ${l.review}` : null,
+        l.lead_held ? `حضر ${l.lead_came} من ${l.lead_held} لقاءات القادة` : null, l.projects ? `${l.projects} مشروع مقبول` : null]
+    };
+    const score = {
+      trip: m => pctOf(m.came, m.held) * 100 + m.kept * 10 + m.deed_days, hifz: m => m.hifz * 100 + m.kept, fahm: m => ((m.awards || {}).fahm || 0) * 100 + m.hifz,
+      tatbiq: m => m.deed_days * 10 + m.kept * 20 + ((m.awards || {}).tatbiq || 0) * 50, taawun: m => ((m.awards || {}).taawun || 0) * 100 + pctOf(m.came, m.held),
+      mubadara: m => ((m.awards || {}).mubadara || 0) * 100 + m.kept,
+      leader: l => pctOf(l.present, l.expected) + l.notes * 5 + (Number(l.review) || 0) + l.projects * 10 + l.leader_awards * 20 + pctOf(l.lead_came, l.lead_held) / 2
+    };
+    const NOTE = { fahm: 'لا يسجّل الموقع الفهم لكل عضو؛ الترتيب من أوسمة الفهم التشجيعية ثم الحفظ. القرار لكم بعد رأي لجنة التحكيم.',
+      trip: 'الترتيب من الحضور ثم الوفاء بالوعود ثم أيام التطبيق، كما في اللائحة: «الأكثر تميزًا في الحضور والالتزام والمشاركة الفعالة».' };
+    function load(focus) {
+      Promise.all([YB.rpc('yb_honours_board', {}), YB.rpc('yb_honours_suggest', {})]).then(([b, s]) => {
+        if (!b.ok || !b.data || !s.ok || !s.data) return;
+        const given = b.data.honours || [], msg = h('p', { class: 'a-live-msg', role: 'alert', hidden: true });
+        const fail = x => { msg.textContent = errMsg(x, HO_ERR); msg.hidden = false; say(msg.textContent); };
+        const isLeader = pick === 'leader', axis = isLeader || pick === 'trip' ? null : pick, kind = isLeader ? 'leader' : pick === 'trip' ? 'trip' : 'medal';
+        const pool = (isLeader ? s.data.leaders : s.data.members) || [];
+        const ranked = pool.map(x => ({ x, s: score[pick](x) })).sort((a, b2) => b2.s - a.s || String(a.x.name).localeCompare(String(b2.x.name), 'ar')).slice(0, 8);
+        const has = x => given.some(g => g.kind === kind && (g.axis || null) === axis && (isLeader ? g.team_id === x.team_id : g.member_id === x.member_id));
+        const rowKey = x => isLeader ? 'l-' + x.team_id : 'm-' + x.member_id;
+        el.hidden = false;
+        put(el, h('div', { class: 'a-bdgs-top' }, h('h3', { id: 'hod-h' }, icon('trophy'), h('span', { text: 'التكريمات' })), chip(b.data.announced ? 'مُعلنة' : 'غير مُعلنة بعد', b.data.announced ? 'ok' : 'muted')),
+          h('p', { class: 'a-lead', text: 'جوائز التميز والقيادة في اللائحة: رحلة المتميزين، وأوسمة التميز الفردي، وجائزة القائد المتميز. تقترح القائمة من بيانات الموسم، والقرار لكم مع سبب يُكتب. تبقى سرية حتى تعلنها.' }),
+          h('div', { class: 'a-deed-f', role: 'group', 'aria-label': 'نوع التكريم', 'data-hon-kinds': '' }, HON_KINDS.map(k => h('button', { type: 'button', class: 'a-deed-c', 'aria-pressed': String(k[0] === pick), 'data-fk': 'hon-k-' + k[0],
+            onclick: () => { pick = k[0]; open = null; load('hon-k-' + k[0]); } }, k[1]))),
+          NOTE[pick] ? h('p', { class: 'a-hint', text: NOTE[pick] }) : null,
+          ranked.length ? h('ol', { class: 'a-tool-l a-hon-sug', 'data-hon-suggest': pick }, ranked.map(({ x }) => {
+            const k = rowKey(x), done = has(x);
+            const form = open === k ? (() => {
+              const ta = h('textarea', { rows: 2, maxLength: 200, 'data-fk': 'hon-reason', 'aria-label': 'سبب التكريم' });
+              ta.value = facts[pick](x).filter(Boolean).join('، ').slice(0, 200);
+              return h('div', { class: 'a-hon-form' }, h('p', { class: 'a-l', text: 'سبب التكريم (تراه الإدارة فقط)' }), ta,
+                h('div', { class: 'a-actions' }, btn('أكّد التكريم', 'check', 'btn-primary', ev => { const bt = ev.currentTarget; bt.disabled = true;
+                  YB.rpc('yb_honour_give', { kind, team_id: x.team_id, member_id: isLeader ? null : x.member_id, axis, reason: ta.value }).then(y => { bt.disabled = false;
+                    if (!y.ok || !y.data || !y.data.ok) return fail(y.ok ? y.data : y);
+                    open = null; say(`مُنح «${honTitle(kind, axis)}» لـ ${x.name}.`); load('hon-k-' + pick); honoursChanged(); }); }, { 'data-fk': 'hon-confirm' }),
+                  btn('إلغاء', 'x', 'btn-ghost', () => { open = null; load('hon-give-' + k); }, { 'data-fk': 'hon-cancel' })));
+            })() : null;
+            return h('li', { 'data-hon-row': k, class: done ? 'ok' : '' }, h('div', { class: 'a-mf-h' }, h('div', {}, h('b', { text: x.name }), h('small', { class: 'a-hint', text: teamWord(x.team_name) })),
+              done ? chip('مُنح', 'ok') : btn('امنح', 'award', 'btn-ghost', () => { open = k; load('hon-reason'); }, { 'data-fk': 'hon-give-' + k, 'aria-label': `امنح ${honTitle(kind, axis)} لـ ${x.name}` })),
+              h('small', { class: 'a-hint', text: facts[pick](x).filter(Boolean).join(' · ') }), form);
+          })) : h('p', { class: 'a-empty', text: 'لا فرق معتمدة بعد.' }), msg,
+          h('h4', { class: 'a-hon-h4', text: `الممنوحة (${given.length})` }),
+          given.length ? h('ul', { class: 'a-tool-l', 'data-hon-given': '' }, given.map(g => h('li', { 'data-hon-id': g.id }, h('div', { class: 'a-mf-h' }, h('div', {}, h('b', { text: `${honTitle(g.kind, g.axis)}: ${g.name || ''}` }),
+            h('small', { class: 'a-hint', text: `${teamWord(g.team_name)} · ${g.reason}` })),
+            btn('اسحبه', 'trash', 'btn-ghost', () => YB.rpc('yb_honour_remove', { id: g.id }).then(y => { if (!y.ok || !y.data || !y.data.ok) return fail(y.ok ? y.data : y); say('سُحب التكريم.'); load('hon-k-' + pick); honoursChanged(); }),
+              { 'data-fk': 'hon-x-' + g.id, 'aria-label': `اسحب ${honTitle(g.kind, g.axis)} من ${g.name || ''}` })))))
+            : h('p', { class: 'a-empty', text: 'لم يُمنح تكريم بعد.' }),
+          h('div', { class: 'a-actions' }, btn(b.data.announced ? 'أخفِ التكريمات' : 'أعلن التكريمات (يصل إشعار للجميع)', b.data.announced ? 'lock' : 'megaphone', b.data.announced ? 'btn-ghost' : 'btn-primary', ev => {
+            const bt = ev.currentTarget; bt.disabled = true;
+            YB.rpc('yb_honours_announce', { announce: !b.data.announced }).then(y => { bt.disabled = false; if (!y.ok || !y.data || !y.data.ok) return fail(y.ok ? y.data : y);
+              say(b.data.announced ? 'أُخفيت التكريمات.' : 'أُعلنت التكريمات، ووصل إشعار للجميع.'); load('hon-announce'); honoursChanged(); });
+          }, { 'data-fk': 'hon-announce' })),
+          h('p', { class: 'a-hint', text: 'إن أردتموها مفاجأة الحفل فأعلنوها بعده: عرض الحفل يقرؤها قبل الإعلان.' }));
+        if (focus) focusIn(el, focus);
+      });
+    }
+    load();
+    return el;
+  }
+
+  // the team's people, once announced: «تكريمات فريقي», their own marked
+  function myHonoursCard() {
+    const el = h('section', { class: 'a-card a-myh', 'aria-labelledby': 'myh-h', 'data-my-honours': '', hidden: true });
+    YB.rpc('yb_my_honours', {}).then(r => {
+      if (!r.ok || !r.data || !r.data.announced || !(r.data.honours || []).length) return;
+      el.hidden = false;
+      put(el, h('h3', { id: 'myh-h' }, icon('trophy'), h('span', { text: 'تكريمات فريقي' })),
+        h('ul', { class: 'a-hon-l' }, r.data.honours.map(x => h('li', { class: x.mine ? 'mine' : '', 'data-my-honour': x.kind + (x.axis ? '-' + x.axis : '') },
+          h('span', { class: 'a-hon-i', 'aria-hidden': 'true' }, icon(x.kind === 'leader' ? 'flag' : x.kind === 'trip' ? 'route' : 'award')),
+          h('div', {}, h('b', { text: honTitle(x.kind, x.axis) }), h('small', { text: `${x.name || ''} · ${teamWord(x.team_name)}` })), x.mine ? chip('لك', 'ok') : null))),
+        h('p', { class: 'a-hint', text: 'تجد شهادة التكريم في «شهاداتي».' }));
+      FX.reveal(el);
+    });
+    return el;
+  }
+
+  // «عرض حفل الختام» (the admin): a full screen for the hall. Only the admin's own data; nothing here is public.
+  function ceremonyCard() {
+    const el = h('section', { class: 'a-card a-adm a-tool-w', 'aria-labelledby': 'cer-h', 'data-ceremony-card': '', hidden: true });
+    onHonours(el, () => load());
+    const load = () => Promise.all([YB.rpc('yb_ceremony', {}), YB.rpc('yb_public_projects', {})]).then(([r, pj]) => {
+      if (!r.ok || !r.data) return;
+      const d = r.data, rows = pj.ok && Array.isArray(pj.data) ? pj.data.slice(0, 6) : [];
+      const first = h('input', { type: 'checkbox', checked: true, 'data-fk': 'cer-first', id: 'cer-first' });
+      el.hidden = false;
+      put(el, h('div', { class: 'a-bdgs-top' }, h('h3', { id: 'cer-h' }, icon('sparkles'), h('span', { text: 'عرض حفل الختام' })),
+        chip(d.published ? 'النتائج مُعلنة' : 'النتائج غير مُعلنة بعد', d.published ? 'ok' : 'warn')),
+        h('p', { class: 'a-lead', text: 'شاشة كاملة للقاعة: أرقام الموسم، ثم الفرق من المركز الأخير إلى الأول، ثم التكريمات وأعمال الفرق. انتقل بالنقر أو بالأسهم أو بالمسافة، واخرج بـ Esc. العرض يكشف ما لم يُعلن بعد، فاعرضه في الحفل فقط.' }),
+        h('ul', { class: 'a-tool-l' }, h('li', {}, h('span', { text: 'الفرق' }), h('b', { text: String(d.teams.length) })), h('li', {}, h('span', { text: 'التكريمات' }), h('b', { text: String(d.honours.length) })),
+          h('li', {}, h('span', { text: 'أعمال معروضة (بموافقة أولياء الأمور على التصوير)' }), h('b', { text: String(rows.length) }))),
+        h('label', { class: 'a-check', for: 'cer-first' }, first, h('span', { text: 'الاسم الأول فقط على الشاشة' })),
+        h('div', { class: 'a-actions' }, btn('ابدأ العرض', 'sparkles', 'btn-primary', async ev => {
+          const b = ev.currentTarget;
+          b.disabled = true;
+          const fresh = await YB.rpc('yb_ceremony', {});   // what was given since this card was drawn
+          b.disabled = false;
+          const dd = fresh.ok && fresh.data ? fresh.data : d;
+          let urls = {};
+          const paths = [].concat(...rows.map(x => (Array.isArray(x.photos) ? x.photos.slice(0, 1) : [])));
+          if (paths.length && YB.signedUrls) { try { const s = await YB.signedUrls('yanabee-submissions', paths, 3600); if (s && s.ok) urls = s.data || {}; } catch (e) { urls = {}; } }
+          ceremonyShow(dd, rows, urls, first.checked, b);
+        }, { 'data-fk': 'cer-start' })));
+    });
+    load();
+    return el;
+  }
+  function ceremonyShow(d, projects, urls, firstOnly, back) {
+    const nm = s => (firstOnly ? firstName(s) : String(s || ''));
+    const n = d.numbers || {}, slides = [];
+    slides.push(['title', h('div', { class: 'a-cer-s' }, h('p', { class: 'a-cer-k', text: 'مشروع ينابيع' }), h('h2', { text: 'حفل ختام المسابقة الأولى' }), h('p', { class: 'a-cer-sub', text: 'حفظ، فهم، تطبيق — سورة الصف' }), h('p', { class: 'a-cer-ayah', text: CERT_AYAH }))]);
+    const tiles = [['الفرق', n.teams], ['المشاركون', n.members], ['حضور اللقاءات', n.expected ? pctOf(n.present, n.expected) + '%' : null], ['وعود وُفّي بها', n.kept], ['آيات حفظها المشاركون', n.ayahs],
+      ['أيام تطبيق', n.deed_days], ['مشاريع ومبادرات', n.projects], ['مستفيدون', n.beneficiaries]].filter(x => x[1] !== null && x[1] !== undefined && Number(String(x[1]).replace('%', '')) > 0);
+    if (tiles.length) slides.push(['numbers', h('div', { class: 'a-cer-s a-cer-num' }, h('h2', { text: 'موسمنا بالأرقام' }), h('ul', { class: 'a-cer-n' }, tiles.map(x => h('li', {}, h('b', { text: String(x[1]) }), h('span', { text: x[0] })))))]);
+    (d.teams || []).forEach(t => slides.push(['team', h('div', { class: 'a-cer-s a-cer-team' + (t.rank <= 3 ? ' top r' + t.rank : '') }, h('p', { class: 'a-cer-k', text: t.rank <= 3 ? `${MEDAL[t.rank]} ${PLACE_AR[t.rank]}` : `المركز ${t.rank}` }),
+      h('h2', { text: teamWord(t.team_name) }), h('p', { class: 'a-cer-pts', text: `${pts(t.total)} من 100 نقطة` }))]));
+    (d.honours || []).forEach(x => slides.push(['honour', h('div', { class: 'a-cer-s a-cer-hon' }, h('p', { class: 'a-cer-k', text: honTitle(x.kind, x.axis) }), h('h2', { text: nm(x.name) }), h('p', { class: 'a-cer-sub', text: teamWord(x.team_name) }))]));
+    projects.forEach(x => { const ph = (Array.isArray(x.photos) ? x.photos : []).map(p => urls[p]).filter(Boolean)[0];
+      slides.push(['project', h('div', { class: 'a-cer-s a-cer-pj' }, ph ? h('img', { src: ph, alt: `صورة من عمل ${teamWord(x.team_name)}: ${x.title}` }) : null, h('p', { class: 'a-cer-k', text: teamWord(x.team_name) }), h('h2', { text: x.title }), x.summary ? h('p', { class: 'a-cer-sub', text: x.summary }) : null)]); });
+    slides.push(['end', h('div', { class: 'a-cer-s' }, h('h2', { text: 'شكرًا لكل الفرق والقادة وأولياء الأمور' }), h('p', { class: 'a-cer-sub', text: 'والشكر لكل من جعل القول عملًا' }))]);
+    let i = 0;
+    const stage = h('div', { class: 'a-cer-stage', 'aria-live': 'polite' }), count = h('span', { class: 'a-cer-c', 'data-cer-count': '' });
+    const go = s => { const j = Math.max(0, Math.min(slides.length - 1, i + s)); if (j !== i) { i = j; show(); } };
+    const prev = btn('السابق', null, 'btn-ghost', () => go(-1), { 'data-fk': 'cer-prev' });
+    const next = btn('التالي', 'arrow-left', 'btn-primary', () => go(1), { 'data-fk': 'cer-next' });
+    const show = () => { put(stage, slides[i][1]); stage.setAttribute('data-cer-slide', slides[i][0]); count.textContent = `${i + 1} / ${slides.length}`; prev.disabled = i === 0; next.disabled = i === slides.length - 1; };
+    const ov = h('div', { class: 'a-cer', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'عرض حفل الختام', 'data-ceremony': '', tabindex: '-1' }, stage,
+      h('div', { class: 'a-cer-bar' }, prev, count, next, btn('خروج', 'x', 'btn-ghost', () => close(), { 'data-fk': 'cer-close' })));
+    const key = e => {
+      if (e.key === 'Escape') { e.preventDefault(); close(); }
+      else if (e.key === 'ArrowLeft' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); go(1); }
+      else if (e.key === 'ArrowRight' || e.key === 'PageUp') { e.preventDefault(); go(-1); }
+    };
+    function close() {
+      document.removeEventListener('keydown', key, true);
+      try { if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); } catch (e) { /* not fullscreen */ }
+      ov.remove(); document.documentElement.classList.remove('a-cer-on');
+      if (back && back.isConnected) back.focus();
+    }
+    stage.addEventListener('click', () => go(1));
+    document.addEventListener('keydown', key, true);
+    document.body.append(ov);
+    document.documentElement.classList.add('a-cer-on');
+    show();
+    try { if (ov.requestFullscreen) ov.requestFullscreen().catch(() => {}); } catch (e) { /* the overlay already covers the page */ }
+    ov.focus();
+  }
+
+  // «أسبوع ابني» (the parent): one card per linked child for a chosen week, and a picture to share with the family
+  function parentWeekCard() {
+    const el = h('section', { class: 'a-card a-pwk', 'aria-labelledby': 'pwk-h', 'data-parent-week': '', hidden: true });
+    let wk = weekKey();
+    const weeks = Array.from({ length: 8 }, (_, k) => localDay(new Date(dayOf(weekKey()).getTime() - k * 7 * 86400000 + 12 * 3600000)));
+    const wordFor = k => (k === 0 ? 'هذا الأسبوع' : k === 1 ? 'الأسبوع الماضي' : 'أسبوع ' + arDate(weeks[k]));
+    const rowsOf = c => [
+      ['meet', 'user-check', 'لقاء الفريق', c.meeting === null || c.meeting === undefined ? 'لم يُسجَّل لقاء هذا الأسبوع' : c.meeting ? 'حاضر ✓' : 'غائب', c.meeting ? 'ok' : c.meeting === false ? 'warn' : ''],
+      ['pledge', 'hand-heart', 'وعد الأسبوع', c.pledge ? `«${c.pledge.body}» — ${c.pledge.done ? 'وفّى به ✓' : 'لم يُعلَّم الوفاء بعد'}` : c.joined ? 'لم يُكتب وعد هذا الأسبوع' : 'لم ينضم بحساب بعد', c.pledge && c.pledge.done ? 'ok' : ''],
+      ['deeds', 'check', 'أيام التطبيق', `${c.deed_days} من 7`, c.deed_days >= 4 ? 'ok' : ''],
+      ['hifz', 'star', 'آيات سورة الصف', `${c.hifz} من ${AYAHS}`, c.hifz >= AYAHS ? 'ok' : ''],
+      ['attend', 'calendar', 'حضور الموسم', c.held ? `${c.came} من ${c.held} لقاءات` : 'لا لقاءات بعد', c.held && pctOf(c.came, c.held) >= 80 ? 'ok' : ''],
+      (c.awards || []).length ? ['award', 'award', 'هذا الأسبوع', c.awards.map(k => 'وسام ' + (AWARD[k] || '')).join('، '), 'ok'] : null].filter(Boolean);
+    function load(focus) {
+      YB.rpc('yb_parent_week', { week: wk }).then(r => {
+        if (!r.ok || !r.data || !r.data.ok || !(r.data.children || []).length) return;
+        const sel = h('select', { id: 'pwk-week', 'data-fk': 'pwk-week', onchange: e => { wk = e.target.value; load('pwk-week'); } }, weeks.map((w, k) => h('option', { value: w, selected: w === wk, text: wordFor(k) })));
+        el.hidden = false;
+        put(el, h('div', { class: 'a-bdgs-top' }, h('h3', { id: 'pwk-h' }, icon('calendar'), h('span', { text: 'أسبوع ابني في ينابيع' })), h('label', { class: 'a-pwk-w', for: 'pwk-week' }, h('span', { class: 'sr-only', text: 'الأسبوع' }), sel)),
+          r.data.theme ? h('p', { class: 'a-pwk-theme', 'data-pwk-theme': '' }, h('b', { text: 'قيمة الأسبوع: ' + r.data.theme.title }), r.data.theme.body ? h('span', { text: ' — ' + r.data.theme.body }) : null) : null,
+          r.data.children.map(c => h('div', { class: 'a-pwk-c', 'data-pwk-child': c.member_id }, h('div', { class: 'a-mf-h' }, h('div', {}, h('b', { text: c.name }), h('small', { class: 'a-hint', text: teamWord(c.team_name) })),
+            c.pledge && c.pledge.cheered ? chip('شجّعه القائد', 'ok') : null),
+            h('ul', { class: 'a-myw-l' }, rowsOf(c).map(x => h('li', { 'data-pwk': x[0], class: x[4] }, h('span', { class: 'a-myw-i', 'aria-hidden': 'true' }, icon(x[1])), h('div', {}, h('b', { text: x[2] }), h('small', { text: x[3] }))))),
+            c.pledge && c.pledge.parent_note ? h('p', { class: 'a-hint', text: `كلمتك له: «${c.pledge.parent_note}»` }) : null,
+            h('div', { class: 'a-actions' }, btn('صورة للعائلة', 'download', 'btn-ghost', ev => weekImage(c, r.data, ev.currentTarget), { 'data-fk': 'pwk-img-' + c.member_id, 'aria-label': `صورة أسبوع ${firstName(c.name)} للمشاركة` })))),
+          h('p', { class: 'a-hint', text: 'الصورة تحمل الاسم الأول فقط، وتُصنع على جهازك. شاركها مع العائلة كما تحب؛ لا تُرسل إلى أي مكان من تلقاء نفسها.' }));
+        if (focus) focusIn(el, focus);
+      });
+    }
+    // a 1080 x 1350 picture drawn on this device (fonts from the site; nothing leaves the device until the parent shares it)
+    async function weekImage(c, d, b) {
+      b.disabled = true;
+      try {
+        const F = "'IBM Plex Sans Arabic', 'Readex Pro', sans-serif";
+        try { await Promise.all(['700 64px', '500 40px'].map(s => document.fonts.load(`${s} 'IBM Plex Sans Arabic'`, 'ينابيع'))); } catch (e) { /* the system font draws it */ }
+        const cv = document.createElement('canvas'); cv.width = 1080; cv.height = 1350;
+        const x = cv.getContext('2d');
+        const g = x.createLinearGradient(0, 0, 1080, 1350); g.addColorStop(0, '#0a7680'); g.addColorStop(1, '#073b4c');
+        x.fillStyle = g; x.fillRect(0, 0, 1080, 1350);
+        x.fillStyle = 'rgba(255,255,255,.08)'; x.beginPath(); x.arc(980, 120, 260, 0, Math.PI * 2); x.fill();
+        x.direction = 'rtl'; x.textAlign = 'right'; x.fillStyle = '#fff';
+        x.font = `500 38px ${F}`; x.fillText('مشروع ينابيع · ' + (d.week === weekKey() ? 'هذا الأسبوع' : 'أسبوع ' + arDate(d.week)), 1000, 130);
+        x.font = `700 72px ${F}`; x.fillText(`أسبوع ${firstName(c.name)}`, 1000, 230);
+        x.font = `500 40px ${F}`; x.fillStyle = 'rgba(255,255,255,.85)'; x.fillText(teamWord(c.team_name), 1000, 295);
+        let y = 390;
+        const lines = rowsOf(c).filter(r0 => r0[0] !== 'pledge').concat(c.pledge ? [['pledge', '', 'وعد الأسبوع', c.pledge.done ? 'وفّى بوعده ✓' : 'كتب وعده', c.pledge.done ? 'ok' : '']] : []);
+        const step = lines.length > 5 ? 128 : 140;   // six rows still leave room for the value of the week
+        lines.forEach(r0 => {
+          x.fillStyle = 'rgba(255,255,255,.12)'; x.beginPath(); if (x.roundRect) x.roundRect(80, y - 62, 920, 112, 28); else x.rect(80, y - 62, 920, 112); x.fill();
+          x.fillStyle = '#fff'; x.font = `700 42px ${F}`; x.textAlign = 'right'; x.fillText(r0[2], 960, y);
+          x.textAlign = 'left'; x.font = `500 38px ${F}`; x.fillStyle = r0[4] === 'ok' ? '#b9f6c5' : '#fff';
+          x.fillText(String(r0[3]).slice(0, 34), 120, y); y += step;
+        });
+        x.textAlign = 'right';
+        if (d.theme && d.theme.title) { x.fillStyle = '#fff'; x.font = `700 44px ${F}`; x.fillText('قيمة الأسبوع: ' + d.theme.title, 1000, Math.min(y + 20, 1215)); }
+        x.font = `500 32px ${F}`; x.fillStyle = 'rgba(255,255,255,.75)'; x.textAlign = 'center'; x.fillText('حفظ، فهم، تطبيق — سورة الصف', 540, 1290);
+        const blob = await new Promise(res => cv.toBlob(res, 'image/png'));
+        if (!blob) throw new Error('no_image');
+        const name = `yanabee-week-${d.week}.png`;   // no name in the file name
+        const file = typeof File === 'function' ? new File([blob], name, { type: 'image/png' }) : null;
+        if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+          try { await navigator.share({ files: [file], title: `أسبوع ${firstName(c.name)} في ينابيع` }); say('جاهزة للمشاركة.'); return; } catch (e) { if (e && e.name === 'AbortError') return; }
+        }
+        const url = URL.createObjectURL(blob), a = h('a', { href: url, download: name, hidden: true });
+        document.body.append(a); a.click();
+        setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1500);
+        say('حُفظت الصورة في جهازك.');
+      } catch (e) { say('تعذّر إنشاء الصورة على هذا الجهاز.'); } finally { b.disabled = false; }
+    }
+    load();
+    return el;
+  }
+
+  // «تقرير الفريق للجهة الشريكة» (the leader for their team, the admin for any): one printed page, counts only
+  function teamReportCard(teamId, teams) {
+    const el = h('section', { class: 'a-card a-trep' + (teamId ? '' : ' a-adm a-tool-w'), 'aria-labelledby': 'trep-h', 'data-team-report': '', hidden: true });
+    const msg = h('p', { class: 'a-live-msg', role: 'alert', hidden: true });
+    const sel = teamId ? null : h('select', { id: 'trep-team', 'data-fk': 'trep-team' }, (teams || []).map(t => h('option', { value: t.id, text: t.name })));
+    const PL = { family: 'الأسرة', neighborhood: 'السكن والحي', school: 'المدرسة أو الجامعة' };
+    function report(d) {
+      const rows = [['الأعضاء', `${d.members} (${d.joined} منهم بحسابات في الموقع)`], ['اللقاءات الأسبوعية المسجّلة', String(d.meetings)],
+        ['نسبة الحضور', d.expected ? `${pctOf(d.present, d.expected)}% (المستهدف 80%)` : 'لا بيانات'], ['وعود أسبوعية', `كُتب ${d.pledges}، وُفّي بـ ${d.kept}`],
+        ['آيات سورة الصف التي علّمها الأعضاء (مجموع)', String(d.ayahs)], ['أيام تطبيق القيم المسجّلة', String(d.deed_days)], ['أوسمة تشجيعية من الإدارة', String(d.awards)],
+        d.honours != null ? ['تكريمات نهائية', String(d.honours)] : null, ['صفحات دفتر القائد', String(d.notes)],
+        d.pact ? ['قيمة ميثاق الفريق', PACT_VALUES[PACT_KEYS.indexOf(d.pact)] || d.pact] : null,
+        d.rank != null ? ['المركز', `${d.rank} من ${d.teams} — ${pts(d.total)} من 100 نقطة`] : null].filter(Boolean);
+      return h('div', { class: 'a-rep', 'data-report': '' }, h('h1', { text: `تقرير ${teamWord(d.team_name)} — مشروع ينابيع` }),
+        h('p', { text: `${COMP_NAME}${d.area ? ' · ' + d.area : ''} · حتى ${todayAr()}` }),
+        h('table', {}, h('tbody', {}, rows.map(x => h('tr', {}, h('th', { scope: 'row', text: x[0] }), h('td', { text: x[1] }))))),
+        h('h2', { text: `المشاريع والمبادرات المقبولة (${d.projects.length})` }),
+        d.projects.length ? h('table', {}, h('thead', {}, h('tr', {}, ['العمل', 'المجال', 'التاريخ', 'المستفيدون'].map(x => h('th', { scope: 'col', text: x })))),
+          h('tbody', {}, d.projects.map(p => h('tr', {}, h('td', { text: p.title }), h('td', { text: PL[p.place] || '' }), h('td', { text: p.done_on ? arDate(p.done_on) : '' }), h('td', { text: p.beneficiaries != null ? String(p.beneficiaries) : '' })))))
+          : h('p', { text: 'لا أعمال مقبولة بعد.' }),
+        h('p', { class: 'a-rep-note', text: 'أرقام مجموعة من موقع ينابيع، بلا أسماء الأطفال.' }),
+        h('p', { class: 'a-print-sign', text: 'قائد الفريق: ......................    المشرف: ......................    الجهة الشريكة: ......................' }));
+    }
+    const go = ev => {
+      const id = teamId || (sel && sel.value);
+      if (!id) return;
+      const b = ev.currentTarget; b.disabled = true; msg.hidden = true;
+      YB.rpc('yb_team_report', { team_id: id }).then(r => {
+        b.disabled = false;
+        if (!r.ok || !r.data || !r.data.ok) { msg.textContent = r.ok ? 'الفريق غير معتمد في المسابقة بعد.' : errMsg(r); msg.hidden = false; say(msg.textContent); return; }
+        printSheets([report(r.data)], 'report');
+      });
+    };
+    put(el, h('h3', { id: 'trep-h' }, icon('file-text'), h('span', { text: 'تقرير الفريق للجهة الشريكة' })),
+      h('p', { class: 'a-lead', text: 'صفحة واحدة للمدرسة أو الجمعية: الحضور والوعود والحفظ والتطبيق والأعمال المقبولة. أرقام فقط، بلا أسماء الأعضاء.' }),
+      sel ? h('div', { class: 'a-f' }, h('label', { class: 'a-l', for: 'trep-team', text: 'الفريق' }), sel) : null, msg,
+      h('div', { class: 'a-actions' }, btn('اطبع التقرير', 'printer', 'btn-primary', go, { 'data-fk': 'trep-print' })));
+    // shown when the backend has 0023 (yb_cert_list answers) and there is a team to report on
+    if (teamId || (teams || []).length) YB.rpc('yb_cert_list', {}).then(r => { if (r.ok) el.hidden = false; });
+    return el;
+  }
+
   // the judge's oath: given once before the first score. The account keeps it; on an older backend this device does.
   // Wording approved by the owner on 17 Nov 2026 ("just do it"); a new wording only needs this string changed.
   const OATH = 'أقسم بالله العظيم أن أحكّم بالعدل والأمانة، وأن أقول الحق في كل درجة أكتبها، فلا أحابي فريقًا ولا أظلم فريقًا، وأن أكتب سبب كل درجة بصدق، وألا أحكّم فريقًا لي فيه ابن أو قريب، وأن أحفظ سرّ الدرجات حتى تعلن الإدارة النتائج.';
@@ -3600,6 +3954,8 @@
     if (n.kind === 'incident_new') return 'سُجّلت واقعة جديدة في سجل الإصابات والطوارئ. افتح «أدوات الإدارة».';
     if (n.kind === 'survey_open') return 'فتحت الإدارة استبيان أولياء الأمور: ثلاثة أسئلة قصيرة عن أثر المسابقة على ابنك. تجده في حسابك.';
     if (n.kind === 'privacy_request') return `طلب جديد عن البيانات الشخصية (${({ delete: 'حذف', correct: 'تصحيح', other: 'آخر' })[d.kind] || ''}). افتح «أدوات الإدارة» ← «الخصوصية»؛ المهلة 30 يومًا.`;
+    if (n.kind === 'honours_announced') return 'أعلنت إدارة المسابقة التكريمات النهائية. افتح حسابك لترى تكريمات فريقك وشهاداتك.';
+    if (n.kind === 'honour') return `تكريم جديد في ${team}: ${honTitle(d.kind, d.axis)}. تجد الشهادة في «شهاداتي».`;
     if (n.kind === 'privacy_done') return 'ردّت إدارة المسابقة على طلبك بشأن بياناتك. افتح «الخصوصية» في أعلى حسابك.';
     if (n.kind === 'lead_review') return `كتب المشرف تقييمك القيادي لهذا الأسبوع: ${d.total ?? ''} من 100. افتح «دفتر القيادة والأثر».`;
     if (n.kind === 'appeal_new') return `تظلّم جديد من ${team} بانتظار البتّ. افتح «أدوات الإدارة».`;
@@ -5731,12 +6087,12 @@
     L.sum = leadSummaryCard(() => { const mn = L.members.filter(m => isMinor(m.age)); return { team: L.team.team_name, status: STATUS[L.team.status] || L.team.status, members: L.members.length, minors: mn.length,
       got: mn.filter(m => m.consent_status === 'received').length, accepted: L.init.accepted || 0, tasks: L.lw.done(), follow: L.mf.counts || null }; });
     dashLayout([
-      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [L.hero, (L.boxes.mday = matchDayCard(t.team_id, t.team_name, 'leader')), (L.boxes.next = nextCard(leaderNext())), leaderTiles(t), L.boxes.top, L.boxes.check, L.staff, L.run, L.opp, matchStaffCard(t.team_id), L.chs, L.hft, awardsCard(t.team_id), L.badges, L.cal, scoresCard(), L.pulse, announceFeed()] },
+      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [L.hero, (L.boxes.mday = matchDayCard(t.team_id, t.team_name, 'leader')), (L.boxes.next = nextCard(leaderNext())), leaderTiles(t), myHonoursCard(), L.boxes.top, L.boxes.check, L.staff, L.run, L.opp, matchStaffCard(t.team_id), L.chs, L.hft, awardsCard(t.team_id), L.badges, L.cal, scoresCard(), L.pulse, announceFeed()] },
       feedGroup(),
       { key: 'matches', label: 'المباريات والمواعيد', icon: 'trophy', one: true, nodes: [L.dates, L.sched.node, L.boxes.marks, appealCard(t.team_id)] },
       { key: 'team', label: 'الفريق', icon: 'users', nodes: [L.boxes.roster, L.boxes.roles, L.boxes.code, (L.style || (L.style = teamStyleCard(t), L.style.start(), L.style)).el, L.printBox] },
       { key: 'projects', label: 'المشاريع والمبادرات', icon: 'image', one: true, nodes: [L.subs.el] },
-      { key: 'lead', label: 'قيادتي', icon: 'flag', nodes: [themeCard(), adminTasksCard(t.team_id), L.mf, L.att, L.tmsg, notebookCard(t.team_id), L.lw, pactCard(t.team_id), L.init, L.sum, raceCard(t.team_id),
+      { key: 'lead', label: 'قيادتي', icon: 'flag', nodes: [themeCard(), adminTasksCard(t.team_id), L.mf, L.att, L.tmsg, notebookCard(t.team_id), L.lw, pactCard(t.team_id), L.init, L.sum, raceCard(t.team_id), certCard(false), teamReportCard(t.team_id),
         h('details', { class: 'a-card a-fold', 'data-lead-more': '', open: !!mine.get().meet }, h('summary', { 'data-fk': 'lead-more', text: 'أدوات اللقاء والورشة (مؤقّت اللقاء الأسبوعي، وأنشطة «الفعل لا القول»)' }), h('div', { class: 'a-fold-b' }, meetingCard(), workshopCard()))] },
       { key: 'players', label: 'لاعبون يبحثون عن فريق', icon: 'users', one: true, nodes: [poolCard('pool')] },
       { key: 'room', label: 'غرفة القادة', icon: 'bell', one: true, nodes: [L.chat.el] },
@@ -6124,7 +6480,7 @@
       box.node];
     dashLayout([
       { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [mHero, mday, nextCard(memberNext(row, ro.ok ? me : null)), ...(() => { const sc = startCard(); return [sc, myWeekCard(() => !sc.hidden)]; })(), memberTiles(row), mv[2], mStaff, mRun, mOpp, matchStaffCard(row.team_id), mChs, mHft, awardsCard(row.team_id), mBadges, mCal, mv[1], mPulse, mv[0], mv[4]] },
-      { key: 'journey', label: 'رحلتي', icon: 'route', nodes: [themeCard(), journeyCard(), pledgeCard(), deedCard(), surahCard(), myMilestonesCard(), attendMineCard(), teamBoardCard(row.team_id), raceCard(row.team_id), mPoints, honorsCard(), toolsCard(false)] },
+      { key: 'journey', label: 'رحلتي', icon: 'route', nodes: [themeCard(), journeyCard(), pledgeCard(), deedCard(), surahCard(), myMilestonesCard(), myHonoursCard(), attendMineCard(), teamBoardCard(row.team_id), raceCard(row.team_id), mPoints, honorsCard(), certCard(false), toolsCard(false)] },
       feedGroup(),
       { key: 'matches', label: 'المباريات والمواعيد', icon: 'trophy', one: true, nodes: [mv[5], mv[7]] },
       { key: 'team', label: 'الفريق', icon: 'users', nodes: [mv[3], seekCard('seek')] },
@@ -6153,7 +6509,7 @@
     const pExtra = k0 ? [staffCard(k0.team_id), runCard(k0.team_id, k0.team_name), oppCard(k0.team_id, k0.team_name), chessCard(k0.team_id, k0.team_name), hifzTeamCard(k0.team_id), badgesCard({ teamId: k0.team_id, teamName: k0.team_name, status: k0.team_status }),
       calCard({ teamId: k0.team_id, teamName: k0.team_name, teamStatus: k0.team_status })] : [];
     const pPulse = pulseCard(), pPoints = pointsCard();
-    const home = [pHero, mday, nextCard(parentNext(kids)), parentTiles(kids), kids.length ? themeCard() : null, kids.length ? surveyCard() : null, kids.length ? childJourneyCard() : null, kids.length ? attendMineCard() : null, kids.length ? matchStaffCard(kids[0].team_id) : null, kids.length ? awardsCard(kids[0].team_id) : null, kids.length ? raceCard(kids[0].team_id) : null, ...pExtra, scoresCard(), pPulse, announceFeed()];
+    const home = [pHero, mday, nextCard(parentNext(kids)), parentTiles(kids), kids.length ? themeCard() : null, kids.length ? surveyCard() : null, kids.length ? childJourneyCard() : null, kids.length ? parentWeekCard() : null, kids.length ? myHonoursCard() : null, kids.length ? attendMineCard() : null, kids.length ? matchStaffCard(kids[0].team_id) : null, kids.length ? awardsCard(kids[0].team_id) : null, kids.length ? raceCard(kids[0].team_id) : null, ...pExtra, scoresCard(), pPulse, announceFeed()];
     const nodes = home, games = [];
     const boxes = [];
     if (!kids.length) nodes.push(h('p', { class: 'a-empty a-card', text: 'لم تربط أي ابن أو ابنة بعد. اكتب رمز الفريق واسم الطفل أدناه.' }));
@@ -6178,7 +6534,7 @@
       { key: 'judge', label: 'التحكيم', icon: 'scale', one: true, nodes: [jd.el] },
       { key: 'matches', label: 'المباريات والمشاريع', icon: 'trophy', one: true, nodes: games },
       { key: 'link', label: 'ربط ابن أو ابنة', icon: 'user-check', nodes: [link, guardianSeekCard('gseek')] },
-      { key: 'guide', label: 'المسابقة والنقاط', icon: 'route', nodes: [journeyCard(), pPoints, honorsCard(), toolsCard(false)] }]);
+      { key: 'guide', label: 'المسابقة والنقاط', icon: 'route', nodes: [journeyCard(), pPoints, honorsCard(), kids.length ? certCard(false) : null, toolsCard(false)] }]);
     startSchedule(boxes);
     if (mday) mday.start();
     [pHero, pPulse, pPoints, ...pExtra].forEach(x => x.start());

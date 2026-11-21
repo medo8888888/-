@@ -704,3 +704,73 @@ html.is-dash body{background-image:radial-gradient(900px 480px at 100% -8%,color
 .a-notice-ack{border-color:color-mix(in oklab,var(--brand) 45%,var(--line))}
 .a-banner.warn{background:color-mix(in oklab,var(--sun) 12%,var(--surface));border-color:color-mix(in oklab,var(--sun) 55%,var(--line));color:var(--ink)}
 .a-banner.warn .i{color:var(--sun)}
+
+/* --- the closing (migration 0023): honours, certificates, the ceremony show, the parent's week, the partner's report */
+.a-hon-sug li,.a-crt-l li{display:grid;gap:.35rem}
+.a-crt-l li{grid-template-columns:1fr auto;align-items:center}
+.a-hon-sug li.ok{border-color:color-mix(in oklab,var(--leaf) 45%,var(--line))}
+.a-hon-form{display:grid;gap:.4rem;margin-top:.35rem}
+.a-hon-form textarea{width:100%;min-height:64px;padding:.55rem .7rem;border:1px solid var(--line-2);border-radius:12px;background:var(--surface);color:var(--ink);font:inherit}
+.a-hon-h4{margin:1.3rem 0 .5rem;padding-top:.9rem;border-top:1px solid var(--line);font-size:1rem;color:var(--head)}
+.a-crt-g{margin-top:.7rem}
+.a-myh .a-hon-l li.mine{border-color:color-mix(in oklab,var(--leaf) 55%,var(--line));background:color-mix(in oklab,var(--leaf) 8%,var(--surface))}
+.a-check{display:flex;align-items:center;gap:.5rem;min-height:44px;cursor:pointer}
+.a-check input{width:20px;height:20px;accent-color:var(--brand)}
+.a-pwk-w select{min-height:44px;padding:.35rem .7rem;border:1px solid var(--line-2);border-radius:12px;background:var(--surface);color:var(--ink);font:inherit}
+.a-pwk-theme{margin:.2rem 0 .6rem;padding:.55rem .8rem;border-radius:12px;background:color-mix(in oklab,var(--brand) 9%,var(--surface))}
+.a-pwk-c{padding:.7rem 0;border-top:1px solid var(--line)}
+.a-pwk-c:first-of-type{border-top:0}
+.a-trep select{min-height:44px;width:100%;max-width:360px;padding:.35rem .7rem;border:1px solid var(--line-2);border-radius:12px;background:var(--surface);color:var(--ink);font:inherit}
+
+/* the ceremony show: a full screen above everything, big type for a hall */
+html.a-cer-on{overflow:hidden}
+.a-cer{position:fixed;inset:0;z-index:1000;display:grid;grid-template-rows:1fr auto;background:radial-gradient(120% 90% at 80% 0%,#13b5ad 0%,#0a4f63 45%,#06202c 100%);color:#fff;direction:rtl}
+.a-cer:focus{outline:none}
+.a-cer-stage{display:grid;place-items:center;padding:clamp(16px,4vw,64px);cursor:pointer;overflow:hidden;text-align:center}
+.a-cer-s{display:grid;gap:clamp(8px,1.6vw,22px);justify-items:center;max-width:min(1200px,92vw);animation:a-cer-in .6s var(--ease) both}
+@keyframes a-cer-in{from{opacity:0;transform:translateY(24px) scale(.97)}to{opacity:1;transform:none}}
+.a-cer-s h2{margin:0;font-family:var(--font-h);font-size:clamp(2rem,7vw,6rem);line-height:1.2;color:#fff;text-wrap:balance}
+.a-cer-k{margin:0;font-family:var(--font-h);font-size:clamp(1.1rem,3vw,2.4rem);color:#bff3ec;font-weight:600}
+.a-cer-sub{margin:0;font-size:clamp(1rem,2.4vw,1.9rem);color:rgba(255,255,255,.85)}
+.a-cer-ayah{margin:.6em 0 0;font-family:'Amiri',serif;font-size:clamp(1.3rem,3.2vw,2.6rem);color:#fff}
+.a-cer-pts{margin:0;font-size:clamp(1.2rem,3.4vw,2.8rem);font-variant-numeric:tabular-nums;color:#ffe7a3}
+.a-cer-team.top h2{font-size:clamp(2.4rem,9vw,7.5rem);text-shadow:0 0 40px rgba(255,231,163,.45)}
+.a-cer-team.r1 .a-cer-k{color:#ffd76a}
+.a-cer-n{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,40vw),1fr));gap:clamp(10px,2vw,26px);width:min(1100px,92vw)}
+.a-cer-n li{display:grid;gap:.2rem;padding:clamp(12px,2vw,26px);border-radius:22px;background:rgba(255,255,255,.1)}
+.a-cer-n b{font-family:var(--font-h);font-size:clamp(2rem,5.5vw,4.4rem);font-variant-numeric:tabular-nums}
+.a-cer-n span{font-size:clamp(.95rem,1.8vw,1.4rem);color:rgba(255,255,255,.85)}
+.a-cer-pj img{max-width:min(900px,86vw);max-height:52vh;border-radius:22px;object-fit:cover;box-shadow:0 18px 50px rgba(0,0,0,.35)}
+.a-cer-bar{display:flex;align-items:center;justify-content:center;gap:.7rem;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:rgba(0,0,0,.25)}
+.a-cer-bar .btn{min-height:44px}
+.a-cer-bar .btn-ghost{color:#fff;background:transparent;border-color:rgba(255,255,255,.55)}
+.a-cer-bar .btn-ghost:hover{background:rgba(255,255,255,.12)}
+.a-cer-bar .btn:disabled{opacity:.45}
+.a-cer-num h2{font-size:clamp(1.8rem,5vw,4rem);margin-bottom:clamp(6px,1.2vw,16px)}
+.a-cer-c{min-width:5.5ch;text-align:center;font-variant-numeric:tabular-nums;color:rgba(255,255,255,.85)}
+@media (prefers-reduced-motion:reduce){.a-cer-s{animation:none}}
+
+@media print{
+  /* certificates: A4 landscape, one a page, a double frame, black on white */
+  @page cert{size:A4 landscape;margin:10mm}
+  html.yb-print-sheet .a-ps-certs{font:13pt/1.7 var(--font)}
+  .a-cert{page:cert;break-after:page;height:186mm;box-sizing:border-box;padding:6mm}
+  .a-cert:last-child{break-after:auto}
+  .a-cert-in{height:100%;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4mm;text-align:center;
+    border:2.5pt double #0a5a62;outline:1pt solid #0a5a62;outline-offset:3mm;padding:10mm 18mm}
+  .a-cert-org{margin:0;font-size:12pt;letter-spacing:.04em;color:#0a5a62}
+  .a-cert-t{margin:0;font-family:var(--font-h);font-size:30pt;color:#0a3d4a}
+  .a-cert-pre{margin:0;font-size:15pt}
+  .a-cert-name{margin:0;font-family:var(--font-h);font-size:28pt;font-weight:700;border-bottom:1pt solid #999;padding:0 12mm 2mm}
+  .a-cert-line{margin:0;font-size:14pt;max-width:220mm}
+  .a-cert-ayah{margin:2mm 0 0;font-family:'Amiri',serif;font-size:17pt}
+  .a-cert-sign{display:flex;justify-content:space-between;width:100%;max-width:220mm;margin-top:6mm}
+  .a-cert-sign span{min-width:60mm;margin-top:12mm;padding-top:2mm;border-top:1pt solid #555;font-size:11pt}
+  .a-cert-date{margin:0;font-size:10pt;color:#444}
+  /* the partner's report: A4 portrait */
+  .a-ps-report h2{font-size:13pt;margin:12pt 0 4pt}
+  .a-ps-report th{width:46%;background:#f3f3f3}
+  .a-ps-report thead th{width:auto}
+  .a-rep-note{font-size:10pt;color:#444}
+  .a-cer{display:none!important}
+}

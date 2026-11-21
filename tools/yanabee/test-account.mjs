@@ -510,6 +510,85 @@ class Fake {
       yb_post_delete: ['id'], yb_post_moderate: ['id', 'action', 'note'], yb_react: ['post_id', 'kind'], yb_comments: ['post_id'], yb_comment_post: ['post_id', 'body'],
       yb_comment_delete: ['id'], yb_comment_report: ['id', 'reason'], yb_comment_moderate: ['id', 'action'], yb_comment_mute: ['id', 'hours', 'reason'], yb_feed_reports: [],
       yb_set_members_comment: ['allow'], yb_transfer_team: ['team_id', 'new_leader', 'old_stays', 'old_role'], yb_analytics: [] };
+    /* migration 0023: honours, certificates, the ceremony, the parent's week, the partner's report. Off unless a test sets c23.
+       A test sets this.c23stats[member_id], this.c23ranks (team_id -> {rank, total}), this.c23published and this.c23week[member_id]. */
+    if (/^yb_(honour_give|honour_remove|honours_board|honours_announce|honours_suggest|my_honours|cert_list|ceremony|parent_week|team_report)$/.test(name)) {
+      if (!this.c23) return err(404, 'PGRST202', 'Could not find the function public.' + name);
+      body = body || {};
+      const ok = d => ({ status: 200, body: d });
+      this.honours = this.honours || []; this.c23stats = this.c23stats || {}; this.c23ranks = this.c23ranks || new Map(); this.c23week = this.c23week || {};
+      const prof = this.profiles.find(x => x.id === me) || {}, adm = prof.role === 'admin';
+      const inPlay = t => { const x = this.teams.find(y => y.id === t); return !!x && x.status === 'approved' && !x.waitlist; };
+      const tName = t => (this.teams.find(y => y.id === t) || {}).name;
+      const leaderName = t => { const x = this.teams.find(y => y.id === t); return x ? (this.profiles.find(q => q.id === x.leader_id) || {}).full_name : null; };
+      const hName = hn => (hn.kind === 'leader' ? leaderName(hn.team_id) : (this.members.find(m => m.id === hn.member_id) || {}).full_name);
+      const myTeams = new Set([...this.teams.filter(t => t.leader_id === me).map(t => t.id), ...this.members.filter(m => m.user_id === me).map(m => m.team_id),
+        ...this.links.filter(l => l.parent_id === me).map(l => (this.members.find(m => m.id === l.member_id) || {}).team_id)].filter(Boolean));
+      const adminOnly = ['yb_honour_give', 'yb_honour_remove', 'yb_honours_board', 'yb_honours_announce', 'yb_honours_suggest', 'yb_ceremony'];
+      if (adminOnly.includes(name) && !adm) return raise('permission_denied', '42501');
+      const board = () => this.honours.map(hn => ({ id: hn.id, kind: hn.kind, axis: hn.axis, team_id: hn.team_id, team_name: tName(hn.team_id), member_id: hn.member_id, name: hName(hn), reason: hn.reason, at: hn.at }));
+      if (name === 'yb_honours_board') return ok({ announced: !!this.honoursAnnounced, honours: board() });
+      if (name === 'yb_honour_give') {
+        const k = body.kind, ax = k === 'medal' ? body.axis : null, mid = k === 'leader' ? null : body.member_id, r = String(body.reason || '').trim().replace(/\s+/g, ' ');
+        if (!inPlay(body.team_id)) return ok({ ok: false, error: 'team_not_found' });
+        if (!['trip', 'medal', 'leader'].includes(k) || r.length < 3 || r.length > 200 || (k === 'medal' && !['hifz', 'fahm', 'tatbiq', 'taawun', 'mubadara'].includes(ax))) return ok({ ok: false, error: 'invalid_data' });
+        if (/\d{7,}|@/.test(r)) return ok({ ok: false, error: 'contact_not_allowed' });
+        if (k !== 'leader' && !this.members.some(m => m.id === mid && m.team_id === body.team_id)) return ok({ ok: false, error: 'member_not_found' });
+        if (this.honours.some(x => x.kind === k && (x.axis || null) === ax && (k === 'leader' ? x.team_id === body.team_id : x.member_id === mid))) return ok({ ok: false, error: 'already_given' });
+        const id = (this.honourSeq = (this.honourSeq || 0) + 1);
+        this.honours.push({ id, kind: k, axis: ax, team_id: body.team_id, member_id: mid, reason: r, at: this.now() });
+        return ok({ ok: true, id });
+      }
+      if (name === 'yb_honour_remove') { const i = this.honours.findIndex(x => x.id === body.id); if (i < 0) return ok({ ok: false, error: 'not_found' }); this.honours.splice(i, 1); return ok({ ok: true }); }
+      if (name === 'yb_honours_announce') {
+        const a = !!body.announce;
+        if (a && !this.honours.length) return ok({ ok: false, error: 'nothing_to_announce' });
+        if (a && !this.honoursAnnounced) this.notify(this.profiles.filter(x => x.id !== me).map(x => x.id), 'honours_announced', {});
+        this.honoursAnnounced = a;
+        return ok({ ok: true, announced: a });
+      }
+      const st = m => Object.assign({ held: 0, came: 0, pledges: 0, kept: 0, hifz: 0, deed_days: 0, awards: {} }, this.c23stats[m.id] || {});
+      if (name === 'yb_honours_suggest') return ok({
+        members: this.members.filter(m => inPlay(m.team_id)).map(m => Object.assign({ member_id: m.id, team_id: m.team_id, team_name: tName(m.team_id), name: m.full_name, is_leader: !!m.is_leader, joined: !!m.user_id }, st(m))),
+        leaders: this.teams.filter(t => inPlay(t.id) && t.leader_id).map(t => Object.assign({ team_id: t.id, team_name: t.name, name: leaderName(t.id), rank: null, total: null, meetings: 0, present: 0, expected: 0, notes: 0, review: null, lead_came: 0, lead_held: 0, projects: 0, leader_awards: 0 }, (this.c23lead || {})[t.id] || {})) });
+      if (name === 'yb_my_honours') {
+        if (!this.honoursAnnounced) return ok({ announced: false, honours: [] });
+        return ok({ announced: true, honours: this.honours.filter(x => myTeams.has(x.team_id) || adm).map(x => ({ kind: x.kind, axis: x.axis, team_name: tName(x.team_id), name: String(hName(x) || '').split(/\s+/)[0],
+          mine: (x.kind === 'leader' && (this.teams.find(t => t.id === x.team_id) || {}).leader_id === me) || this.members.some(m => m.id === x.member_id && m.user_id === me) || this.links.some(l => l.parent_id === me && l.member_id === x.member_id) })) });
+      }
+      if (name === 'yb_cert_list') {
+        const people = this.members.filter(m => inPlay(m.team_id) && (adm || m.user_id === me || (this.teams.find(t => t.id === m.team_id) || {}).leader_id === me || this.links.some(l => l.parent_id === me && l.member_id === m.id)));
+        const tms = new Set([...people.map(m => m.team_id), ...this.teams.filter(t => t.leader_id === me && inPlay(t.id)).map(t => t.id)]);
+        const pub = adm || !!this.c23published, ann = adm || !!this.honoursAnnounced;
+        return ok({ published: !!this.c23published, announced: !!this.honoursAnnounced,
+          people: people.map(m => ({ member_id: m.id, team_id: m.team_id, team_name: tName(m.team_id), name: m.full_name, is_leader: !!m.is_leader })),
+          teams: pub ? [...this.c23ranks].filter(([t]) => tms.has(t)).map(([t, v]) => ({ team_id: t, team_name: tName(t), rank: v.rank, total: v.total, leader: leaderName(t), mine: (this.teams.find(x => x.id === t) || {}).leader_id === me })) : [],
+          honours: ann ? this.honours.filter(x => adm || people.some(m => m.id === x.member_id) || (x.kind === 'leader' && (this.teams.find(t => t.id === x.team_id) || {}).leader_id === me))
+            .map(x => ({ kind: x.kind, axis: x.axis, team_id: x.team_id, team_name: tName(x.team_id), member_id: x.member_id, name: hName(x) })) : [] });
+      }
+      if (name === 'yb_ceremony') return ok({ published: !!this.c23published, announced: !!this.honoursAnnounced,
+        teams: [...this.c23ranks].map(([t, v]) => ({ team_id: t, team_name: tName(t), total: v.total, rank: v.rank })).sort((a, b) => b.rank - a.rank),
+        honours: this.honours.map(x => ({ kind: x.kind, axis: x.axis, team_name: tName(x.team_id), name: hName(x), reason: x.reason })),
+        numbers: Object.assign({ teams: this.teams.filter(t => inPlay(t.id)).length, members: this.members.filter(m => inPlay(m.team_id)).length, meetings: 0, present: 0, expected: 0, pledges: 0, kept: 0, ayahs: 0, deed_days: 0, projects: 0, beneficiaries: 0 }, this.c23numbers || {}) });
+      if (name === 'yb_parent_week') {
+        if (!/^\d{4}-\d\d-\d\d$/.test(String(body.week || '')) || new Date(body.week + 'T12:00:00Z').getUTCDay() !== 6) return ok({ ok: false, error: 'invalid_data' });
+        (this.c23weeksAsked = this.c23weeksAsked || []).push(body.week);
+        const kids = this.links.filter(l => l.parent_id === me).map(l => this.members.find(m => m.id === l.member_id)).filter(Boolean);
+        return ok({ ok: true, week: body.week, theme: (this.c23theme || {})[body.week] || null,
+          children: kids.map(m => Object.assign({ member_id: m.id, name: m.full_name, team_name: tName(m.team_id), joined: !!m.user_id, pledge: null, kept: 0, hifz: 0, deed_days: 0, meeting: null, held: 0, came: 0, awards: [] },
+            (this.c23week[m.id] || {})[body.week] || {})) });
+      }
+      if (name === 'yb_team_report') {
+        const t = this.teams.find(x => x.id === body.team_id);
+        if (!adm && !(t && t.leader_id === me)) return raise('permission_denied', '42501');
+        if (!t || !inPlay(t.id)) return ok({ ok: false, error: 'team_not_found' });
+        const r = this.c23ranks.get(t.id);
+        return ok(Object.assign({ ok: true, team_name: t.name, area: t.area, members: this.members.filter(m => m.team_id === t.id).length, joined: this.members.filter(m => m.team_id === t.id && m.user_id).length,
+          meetings: 4, present: 18, expected: 20, pledges: 12, kept: 9, ayahs: 40, deed_days: 31, awards: 2, honours: adm || this.honoursAnnounced ? this.honours.filter(x => x.team_id === t.id).length : null,
+          notes: 3, pact: 'sidq', projects: [{ title: 'تنظيف حديقة الحي', kind: 'activity', place: 'neighborhood', done_on: '2026-11-08', beneficiaries: 40, members_n: 5 }],
+          rank: r && (adm || this.c23published) ? r.rank : null, total: r && (adm || this.c23published) ? r.total : null, teams: this.teams.filter(x => inPlay(x.id)).length }, (this.c23report || {})[t.id] || {}));
+      }
+    }
     /* migration 0022: reading the privacy notice. Off unless a test sets n22. */
     if (/^yb_notice_(state|ack|board)$/.test(name)) {
       if (!this.n22) return err(404, 'PGRST202', 'Could not find the function public.' + name);
@@ -2388,7 +2467,7 @@ let memberEmail = 'sara@t.test', parentEmail = 'parent@t.test';
   check('member sees own consent status (received: set by the admin)', /استُلمت موافقة ولي الأمر/.test(mt));
   check('no admin / leader controls on the member screen', !(await M.locator('input[role=switch], form.a-add, button[data-fk=submit], .a-tabs-4').count()));
   const reqs = world.log.filter(l => l.who === world.profileByEmail(memberEmail).id).map(l => l.path.replace('/rest/v1/', ''));
-  check('member screen reads only my_team, my_roster, tournament_state and the own profile (never teams, team_members, profiles list)', reqs.every(r => /^(rpc\/(my_team|join_team|yb_attend_mine|yb_notice_state|yb_event_staff_list|yb_theme_get|yb_team_awards|yb_journey_me|yb_team_board|yb_my_pledges|yb_week_race|yb_mark_read|yb_my_scores|yb_my_prefs|yb_feed|yb_seek_me|yb_team_staff)|my_roster|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements|yb_match_live|yb_team_style)$/.test(r)), [...new Set(reqs)].join());
+  check('member screen reads only my_team, my_roster, tournament_state and the own profile (never teams, team_members, profiles list)', reqs.every(r => /^(rpc\/(my_team|join_team|yb_attend_mine|yb_notice_state|yb_my_honours|yb_cert_list|yb_event_staff_list|yb_theme_get|yb_team_awards|yb_journey_me|yb_team_board|yb_my_pledges|yb_week_race|yb_mark_read|yb_my_scores|yb_my_prefs|yb_feed|yb_seek_me|yb_team_staff)|my_roster|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements|yb_match_live|yb_team_style)$/.test(r)), [...new Set(reqs)].join());
   const tour = await M.locator('.a-sched').innerText();
   check('schedule card shows the empty state before the tournament is published', /لم تُنشر بيانات البطولة بعد/.test(tour));
   // second account tries the same name
@@ -2443,7 +2522,7 @@ let memberEmail = 'sara@t.test', parentEmail = 'parent@t.test';
   const chips = await P.locator('.a-child .a-consent .a-chip').allInnerTexts();
   check('two children: one «استُلمت», one «لم تُستلم بعد»; ONE schedule card for the shared team', chips.some(c => /^استُلمت/.test(c)) && chips.some(c => /لم تُستلم/.test(c)) && (await P.locator('.a-sched').count()) === 1);
   const preqs = world.log.filter(l => l.who === world.profileByEmail(parentEmail).id).map(l => l.path.replace('/rest/v1/', ''));
-  check('parent screen reads only my_children, tournament_state and the own profile', preqs.every(r => /^(rpc\/(link_child|yb_attend_mine|yb_survey_mine|yb_notice_state|yb_event_staff_list|yb_theme_get|yb_team_awards|yb_child_journey|yb_week_race|yb_mark_read|yb_my_scores|yb_my_judging|yb_my_prefs|yb_feed|yb_guardian_seekers|yb_team_staff)|my_children|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements|yb_match_live|yb_team_style)$/.test(r)), [...new Set(preqs)].join());
+  check('parent screen reads only my_children, tournament_state and the own profile', preqs.every(r => /^(rpc\/(link_child|yb_attend_mine|yb_survey_mine|yb_notice_state|yb_my_honours|yb_cert_list|yb_parent_week|yb_event_staff_list|yb_theme_get|yb_team_awards|yb_child_journey|yb_week_race|yb_mark_read|yb_my_scores|yb_my_judging|yb_my_prefs|yb_feed|yb_guardian_seekers|yb_team_staff)|my_children|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements|yb_match_live|yb_team_style)$/.test(r)), [...new Set(preqs)].join());
   check('parent console clean', P.errs.length === 0, P.errs.join('|'));
   world.P = P;
 }
@@ -5517,7 +5596,7 @@ section('tools for the admin (0017): the value of the week, encouragement awards
   await aw.locator('[data-fk="aw-give"]').click();
   await A.waitForFunction(() => document.querySelectorAll('[data-tool-awards] [data-award-row]').length === 2, null, { timeout: 8000 });
   await A.locator('[data-fk="tg-leaders"]').click();
-  check('the tools are in five groups; choosing «القادة» shows the leaders\' tools only', (await A.locator('[data-fk="tg-leaders"]').getAttribute('aria-pressed')) === 'true' && (await A.locator('[data-tool-tasks]').isVisible()) && !(await A.locator('[data-tool-theme]').isVisible()) && (await A.locator('[data-tools-groups] button').allInnerTexts()).join('|') === 'هذا الأسبوع|المباريات|القادة|الأثر|الخصوصية');
+  check('the tools are in six groups; choosing «القادة» shows the leaders\' tools only', (await A.locator('[data-fk="tg-leaders"]').getAttribute('aria-pressed')) === 'true' && (await A.locator('[data-tool-tasks]').isVisible()) && !(await A.locator('[data-tool-theme]').isVisible()) && (await A.locator('[data-tools-groups] button').allInnerTexts()).join('|') === 'هذا الأسبوع|المباريات|القادة|الأثر|الخصوصية|الختام');
   const tk = A.locator('[data-tool-tasks]');
   await tk.locator('[data-fk="tk-title"]').fill('رقمي 0791234567 للتواصل');
   await tk.locator('[data-fk="tk-add"]').click();
@@ -6219,6 +6298,214 @@ section('security round 2: local fonts, a shared device and signing out when idl
   check('the fonts come from this site: no request to Google, and the Arabic fonts load', fontReq.length > 0 && fontReq.every(u => u.startsWith(ORIGIN + '/fonts/')) && usedFont, fontReq.slice(0, 3).join(' '));
   const hdr = fs.readFileSync(path.join(SITE, '_headers'), 'utf8');
   check('the content policy no longer allows Google\'s hosts', !/googleapis|gstatic/.test(hdr) && /font-src 'self' data:/.test(hdr));
+}
+
+section('the closing (0023): honours, certificates, the ceremony show, the parent\'s week, the partner\'s report');
+{
+  const fake = new Fake();
+  fake.c23 = true; fake.t17 = true;   // the tools tab needs 0017
+  fake.addUser({ email: 'boss3@t.test', name: 'محمود المشرف', role: 'member' }); fake.setAdmin('boss3@t.test');
+  fake.addUser({ email: 'lc@t.test', name: 'خالد قائد الصقور', role: 'leader' });
+  fake.addUser({ email: 'ln@t.test', name: 'قائد النجوم', role: 'leader' });
+  const kid = fake.addUser({ email: 'kc@t.test', name: 'عمر بن خالد', role: 'member' });
+  const par = fake.addUser({ email: 'pc@t.test', name: 'ولي عمر', role: 'parent' });
+  const TS = fake.seedTeam({ leaderEmail: 'lc@t.test', name: 'الصقور', status: 'approved', members: [{ name: 'عمر بن خالد', age: 14 }, { name: 'سالم أحمد', age: 13 }, { name: 'يوسف علي', age: 13 }, { name: 'زيد محمد', age: 14 }] });
+  const TN = fake.seedTeam({ leaderEmail: 'ln@t.test', name: 'النجوم', status: 'approved', members: [{ name: 'حسن علي', age: 14 }, { name: 'بلال سعيد', age: 13 }, { name: 'أنس عمر', age: 13 }, { name: 'مازن خالد', age: 14 }] });
+  fake.teams.forEach(t => { t.waitlist = false; });
+  const kidRow = fake.members.find(m => m.full_name === 'عمر بن خالد'); kidRow.user_id = kid.id;
+  fake.links.push({ parent_id: par.id, member_id: kidRow.id });
+  const nAll = fake.members.filter(m => [TS.id, TN.id].includes(m.team_id)).length, nS = fake.members.filter(m => m.team_id === TS.id).length;
+  fake.c23stats = { [kidRow.id]: { held: 4, came: 4, pledges: 3, kept: 3, hifz: 14, deed_days: 12, awards: { tatbiq: 1 } } };
+  fake.c23ranks = new Map([[TS.id, { rank: 1, total: 86.5 }], [TN.id, { rank: 2, total: 71 }]]);
+  fake.c23numbers = { meetings: 8, present: 36, expected: 40, kept: 21, ayahs: 96, deed_days: 140, projects: 5, beneficiaries: 120 };
+  const txt = async l => (await l.innerText()).replace(/\s+/g, ' ');
+  const got = (u, kind) => fake.notes.filter(n => n.user_id === u && n.kind === kind);
+  const ayahOk = fs.readFileSync(path.join(ROOT, 'content/yanabee/competition.txt'), 'utf8').includes('﴿كَبُرَ مَقْتًا عِندَ اللَّهِ أَن تَقُولُوا مَا لَا تَفْعَلُونَ﴾');
+  check('the verse printed on the certificates is the competition\'s own, word for word (competition.txt)', ayahOk && fs.readFileSync(path.join(SITE, 'js/account.js'), 'utf8').includes("const CERT_AYAH = '﴿كَبُرَ مَقْتًا عِندَ اللَّهِ أَن تَقُولُوا مَا لَا تَفْعَلُونَ﴾'"));
+
+  /* ---- the admin: «الختام» in the tools ---- */
+  const A = await open(fake, { label: 'c23-admin' });
+  await settle(A); await signInOk(A, 'boss3@t.test');
+  await A.evaluate(() => { window.__printed = 0; window.print = () => { window.__printed++; }; });
+  await A.locator('#at-tools').click();
+  await A.locator('[data-fk="tg-closing"]').click();
+  const hd = A.locator('[data-honours-desk]');
+  await hd.locator('[data-hon-suggest="trip"]').waitFor({ timeout: 8000 });
+  check('«الختام» shows the honours desk, the ceremony, the certificates and the partner\'s report', (await hd.isVisible()) && (await A.locator('[data-ceremony-card]').isVisible()) && (await A.locator('[data-admin-tools] [data-certs]').isVisible()) && (await A.locator('[data-admin-tools] [data-team-report]').isVisible()));
+  check('the trip list is suggested from the season: Omar first (4 of 4 meetings, 3 promises kept, 12 days)', (await hd.locator('[data-hon-suggest] > li').first().getAttribute('data-hon-row')) === 'm-' + kidRow.id && /حضر 4 من 4 لقاءات/.test(await txt(hd.locator('[data-hon-suggest] > li').first())));
+  check('nothing is announced yet', /غير مُعلنة بعد/.test(await txt(hd)));
+  await hd.locator(`[data-fk="hon-give-m-${kidRow.id}"]`).click();
+  const reason = hd.locator('[data-fk="hon-reason"]');
+  await reason.waitFor({ timeout: 8000 });
+  check('«امنح» opens a reason filled from the numbers, to edit', /حضر 4 من 4 لقاءات، وفّى بـ 3 من 3 وعود، 12 يوم تطبيق/.test(await reason.inputValue()));
+  await reason.fill('لا');
+  await hd.locator('[data-fk="hon-confirm"]').click();
+  await A.waitForFunction(() => /3 أحرف على الأقل/.test((document.querySelector('[data-honours-desk]') || {}).textContent || ''), null, { timeout: 8000 });
+  check('a reason too short is refused with the Arabic message', fake.honours.length === 0);
+  await reason.fill('حضر كل لقاءات فريقه ووفّى بوعوده');
+  await hd.locator('[data-fk="hon-confirm"]').click();
+  await hd.locator(`[data-hon-row="m-${kidRow.id}"].ok`).waitFor({ timeout: 8000 });
+  check('the trip is given, marked «مُنح», and listed with its reason', fake.honours.length === 1 && fake.honours[0].kind === 'trip' && /رحلة المتميزين: عمر بن خالد/.test(await txt(hd.locator('[data-hon-given]'))) && /حضر كل لقاءات فريقه/.test(await txt(hd.locator('[data-hon-given]'))));
+  await hd.locator('[data-fk="hon-k-hifz"]').click();
+  await hd.locator('[data-hon-suggest="hifz"]').waitFor({ timeout: 8000 });
+  check('the memorisation medal is ranked by ayahs (14 of 14 first)', /14 من 14 آية/.test(await txt(hd.locator('[data-hon-suggest] > li').first())));
+  await hd.locator(`[data-fk="hon-give-m-${kidRow.id}"]`).click();
+  await hd.locator('[data-fk="hon-confirm"]').waitFor({ timeout: 8000 });
+  await hd.locator('[data-fk="hon-confirm"]').click();
+  await A.waitForFunction(() => document.querySelectorAll('[data-honours-desk] [data-hon-given] li').length === 2, null, { timeout: 8000 });
+  await hd.locator('[data-fk="hon-k-leader"]').click();
+  await hd.locator('[data-hon-suggest="leader"]').waitFor({ timeout: 8000 });
+  check('the leader award lists one row per team leader', (await hd.locator('[data-hon-suggest] > li').count()) === 2 && /خالد قائد الصقور/.test(await txt(hd.locator('[data-hon-suggest]'))));
+  await hd.locator(`[data-fk="hon-give-l-${TS.id}"]`).click();
+  await hd.locator('[data-fk="hon-confirm"]').waitFor({ timeout: 8000 });
+  await hd.locator('[data-fk="hon-confirm"]').click();
+  await A.waitForFunction(() => document.querySelectorAll('[data-honours-desk] [data-hon-given] li').length === 3, null, { timeout: 8000 });
+  check('three honours: the trip, the memorisation medal, the outstanding leader', fake.honours.map(x => x.kind + (x.axis ? ':' + x.axis : '')).sort().join(',') === 'leader,medal:hifz,trip');
+  const hifzId = fake.honours.find(x => x.axis === 'hifz').id;
+  await hd.locator(`[data-fk="hon-x-${hifzId}"]`).click();
+  await A.waitForFunction(() => document.querySelectorAll('[data-honours-desk] [data-hon-given] li').length === 2, null, { timeout: 8000 });
+  check('«اسحبه» takes one back', fake.honours.length === 2 && !fake.honours.some(x => x.axis === 'hifz'));
+
+  // the ceremony, before the announcement (a surprise in the hall)
+  const cc = A.locator('[data-ceremony-card]');
+  await cc.locator('[data-fk="cer-start"]').waitFor({ timeout: 8000 });
+  await A.evaluate(() => { Element.prototype.requestFullscreen = function () { return Promise.resolve(); }; });
+  await cc.locator('[data-fk="cer-start"]').click();
+  const show = A.locator('[data-ceremony]');
+  await show.waitFor({ timeout: 8000 });
+  const nSlides = 1 + 1 + 2 + 2 + 1;   // title, numbers, two teams, two honours, the end
+  check('«ابدأ العرض» opens the full-screen show on the title, with the competition\'s verse', (await show.getAttribute('role')) === 'dialog' && (await A.locator('.a-cer-stage').getAttribute('data-cer-slide')) === 'title'
+    && (await txt(A.locator('[data-cer-count]'))) === `1 / ${nSlides}` && /حفل ختام المسابقة الأولى/.test(await txt(show)) && /كَبُرَ مَقْتًا/.test(await txt(show)));
+  await A.keyboard.press('ArrowLeft');
+  check('the left arrow goes on: the season in numbers', (await A.locator('.a-cer-stage').getAttribute('data-cer-slide')) === 'numbers' && /90%/.test(await txt(show)) && /96/.test(await txt(show)));
+  await A.keyboard.press('ArrowLeft');
+  check('then the teams from the last place: second place first', /المركز الثاني/.test(await txt(show)) && /النجوم/.test(await txt(show)));
+  await A.locator('.a-cer-stage').click();
+  check('a click goes on: first place, with its points', /المركز الأول/.test(await txt(show)) && /الصقور/.test(await txt(show)) && /86\.5 من 100/.test(await txt(show)));
+  await A.keyboard.press('ArrowRight');
+  check('the right arrow goes back', /المركز الثاني/.test(await txt(show)));
+  await A.keyboard.press('ArrowLeft'); await A.keyboard.press('ArrowLeft');
+  const honTxt = await txt(show);
+  check('the honours follow, with the first name only by default', (await A.locator('.a-cer-stage').getAttribute('data-cer-slide')) === 'honour' && /عمر|خالد/.test(honTxt) && !/عمر بن خالد|خالد قائد الصقور/.test(honTxt));
+  check('the show covers the page and does not overflow', (await overflow(A)) <= 0);
+  await A.keyboard.press('Escape');
+  check('Esc closes the show and gives the focus back to «ابدأ العرض»', (await A.locator('[data-ceremony]').count()) === 0 && (await A.evaluate(() => document.activeElement && document.activeElement.getAttribute('data-fk'))) === 'cer-start');
+
+  // the announcement
+  await hd.locator('[data-fk="hon-announce"]').click();
+  await A.waitForFunction(() => /مُعلنة/.test((document.querySelector('[data-honours-desk] .a-chip') || {}).textContent || '') && !/غير/.test(document.querySelector('[data-honours-desk] .a-chip').textContent), null, { timeout: 8000 });
+  check('«أعلن التكريمات» announces, and everyone but the admin is told', fake.honoursAnnounced === true && got(kid.id, 'honours_announced').length === 1 && got(par.id, 'honours_announced').length === 1 && !fake.notes.some(n => n.kind === 'honours_announced' && n.user_id === fake.profileByEmail('boss3@t.test').id));
+
+  // certificates: everyone in play, the two top places, the honours
+  const ac = A.locator('[data-admin-tools] [data-certs]');
+  await ac.locator('[data-cert-group="part"]').waitFor({ timeout: 8000 });
+  check('the admin\'s certificates: a participation one for each of the people in play, two places, two honours', /شهادات المشاركة \(\d+\)/.test(await txt(ac)) && (await ac.locator('[data-cert-group="part"] [data-cert-row]').count()) === nAll
+    && (await ac.locator('[data-cert-group="place"] [data-cert-row]').count()) === 2 && (await ac.locator('[data-cert-group="honour"] [data-cert-row]').count()) === 2);
+  await ac.locator('[data-fk="crt-all-part"]').click();
+  check('«اطبع الكل» prints one A4 page per person, with the name, the team and the verse', (await A.evaluate(() => window.__printed)) === 1 && (await A.locator('.a-print-sheet [data-cert="part"]').count()) === nAll
+    && /عمر بن خالد/.test(await A.locator('.a-print-sheet').textContent()) && /ضمن فريق الصقور/.test(await A.locator('.a-print-sheet').textContent()) && /كَبُرَ مَقْتًا/.test(await A.locator('.a-print-sheet').textContent()));
+  await A.evaluate(() => window.dispatchEvent(new Event('afterprint')));
+  check('after printing the sheet is removed', (await A.locator('.a-print-sheet').count()) === 0 && !(await A.evaluate(() => document.documentElement.classList.contains('yb-print-sheet'))));
+  await ac.locator(`[data-fk="crt-t-${TS.id}"]`).click();
+  check('the first place\'s certificate names the team, the place and the points', /فريق الصقور/.test(await A.locator('.a-print-sheet').textContent()) && /على المركز الأول/.test(await A.locator('.a-print-sheet').textContent()) && /86\.5 من 100/.test(await A.locator('.a-print-sheet').textContent()));
+  await A.evaluate(() => window.dispatchEvent(new Event('afterprint')));
+  // the partner's report
+  const tr = A.locator('[data-admin-tools] [data-team-report]');
+  await tr.locator('[data-fk="trep-team"]').selectOption(TS.id);
+  await tr.locator('[data-fk="trep-print"]').click();
+  await A.locator('.a-print-sheet [data-report]').waitFor({ state: 'attached', timeout: 8000 });
+  const rep = (await A.locator('.a-print-sheet').textContent()).replace(/\s+/g, ' ');
+  check('the partner\'s report: one page of numbers, the projects, and no child\'s name', /تقرير فريق الصقور/.test(rep) && /90% \(المستهدف 80%\)/.test(rep) && /تنظيف حديقة الحي/.test(rep) && /الصدق/.test(rep) && /المركز1 من 2|1 من 2 — 86\.5 من 100/.test(rep) && !/عمر|سالم|يوسف|زيد/.test(rep));
+  await A.evaluate(() => window.dispatchEvent(new Event('afterprint')));
+  check('the admin page: console clean', A.errs.length === 0, A.errs.join('|'));
+  await close(A);
+
+  /* ---- the parent, on a phone: the week, the honours, the certificates ---- */
+  const WK = (() => { const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 1) % 7)); return d.toISOString().slice(0, 10); })();
+  const WKP = new Date(new Date(WK + 'T12:00:00Z').getTime() - 7 * 86400000).toISOString().slice(0, 10);
+  fake.c23theme = { [WK]: { title: 'الصدق', body: 'نصدق في القول والعمل' } };
+  fake.c23week = { [kidRow.id]: { [WK]: { pledge: { field: 'home', body: 'أساعد أمي في البيت', done: true, parent_note: null, cheered: true }, kept: 3, hifz: 14, deed_days: 5, meeting: true, held: 4, came: 4, awards: ['tatbiq'] },
+    [WKP]: { pledge: null, kept: 2, hifz: 12, deed_days: 2, meeting: false, held: 3, came: 3, awards: [] } } };
+  const P = await open(fake, { label: 'c23-parent', mobile: true });
+  await settle(P); await signInOk(P, 'pc@t.test');
+  const pw = P.locator('[data-parent-week]');
+  await pw.locator(`[data-pwk-child="${kidRow.id}"]`).waitFor({ timeout: 8000 });
+  const pwt = await txt(pw);
+  check('«أسبوع ابني في ينابيع»: the value of the week, the meeting, the promise, the days, the ayahs, the award', /قيمة الأسبوع: الصدق/.test(pwt) && /حاضر ✓/.test(pwt) && /«أساعد أمي في البيت» — وفّى به ✓/.test(pwt)
+    && /5 من 7/.test(pwt) && /14 من 14/.test(pwt) && /وسام التميز في تطبيق القيم/.test(pwt) && /شجّعه القائد/.test(pwt));
+  await pw.locator('[data-fk="pwk-week"]').selectOption(WKP);
+  await P.waitForFunction(() => /غائب/.test((document.querySelector('[data-parent-week]') || {}).textContent || ''), null, { timeout: 8000 });
+  check('choosing last week reads last week', fake.c23weeksAsked.includes(WKP) && /لم يُكتب وعد هذا الأسبوع/.test(await txt(pw)) && /الأسبوع الماضي/.test(await txt(pw)));
+  await pw.locator('[data-fk="pwk-week"]').selectOption(WK);
+  await pw.locator(`[data-fk="pwk-img-${kidRow.id}"]`).waitFor({ timeout: 8000 });
+  const [img] = await Promise.all([P.waitForEvent('download', { timeout: 10000 }), pw.locator(`[data-fk="pwk-img-${kidRow.id}"]`).click()]);
+  const png = fs.readFileSync(await img.path());
+  check('«صورة للعائلة» makes a 1080 x 1350 PNG on the phone, with no name in the file name', /^yanabee-week-\d{4}-\d\d-\d\d\.png$/.test(img.suggestedFilename()) && png.slice(1, 4).toString() === 'PNG' && png.readUInt32BE(16) === 1080 && png.readUInt32BE(20) === 1350);
+  const mh = P.locator('[data-my-honours]');
+  await mh.waitFor({ timeout: 8000 });
+  check('«تكريمات فريقي»: the team\'s honours by first name, the child\'s marked «لك»', /رحلة المتميزين/.test(await txt(mh)) && /جائزة القائد المتميز/.test(await txt(mh)) && (await mh.locator('li.mine').count()) === 1 && !/عمر بن خالد/.test(await txt(mh)));
+  const pcert = P.locator('#sec-guide [data-certs]');
+  await pcert.locator('[data-cert-group="part"]').waitFor({ state: 'attached', timeout: 8000 });
+  check('«شهاداتي» for the parent: the child\'s participation and honour; the place waits for the results', (await pcert.locator('[data-cert-group="part"] [data-cert-row]').count()) === 1 && (await pcert.locator('[data-cert-group="honour"] [data-cert-row]').count()) === 1
+    && (await pcert.locator('[data-cert-group="place"]').count()) === 0 && (await pcert.locator('[data-cert-wait="place"]').count()) === 1);
+  check('the parent page: no overflow on a phone, console clean', (await overflow(P)) <= 0 && P.errs.length === 0, P.errs.join('|'));
+  await close(P);
+
+  /* ---- the leader: the honours on the home, the certificates and the report in «قيادتي» ---- */
+  fake.c23published = true;
+  const L = await open(fake, { label: 'c23-leader', mobile: true });
+  await settle(L); await signInOk(L, 'lc@t.test');
+  await L.evaluate(() => { window.__printed = 0; window.print = () => { window.__printed++; }; });
+  const lh = L.locator('#sec-home [data-my-honours]');
+  await lh.waitFor({ state: 'attached', timeout: 8000 });
+  check('the leader\'s home: «تكريمات فريقي», his own award marked', /جائزة القائد المتميز/.test(await lh.textContent()) && (await lh.locator('li.mine').count()) === 1);
+  const lc = L.locator('#sec-lead [data-certs]');
+  await lc.locator('[data-cert-group="part"]').waitFor({ state: 'attached', timeout: 8000 });
+  check('the leader prints for his team only: the participations, the first place (published), both honours', (await lc.locator('[data-cert-group="part"] [data-cert-row]').count()) === nS
+    && (await lc.locator('[data-cert-group="place"] [data-cert-row]').count()) === 1 && (await lc.locator('[data-cert-group="honour"] [data-cert-row]').count()) === 2 && !/حسن علي|النجوم/.test(await lc.textContent()));
+  await lc.locator('[data-fk="crt-all-honour"]').evaluate(b => b.click());
+  const lsheet = await L.locator('.a-print-sheet').textContent();
+  check('the honour certificates: «شهادة تكريم» with the honour and the team', (await L.locator('.a-print-sheet [data-cert="honour"]').count()) === 2 && /شهادة تكريم/.test(lsheet) && /رحلة المتميزين، ضمن فريق الصقور/.test(lsheet) && /جائزة القائد المتميز في قيادة فريق الصقور/.test(lsheet));
+  await L.evaluate(() => window.dispatchEvent(new Event('afterprint')));
+  await L.locator('#sec-lead [data-team-report] [data-fk="trep-print"]').evaluate(b => b.click());
+  await L.locator('.a-print-sheet [data-report]').waitFor({ state: 'attached', timeout: 8000 });
+  check('the leader prints his team\'s partner report', /تقرير فريق الصقور/.test(await L.locator('.a-print-sheet').textContent()) && (await L.evaluate(() => window.__printed)) === 2);
+  await L.evaluate(() => window.dispatchEvent(new Event('afterprint')));
+  check('the leader page: no overflow on a phone, console clean', (await overflow(L)) <= 0 && L.errs.length === 0, L.errs.join('|'));
+  await close(L);
+
+  /* ---- the member: «رحلتي» ---- */
+  const K = await open(fake, { label: 'c23-member', mobile: true });
+  await settle(K); await signInOk(K, 'kc@t.test');
+  const kc = K.locator('#sec-journey [data-certs]');
+  await kc.locator('[data-cert-group="part"]').waitFor({ state: 'attached', timeout: 8000 });
+  check('the member: his own participation, his team\'s place and his own honour, nobody else\'s', (await kc.locator('[data-cert-group="part"] [data-cert-row]').count()) === 1 && /عمر بن خالد/.test(await kc.textContent())
+    && (await kc.locator('[data-cert-group="honour"] [data-cert-row]').count()) === 1 && (await kc.locator('[data-cert-group="place"] [data-cert-row]').count()) === 1);
+  check('…and «تكريمات فريقي» in «رحلتي»', (await K.locator('#sec-journey [data-my-honours]:not([hidden])').count()) === 1);
+  check('the member page: console clean', K.errs.length === 0, K.errs.join('|'));
+  await close(K);
+
+  /* ---- an older backend: nothing of it shows ---- */
+  const old = new Fake();
+  old.t17 = true;
+  old.addUser({ email: 'boss4@t.test', name: 'مشرف', role: 'member' }); old.setAdmin('boss4@t.test');
+  old.addUser({ email: 'po@t.test', name: 'ولي', role: 'parent' });
+  old.addUser({ email: 'lo@t.test', name: 'قائد', role: 'leader' });
+  const TO = old.seedTeam({ leaderEmail: 'lo@t.test', name: 'الفجر', status: 'approved', members: [{ name: 'طفل الفجر', age: 12 }] });
+  old.links.push({ parent_id: old.profileByEmail('po@t.test').id, member_id: old.members.find(m => m.full_name === 'طفل الفجر').id });
+  const OA = await open(old, { label: 'c23-old-admin' });
+  await settle(OA); await signInOk(OA, 'boss4@t.test');
+  await OA.locator('#at-tools').click();
+  await OA.locator('[data-fk="tg-closing"]').click();
+  await OA.waitForTimeout(400);
+  check('on a backend without 0023 the closing tools stay hidden (no error)', !(await OA.locator('[data-honours-desk]').isVisible()) && !(await OA.locator('[data-ceremony-card]').isVisible()) && !(await OA.locator('[data-admin-tools] [data-certs]').isVisible()) && !(await OA.locator('[data-admin-tools] [data-team-report]').isVisible()) && OA.errs.length === 0, OA.errs.join('|'));
+  await close(OA);
+  const OP = await open(old, { label: 'c23-old-parent', mobile: true });
+  await settle(OP); await signInOk(OP, 'po@t.test');
+  await OP.waitForTimeout(400);
+  check('…and the parent sees no week card and no certificates', (await OP.locator('[data-parent-week]:not([hidden])').count()) === 0 && (await OP.locator('[data-certs]:not([hidden])').count()) === 0 && OP.errs.length === 0, OP.errs.join('|'));
+  await close(OP);
+  void TO; void TN;
 }
 
 section('network hosts and console');
