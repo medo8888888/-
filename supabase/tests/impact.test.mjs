@@ -41,7 +41,7 @@ const day = async (expr) => (await owner(`select to_char(${expr}, 'YYYY-MM-DD') 
 const W = await day("current_date - ((extract(dow from current_date)::int + 1) % 7)");      // this week's Saturday
 const WPREV = await day("current_date - ((extract(dow from current_date)::int + 1) % 7) - 7");
 const WOLD = await day("current_date - ((extract(dow from current_date)::int + 1) % 7) - 28");
-const WNEXT = await day("current_date - ((extract(dow from current_date)::int + 1) % 7) + 7");
+const WNEXT = await day("current_date - ((extract(dow from current_date)::int + 1) % 7) + 14");   // past tomorrow on any day (on a Friday, +7 is tomorrow, which is allowed)
 const SUNDAY = await day("current_date - extract(dow from current_date)::int");
 
 const Y = (role, full_name) => ({ app: 'yanabee', role, full_name });
