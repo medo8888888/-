@@ -381,9 +381,14 @@ class Fake {
       }
       if (method === 'PATCH') {
         if (Object.keys(body || {}).some(k => !cols.includes(k))) return deny();
+        if (body.status !== undefined && !['scheduled', 'changed', 'cancelled'].concat(this.c25 ? ['postponed'] : []).includes(body.status)) return err(400, '23514', 'new row for relation "yb_events" violates check constraint "yb_events_status_chk"');
         const targets = filterRows(this.events.filter(e => canManage(e.competition)), q);
         targets.forEach(e => {
           const moved = (body.starts_at !== undefined && body.starts_at !== e.starts_at) || (body.place !== undefined && body.place !== e.place);
+          if (body.status === 'postponed' && e.status !== 'postponed' && this.c25) {
+            const tids = (e.team_ids || []).length ? e.team_ids : this.teams.filter(t => t.status === 'approved').map(t => t.id);
+            this.notify(tids.flatMap(t => [...this.members.filter(m => m.team_id === t).map(m => m.user_id), (this.teams.find(x => x.id === t) || {}).leader_id]).filter(Boolean), 'event_postponed', { event_id: e.id, title: e.title });
+          }
           Object.assign(e, body);
           if (body.status === undefined && moved && e.status !== 'cancelled') e.status = 'changed';
         });
@@ -510,6 +515,42 @@ class Fake {
       yb_post_delete: ['id'], yb_post_moderate: ['id', 'action', 'note'], yb_react: ['post_id', 'kind'], yb_comments: ['post_id'], yb_comment_post: ['post_id', 'body'],
       yb_comment_delete: ['id'], yb_comment_report: ['id', 'reason'], yb_comment_moderate: ['id', 'action'], yb_comment_mute: ['id', 'hours', 'reason'], yb_feed_reports: [],
       yb_set_members_comment: ['allow'], yb_transfer_team: ['team_id', 'new_leader', 'old_stays', 'old_role'], yb_analytics: [] };
+    /* migration 0025: disqualification, qualified teams (postponed dates are in the yb_events PATCH). Off unless a test sets c25. */
+    if (/^yb_(team_disqualify|announce_qualified|qualified_list)$/.test(name)) {
+      if (!this.c25) return err(404, 'PGRST202', 'Could not find the function public.' + name);
+      body = body || {};
+      const ok = d => ({ status: 200, body: d });
+      this.qualified = this.qualified || [];
+      const adm = (this.profiles.find(x => x.id === me) || {}).role === 'admin';
+      const inPlay = t => { const x = this.teams.find(y => y.id === t); return !!x && x.status === 'approved' && !x.waitlist; };
+      const people = t => [...this.members.filter(m => m.team_id === t).map(m => m.user_id), (this.teams.find(x => x.id === t) || {}).leader_id,
+        ...this.links.filter(l => (this.members.find(m => m.id === l.member_id) || {}).team_id === t).map(l => l.parent_id)].filter(Boolean);
+      if (name === 'yb_qualified_list') return ok(this.qualified.filter(inPlay).map(t => ({ team_id: t, name: (this.teams.find(x => x.id === t) || {}).name })));
+      if (!adm) return raise('permission_denied', '42501');
+      if (name === 'yb_team_disqualify') {
+        const t = this.teams.find(x => x.id === body.team_id), rs = String(body.reason || '').trim();
+        if (!t) return ok({ ok: false, error: 'not_found' });
+        if (!inPlay(t.id)) return ok({ ok: false, error: 'not_in_play' });
+        if (rs.length < 5 || rs.length > 300) return ok({ ok: false, error: 'reason_required' });
+        t.status = 'rejected'; t.admin_note = rs; t.disqualified_at = this.now(); t.disqualify_reason = rs;
+        const evs = this.events.filter(e => (e.team_ids || []).includes(t.id) && e.status !== 'cancelled');
+        evs.forEach(e => { e.status = 'cancelled'; this.notify((e.team_ids || []).flatMap(people), 'event_cancelled', { event_id: e.id, title: e.title }); });   // the yb_events trigger
+        this.notify(people(t.id), 'team_disqualified', { team_id: t.id, team_name: t.name, note: rs });
+        this.notify([...this.judges.keys()], 'judge_team_out', { team_id: t.id, team_name: t.name });
+        this.notify(this.teams.filter(x => x.id !== t.id && inPlay(x.id)).map(x => x.leader_id), 'team_out', { team_id: t.id, team_name: t.name });
+        return ok({ ok: true, events_cancelled: evs.length });
+      }
+      const ids = [...new Set(body.team_ids || [])];
+      if (!ids.length) return ok({ ok: false, error: 'invalid_data' });
+      if (ids.some(t => !inPlay(t))) return ok({ ok: false, error: 'not_in_play' });
+      const fresh = ids.filter(t => !this.qualified.includes(t));
+      fresh.forEach(t => { this.qualified.push(t); this.notify(people(t), 'team_qualified', { team_id: t, team_name: (this.teams.find(x => x.id === t) || {}).name }); });
+      if (fresh.length) {
+        const own = new Set(fresh.flatMap(people));
+        this.notify(this.teams.filter(x => inPlay(x.id) && !fresh.includes(x.id)).flatMap(x => people(x.id)).filter(u => !own.has(u)), 'qualified_announced', { names: fresh.map(t => (this.teams.find(x => x.id === t) || {}).name) });
+      }
+      return ok({ ok: true, announced: fresh.length });
+    }
     /* migration 0023: honours, certificates, the ceremony, the parent's week, the partner's report. Off unless a test sets c23.
        A test sets this.c23stats[member_id], this.c23ranks (team_id -> {rank, total}), this.c23published and this.c23week[member_id]. */
     if (/^yb_(honour_give|honour_remove|honours_board|honours_announce|honours_suggest|my_honours|cert_list|ceremony|parent_week|team_report)$/.test(name)) {
@@ -1097,7 +1138,7 @@ class Fake {
       if (name === 'yb_my_judging') {
         const ax = myAxes();
         if (!ax.length) return { status: 200, body: { axes: [] } };
-        return { status: 200, body: { axes: ax, published: this.published, teams: this.teams.filter(t => judged(t.id)).sort((a, b) => a.name.localeCompare(b.name)).map(t => ({ team_id: t.id, name: t.name, conflict: person(t.id),
+        return { status: 200, body: { axes: ax, published: this.published, removed: this.c25 ? this.teams.filter(t => t.disqualified_at && t.status === 'rejected').map(t => ({ team_id: t.id, name: t.name, at: t.disqualified_at, my_scores: this.jscores.filter(s => s.team_id === t.id && s.judge_id === me).length })) : undefined, teams: this.teams.filter(t => judged(t.id)).sort((a, b) => a.name.localeCompare(b.name)).map(t => ({ team_id: t.id, name: t.name, conflict: person(t.id),
           scores: Object.fromEntries(this.jscores.filter(s => s.team_id === t.id && s.judge_id === me).map(s => [s.criterion, { points: s.points, reason: s.reason }])) })) } };
       }
       if (name === 'yb_judge_score') {
@@ -6237,6 +6278,129 @@ section('privacy and security (0021): photo consent, a copy of one\'s data, requ
   await Z.locator('[data-fk="priv-open"]').click();
   await Z.waitForSelector('[data-privacy]:not([hidden]) a[href="privacy.html"]', { timeout: 8000 });
   check('on an older backend the panel still links the notice, offers nothing it cannot keep, and nothing breaks', (await Z.locator('[data-privacy] [data-photo-consent], [data-privacy] [data-fk="pv-copy"], [data-privacy] [data-privacy-req]').count()) === 0 && Z.errs.length === 0, Z.errs.join('|'));
+}
+
+section('the big changes pop up (0025): disqualified, qualified, postponed');
+{
+  const fake = new Fake();
+  fake.c25 = true; fake.t17 = true;
+  fake.addUser({ email: 'boss5@t.test', name: 'المشرف العام', role: 'member' }); fake.setAdmin('boss5@t.test');
+  const off = fake.addUser({ email: 'ref5@t.test', name: 'مسؤول الكرة', role: 'member' }); fake.setRole('ref5@t.test', 'officer');
+  fake.officers.push({ user_id: off.id, competition: 'football' });
+  for (const [e, n] of [['lq1@t.test', 'قائد البروق'], ['lq2@t.test', 'قائد الرعد'], ['lq3@t.test', 'قائد الغيث']]) fake.addUser({ email: e, name: n, role: 'leader' });
+  const kid = fake.addUser({ email: 'kq@t.test', name: 'سعد عضو البروق', role: 'member' });
+  const jq = fake.addUser({ email: 'jq@t.test', name: 'الحكم أمين', role: 'parent' });
+  const mem = n => Array.from({ length: 4 }, (_, i) => ({ name: `${n} ${i + 1}`, age: 14, consent: 'received' }));
+  const T1 = fake.seedTeam({ leaderEmail: 'lq1@t.test', name: 'البروق', status: 'approved', members: [{ name: 'سعد عضو البروق', age: 13, consent: 'received' }, ...mem('عضو البروق')] });
+  const T2 = fake.seedTeam({ leaderEmail: 'lq2@t.test', name: 'الرعد', status: 'approved', members: mem('عضو الرعد') });
+  const T3 = fake.seedTeam({ leaderEmail: 'lq3@t.test', name: 'الغيث', status: 'approved', members: mem('عضو الغيث') });
+  fake.teams.forEach(t => { t.waitlist = false; });
+  fake.members.find(m => m.full_name === 'سعد عضو البروق').user_id = kid.id;
+  fake.judges.set(jq.id, ['hifz']);
+  fake.jscores.push({ team_id: T1.id, judge_id: jq.id, criterion: 'hifz', points: 6, reason: 'تلاوة حسنة' });
+  const when = d => { const x = new Date(Date.now() + d * 86400e3); x.setHours(16, 0, 0, 0); return x.toISOString(); };
+  const E12 = { id: fake.uid(), competition: 'football', kind: 'match', title: 'البروق ضد الرعد', starts_at: when(3), place: 'ملعب الحي', team_ids: [T1.id, T2.id], category: null, status: 'scheduled', note: null };
+  const E23 = { id: fake.uid(), competition: 'football', kind: 'match', title: 'الرعد ضد الغيث', starts_at: when(5), place: 'ملعب الحي', team_ids: [T2.id, T3.id], category: null, status: 'scheduled', note: null };
+  fake.events.push(E12, E23);
+  const txt = async l => (await l.innerText()).replace(/\s+/g, ' ');
+  const got = (u, kind) => fake.notes.filter(n => n.user_id === u && n.kind === kind);
+  const until = async (pg, f) => { for (let i = 0; i < 60 && !f(); i++) await pg.waitForTimeout(100); return f(); };
+  // the fake's clock runs months behind the browser's; a notice that pops up must look like it just arrived
+  const justNow = kinds => fake.notes.forEach(n => { if (kinds.includes(n.kind)) n.created_at = new Date().toISOString(); });
+  const lid = e => fake.profileByEmail(e).id;
+
+  /* ---- the admin takes a team out ---- */
+  const A = await open(fake, { label: 'c25-admin' });
+  await settle(A); await signInOk(A, 'boss5@t.test');
+  await A.locator(`[data-fk="th-${T1.id}"]`).click();
+  const dq = A.locator(`[data-dq="${T1.id}"]`);
+  await dq.waitFor({ timeout: 8000 });
+  check('a team in the competition has «استبعاد الفريق من المسابقة», folded', (await dq.count()) === 1 && !(await dq.evaluate(d => d.open)) && (await A.locator(`[data-dq="${T2.id}"]`).count()) === 0);
+  await dq.locator('summary').click();
+  check('opened: what happens is said before anything is done', /يخرج الفريق فورًا/.test(await txt(dq)) && /تُلغى مواعيده القادمة/.test(await txt(dq)));
+  await A.locator(`[data-fk="dqr-${T1.id}"]`).fill('قصير');
+  await A.locator(`[data-fk="dq-${T1.id}"]`).click(); await A.locator(`[data-fk="dq-${T1.id}"]`).click();
+  await A.waitForFunction(() => /5 أحرف على الأقل/.test(document.querySelector('[aria-live]') ? [...document.querySelectorAll('[aria-live]')].map(x => x.textContent).join(' ') : ''), null, { timeout: 8000 });
+  check('a reason too short is refused with the Arabic message; the team stays', T1.status === 'approved');
+  await A.locator(`[data-fk="dqr-${T1.id}"]`).fill('تكرار مخالفة الروح الرياضية في مباراتين');
+  await A.locator(`[data-fk="dq-${T1.id}"]`).click(); await A.locator(`[data-fk="dq-${T1.id}"]`).click();
+  await until(A, () => T1.status === 'rejected');
+  check('two presses take the team out, with the reason', T1.status === 'rejected' && T1.disqualify_reason === 'تكرار مخالفة الروح الرياضية في مباراتين');
+  check('its coming match is called off', E12.status === 'cancelled' && E23.status === 'scheduled');
+  check('its leader and member are told, every judge, and the other leaders', got(lid('lq1@t.test'), 'team_disqualified').length === 1 && got(kid.id, 'team_disqualified').length === 1
+    && got(jq.id, 'judge_team_out').length === 1 && got(lid('lq2@t.test'), 'team_out').length === 1 && got(lid('lq3@t.test'), 'team_out').length === 1);
+  await A.waitForFunction(() => /أُخرج «البروق» من المسابقة/.test([...document.querySelectorAll('[aria-live]')].map(x => x.textContent).join(' ')), null, { timeout: 8000 });
+  check('the admin reads what was done', true);
+
+  /* ---- the admin confirms who qualified ---- */
+  await A.locator('#at-tools').click();
+  await A.locator('[data-fk="tg-matches"]').click();
+  const qd = A.locator('[data-qualified]');
+  await qd.waitFor({ state: 'visible', timeout: 8000 });
+  check('«المتأهلون إلى الدور النهائي» lists the teams still in play, not the one that left', (await qd.locator(`[data-fk="qd-${T2.id}"]`).count()) === 1 && (await qd.locator(`[data-fk="qd-${T1.id}"]`).count()) === 0);
+  await qd.locator(`[data-fk="qd-${T2.id}"]`).check();
+  await qd.locator('[data-fk="qd-go"]').click();
+  await until(A, () => (fake.qualified || []).includes(T2.id));
+  await qd.locator('[data-qd-done]').waitFor({ timeout: 8000 });
+  check('«أعلن المتأهلين» announces the ticked team, and lists it as announced', fake.qualified.length === 1 && /الرعد/.test(await txt(qd.locator('[data-qd-done]'))) && (await qd.locator(`[data-fk="qd-${T2.id}"]`).count()) === 0);
+  check('the qualified team is told; the other team hears who qualified', got(lid('lq2@t.test'), 'team_qualified').length === 1 && got(lid('lq3@t.test'), 'qualified_announced').length === 1 && got(lid('lq2@t.test'), 'qualified_announced').length === 0);
+  check('admin console clean (0025)', A.errs.length === 0, A.errs.join('|'));
+  await close(A);
+
+  /* ---- the football officer postpones a date ---- */
+  const O = await open(fake, { label: 'c25-officer' });
+  await settle(O); await signInOk(O, 'ref5@t.test');
+  await O.waitForSelector(`.a-evm [data-event="${E23.id}"]`, { timeout: 8000 });
+  check('a cancelled date offers no «أجّل الموعد»; a coming one does', (await O.locator(`button[data-fk="evp-${E12.id}"]`).count()) === 0 && (await O.locator(`button[data-fk="evp-${E23.id}"]`).count()) === 1);
+  await O.locator(`button[data-fk="evp-${E23.id}"]`).click(); await O.locator(`button[data-fk="evp-${E23.id}"]`).click();
+  await until(O, () => E23.status === 'postponed');
+  await O.waitForFunction(id => /أُجّل/.test(document.querySelector(`.a-evm [data-event="${id}"]`)?.innerText || ''), E23.id, { timeout: 8000 });
+  check('two presses postpone it, marked «أُجّل», and both teams are told', E23.status === 'postponed' && got(lid('lq2@t.test'), 'event_postponed').length === 1 && got(lid('lq3@t.test'), 'event_postponed').length === 1);
+  check('officer console clean (0025)', O.errs.length === 0, O.errs.join('|'));
+  await close(O);
+
+  /* ---- the pop-up ---- */
+  justNow(['team_disqualified', 'team_out', 'judge_team_out', 'team_qualified', 'qualified_announced', 'event_postponed', 'event_cancelled']);
+  const L1 = await open(fake, { label: 'c25-out' });
+  await settle(L1); await signInOk(L1, 'lq1@t.test');
+  const pop1 = L1.locator('[data-pop] .a-pop');
+  await pop1.waitFor({ timeout: 8000 });
+  check('the disqualified team\'s leader: the news pops up at the top, with the reason', /أخرجت إدارة المسابقة فريق البروق من المسابقة/.test(await txt(pop1)) && /تكرار مخالفة الروح الرياضية/.test(await txt(pop1)) && (await pop1.getAttribute('class')).includes('t-bad'));
+  check('it sits in the page (does not cover buttons) and is announced to screen readers', (await L1.locator('[data-pop]').evaluate(e => getComputedStyle(e).position)) === 'static' && (await L1.locator('[data-pop]').getAttribute('aria-live')) === 'polite');
+  await L1.locator('[data-fk="pop-close"]').click();
+  check('«إغلاق» puts it away', (await L1.locator('[data-pop] .a-pop').count()) === 0);
+  check('the leader console clean (pop-up)', L1.errs.length === 0, L1.errs.join('|'));
+  await close(L1);
+  const L2 = await open(fake, { label: 'c25-qualified' });
+  await settle(L2); await signInOk(L2, 'lq2@t.test');
+  const pop2 = L2.locator('[data-pop] .a-pop');
+  await pop2.waitFor({ timeout: 8000 });
+  check('a leader with several changes sees one pop-up and how many more are waiting', /إشعارات أخرى|إشعار آخر/.test(await txt(pop2)));
+  await L2.locator('[data-fk="pop-open"]').click();
+  await L2.waitForSelector('.a-inbox:not([hidden])', { timeout: 8000 });
+  const inboxT = await txt(L2.locator('.a-inbox'));
+  check('«افتح الإشعارات» opens them all: qualified, postponed, another team out, a match called off', /مبارك! تأهّل فريق الرعد إلى الدور النهائي/.test(inboxT) && /أُجّل موعد: الرعد ضد الغيث/.test(inboxT) && /خرج فريق البروق من المسابقة/.test(inboxT) && /أُلغي موعد: البروق ضد الرعد/.test(inboxT));
+  check('the qualified leader\'s console clean', L2.errs.length === 0, L2.errs.join('|'));
+  await close(L2);
+
+  /* ---- the judge ---- */
+  const J = await open(fake, { label: 'c25-judge' });
+  await settle(J); await signInOk(J, 'jq@t.test');
+  await J.waitForSelector('[data-judge]:not([hidden]) [data-judge-out]', { timeout: 8000 });
+  check('the judge sees the team that left: no longer to judge, and their score no longer counts', /البروق: لا تحكّمه بعد الآن، ودرجاتك له \(1\) لم تعد تُحسب/.test(await txt(J.locator('[data-judge-out]'))) && (await J.locator(`[data-judge] [data-jteam="${T1.id}"]`).count()) === 0);
+  check('and the pop-up told them first', /خرج فريق البروق من المسابقة: لا تحكّمه بعد الآن/.test(await txt(J.locator('[data-pop]'))));
+  check('the judge console clean (0025)', J.errs.length === 0, J.errs.join('|'));
+  await close(J);
+
+  /* ---- an older backend: no qualified card ---- */
+  fake.c25 = false;
+  const A2 = await open(fake, { label: 'c25-old' });
+  await settle(A2); await signInOk(A2, 'boss5@t.test');
+  await A2.locator('#at-tools').click();
+  await A2.locator('[data-fk="tg-matches"]').click();
+  await A2.waitForTimeout(600);
+  check('on a backend without 0025 the qualified card stays hidden', (await A2.locator('[data-qualified]').isHidden()));
+  await close(A2);
 }
 
 section('security round 2: local fonts, a shared device and signing out when idle, reading the privacy notice, easy passwords');

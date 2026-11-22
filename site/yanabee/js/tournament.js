@@ -906,7 +906,7 @@
     const d = evDate(e);
     const time = e.noTime ? '' : (isNaN(d) ? '' : d.toLocaleTimeString('ar-u-nu-latn', { hour: 'numeric', minute: '2-digit' }));
     const teams = (e.team_ids || []).length ? e.team_ids.map(teamName).join(' · ') : 'كل الفرق';
-    const st = e.status === 'cancelled' ? h('em', { class: 'tn-chip bad' }, 'أُلغي') : e.status === 'changed' ? h('em', { class: 'tn-chip warn' }, 'تغيّر الموعد') : null;
+    const st = e.status === 'cancelled' ? h('em', { class: 'tn-chip bad' }, 'أُلغي') : e.status === 'postponed' ? h('em', { class: 'tn-chip warn' }, 'أُجّل') : e.status === 'changed' ? h('em', { class: 'tn-chip warn' }, 'تغيّر الموعد') : null;
     return h('li', { class: 'tn-ev k-' + e.kind + (e.status === 'cancelled' ? ' is-cancelled' : '') },
       h('span', { class: 'tn-ev-t' }, time || '—'),
       h('div', { class: 'tn-ev-b' },
@@ -923,7 +923,7 @@
     const esc = t => String(t || '').replace(/[\;,]/g, m => '\\' + m).replace(/\r?\n/g, '\\n');
     const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Yanabee//Schedule//AR', 'CALSCALE:GREGORIAN'];
     const stamp = utc(new Date());
-    list.filter(e => e.status !== 'cancelled').forEach(e => {
+    list.filter(e => e.status !== 'cancelled' && e.status !== 'postponed').forEach(e => {
       const d = evDate(e);
       if (isNaN(d)) return;
       const end = new Date(d.getTime() + 90 * 60000);

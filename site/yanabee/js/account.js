@@ -23,6 +23,7 @@
   const COMPS = { registration: 'التسجيل ومراجعة الفرق', football: 'دوري كرة القدم', chess: 'بطولة الشطرنج', projects: 'المشاريع والمبادرات',
     hifz: 'الحفظ', fahm: 'الفهم', workshops: 'الورش' };
   const INBOX_MS = 60000;
+  const offEv = e => !!e && (e.status === 'cancelled' || e.status === 'postponed');   // no time to count down to (0025: postponed)
   const SESSION_ERRS = { jwt_expired: 1, not_authenticated: 1, session_expired: 1, refresh_token_not_found: 1 };
   const FOOT = { not_drawn: 'لم تُجرَ القرعة بعد', group: 'في دور المجموعات', tie: 'تساوٍ على صدارة المجموعة، ينتظر قرار اللجنة',
     qualified: 'متأهل إلى الدور النهائي', final: 'في الدور النهائي', first: 'المركز الأول', second: 'المركز الثاني', third: 'المركز الثالث', out: 'خرج من المنافسة' };
@@ -583,7 +584,7 @@
         }, { 'data-fk': 'nack-ok' })));
       notice.hidden = false;
     });
-    const main = h('div', { class: 'a-main' }, head, inbox.panel, notice, cust, priv, pwWrap, flash, body);
+    const main = h('div', { class: 'a-main' }, head, inbox.pop, inbox.panel, notice, cust, priv, pwWrap, flash, body);
     idleGuard(YB.isShared && YB.isShared() ? 15 : profile.role === 'admin' ? 60 : 0, YB.isShared && YB.isShared() ? 'لأن هذا جهاز مشترك' : 'لحماية بيانات المشاركين');
     if (location.hash === '#privacy') requestAnimationFrame(() => { if (priv.hidden) privBtn.click(); });   // from the notice's «الخصوصية وبياناتي»
     dockRef = phoneDock({
@@ -2069,7 +2070,7 @@
       });
     }
     // three groups instead of one long page: what the admin does every week, around the matches, and with the leaders
-    const groups = [['week', 'هذا الأسبوع', [th, aw, weekReportCard()]], ['matches', 'المباريات', [appealsDesk(false), matchStaffDesk(), incidentsDesk()]], ['leaders', 'القادة', [tk, leadReviewDesk(), leadMeetDesk()]], ['impact', 'الأثر', [impactReportCard(), attendBoardCard(), surveyDesk()]], ['privacy', 'الخصوصية', [privacyDesk(false), photoConsentDesk()]],
+    const groups = [['week', 'هذا الأسبوع', [th, aw, weekReportCard()]], ['matches', 'المباريات', [qualifiedDesk(), appealsDesk(false), matchStaffDesk(), incidentsDesk()]], ['leaders', 'القادة', [tk, leadReviewDesk(), leadMeetDesk()]], ['impact', 'الأثر', [impactReportCard(), attendBoardCard(), surveyDesk()]], ['privacy', 'الخصوصية', [privacyDesk(false), photoConsentDesk()]],
       ['closing', 'الختام', [honoursDesk(), ceremonyCard(), certCard(true), teamReportCard(null, A.teams.filter(t => t.status === 'approved' && !t.waitlist).map(t => ({ id: t.id, name: t.name })))]]];
     const boxes = groups.map(g => h('div', { class: 'a-home', 'data-tools-group': g[0], hidden: g[0] !== (A.toolsGroup || 'week') }, g[2]));
     const tabs = groups.map(g => h('button', { type: 'button', class: 'a-deed-c', 'aria-pressed': String(g[0] === (A.toolsGroup || 'week')), 'data-fk': 'tg-' + g[0], onclick: () => {
@@ -2234,7 +2235,7 @@
     const id = uid('f'), sel = h('select', { id, 'data-fk': fk }, h('option', { value: '', text: 'اكتبها بنفسي' }));
     const box = h('div', { class: 'a-f', hidden: true, 'data-match-pick': '' }, h('label', { for: id, class: 'a-l', text: 'اختر من مباريات الجدول الأخيرة' }), sel);
     eventsOnce().then(evs => {
-      const now = Date.now(), rows = (evs || []).filter(e => e.kind === 'match' && e.status !== 'cancelled' && (!teamId || (Array.isArray(e.team_ids) && e.team_ids.includes(teamId)))
+      const now = Date.now(), rows = (evs || []).filter(e => e.kind === 'match' && !offEv(e) && (!teamId || (Array.isArray(e.team_ids) && e.team_ids.includes(teamId)))
         && new Date(e.starts_at).getTime() < now && new Date(e.starts_at).getTime() > now - 36 * 3600e3).slice(-8).reverse();
       if (!rows.length) return;
       rows.forEach(e => sel.append(h('option', { value: e.id, text: `${e.title} · ${fmtWhen(e.starts_at)}` })));
@@ -2249,7 +2250,7 @@
     const el = h('section', { class: 'a-card a-msf', 'aria-labelledby': 'msf-h', 'data-match-staff': '', hidden: true });
     Promise.all([eventsOnce(), staffOnce()]).then(([evs, st]) => {
       if (!evs || !st) return;
-      const next = evs.filter(e => e.status !== 'cancelled' && Array.isArray(e.team_ids) && e.team_ids.includes(teamId) && new Date(e.starts_at) > new Date(Date.now() - 3 * 3600e3)).find(e => st.some(x => x.event_id === e.id && (x.referee || x.safety)));
+      const next = evs.filter(e => !offEv(e) && Array.isArray(e.team_ids) && e.team_ids.includes(teamId) && new Date(e.starts_at) > new Date(Date.now() - 3 * 3600e3)).find(e => st.some(x => x.event_id === e.id && (x.referee || x.safety)));
       if (!next) return;
       const x = st.find(q => q.event_id === next.id);
       el.hidden = false;
@@ -2267,7 +2268,7 @@
       S.staffP = null;
       Promise.all([eventsOnce(), staffOnce()]).then(([evs, st]) => {
         if (!evs || !st) return;
-        const rows = evs.filter(e => e.kind === 'match' && e.status !== 'cancelled' && new Date(e.starts_at) > new Date(Date.now() - 6 * 3600e3)).slice(0, 12);
+        const rows = evs.filter(e => e.kind === 'match' && !offEv(e) && new Date(e.starts_at) > new Date(Date.now() - 6 * 3600e3)).slice(0, 12);
         el.hidden = false;
         put(el, h('h3', { id: 'msd-h' }, icon('shield'), h('span', { text: 'حكّام المباريات والسلامة' })),
           h('p', { class: 'a-lead', text: 'تنص اللائحة على حكم لكل مباراة، وعلى حقيبة إسعافات أولية وشخص بالغ مكلّف بالسلامة. يرى أهل الفريقين الاسمين قبل المباراة.' }),
@@ -2518,7 +2519,7 @@
     const msg = h('small', { class: 'a-hint', role: 'status' });
     const build = () => Promise.all([YB.rpc('yb_theme_get', { week: weekKey() }), eventsOnce(), YB.rpc('yb_tasks_mine', { team_id: o.teamId })]).then(([th, evs, tk]) => {
       const now = Date.now(), f = o.follow(), a = o.att();
-      const next = (evs || []).filter(e => e.status !== 'cancelled' && new Date(e.starts_at).getTime() > now && ((e.team_ids || []).includes(o.teamId) || !(e.team_ids || []).length)).slice(0, 2);
+      const next = (evs || []).filter(e => !offEv(e) && new Date(e.starts_at).getTime() > now && ((e.team_ids || []).includes(o.teamId) || !(e.team_ids || []).length)).slice(0, 2);
       const lines = [`${teamWord(o.team())} — أسبوع ${arDate(weekKey())}`];
       if (th.ok && th.data && th.data.title) lines.push(`قيمة هذا الأسبوع: ${th.data.title}${th.data.body ? ' — ' + th.data.body : ''}`);
       next.forEach((e, i) => lines.push(`${i ? 'ثم' : 'موعدنا القادم'}: ${e.title} · ${fmtWhen(e.starts_at)}${e.place ? ' · ' + e.place : ''}`));
@@ -3721,7 +3722,7 @@
         const ids = ev.team_ids || [];
         if (!(o.all || ids.includes(o.teamId) || (!ids.length && o.teamStatus === 'approved'))) return;
         const d = new Date(ev.starts_at);
-        if (!isNaN(d)) out.push({ day: localDay(d), time: `${two(d.getHours())}:${two(d.getMinutes())}`, title: ev.title, sub: ev.place || '', kind: ev.status === 'cancelled' ? 'x' : ev.kind === 'match' ? 'mt' : 'ev' });
+        if (!isNaN(d)) out.push({ day: localDay(d), time: `${two(d.getHours())}:${two(d.getMinutes())}`, title: ev.title, sub: ev.place || '', kind: offEv(ev) ? 'x' : ev.kind === 'match' ? 'mt' : 'ev' });
       });
       const st = g && g.state;
       try {
@@ -3871,7 +3872,7 @@
   /* ------------------------------------------------------------------ memorisation (الحفظ): the officer's desk, the printed record, the team's card */
   // competition.txt c-axes: two members a team (a main one and a reserve) recite Surat as-Saff in person, on one unified
   // record with the level and the notes; 10 points. quran.txt a1, a2: a little each day, and sound recitation.
-  const nextHifz = (evs, teamId) => (evs || []).filter(e => e.competition === 'hifz' && e.status !== 'cancelled' && !isPast(e) && ((e.team_ids || []).includes(teamId) || !(e.team_ids || []).length))[0] || null;
+  const nextHifz = (evs, teamId) => (evs || []).filter(e => e.competition === 'hifz' && !offEv(e) && !isPast(e) && ((e.team_ids || []).includes(teamId) || !(e.team_ids || []).length))[0] || null;
   // o: { teams: [{id, name}], roles: { [teamId]: { reciter, reserve } }, canSchedule: fn | null }
   function hifzDeskCard(o) {
     const el = h('section', { class: 'a-card a-hfd', 'aria-labelledby': 'hfd-h', 'data-hifz-desk': '' });
@@ -3957,6 +3958,12 @@
     if (n.kind === 'event_new') return `موعد جديد: ${d.title || ''} — ${fmtWhen(d.starts_at)}${d.place ? ' · ' + d.place : ''}`;
     if (n.kind === 'event_changed') return `تغيّر موعد: ${d.title || ''} — ${fmtWhen(d.starts_at)}${d.place ? ' · ' + d.place : ''}`;
     if (n.kind === 'event_cancelled') return `أُلغي موعد: ${d.title || ''}`;
+    if (n.kind === 'event_postponed') return `أُجّل موعد: ${d.title || ''}. يصلك تنبيه حين يُحدَّد الموعد الجديد.`;
+    if (n.kind === 'team_disqualified') return `أخرجت إدارة المسابقة ${team} من المسابقة. للاستفسار تواصل مع إدارة المسابقة.`;
+    if (n.kind === 'team_out') return `خرج ${team} من المسابقة بقرار من الإدارة، وأُلغيت مبارياته القادمة. تابع «المباريات والمواعيد».`;
+    if (n.kind === 'judge_team_out') return `خرج ${team} من المسابقة: لا تحكّمه بعد الآن، ودرجاته لا تُحسب. تابع تحكيم بقية الفرق في «التحكيم».`;
+    if (n.kind === 'team_qualified') return `مبارك! تأهّل ${team} إلى الدور النهائي.`;
+    if (n.kind === 'qualified_announced') return `أعلنت الإدارة الفرق المتأهلة إلى الدور النهائي: ${(Array.isArray(d.names) ? d.names : []).join('، ')}.`;
     if (n.kind === 'invite_new') return `دعاك ${team} للانضمام إليه. افتح «أبحث عن فريق» لتقبل أو تعتذر.`;
     if (n.kind === 'invite_waiting') return `دعوة ${team} تنتظر ردّك لتكتمل.`;
     if (n.kind === 'invite_answer') return d.accepted ? `قبل ${d.first_name || 'لاعب'} دعوتك وانضم إلى ${team}.` : `اعتذر ${d.first_name || 'لاعب'} عن دعوة ${team}.`;
@@ -3988,6 +3995,38 @@
       h('div', { class: 'a-inbox-h' }, h('h3', {}, icon('bell'), h('span', { text: 'الإشعارات' })),
         h('button', { type: 'button', class: 'a-link', text: 'إغلاق', onclick: () => open(false) })), list);
     let rows = [];
+    // the pop-up (0025): the big changes show at the top of the account as they arrive, once each (this tab remembers)
+    const pop = h('div', { class: 'a-pop-wrap', 'data-pop': '', role: 'status', 'aria-live': 'polite' });
+    const POP_KINDS = new Set(['team_disqualified', 'team_out', 'judge_team_out', 'team_qualified', 'qualified_announced', 'event_postponed', 'event_cancelled',
+      'event_changed', 'team_status', 'team_approved', 'team_seated', 'results_published', 'honours_announced', 'appeal_decided', 'judge_assigned', 'announcement', 'result_returned']);
+    const POP_TONE = { team_disqualified: 'bad', team_out: 'bad', judge_team_out: 'bad', event_cancelled: 'bad', event_postponed: 'sun', event_changed: 'sun',
+      team_qualified: 'ok', qualified_announced: 'ok', team_approved: 'ok', team_seated: 'ok', results_published: 'ok', honours_announced: 'ok' };
+    const POP_ICON = { bad: 'alert', sun: 'clock', ok: 'trophy' };
+    // shown once per page; when the page opens, only what arrived in the last 30 minutes (the rest waits in «الإشعارات»)
+    function popUp(list) {
+      const me = (YB.session() && YB.session().user && YB.session().user.id) || '';
+      if (S.popUid !== me) { S.popUid = me; S.popSeen = null; }   // another account on this page starts afresh
+      const first = !S.popSeen, seen = S.popSeen || (S.popSeen = new Set());
+      const fresh = list.filter(n => !n.read_at && POP_KINDS.has(n.kind) && !seen.has(n.id) && Date.now() - Date.parse(n.created_at) < (first ? 30 * 6e4 : 3 * 864e5));
+      list.forEach(n => seen.add(n.id));
+      if (!fresh.length) return;
+      // the weightiest change shows first (being out or qualified matters more than one date)
+      const RANK = ['team_disqualified', 'team_qualified', 'judge_team_out', 'team_seated', 'team_approved', 'team_status', 'results_published', 'honours_announced', 'qualified_announced', 'team_out'];
+      const rank = k => { const i = RANK.indexOf(k); return i < 0 ? RANK.length : i; };
+      fresh.sort((x, y) => rank(x.kind) - rank(y.kind) || Date.parse(y.created_at) - Date.parse(x.created_at));
+      const n = fresh[0], tone = POP_TONE[n.kind] || 'brand';
+      const close = () => { put(pop); };
+      put(pop, h('div', { class: 'a-pop t-' + tone, 'data-pop-kind': n.kind },
+        h('span', { class: 'a-pop-i' }, icon(POP_ICON[tone] || 'bell')),
+        h('div', { class: 'a-pop-t' }, h('b', { text: noteText(n) }),
+          n.data && n.data.note ? h('p', { text: String(n.data.note) }) : null,
+          fresh.length > 1 ? h('small', { text: fresh.length === 2 ? 'وإشعار آخر ينتظرك في «الإشعارات».' : `و${fresh.length - 1} إشعارات أخرى تنتظرك في «الإشعارات».` }) : null),
+        h('div', { class: 'a-pop-a' },
+          btn('افتح الإشعارات', 'bell', 'btn-ghost', () => { close(); open(true); }, { 'data-fk': 'pop-open' }),
+          btn('إغلاق', 'x', 'btn-ghost', close, { 'data-fk': 'pop-close', 'aria-label': 'إغلاق التنبيه' }))));
+      FX.pulse(pop.firstChild, tone === 'ok' ? 'fx-pop' : 'fx-ringing');
+      if (n.kind === 'team_qualified') FX.confetti();
+    }
     function paint() {
       const unread = rows.filter(n => !n.read_at).length;
       count.textContent = String(unread);
@@ -4006,6 +4045,7 @@
       rows = Array.isArray(r.data) ? r.data : [];
       bell.hidden = false;
       paint();
+      popUp(rows);
     }
     async function open(on) {
       panel.hidden = !on;
@@ -4023,7 +4063,7 @@
       S.stopInbox = YB.poll ? YB.poll(load, INBOX_MS) : null;
       if (!S.stopInbox) load();
     }
-    return { bell, panel, start };
+    return { bell, panel, pop, start };
   }
 
 
@@ -4033,7 +4073,7 @@
   const pad2 = n => String(n).padStart(2, '0');
   const localParts = iso => { const d = new Date(iso); return isNaN(d) ? { date: '', time: '' } : { date: `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`, time: `${pad2(d.getHours())}:${pad2(d.getMinutes())}` }; };
   function fmtWhen(iso) { try { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleString('ar-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } }
-  const evChip = st => st === 'cancelled' ? chip('أُلغي', 'bad') : st === 'changed' ? chip('تغيّر الموعد', 'sun') : null;
+  const evChip = st => st === 'cancelled' ? chip('أُلغي', 'bad') : st === 'postponed' ? chip('أُجّل', 'sun') : st === 'changed' ? chip('تغيّر الموعد', 'sun') : null;
   const isPast = e => new Date(e.starts_at).getTime() < Date.now() - 3 * 36e5;
   function lg2Box() {
     if (!Array.isArray(W.lg2Rows) || !W.lg2Rows.length) return null;
@@ -4123,6 +4163,11 @@
       const open = M.open === ev.id;
       const acts = [btn('تعديل', 'user', 'btn-ghost', () => { M.editing = ev.id; paint(); const f = el.querySelector('.a-evform input'); if (f) f.focus(); }, { 'data-fk': 'eve-' + ev.id }),
         btn(open ? 'إخفاء الحضور' : 'حضور الفرق', 'user-check', 'btn-ghost', () => { M.open = open ? null : ev.id; paint('eva-' + ev.id); }, { 'data-fk': 'eva-' + ev.id, 'aria-expanded': String(open) })];
+      if (ev.status !== 'cancelled' && ev.status !== 'postponed') acts.push(armed(btn('أجّل الموعد', 'clock', 'btn-ghost', () => {}, { 'data-fk': 'evp-' + ev.id }), 'اضغط مرة أخرى لتأكيد التأجيل', async () => {
+        const r = await YB.update('yb_events', { id: 'eq.' + ev.id }, { status: 'postponed' }, { returning: true });
+        if (!wrote(r)) { if (!sessionLost(r)) say(errMsg(r)); return; }
+        await refresh('أُجّل الموعد، ووصل تنبيه للفرق المعنية. عدّل الوقت حين يُعرف الموعد الجديد، فيصلهم تنبيه آخر.', 'eva-' + ev.id);
+      }));
       if (ev.status !== 'cancelled') acts.push(armed(btn('ألغِ الموعد', 'x', 'btn-ghost btn-danger', () => {}, { 'data-fk': 'evc-' + ev.id }), 'اضغط مرة أخرى لتأكيد الإلغاء', async () => {
         const r = await YB.update('yb_events', { id: 'eq.' + ev.id }, { status: 'cancelled' }, { returning: true });
         if (!wrote(r)) { if (!sessionLost(r)) say(errMsg(r)); return; }
@@ -4423,9 +4468,62 @@
         waitlist: t.waitlist, wait_pos: waitPos(t), canMove: true },
         (msg, fk) => refreshAdmin(msg, fk)));
       body.append(decisionBar(t));
+      if (t.status === 'approved' && !t.waitlist) body.append(dqBox(t));
     }
     card.append(body);
     return card;
+  }
+  // 0025: the admin takes a team out of the competition, with a reason its people read
+  const DQ_ERR = { reason_required: 'اكتب سبب الاستبعاد (5 أحرف على الأقل).', not_in_play: 'هذا الفريق ليس في المسابقة الآن.',
+    contact_not_allowed: 'لا تُكتب أرقام الهواتف أو عناوين البريد في السبب.' };
+  function dqBox(t) {
+    const reason = h('textarea', { rows: 2, maxlength: 300, 'data-fk': 'dqr-' + t.id });
+    const go = armed(btn('أخرج الفريق من المسابقة', 'x', 'btn-ghost btn-danger', () => {}, { 'data-fk': 'dq-' + t.id }), 'اضغط مرة أخرى لتأكيد الاستبعاد', async () => {
+      const r = await YB.rpc('yb_team_disqualify', { team_id: t.id, reason: reason.value });
+      if (!r.ok) { if (!sessionLost(r)) say(errMsg(r, DQ_ERR)); return; }
+      if (!r.data || !r.data.ok) { say(errMsg({ error: r.data && r.data.error }, DQ_ERR)); reason.focus(); return; }
+      const nEv = r.data.events_cancelled || 0;
+      await refreshAdmin(`أُخرج «${t.name}» من المسابقة، ووصل الخبر لأعضائه وأولياء أمورهم وللحكام ولقادة الفرق${nEv ? `، وأُلغي ${nEv === 1 ? 'موعد قادم' : nEv + ' مواعيد قادمة'} له` : ''}. يأخذ مكانه أول فريق في الاحتياط إن وُجد.`, 'th-' + t.id);
+    });
+    return h('details', { class: 'a-dq', 'data-dq': t.id },
+      h('summary', { text: 'استبعاد الفريق من المسابقة' }),
+      h('p', { class: 'a-hint', text: 'يخرج الفريق فورًا: يختفي من الجداول والتحكيم، وتُلغى مواعيده القادمة، ولا تُحسب درجاته. يصل الخبر بالسبب لأعضائه وأولياء أمورهم، ويُبلَّغ الحكام وقادة الفرق.' }),
+      h('label', { class: 'a-field' }, h('span', { text: 'السبب (يقرؤه أعضاء الفريق وأولياء أمورهم)' }), reason),
+      h('div', { class: 'a-actions' }, go));
+  }
+  // 0025: when the group stage ends the admin confirms who qualified; the board's group winners are ticked already
+  function qualifiedDesk() {
+    const el = h('section', { class: 'a-card a-qual', 'data-qualified': '', hidden: true, 'aria-labelledby': 'qd-h' });
+    async function load(msg) {
+      const q = await YB.rpc('yb_qualified_list', {});
+      if (!q.ok) return;   // an older backend: the card stays hidden
+      const done = new Set((Array.isArray(q.data) ? q.data : []).map(x => x.team_id));
+      let firsts = [];
+      try { const g = await YB.getState(); const fb = g && g.state && window.YTour ? window.YTour.football(g.state) : null; firsts = ((fb && fb.qualified) || []).filter(Boolean); } catch (e) { firsts = []; }
+      const teams = A.teams.filter(t => t.status === 'approved' && !t.waitlist);
+      const boxes = teams.filter(t => !done.has(t.id)).map(t => {
+        const c = h('input', { type: 'checkbox', value: t.id, 'data-fk': 'qd-' + t.id });
+        c.checked = firsts.includes(t.id);
+        return h('label', { class: 'a-check' }, c, h('span', { text: t.name }), firsts.includes(t.id) ? chip('أول مجموعته', 'ok') : null);
+      });
+      const go = btn('أعلن المتأهلين', 'trophy', 'btn-primary', async () => {
+        const ids = boxes.map(b => b.querySelector('input')).filter(c => c.checked).map(c => c.value);
+        if (!ids.length) { say('اختر فريقًا واحدًا على الأقل.'); return; }
+        const r = await YB.rpc('yb_announce_qualified', { team_ids: ids });
+        if (!r.ok) { if (!sessionLost(r)) say(errMsg(r)); return; }
+        if (!r.data || !r.data.ok) { say(errMsg({ error: r.data && r.data.error })); return; }
+        await load(r.data.announced ? `أُعلن ${r.data.announced === 1 ? 'فريق متأهل' : r.data.announced + ' فرق متأهلة'}: وصل لكل فريق متأهل خبر تأهله، ولبقية الفرق خبر بمن تأهل.` : 'هؤلاء أُعلنوا من قبل.');
+      }, { 'data-fk': 'qd-go' });
+      put(el, h('h3', { id: 'qd-h' }, icon('trophy'), h('span', { text: 'المتأهلون إلى الدور النهائي' })),
+        h('p', { class: 'a-lead', text: firsts.length ? 'علّمت لوحة البطولة أوائل المجموعات. راجعهم ثم أعلن: يظهر الخبر لكل فريق متأهل فورًا وعلى هاتفه.' : 'حين تكتمل مباريات المجموعات تعلّم لوحة البطولة أوائلها هنا. ويمكنك الاختيار بنفسك.' }),
+        done.size ? h('p', { class: 'a-chips', 'data-qd-done': '' }, h('b', { text: 'أُعلن: ' }), ...teams.filter(t => done.has(t.id)).map(t => chip(t.name, 'ok'))) : null,
+        boxes.length ? h('div', { class: 'a-qual-l' }, boxes) : h('p', { class: 'a-empty', text: 'أُعلنت كل الفرق.' }),
+        boxes.length ? h('div', { class: 'a-actions' }, go) : null);
+      el.hidden = false;
+      if (msg) say(msg);
+    }
+    load();
+    return el;
   }
   function adminMember(m, t) {
     const sw = consentSwitch(m, async received => {
@@ -4694,7 +4792,7 @@
     const evs = ev.ok && Array.isArray(ev.data) ? ev.data : [];
     sheets.push({ name: 'الجدول', rows: [['التاريخ', 'الوقت', 'النوع', 'العنوان', 'المسابقة', 'المكان', 'الفرق', 'الحالة', 'ملاحظة']]
       .concat(evs.map(e => [fmtDay(e.starts_at), fmtHour(e.starts_at), KINDS[e.kind] || e.kind || '', e.title || '', COMPS[e.competition] || e.competition || '', e.place || '',
-        (e.team_ids || []).map(teamName).filter(Boolean).join('، '), e.status === 'cancelled' ? 'أُلغي' : e.status === 'changed' ? 'تغيّر الموعد' : '', e.note || ''])) });
+        (e.team_ids || []).map(teamName).filter(Boolean).join('، '), e.status === 'cancelled' ? 'أُلغي' : e.status === 'postponed' ? 'أُجّل' : e.status === 'changed' ? 'تغيّر الموعد' : '', e.note || ''])) });
     const b = boardSheets(g);
     sheets.push({ name: 'النتائج', rows: b.results }, { name: 'الترتيب', rows: b.table });
     const board = jb.ok && jb.data && typeof jb.data === 'object' ? jb.data : null;
@@ -4721,7 +4819,7 @@
         .concat(L.members.map((m, i) => [i + 1, m.full_name, numOr(m.age), m.guardian_name || '', m.guardian_phone || '', m.is_leader ? 'نعم' : '', m.consent_status === 'received' ? 'استُلمت' : 'لم تُستلم',
           (m.roles || []).map(r => ROLE_W[r] || r).join('، '), m.user_id ? 'نعم' : ''])) },
       { name: 'المواعيد', rows: [['التاريخ', 'الوقت', 'النوع', 'العنوان', 'المكان', 'الحالة']]
-        .concat(evs.map(e => [fmtDay(e.starts_at), fmtHour(e.starts_at), KINDS[e.kind] || e.kind || '', e.title || '', e.place || '', e.status === 'cancelled' ? 'أُلغي' : e.status === 'changed' ? 'تغيّر الموعد' : ''])) }];
+        .concat(evs.map(e => [fmtDay(e.starts_at), fmtHour(e.starts_at), KINDS[e.kind] || e.kind || '', e.title || '', e.place || '', e.status === 'cancelled' ? 'أُلغي' : e.status === 'postponed' ? 'أُجّل' : e.status === 'changed' ? 'تغيّر الموعد' : ''])) }];
   }
   async function saveWorkbook(button, make, file, status) {
     if (!window.YBXlsx) { status.textContent = 'تعذّر تجهيز ملف Excel في هذا المتصفح. استعمل ملف CSV.'; return; }
@@ -5835,6 +5933,8 @@
       put(el, h('h3', { id: fk + '-h' }, icon('scale'), h('span', { text: 'التحكيم' })),
         h('p', { class: 'a-lead', text: `اختارتك الإدارة حكمًا في: ${J.data.axes.map(a => AXIS[a]).join('، ')}. اكتب سبب كل درجة؛ يقرؤه الفريق بعد إعلان النتائج دون اسمك.` }),
         J.data.published ? h('p', { class: 'a-note', text: 'أُعلنت النتائج، فالدرجات مقفلة الآن.' }) : null,
+        (J.data.removed || []).length ? h('div', { class: 'a-note a-judge-out', 'data-judge-out': '' }, h('b', { text: 'فرق خرجت من المسابقة' }),
+          h('ul', {}, J.data.removed.map(t => h('li', { text: `${t.name}: لا تحكّمه بعد الآن${t.my_scores ? `، ودرجاتك له (${t.my_scores}) لم تعد تُحسب` : ''}. تابع تحكيم بقية الفرق.` })))) : null,
         J.oath ? h('p', { class: 'a-hint', 'data-oath-done': '', text: `أدّيت قسم التحكيم يوم ${shortDay(J.oath)}: العدل والأمانة وقول الحق في كل درجة.` }) : null,
         total ? meter('ما قيّمته حتى الآن', doneN, total, 'judge-progress') : null,
         total && !J.data.published ? (nextT ? h('div', { class: 'a-actions' }, btn(`افتح الفريق التالي: ${nextT.name}`, 'arrow-left', 'btn-ghost', () => { J.open[nextT.team_id] = true; paint('jt-' + nextT.team_id); }, { 'data-fk': fk + '-next' }))
