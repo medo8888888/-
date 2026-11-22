@@ -535,7 +535,7 @@ html.is-dash .acct{max-width:none}
 html.is-dash main#main,html.is-dash body main{padding-top:0!important}
 html.is-dash .yb-pass,html.is-dash .progress,html.is-dash .totop{display:none}
 html.is-dash .yd-bar{top:auto;bottom:12px}
-html.is-dash:has(.yd-bar) .acct-sec{padding-bottom:200px}
+html.is-dash:has(.yd-bar) .acct-sec{padding-bottom:calc(var(--yd-h, 200px) + 16px)}
 html.is-dash .btn:hover,html.is-dash .a-demo-btn:hover{transform:none}
 .a-tabs-11{grid-template-columns:repeat(6,1fr)}
 @media (max-width:520px){.a-tabs-11{grid-template-columns:repeat(3,1fr)}}
@@ -759,7 +759,7 @@ html.a-lock{overflow:hidden}
   html.is-dash{--dock-h:calc(64px + env(safe-area-inset-bottom));scroll-padding-bottom:calc(var(--dock-h) + 16px)}
   html.is-dash .a-side,html.is-dash .a-head-b{display:none}
   html.is-dash .acct-sec{padding-bottom:calc(var(--dock-h) + 28px)}
-  html.is-dash:has(.yd-bar) .acct-sec{padding-bottom:calc(var(--dock-h) + 220px)}
+  html.is-dash:has(.yd-bar) .acct-sec{padding-bottom:calc(var(--dock-h) + var(--yd-h, 220px) + 16px)}
   html.is-dash .yd-bar{bottom:calc(var(--dock-h) + 8px)}
   .a-sec{scroll-margin-top:16px}
   .a-head{padding:14px}

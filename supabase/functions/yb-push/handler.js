@@ -39,6 +39,7 @@ export function makeHandler({ url, serviceKey, subject, fetchFn = fetch, concurr
         return json({ ok: true, key: cfg.vapid_public });
       }
       if (req.method !== 'POST') return json({ ok: false, error: 'method' }, 405);
+      if (!req.headers.get('x-yb-push')) return json({ ok: false, error: 'forbidden' }, 401);   // no database call for a stranger
       const cfg = await rpc('yb_push_cfg', {});
       if (!cfg || !sameText(req.headers.get('x-yb-push') || '', cfg.secret || '')) return json({ ok: false, error: 'forbidden' }, 401);
       if (!cfg.vapid_public || !cfg.vapid_private) return json({ ok: false, error: 'no_keys' }, 503);

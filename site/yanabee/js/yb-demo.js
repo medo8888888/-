@@ -824,6 +824,9 @@
     + 'body.yd-on main{padding-top:var(--yd-h,0px)}'
     + '.yd-links{margin:4px 0}'
     + '@media (max-width:720px){.yd-bar{inset-inline:8px;top:calc(58px + 16px);padding:6px 10px;font-size:.78rem;line-height:1.5}.yd-bar button,.yd-bar a{padding:2px 10px}.yd-sw>span{display:none}.yd-row{gap:4px 8px}.yd-msg{flex-basis:200px}}'
+    + '.yd-bar .yd-fold{min-height:44px;min-width:44px;padding:2px 12px;margin-inline-start:auto}'
+    + '.yd-bar.yd-min .yd-row+.yd-row,.yd-bar.yd-min details,.yd-bar.yd-min .yd-msg{display:none}'
+    + '.yd-bar.yd-min{padding:4px 8px}'
     + '@media print{.yd-bar{display:none!important}body.yd-on main{padding-top:0}}';
 
   function mk(tag, attrs, kids) {
@@ -854,11 +857,17 @@
       mk('li', { text: 'كعضو: شاهد فريقك وزملاءك وجدول مبارياتك ونتائجها.' }),
       mk('li', { text: 'كولي أمر: تابع حالة الموافقة وفريق ابنك أو ابنتك ونتائجه.' }),
       mk('li', { text: 'افتح لوحة البطولة لترى الترتيب العام، وتبويب «فريقي» لمبارياتك.' })])]);
+    // on a phone the banner folds to its tag so it never hides the page; the choice is kept for this tab
+    var fold = mk('button', { type: 'button', class: 'yd-fold', 'data-yd-fold': '', 'aria-expanded': 'true', text: 'أخفِ' });
     var bar = mk('aside', { class: 'yd-bar', role: 'region', 'aria-label': 'وضع تجريبي' }, [
       mk('div', { class: 'yd-row' }, [mk('span', { class: 'yd-tag', text: 'وضع تجريبي' }),
-        mk('p', { class: 'yd-msg', text: 'وضع تجريبي: بيانات وهمية تُحفظ في هذا المتصفح فقط ولا تتصل بأي قاعدة بيانات' })]),
+        mk('p', { class: 'yd-msg', text: 'وضع تجريبي: بيانات وهمية تُحفظ في هذا المتصفح فقط ولا تتصل بأي قاعدة بيانات' }), fold]),
       mk('div', { class: 'yd-row' }, [sw, exit]), guide]);
     document.body.insertBefore(bar, document.getElementById('main') || document.body.firstChild);
+    var setMin = function (m) { bar.classList.toggle('yd-min', m); fold.textContent = m ? 'المزيد' : 'أخفِ'; fold.setAttribute('aria-expanded', String(!m)); fold.setAttribute('aria-label', m ? 'اعرض أدوات الوضع التجريبي' : 'أخفِ أدوات الوضع التجريبي'); };
+    var saved = ssGet('yb-demo-fold');
+    setMin(saved ? saved === '1' : window.matchMedia && window.matchMedia('(max-width: 720px)').matches);
+    fold.addEventListener('click', function () { var m = !bar.classList.contains('yd-min'); setMin(m); ssSet('yb-demo-fold', m ? '1' : '0'); });
     document.body.classList.add('yd-on');
     var fit = function () { document.documentElement.style.setProperty('--yd-h', Math.ceil(bar.getBoundingClientRect().height + 24) + 'px'); };
     fit();

@@ -27,6 +27,12 @@ window.YB_CONFIG = { url: '$YB_URL', anonKey: '$YB_KEY' };
 EOF
 
 if grep -q '/yanabee/' "$STAGE/site/404.html"; then echo "404.html still has /yanabee/ paths" >&2; exit 1; fi
+# the content policy names THIS backend only (the repo's _headers allows any *.supabase.co so the tests can use a fake);
+# the realtime socket (wss) is not used by the site
+YB_HOST="${YB_URL#https://}"
+case "$YB_HOST" in *[!a-z0-9.-]*|'') echo "refusing: odd backend host '$YB_HOST'" >&2; exit 1;; esac
+sed -i -e "s# wss://\*\.supabase\.co##g" -e "s#https://\*\.supabase\.co#https://$YB_HOST#g" "$STAGE/site/_headers"
+if grep -q '\*\.supabase\.co' "$STAGE/site/_headers"; then echo "_headers still allows every Supabase project" >&2; exit 1; fi
 # the app's service worker: its version follows the files actually shipped (the live config included), so phones
 # that installed the app replace their saved copies after every upload
 if [ -f "$STAGE/site/sw.js" ]; then

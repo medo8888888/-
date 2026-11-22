@@ -2797,8 +2797,10 @@ section('failure paths: network, server errors, expiry, recovery link');
   /* manual sign out */
   await signInOk(p, 'mm@t.test');
   check('member without a team sees the join form', (await p.locator('form[aria-label="الانضمام إلى فريق"]').count()) === 1);
+  await p.evaluate(() => localStorage.setItem('yanabee-reg-draft', JSON.stringify({ f: { team: 'فريق المسودة', leader: 'اسم' }, m: [{ n: 'طفل', a: 10, c: '0500000000' }], by: 'account' })));
   await p.locator('.a-head button', { hasText: 'خروج' }).click();
   await p.waitForSelector('#panel-login', { state: 'visible' });
+  check('sign out forgets the registration draft the account wrote (children\'s names and phones)', (await p.evaluate(() => localStorage.getItem('yanabee-reg-draft'))) === null);
   check('sign out → login form with «تم تسجيل الخروج»', /تم تسجيل الخروج/.test(await text(p)) && fake.count(/logout/) === 1);
   check('…focus goes to the e-mail field', await p.evaluate(() => document.activeElement && document.activeElement.name === 'email'));
   /* change password from the header */
@@ -4511,7 +4513,7 @@ section('phone notifications: one switch per phone in «تخصيص» ← «ال�
     const mk = () => ({ endpoint: 'https://fcm.googleapis.com/fcm/send/phone-' + Math.random().toString(36).slice(2), toJSON() { return { endpoint: this.endpoint, keys: { p256dh: 'B' + 'q'.repeat(86), auth: 'a'.repeat(22) } }; },
       unsubscribe: async () => { cur = null; window.__pushCalls.push('unsub'); return true; } });
     const reg = { pushManager: { getSubscription: async () => cur, subscribe: async o => { window.__pushCalls.push('sub:' + (o.userVisibleOnly ? 'visible' : 'silent') + ':' + o.applicationServerKey.length); cur = mk(); return cur; } } };
-    Object.defineProperty(navigator, 'serviceWorker', { configurable: true, value: { ready: Promise.resolve(reg), controller: null, register: async () => reg, addEventListener() {} } });
+    Object.defineProperty(navigator, 'serviceWorker', { configurable: true, value: { ready: Promise.resolve(reg), controller: null, register: async () => reg, getRegistration: async () => reg, addEventListener() {} } });
     const N = { permission: 'default', requestPermission: async () => { N.permission = perm; window.__pushCalls.push('ask'); return perm; } };
     Object.defineProperty(window, 'Notification', { configurable: true, value: N });
   };
@@ -4519,7 +4521,9 @@ section('phone notifications: one switch per phone in «تخصيص» ← «ال�
     const X = await open(fake, { label, mobile: true });
     await X.addInitScript(stub, opts || {});
     await X.reload();
-    await settle(X); await signInOk(X, email);
+    await settle(X);
+    if (opts && opts.shared) await X.locator('[data-fk="login-shared"]').check();
+    await signInOk(X, email);
     await X.waitForSelector('.a-dock [data-dock=more]', { timeout: 8000 });
     await X.locator('.a-dock [data-dock=more]').click();
     await X.locator('[data-more] [data-fk=more-cust]').click();
@@ -4564,7 +4568,16 @@ section('phone notifications: one switch per phone in «تخصيص» ← «ال�
   await K2.locator('[data-fk="cpush"]').click();
   await K2.waitForFunction(() => document.querySelector('[data-fk="cpush"]') && document.querySelector('[data-fk="cpush"]').checked && /حتى والموقع مغلق/.test(document.querySelector('[data-push]').innerText), null, { timeout: 6000 });
   check('a member with the consent received turns it on', fake.pushSubs.length === 1 && fake.pushSubs[0].user_id === kidB.id);
+  // signing out: this phone stops receiving the account's alerts (on the server and in the browser)
+  await K2.evaluate(() => [...document.querySelectorAll('.a-head button')].find(b => /خروج/.test(b.textContent)).click());
+  await K2.waitForSelector('#panel-login', { state: 'visible', timeout: 8000 });
+  await K2.waitForFunction(() => (window.__pushCalls || []).includes('unsub'), null, { timeout: 6000 }).catch(() => {});
+  check('signing out removes this phone from the account\'s alerts', fake.pushSubs.length === 0 && (await K2.evaluate(() => window.__pushCalls)).includes('unsub'));
   await close(K2);
+  // a shared device (school computer): alerts are not offered, with the reason
+  const SH = await openPush(fake, 'pl@t.test', { shared: true }, 'push-shared');
+  check('on a shared device no switch is offered, and it says why', (await SH.locator('[data-fk="cpush"]').count()) === 0 && (await SH.locator('[data-push-shared]').count()) === 1 && /جهاز مشترك/.test(await SH.locator('[data-push]').innerText()));
+  await close(SH);
   // a browser without Web Push (Safari on iPhone before installing)
   const I = await openPush(fake, 'pl@t.test', { noPush: true }, 'push-ios');
   check('without Web Push: a plain explanation instead of a switch', (await I.locator('[data-fk="cpush"]').count()) === 0 && /(ثبّت ينابيع على الشاشة الرئيسية|لا يدعم التنبيهات)/.test(await I.locator('[data-push]').innerText()));

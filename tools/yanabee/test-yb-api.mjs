@@ -398,6 +398,13 @@ test('token refresh: before expiry, race, 401 retry, failures', async () => {
   env5.on('GET', '/rest/v1/teams', { status: 401, body: { code: 'PGRST301', message: 'JWT expired' } });
   err = null; try { await env5.YB.q('teams', {}); } catch (e) { err = e; }
   ok(!!env5.YB.session() && !!env5.storage(), 'a network failure during refresh keeps the session');
+  // 5b. a 401 on a fresh-looking token, then the refresh fails for a temporary reason: the caller sees a network
+  //     problem (retry), not the 401 that the page would read as a lost login and sign the user out
+  const env5b = makeEnv({ stored: storedSession(p3) });
+  env5b.on('POST', '/rest/v1/rpc/my_team', { status: 401, body: { code: 'PGRST301', message: 'JWT expired' } });
+  env5b.on('POST', 'grant_type=refresh_token', { throws: new TypeError('Failed to fetch') });
+  const r5b = await env5b.YB.rpc('my_team', {});
+  eq([r5b.ok, r5b.error, !!env5b.YB.session(), !!env5b.storage()], [false, 'network', true, true], 'a 401 followed by a failed refresh reads as a network problem and keeps the session');
   // 6. 5xx during refresh keeps the session too
   const env6 = makeEnv({ stored: storedSession(p3, { expires_at: p3.nowSec() - 10 }) });
   env6.on('POST', 'grant_type=refresh_token', { status: 503, body: {} });
@@ -484,6 +491,24 @@ test('e-mail link in the URL hash', async () => {
   eq([plain.YB.linkType, plain.YB.linkError, plain.replaced.length, plain.calls.length], [null, null, 0, 0], 'an ordinary #anchor is left alone');
   const unc = makeEnv({ config: { url: '', anonKey: '' }, location: hashLoc('#access_token=AT1&refresh_token=RT1&type=recovery') });
   eq([unc.YB.linkType, unc.calls.length], [null, 0], 'unconfigured mode ignores link tokens');
+  // a link for another account while someone is signed in here: the open session stays as it is (login fixation)
+  const p0 = makeEnv();
+  const other = makeEnv({
+    stored: storedSession(p0),
+    location: hashLoc('#access_token=ATX&refresh_token=RTX&expires_in=3600&token_type=bearer&type=magiclink'),
+    pre: ({ on }) => { on('GET', '/auth/v1/user', { body: { id: 'attacker-9', email: 'x@evil.test' } }); on('GET', '/rest/v1/profiles', { body: PROFILE }); }
+  });
+  await other.YB.ready;
+  eq([other.YB.linkError, other.YB.linkType, other.YB.session()?.user?.id, other.storage()?.access_token], ['other_account', null, 'user-1', 'acc0'],
+    'a link for another account is refused and the open session is kept');
+  eq(other.replaced.length, 1, 'its tokens are still removed from the address bar');
+  const same = makeEnv({
+    stored: storedSession(p0),
+    location: hashLoc('#access_token=AT2&refresh_token=RT2&expires_in=3600&token_type=bearer&type=recovery'),
+    pre: ({ on }) => { on('GET', '/auth/v1/user', { body: { id: 'user-1', email: 'a@b.test' } }); on('GET', '/rest/v1/profiles', { body: PROFILE }); }
+  });
+  await same.YB.ready;
+  eq([same.YB.linkError, same.YB.linkType, same.storage()?.access_token], [null, 'recovery', 'AT2'], 'a link for the account already open works as before');
 });
 
 test('storage events keep tabs in sync', async () => {

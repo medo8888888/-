@@ -276,6 +276,9 @@
     reason_required: 'اكتب سبب الدرجة (3 أحرف على الأقل).',
     bad_points: 'الدرجة خارج الحد المسموح لهذا المعيار.',
     conflict_of_interest: 'لا يحكّم أحد فريقًا فيه ابنه أو هو من أعضائه.',
+    oath_required: 'أدِّ قسم التحكيم أولًا، ثم ضع الدرجات.',
+    wrong_role: 'هذا الحساب ليس حساب قائد فريق. سجّل الفريق من حساب قائد، أو اخرج من حسابك ثم أرسل الطلب.',
+    photo_consent: 'لا يُنشر هذا الخبر بصوره حتى يوافق جميع أعضاء الفريق أو أولياء أمورهم على نشر الصور. انشره بلا صور أو انتظر الموافقات.',
     results_published: 'أُعلنت النتائج، فالدرجات مقفلة. توقف الإدارة الإعلان أولًا ثم تعدّل.',
     leads_team: 'هذا الحساب يقود فريقًا. سلّم الفريق لشخص آخر أولًا («سلّم الفريق»)، ثم غيّر دوره.',
     leads_other_team: 'هذا الحساب يقود فريقًا آخر. اختر شخصًا غيره.',
@@ -356,6 +359,8 @@
       return http(method, path, assign({ token: tok }, o)).then(function (r) {
         if (r.status === 401 && tok && state.session) {
           return refresh(tok).then(function (okr) {
+            // a refresh that failed for a temporary reason keeps the session: report a network problem, not a lost login
+            if (!okr && state.session) return { ok: false, status: 0, data: null, networkError: 'network' };
             if (!okr || !state.session) return r;
             return http(method, path, assign({ token: state.session.access_token }, o));
           });
@@ -752,6 +757,8 @@
           YB.linkType = type;
           YB.ready = http('GET', '/auth/v1/user', { token: tmp.access_token }).then(function (r) {
             if (r.ok && isObj(r.data) && r.data.id) {
+              // a link for ANOTHER account never silently replaces the one open here (login fixation)
+              if (state.session && state.session.user && state.session.user.id && state.session.user.id !== r.data.id) { YB.linkError = 'other_account'; YB.linkType = null; return null; }
               tmp.user = { id: r.data.id, email: r.data.email || '' };
               setSession(tmp);
               return afterSignIn(type === 'recovery' ? 'PASSWORD_RECOVERY' : 'SIGNED_IN');

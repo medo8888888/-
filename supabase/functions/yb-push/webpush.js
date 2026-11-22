@@ -88,6 +88,7 @@ export async function sendPush(sub, message, vapid, fetchFn = fetch, ttl = 24 * 
   try {
     const res = await fetchFn(sub.endpoint, {
       method: 'POST',
+      redirect: 'manual',   // the host check covers this URL only: a redirect elsewhere counts as a failure
       headers: { TTL: String(ttl), Urgency: 'normal', 'Content-Encoding': 'aes128gcm', 'Content-Type': 'application/octet-stream', Authorization: await vapidHeader(sub.endpoint, vapid) },
       body,
     });

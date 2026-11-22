@@ -105,8 +105,24 @@
   }
   function sessionLost(r) {
     const k = r && r.error;
-    if (k && SESSION_ERRS[k] && YB.session()) { S.expired = true; YB.signOut(); return true; }
+    if (k && SESSION_ERRS[k] && YB.session()) { S.expired = true; leaveDevice(); YB.signOut(); return true; }
     return false;
+  }
+  // Signing out (by hand, when idle, or when the session is lost): this device stops receiving the account's phone
+  // alerts, and the registration draft the account wrote (children's names, ages, guardians' phones) is forgotten.
+  // Unsubscribing in the browser is enough: the push service then answers 410 and yb-push forgets the address.
+  async function leaveDevice() {
+    try { const d = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); if (d && d.by === 'account') localStorage.removeItem(DRAFT_KEY); } catch (e) { /* storage blocked */ }
+    try {
+      const sw = 'serviceWorker' in navigator ? navigator.serviceWorker : null;
+      const reg = !sw ? null : typeof sw.getRegistration === 'function' ? await sw.getRegistration()
+        : await Promise.race([sw.ready, new Promise(res => setTimeout(() => res(null), 1500))]);
+      const sub = reg && reg.pushManager ? await reg.pushManager.getSubscription() : null;
+      if (sub) {
+        if (YB.session()) await Promise.race([YB.rpc('yb_push_unsubscribe', { endpoint: sub.endpoint }), new Promise(res => setTimeout(res, 2500))]).catch(() => {});
+        await sub.unsubscribe().catch(() => {});
+      }
+    } catch (e) { /* best effort */ }
   }
 
   /* ------------------------------------------------------------------ app state */
@@ -306,7 +322,7 @@
     const stop = () => { clearInterval(t); evs.forEach(e => document.removeEventListener(e, poke, { capture: true })); bar.remove(); S.idle = null; };
     const t = setInterval(() => {
       const idle = Date.now() - last, lim = minutes * 60000;
-      if (idle >= lim) { stop(); S.outMsg = `خرجت تلقائيًا بعد ${minutes} دقيقة دون استخدام، ${why}. ادخل من جديد.`; YB.signOut(); return; }
+      if (idle >= lim) { stop(); S.outMsg = `خرجت تلقائيًا بعد ${minutes} دقيقة دون استخدام، ${why}. ادخل من جديد.`; leaveDevice().finally(() => YB.signOut()); return; }
       if (idle >= lim - 120000 && !warned) { warned = true; text.textContent = `لم تستخدم حسابك منذ مدة. ستخرج تلقائيًا بعد دقيقتين ${why}.`; bar.hidden = false; say(text.textContent); }
     }, 5000);
     S.idle = { stop, minutes };
@@ -448,7 +464,7 @@
     const top = [];
     if (opts.notice) top.push(banner(opts.notice, opts.tone || 'ok'));
     if (YB.linkError) {
-      top.push(banner(YB.linkError === 'otp_expired' ? YB.errorText('otp_expired') : 'الرابط غير صالح أو انتهت صلاحيته. اطلب رابطًا جديدًا من «نسيت كلمة المرور».', 'bad'));
+      top.push(banner(YB.linkError === 'other_account' ? 'هذا الرابط لحساب آخر، فلم نغيّر حسابك المفتوح. اخرج أولًا ثم افتح الرابط إن كان لك.' : YB.linkError === 'otp_expired' ? YB.errorText('otp_expired') : 'الرابط غير صالح أو انتهت صلاحيته. اطلب رابطًا جديدًا من «نسيت كلمة المرور».', 'bad'));
       YB.linkError = null; // shown once
     }
     mount(h('div', { class: 'a-auth a-auth-2' }, top, h('div', { class: 'a-card a-forms' }, tablist, loginPanel, signPanel), demoCard(), whyCard()));
@@ -517,6 +533,7 @@
       outBtn.disabled = true;
       if (DEMO && DEMO.active) { DEMO.exit(); return; }
       S.manualOut = true;
+      await leaveDevice();
       await YB.signOut();
     });
     const body = h('div', { class: 'a-body' });
@@ -6408,7 +6425,7 @@
     const m = [lead].concat(L.members.filter(x => x !== lead)).slice(0, MAX).map((x, i) => ({
       n: x.full_name, a: x.age === null || x.age === undefined ? '' : String(x.age), c: (i === 0 ? (x.guardian_phone || phone) : x.guardian_phone) || ''
     }));
-    try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ f, m })); return true; } catch (e) { return false; }
+    try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ f, m, by: 'account' })); return true; } catch (e) { return false; }
   }
 
   /* ------------------------------------------------------------------ MEMBER */
@@ -6561,6 +6578,7 @@
     const title = () => h('b', { class: 'a-l', text: 'تنبيهات على هذا الهاتف' });
     const say2 = t => { st.textContent = t; if (t) say(t); };
     async function paint() {
+      if (YB.isShared && YB.isShared()) { put(box, title(), h('p', { class: 'a-hint', 'data-push-shared': '', text: 'لا تُفعَّل التنبيهات على جهاز مشترك، كي لا تصل إشعاراتك إلى من يستعمله بعدك.' })); return; }
       if (!supported) {
         const ios = window.YBPWA && window.YBPWA.state() === 'ios';
         put(box, title(), h('p', { class: 'a-hint', text: ios ? 'على iPhone وiPad: ثبّت ينابيع على الشاشة الرئيسية أولًا (من «المزيد» ← «ثبّت ينابيع على هاتفك»)، ثم افتحه من هناك وفعّل التنبيهات.' : 'هذا المتصفح لا يدعم التنبيهات على الهاتف.' }),
@@ -7371,7 +7389,7 @@
       if (!YB.session()) return; // the refresh failed and the auth event already redrew the page
       S.rendered = 'error';
       mount(h('div', { class: 'a-auth' }, errorBlock('تعذّر تحميل بيانات حسابك الآن. تحقق من الاتصال ثم أعد المحاولة.', () => route()),
-        h('div', { class: 'btns center' }, btn('خروج', 'x', 'btn-ghost', async () => { S.manualOut = true; await YB.signOut(); }))));
+        h('div', { class: 'btns center' }, btn('خروج', 'x', 'btn-ghost', async () => { S.manualOut = true; await leaveDevice(); await YB.signOut(); }))));
       return;
     }
     if (YB.linkType === 'recovery' && !S.recoveryDone) { S.rendered = 'recovery'; S.uid = profile.id; viewRecovery(); return; }
@@ -7381,11 +7399,13 @@
     await loadPrefs();
     if (seq !== S.seq) return;
     const role = profile.role;
-    if (role === 'admin') return viewAdmin(profile, seq);
-    if (role === 'officer') return viewOfficer(profile, seq);
-    if (role === 'leader') return viewLeader(profile, seq);
-    if (role === 'parent') return viewParent(profile, seq);
-    return viewMember(profile, seq);
+    const view = role === 'admin' ? viewAdmin : role === 'officer' ? viewOfficer : role === 'leader' ? viewLeader : role === 'parent' ? viewParent : viewMember;
+    try { return await view(profile, seq); } catch (e) {
+      if (seq !== S.seq) return;
+      S.rendered = 'error';
+      mount(h('div', { class: 'a-auth' }, errorBlock('تعذّر عرض صفحتك الآن. أعد المحاولة، وإن تكرر فأخبر إدارة المسابقة.', () => route()),
+        h('div', { class: 'btns center' }, btn('خروج', 'x', 'btn-ghost', async () => { S.manualOut = true; await leaveDevice(); await YB.signOut(); }))));
+    }
   }
 
   if (YB && YB.configured) {
