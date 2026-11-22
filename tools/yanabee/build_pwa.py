@@ -214,11 +214,18 @@ self.addEventListener('push', e => {
   let m = {};
   try { m = e.data ? e.data.json() : {}; } catch (err) { m = { body: e.data ? e.data.text() : '' }; }
   const url = new URL(typeof m.url === 'string' && !/^[a-z]+:/i.test(m.url) ? m.url : 'account.html', BASE).href;
-  e.waitUntil(self.registration.showNotification(String(m.title || 'ينابيع').slice(0, 60), {
-    body: String(m.body || 'لديك إشعار جديد.').slice(0, 200), tag: String(m.tag || 'yb').slice(0, 40), renotify: true,
-    icon: new URL('assets/icon-192.png', BASE).href, badge: new URL('assets/icon-192.png', BASE).href,
-    lang: 'ar', dir: 'rtl', data: { url },
-  }));
+  e.waitUntil((async () => {
+    // an open page hears it at once (its pop-up shows the news); a page in front needs no second, system notification
+    const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const mine = wins.filter(c => c.url.startsWith(BASE));
+    mine.forEach(c => { try { c.postMessage({ type: 'yb-note' }); } catch (err) { /* the page will poll */ } });
+    if (mine.some(c => c.focused && c.visibilityState === 'visible')) return;
+    await self.registration.showNotification(String(m.title || 'ينابيع').slice(0, 60), {
+      body: String(m.body || 'لديك إشعار جديد.').slice(0, 200), tag: String(m.tag || 'yb').slice(0, 40), renotify: true,
+      icon: new URL('assets/icon-192.png', BASE).href, badge: new URL('assets/icon-192.png', BASE).href,
+      lang: 'ar', dir: 'rtl', data: { url },
+    });
+  })());
 });
 self.addEventListener('notificationclick', e => {
   e.notification.close();

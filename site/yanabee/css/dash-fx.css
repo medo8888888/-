@@ -796,3 +796,8 @@ html.a-cer-on{overflow:hidden}
 .a-dq textarea{width:100%;min-height:64px}
 .a-qual-l{display:grid;gap:6px;margin-block:8px}
 .a-judge-out ul{margin:.4rem 0 0;padding-inline-start:1.2rem}
+/* 0026: parent link requests and adult players */
+.a-lreq-l,.a-lw-l{list-style:none;margin:.5rem 0 0;padding:0;display:grid;gap:10px}
+.a-lreq-i{display:grid;gap:8px;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface)}
+.a-lreq-i .a-actions{margin:0}
+.a-lreq h3 .a-chip,.a-adults h3 .a-chip{margin-inline-start:6px}

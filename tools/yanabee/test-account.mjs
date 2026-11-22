@@ -492,7 +492,7 @@ class Fake {
     if (!me) return err(401, '42501', `permission denied for function ${name}`);
     const raise = (key, code = 'P0001') => err(code === '42501' ? 403 : 400, code, key);
     const admin = c.role === 'admin';
-    const SIG = { yb_seek_me: [], yb_seek_save: ['p'], yb_seek_stop: [], yb_seek_guardian: ['code'], yb_guardian_seekers: [], yb_seek_guardian_revoke: ['seeker'], yb_seek_pool: [],
+    const SIG = { publish_state: ['state', 'prev'], yb_seek_adults: [], yb_seek_adult_confirm: ['target', 'ok'], yb_seek_me: [], yb_seek_save: ['p'], yb_seek_stop: [], yb_seek_guardian: ['code'], yb_guardian_seekers: [], yb_seek_guardian_revoke: ['seeker'], yb_seek_pool: [],
       yb_invite_send: ['seeker'], yb_invite_cancel: ['id'], yb_invite_answer: ['id', 'accept'], yb_set_transfers: ['allow'], yb_seek_stats: [],
       yb_team_staff: ['team_id'], yb_set_assistant: ['team_id', 'member_id'], yb_set_team_logo: ['team_id', 'path'],
       yb_push_mine: ['endpoint'], yb_push_key: [], yb_push_subscribe: ['sub'], yb_push_unsubscribe: ['endpoint'],
@@ -515,6 +515,27 @@ class Fake {
       yb_post_delete: ['id'], yb_post_moderate: ['id', 'action', 'note'], yb_react: ['post_id', 'kind'], yb_comments: ['post_id'], yb_comment_post: ['post_id', 'body'],
       yb_comment_delete: ['id'], yb_comment_report: ['id', 'reason'], yb_comment_moderate: ['id', 'action'], yb_comment_mute: ['id', 'hours', 'reason'], yb_feed_reports: [],
       yb_set_members_comment: ['allow'], yb_transfer_team: ['team_id', 'new_leader', 'old_stays', 'old_role'], yb_analytics: [] };
+    /* migration 0026: a parent link waits for the team leader (link_child below makes the request). Off unless a test sets c26. */
+    if (/^yb_link_(requests_mine|requests_team|answer)$/.test(name)) {
+      if (!this.c26) return err(404, 'PGRST202', 'Could not find the function public.' + name);
+      body = body || {};
+      this.linkReqs = this.linkReqs || [];
+      const ok = d => ({ status: 200, body: d });
+      const prof = this.profiles.find(x => x.id === me) || {}, adm = prof.role === 'admin';
+      const tOf = id => this.teams.find(x => x.id === id) || {};
+      const may = tid => adm || tOf(tid).leader_id === me;
+      const child = q => (this.members.find(m => m.id === q.member_id) || {}).full_name;
+      if (name === 'yb_link_requests_mine') return ok(this.linkReqs.filter(q => q.parent_id === me).map(q => ({ id: q.id, team_name: tOf(q.team_id).name, child_name: child(q), at: q.at })));
+      if (name === 'yb_link_requests_team') return ok(this.linkReqs.filter(q => may(q.team_id)).map(q => ({ id: q.id, team_id: q.team_id, team_name: tOf(q.team_id).name, child_name: child(q),
+        parent_name: (this.profiles.find(x => x.id === q.parent_id) || {}).full_name || '', other_children: this.links.filter(l => l.parent_id === q.parent_id).length, at: q.at })));
+      const q = this.linkReqs.find(x => x.id === body.id);
+      if (!q) return ok({ ok: false, error: 'not_found' });
+      if (!may(q.team_id)) return raise('permission_denied', '42501');
+      this.linkReqs.splice(this.linkReqs.indexOf(q), 1);
+      if (body.accept) this.links.push({ parent_id: q.parent_id, member_id: q.member_id });
+      this.notify([q.parent_id], body.accept ? 'link_confirmed' : 'link_declined', { team_id: q.team_id, team_name: tOf(q.team_id).name });
+      return ok({ ok: true, linked: !!body.accept });
+    }
     /* migration 0025: disqualification, qualified teams (postponed dates are in the yb_events PATCH). Off unless a test sets c25. */
     if (/^yb_(team_disqualify|announce_qualified|qualified_list)$/.test(name)) {
       if (!this.c25) return err(404, 'PGRST202', 'Could not find the function public.' + name);
@@ -1084,6 +1105,15 @@ class Fake {
         m.user_id = me;
       } else {
         if (this.links.some(l => l.parent_id === me && l.member_id === m.id)) return raise('already_linked');
+        if (this.c26) {   // 0026: a request for the team leader
+          this.linkReqs = this.linkReqs || [];
+          if (this.linkReqs.some(q => q.parent_id === me && q.member_id === m.id)) return { status: 200, body: { ok: true, pending: true, again: true, team_name: t.name } };
+          if (this.linkReqs.filter(q => q.parent_id === me).length >= 5) return raise('too_many_requests');
+          this.linkReqs.push({ id: this.uid(), parent_id: me, member_id: m.id, team_id: t.id, at: this.now() });
+          this.notify(t.leader_id ? [t.leader_id] : this.profiles.filter(p => p.role === 'admin').map(p => p.id), 'link_request',
+            { team_id: t.id, team_name: t.name, parent_name: (this.profiles.find(p => p.id === me) || {}).full_name, child_name: m.full_name });
+          return { status: 200, body: { ok: true, pending: true, team_name: t.name } };
+        }
         this.links.push({ parent_id: me, member_id: m.id });
       }
       return { status: 200, body: { ok: true, team_id: t.id, member_id: m.id, team_name: t.name } };
@@ -1323,17 +1353,28 @@ class Fake {
       if (!me) return raise('not_authenticated', '42501');
       const first = id => String(P(id).full_name || '').trim().split(/\s+/)[0] || null;
       const teamOf = u => (this.members.find(m => m.user_id === u) || {}).team_id || null;
-      const gOk = s => s && (s.age_group === 'adult' || !!s.guardian_by || this.members.some(m => m.user_id === s.user_id && m.consent_status === 'received'));
+      const gOk = s => s && ((s.age_group === 'adult' && (!this.c26 || s.adult_ok)) || !!s.guardian_by || this.members.some(m => m.user_id === s.user_id && m.consent_status === 'received'));
       const ok = d => ({ status: 200, body: d });
       const led = () => this.teams.filter(t => t.leader_id === me).slice(-1)[0] || null;
       const me2 = () => {
         const s = this.seekers.get(me);
         return { ok: true, can_seek: P(me).role === 'member', in_team: !!teamOf(me), transfers_open: this.transfers,
           seeker: s ? { age_group: s.age_group, area: s.area, positions: s.positions, active: s.active, guardian_ok: gOk(s), guardian_code: gOk(s) ? null : s.guardian_code,
+            adult_waiting: !!this.c26 && s.age_group === 'adult' && !s.adult_ok && !gOk(s),
             listed: s.active && gOk(s) && (!teamOf(me) || this.transfers) } : null,
           invites: this.invites.filter(i => i.seeker === me).map(i => { const t = this.teams.find(x => x.id === i.team_id); return { id: i.id, team_name: t.name, team_area: t.area, leader: first(t.leader_id), status: i.status, player_ok: i.player_ok, guardian_ok: i.guardian_ok }; }) };
       };
       if (name === 'yb_seek_me') return ok(me2());
+      if (name === 'yb_seek_adults' || name === 'yb_seek_adult_confirm') {
+        if (!this.c26) return err(404, 'PGRST202', 'Could not find the function public.' + name);
+        if (P(me).role !== 'admin') return raise('permission_denied', '42501');
+        if (name === 'yb_seek_adults') return ok([...this.seekers.values()].filter(s => s.active && s.age_group === 'adult' && !s.adult_ok && !gOk(s)).map(s => ({ user_id: s.user_id, full_name: P(s.user_id).full_name, area: s.area, at: this.now() })));
+        const s = this.seekers.get(body.target);
+        if (!s || s.age_group !== 'adult') return ok({ ok: false, error: 'not_found' });
+        if (body.ok) s.adult_ok = true; else { s.active = false; s.adult_ok = false; }
+        this.notify([s.user_id], body.ok ? 'seek_adult_ok' : 'seek_adult_no', {});
+        return ok({ ok: true });
+      }
       if (name === 'yb_seek_save') {
         if (P(me).role !== 'member') return ok({ ok: false, error: 'members_only' });
         const p = body.p || {};
@@ -1342,7 +1383,9 @@ class Fake {
         const s = this.seekers.get(me) || { user_id: me, guardian_by: null, guardian_code: null };
         Object.assign(s, { age_group: p.age_group, area: p.area || null, positions: p.positions || [], active: true, updated: ++this.tick });
         if (s.age_group !== 'adult' && !s.guardian_by && !s.guardian_code) s.guardian_code = 'K7M2Q' + (this.seekers.size + 2);
+        if (s.age_group !== 'adult') s.adult_ok = false;
         this.seekers.set(me, s);
+        if (this.c26 && s.age_group === 'adult' && !s.adult_ok) this.notify(this.profiles.filter(p => p.role === 'admin').map(p => p.id), 'seek_adult', { first_name: first(me) });
         return ok(me2());
       }
       if (name === 'yb_seek_stop') { this.invites.filter(i => i.seeker === me && i.status === 'pending').forEach(i => { i.status = 'cancelled'; }); this.seekers.delete(me); return ok({ ok: true }); }
@@ -1739,6 +1782,12 @@ class Fake {
     if (name === 'yb_match_marks_of') {
       if (!canManage(body.comp)) return raise('permission_denied', '42501');
       return { status: 200, body: this.marks.filter(k => k.comp === body.comp && k.match_key === body.match_key).map(k => ({ ...k, full_name: (this.members.find(m => m.id === k.member_id) || {}).full_name || null })) };
+    }
+    if (name === 'publish_state') {   // 0001: admin only, with the "someone saved before you" check
+      if (!admin) return raise('permission_denied', '42501');
+      if (this.tour ? body.prev !== this.tour.updated_at : body.prev) return { status: 200, body: { ok: false, conflict: true, updated_at: this.tour ? this.tour.updated_at : null } };
+      this.tour = { id: 1, state: body.state, updated_at: this.now() };
+      return { status: 200, body: { ok: true, conflict: false, updated_at: this.tour.updated_at } };
     }
     if (name === 'yb_result_approve') {
       if (!admin) return raise('permission_denied', '42501');
@@ -2563,7 +2612,7 @@ let memberEmail = 'sara@t.test', parentEmail = 'parent@t.test';
   const chips = await P.locator('.a-child .a-consent .a-chip').allInnerTexts();
   check('two children: one «استُلمت», one «لم تُستلم بعد»; ONE schedule card for the shared team', chips.some(c => /^استُلمت/.test(c)) && chips.some(c => /لم تُستلم/.test(c)) && (await P.locator('.a-sched').count()) === 1);
   const preqs = world.log.filter(l => l.who === world.profileByEmail(parentEmail).id).map(l => l.path.replace('/rest/v1/', ''));
-  check('parent screen reads only my_children, tournament_state and the own profile', preqs.every(r => /^(rpc\/(link_child|yb_attend_mine|yb_survey_mine|yb_notice_state|yb_my_honours|yb_cert_list|yb_parent_week|yb_event_staff_list|yb_theme_get|yb_team_awards|yb_child_journey|yb_week_race|yb_mark_read|yb_my_scores|yb_my_judging|yb_my_prefs|yb_feed|yb_guardian_seekers|yb_team_staff)|my_children|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements|yb_match_live|yb_team_style)$/.test(r)), [...new Set(preqs)].join());
+  check('parent screen reads only my_children, tournament_state and the own profile', preqs.every(r => /^(rpc\/(link_child|yb_link_requests_mine|yb_attend_mine|yb_survey_mine|yb_notice_state|yb_my_honours|yb_cert_list|yb_parent_week|yb_event_staff_list|yb_theme_get|yb_team_awards|yb_child_journey|yb_week_race|yb_mark_read|yb_my_scores|yb_my_judging|yb_my_prefs|yb_feed|yb_guardian_seekers|yb_team_staff)|my_children|tournament_state|profiles|yb_notifications|yb_events|yb_submissions|yb_announcements|yb_match_live|yb_team_style)$/.test(r)), [...new Set(preqs)].join());
   check('parent console clean', P.errs.length === 0, P.errs.join('|'));
   world.P = P;
 }
@@ -4554,7 +4603,7 @@ section('phone notifications: one switch per phone in «تخصيص» ← «ال�
     const mk = () => ({ endpoint: 'https://fcm.googleapis.com/fcm/send/phone-' + Math.random().toString(36).slice(2), toJSON() { return { endpoint: this.endpoint, keys: { p256dh: 'B' + 'q'.repeat(86), auth: 'a'.repeat(22) } }; },
       unsubscribe: async () => { cur = null; window.__pushCalls.push('unsub'); return true; } });
     const reg = { pushManager: { getSubscription: async () => cur, subscribe: async o => { window.__pushCalls.push('sub:' + (o.userVisibleOnly ? 'visible' : 'silent') + ':' + o.applicationServerKey.length); cur = mk(); return cur; } } };
-    Object.defineProperty(navigator, 'serviceWorker', { configurable: true, value: { ready: Promise.resolve(reg), controller: null, register: async () => reg, getRegistration: async () => reg, addEventListener() {} } });
+    Object.defineProperty(navigator, 'serviceWorker', { configurable: true, value: { ready: Promise.resolve(reg), controller: null, register: async () => reg, getRegistration: async () => reg, addEventListener(type, fn) { if (type === 'message') window.__swMsg = fn; } } });
     const N = { permission: 'default', requestPermission: async () => { N.permission = perm; window.__pushCalls.push('ask'); return perm; } };
     Object.defineProperty(window, 'Notification', { configurable: true, value: N });
   };
@@ -4609,6 +4658,12 @@ section('phone notifications: one switch per phone in «تخصيص» ← «ال�
   await K2.locator('[data-fk="cpush"]').click();
   await K2.waitForFunction(() => document.querySelector('[data-fk="cpush"]') && document.querySelector('[data-fk="cpush"]').checked && /حتى والموقع مغلق/.test(document.querySelector('[data-push]').innerText), null, { timeout: 6000 });
   check('a member with the consent received turns it on', fake.pushSubs.length === 1 && fake.pushSubs[0].user_id === kidB.id);
+  // a phone alert reaching this browser while the page is open: the pop-up shows at once, without waiting for the next check
+  fake.notify([kidB.id], 'team_qualified', { team_id: T.id, team_name: 'التنبيهات' });
+  fake.notes[fake.notes.length - 1].created_at = new Date().toISOString();
+  await K2.evaluate(() => window.__swMsg && window.__swMsg({ data: { type: 'yb-note' } }));
+  await K2.waitForSelector('[data-pop] .a-pop', { timeout: 4000 }).catch(() => {});
+  check('a phone alert that reaches an open page shows its pop-up at once', /تأهّل فريق التنبيهات/.test(await K2.locator('[data-pop]').innerText()));
   // signing out: this phone stops receiving the account's alerts (on the server and in the browser)
   await K2.evaluate(() => [...document.querySelectorAll('.a-head button')].find(b => /خروج/.test(b.textContent)).click());
   await K2.waitForSelector('#panel-login', { state: 'visible', timeout: 8000 });
@@ -6302,6 +6357,14 @@ section('the big changes pop up (0025): disqualified, qualified, postponed');
   const E12 = { id: fake.uid(), competition: 'football', kind: 'match', title: 'البروق ضد الرعد', starts_at: when(3), place: 'ملعب الحي', team_ids: [T1.id, T2.id], category: null, status: 'scheduled', note: null };
   const E23 = { id: fake.uid(), competition: 'football', kind: 'match', title: 'الرعد ضد الغيث', starts_at: when(5), place: 'ملعب الحي', team_ids: [T2.id, T3.id], category: null, status: 'scheduled', note: null };
   fake.events.push(E12, E23);
+  {
+    let st = YT.setTeams(YT.emptyState(), [T1, T2, T3].map(t => ({ id: t.id, name: t.name })).concat(Array.from({ length: 9 }, (_, i) => ({ id: 'bx' + i, name: 'فريق ' + (i + 1) }))));
+    let seed = 7; st = YT.drawGroups(st, () => (seed = (seed * 9301 + 49297) % 233280) / 233280);
+    const g = YT.football(st).groups.find(x => x.teams.includes(T1.id));
+    const m = g.rounds[0].matches.find(x => x.a === T1.id || x.b === T1.id);
+    st = YT.setResult(st, { a: m.a, b: m.b, sa: 1, sb: 1 });
+    fake.setTournament(st);
+  }
   const txt = async l => (await l.innerText()).replace(/\s+/g, ' ');
   const got = (u, kind) => fake.notes.filter(n => n.user_id === u && n.kind === kind);
   const until = async (pg, f) => { for (let i = 0; i < 60 && !f(); i++) await pg.waitForTimeout(100); return f(); };
@@ -6327,10 +6390,15 @@ section('the big changes pop up (0025): disqualified, qualified, postponed');
   await until(A, () => T1.status === 'rejected');
   check('two presses take the team out, with the reason', T1.status === 'rejected' && T1.disqualify_reason === 'تكرار مخالفة الروح الرياضية في مباراتين');
   check('its coming match is called off', E12.status === 'cancelled' && E23.status === 'scheduled');
+  await until(A, () => { const g = YT.football(fake.tour.state).groups.find(x => x.teams.includes(T1.id)); return g.table.find(r => r.id === T1.id).p === 3; });
+  {
+    const g = YT.football(fake.tour.state).groups.find(x => x.teams.includes(T1.id)), row = g.table.find(r => r.id === T1.id);
+    check('on the board its two matches not played are 0–2 losses (lg2: a withdrawal before the match); the draw it played stays', row.p === 3 && row.d === 1 && row.l === 2 && row.ga === 5);
+  }
   check('its leader and member are told, every judge, and the other leaders', got(lid('lq1@t.test'), 'team_disqualified').length === 1 && got(kid.id, 'team_disqualified').length === 1
     && got(jq.id, 'judge_team_out').length === 1 && got(lid('lq2@t.test'), 'team_out').length === 1 && got(lid('lq3@t.test'), 'team_out').length === 1);
   await A.waitForFunction(() => /أُخرج «البروق» من المسابقة/.test([...document.querySelectorAll('[aria-live]')].map(x => x.textContent).join(' ')), null, { timeout: 8000 });
-  check('the admin reads what was done', true);
+  check('the admin reads what was done, the board included', /سُجّلت 2 من مبارياته المتبقية في لوحة البطولة خسارةً 0–2/.test(await A.evaluate(() => [...document.querySelectorAll('[aria-live]')].map(x => x.textContent).join(' '))));
 
   /* ---- the admin confirms who qualified ---- */
   await A.locator('#at-tools').click();
@@ -6401,6 +6469,91 @@ section('the big changes pop up (0025): disqualified, qualified, postponed');
   await A2.waitForTimeout(600);
   check('on a backend without 0025 the qualified card stays hidden', (await A2.locator('[data-qualified]').isHidden()));
   await close(A2);
+}
+
+section('who is who (0026): the leader confirms a parent, the admin confirms an adult player');
+{
+  const fake = new Fake();
+  fake.c26 = true; fake.t17 = true;
+  fake.addUser({ email: 'boss6@t.test', name: 'المشرف العام', role: 'member' }); fake.setAdmin('boss6@t.test');
+  fake.addUser({ email: 'lk@t.test', name: 'قائد الشموس', role: 'leader' });
+  const par = fake.addUser({ email: 'pk6@t.test', name: 'أبو سعد', role: 'parent' });
+  const str = fake.addUser({ email: 'pz6@t.test', name: 'شخص غريب', role: 'parent' });
+  const adl = fake.addUser({ email: 'mk6@t.test', name: 'فيصل الكبير', role: 'member' });
+  const TK = fake.seedTeam({ leaderEmail: 'lk@t.test', name: 'الشموس', status: 'approved', members: [{ name: 'سعد عضو الشموس', age: 12, consent: 'received' }, ...Array.from({ length: 4 }, (_, i) => ({ name: `عضو الشموس ${i + 1}`, age: 12, consent: 'received' }))] });
+  fake.teams.forEach(t => { t.waitlist = false; });
+  const saad = fake.members.find(m => m.full_name === 'سعد عضو الشموس');
+  fake.seekers.set(adl.id, { user_id: adl.id, age_group: 'adult', area: 'حي النخيل', positions: ['attack'], active: true, guardian_by: null, guardian_code: null, adult_ok: false, updated: 1 });
+  const txt = async l => (await l.innerText()).replace(/\s+/g, ' ');
+  const until = async (pg, f) => { for (let i = 0; i < 60 && !f(); i++) await pg.waitForTimeout(100); return f(); };
+  const linkVia = async (pg, child) => {
+    await pg.evaluate(() => { const d = document.querySelector('.a-dock [data-dock="link"]'); if (d) d.click(); else document.getElementById('sec-link').scrollIntoView(); });
+    const f = pg.locator('form[aria-label="ربط ابن أو ابنة"]');
+    await f.locator('input[name=code]').fill(TK.join_code); await f.locator('input[name=name]').fill(child);
+    await f.locator('button[type=submit]').click();
+  };
+
+  /* ---- the parent asks ---- */
+  const P = await open(fake, { label: 'c26-parent' });
+  await settle(P); await signInOk(P, 'pk6@t.test');
+  await linkVia(P, 'سعد عضو الشموس');
+  await P.waitForSelector('[data-link-wait]:not([hidden])', { timeout: 8000 });
+  check('the parent\'s code and child name send a request: «أُرسل طلبك إلى قائد الفريق»', /أُرسل طلبك إلى قائد الفريق ليؤكد أنك ولي أمر الطفل/.test(await txt(P.locator('body'))));
+  check('«بانتظار تأكيد القائد» names the child and team; no child data yet', /سعد عضو الشموس/.test(await txt(P.locator('[data-link-wait]'))) && (await P.locator('[data-child]').count()) === 0 && fake.links.length === 0);
+  check('the leader is told', fake.notes.some(n => n.user_id === fake.profileByEmail('lk@t.test').id && n.kind === 'link_request'));
+  check('the parent console clean (request)', P.errs.length === 0, P.errs.join('|'));
+  await close(P);
+  const Z = await open(fake, { label: 'c26-stranger' });
+  await settle(Z); await signInOk(Z, 'pz6@t.test');
+  await linkVia(Z, 'عضو الشموس 1');
+  await Z.waitForSelector('[data-link-wait]:not([hidden])', { timeout: 8000 });
+  await close(Z);
+
+  /* ---- the leader answers ---- */
+  const L = await open(fake, { label: 'c26-leader' });
+  await settle(L); await signInOk(L, 'lk@t.test');
+  const lr = L.locator('[data-link-requests]');
+  await lr.waitFor({ state: 'visible', timeout: 8000 });
+  check('the leader\'s home shows «طلبات أولياء الأمور»: who asks for which child, and why to check first', /أبو سعد يطلب متابعة سعد عضو الشموس/.test(await txt(lr)) && /شخص غريب يطلب متابعة عضو الشموس 1/.test(await txt(lr)) && /أكّد أن صاحب الطلب ولي أمر الطفل فعلًا/.test(await txt(lr)));
+  const reqP = fake.linkReqs.find(q => q.parent_id === par.id), reqZ = fake.linkReqs.find(q => q.parent_id === str.id);
+  await L.locator(`[data-fk="llr-ok-${reqP.id}"]`).click();
+  await until(L, () => fake.links.some(l => l.parent_id === par.id));
+  check('«نعم، هو ولي أمره» links the parent to the child', fake.links.some(l => l.parent_id === par.id && l.member_id === saad.id));
+  await L.locator(`[data-fk="llr-no-${reqZ.id}"]`).click(); await L.locator(`[data-fk="llr-no-${reqZ.id}"]`).click();
+  await until(L, () => !fake.linkReqs.length);
+  check('«لا أعرفه» (two presses) declines: no link for the stranger, who is told', !fake.links.some(l => l.parent_id === str.id) && fake.notes.some(n => n.user_id === str.id && n.kind === 'link_declined'));
+  await L.waitForFunction(() => document.querySelector('[data-link-requests]').hidden, null, { timeout: 8000 });
+  check('with nothing left to answer the card goes away', true);
+  check('the leader console clean (0026)', L.errs.length === 0, L.errs.join('|'));
+  await close(L);
+
+  /* ---- the parent, confirmed ---- */
+  fake.notes.forEach(n => { if (n.kind === 'link_confirmed') n.created_at = new Date().toISOString(); });
+  const P2 = await open(fake, { label: 'c26-parent2' });
+  await settle(P2); await signInOk(P2, 'pk6@t.test');
+  await P2.waitForSelector('[data-child]', { timeout: 8000 });
+  check('once confirmed the parent sees the child, and the pop-up says the leader confirmed', (await P2.locator('[data-link-wait]').isHidden()) && /أكّد قائد فريق الشموس أنك ولي الأمر/.test(await txt(P2.locator('[data-pop]'))));
+  check('the parent console clean (confirmed)', P2.errs.length === 0, P2.errs.join('|'));
+  await close(P2);
+
+  /* ---- an adult player ---- */
+  const K = await open(fake, { label: 'c26-adult' });
+  await settle(K); await signInOk(K, 'mk6@t.test');
+  await K.waitForSelector('[data-seek-adult]', { timeout: 8000 });
+  check('a member who said «18 فأكثر» waits for the admin: «بانتظار تأكيد الإدارة»', /بانتظار تأكيد الإدارة/.test(await txt(K.locator('body'))));
+  await close(K);
+  const A = await open(fake, { label: 'c26-admin' });
+  await settle(A); await signInOk(A, 'boss6@t.test');
+  await A.locator('#at-tools').click();
+  await A.locator('[data-fk="tg-privacy"]').click();
+  const ad = A.locator('[data-adults]');
+  await ad.waitFor({ state: 'visible', timeout: 8000 });
+  check('the admin\'s privacy tools list who said «18 فأكثر»', /فيصل الكبير/.test(await txt(ad)));
+  await A.locator(`[data-fk="ad-ok-${adl.id}"]`).click();
+  await until(A, () => fake.seekers.get(adl.id).adult_ok === true);
+  check('«تأكدت: 18 فأكثر» lists them for the leaders, and they are told', fake.seekers.get(adl.id).adult_ok === true && fake.notes.some(n => n.user_id === adl.id && n.kind === 'seek_adult_ok'));
+  check('the admin console clean (0026)', A.errs.length === 0, A.errs.join('|'));
+  await close(A);
 }
 
 section('security round 2: local fonts, a shared device and signing out when idle, reading the privacy notice, easy passwords');

@@ -1,7 +1,7 @@
 /* ينابيع: the service worker of the installable site. Written by tools/yanabee/build_pwa.py: do not edit by hand.
    It answers only GET requests to this site. Accounts, the database and photos live on Supabase (another host)
    and the assistant on /api/: neither is ever answered or saved here. */
-const VERSION = '88d0c37d26c6';
+const VERSION = '87ce12afa4f0';
 const CORE = ["index.html", "account.html", "tournament.html", "competition.html", "register.html", "offline.html", "assets/logo.svg", "assets/icon-180.png", "assets/icon-192.png", "assets/icon-512.png", "assets/icon-maskable-512.png", "css/fonts.css", "css/base.css", "css/assist.css", "css/art.css", "css/home.css", "css/landing.css", "css/gallery.css", "css/intro.css", "css/news.css", "css/fx.css", "css/play.css", "css/wow.css", "css/pwa.css", "data/kb.js", "js/main.js", "js/acct-nav.js", "js/search.js", "js/chat.js", "js/fx.js", "js/play.js", "js/wow.js", "js/pwa.js", "js/gallery.js", "js/intro.js", "js/comp.js", "js/yb-config.js", "js/yb-api.js", "js/yb-news.js", "js/yb-projects.js", "css/comp.css", "css/account.css", "css/dash-fx.css", "js/yb-demo.js", "js/tournament-engine.js", "js/yb-checklist.js", "js/xlsx-lite.js", "js/dash-fx.js", "js/account.js", "css/tournament.css", "js/tournament.js", "js/yb-results.js", "css/calendar-ics.css", "css/ad-maker.css", "css/match-day.css", "css/league-table.css", "css/rule-finder.css", "css/judge-sheet.css", "css/activity-card.css", "css/partner-kit.css", "js/calendar-ics.js", "js/ad-maker.js", "js/match-day.js", "js/league-table.js", "js/rule-finder.js", "js/judge-sheet.js", "js/activity-card.js", "js/partner-kit.js", "css/team-builder.css", "js/register.js", "js/team-builder.js"];
 const PAGES = 'yb-pages-' + VERSION, MEDIA = 'yb-media-' + VERSION;
 const MEDIA_MAX = 60, WAIT_MS = 4000;
@@ -110,11 +110,18 @@ self.addEventListener('push', e => {
   let m = {};
   try { m = e.data ? e.data.json() : {}; } catch (err) { m = { body: e.data ? e.data.text() : '' }; }
   const url = new URL(typeof m.url === 'string' && !/^[a-z]+:/i.test(m.url) ? m.url : 'account.html', BASE).href;
-  e.waitUntil(self.registration.showNotification(String(m.title || 'ينابيع').slice(0, 60), {
-    body: String(m.body || 'لديك إشعار جديد.').slice(0, 200), tag: String(m.tag || 'yb').slice(0, 40), renotify: true,
-    icon: new URL('assets/icon-192.png', BASE).href, badge: new URL('assets/icon-192.png', BASE).href,
-    lang: 'ar', dir: 'rtl', data: { url },
-  }));
+  e.waitUntil((async () => {
+    // an open page hears it at once (its pop-up shows the news); a page in front needs no second, system notification
+    const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const mine = wins.filter(c => c.url.startsWith(BASE));
+    mine.forEach(c => { try { c.postMessage({ type: 'yb-note' }); } catch (err) { /* the page will poll */ } });
+    if (mine.some(c => c.focused && c.visibilityState === 'visible')) return;
+    await self.registration.showNotification(String(m.title || 'ينابيع').slice(0, 60), {
+      body: String(m.body || 'لديك إشعار جديد.').slice(0, 200), tag: String(m.tag || 'yb').slice(0, 40), renotify: true,
+      icon: new URL('assets/icon-192.png', BASE).href, badge: new URL('assets/icon-192.png', BASE).href,
+      lang: 'ar', dir: 'rtl', data: { url },
+    });
+  })());
 });
 self.addEventListener('notificationclick', e => {
   e.notification.close();

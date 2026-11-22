@@ -22,7 +22,7 @@
   const ROLE = { admin: 'الإدارة', officer: 'مسؤول مسابقة', leader: 'قائد الفريق', member: 'عضو', parent: 'ولي أمر' };
   const COMPS = { registration: 'التسجيل ومراجعة الفرق', football: 'دوري كرة القدم', chess: 'بطولة الشطرنج', projects: 'المشاريع والمبادرات',
     hifz: 'الحفظ', fahm: 'الفهم', workshops: 'الورش' };
-  const INBOX_MS = 60000;
+  const INBOX_MS = 30000;   // and at once when a phone alert reaches this browser, or when the person comes back to the page
   const offEv = e => !!e && (e.status === 'cancelled' || e.status === 'postponed');   // no time to count down to (0025: postponed)
   const SESSION_ERRS = { jwt_expired: 1, not_authenticated: 1, session_expired: 1, refresh_token_not_found: 1 };
   const FOOT = { not_drawn: 'لم تُجرَ القرعة بعد', group: 'في دور المجموعات', tie: 'تساوٍ على صدارة المجموعة، ينتظر قرار اللجنة',
@@ -837,7 +837,7 @@
         const bad = rpcFail(r);
         if (bad) { if (sessionLost(bad)) return; return showErr(f, errMsg(bad), bad.error === 'contact_not_allowed' ? area.input : age.input); }
         D = r.data; editing = false; paint();
-        say(D.seeker && D.seeker.listed ? 'أُضفت إلى قائمة الباحثين عن فريق.' : 'حُفظ طلبك. أعطِ الرمز لولي أمرك ليوافق.');
+        say(D.seeker && D.seeker.listed ? 'أُضفت إلى قائمة الباحثين عن فريق.' : D.seeker && D.seeker.adult_waiting ? 'حُفظ طلبك. تؤكد الإدارة أنك 18 فأكثر، ثم تظهر لقادة الفرق.' : 'حُفظ طلبك. أعطِ الرمز لولي أمرك ليوافق.');
       });
       return f;
     }
@@ -849,9 +849,10 @@
         if (!s) nodes.push(h('p', { class: 'a-lead', text: D.in_team ? 'الانتقالات مفتوحة الآن: يمكنك أن تظهر لقادة الفرق الأخرى.' : 'لم تجد فريقًا بعد؟ سجّل نفسك ليجدك قادة الفرق ويدعوك.' }));
         nodes.push(form());
       } else {
-        const st = !s.active ? chip('متوقف', 'muted') : s.listed ? chip('ظاهر لقادة الفرق', 'ok') : !s.guardian_ok ? chip('بانتظار موافقة ولي الأمر', 'sun') : chip('غير ظاهر الآن', 'muted');
+        const st = !s.active ? chip('متوقف', 'muted') : s.listed ? chip('ظاهر لقادة الفرق', 'ok') : s.adult_waiting ? chip('بانتظار تأكيد الإدارة', 'sun') : !s.guardian_ok ? chip('بانتظار موافقة ولي الأمر', 'sun') : chip('غير ظاهر الآن', 'muted');
         nodes.push(h('div', { class: 'a-team-top' }, h('div', {}, h('b', { text: AGE_G[s.age_group] || s.age_group }), s.area ? h('small', { class: 'a-hint', text: s.area }) : null), st));
         if ((s.positions || []).length) nodes.push(h('div', { class: 'a-chips' }, s.positions.map(k => chip(POS[k] || k, 'role'))));
+        if (s.adult_waiting && s.active) nodes.push(h('p', { class: 'a-hint', 'data-seek-adult': '', text: 'اخترت «18 فأكثر»، فتتأكد الإدارة من ذلك قبل أن تظهر لقادة الفرق. يصلك تنبيه حين تؤكد.' }));
         if (s.guardian_code) nodes.push(h('p', { class: 'a-lead', text: 'أعطِ هذا الرمز لولي أمرك، فيكتبه في حسابه في «موافقة على بحث ابنك عن فريق»:' }),
           h('p', { class: 'a-code', dir: 'ltr', 'data-seek-code': '', text: s.guardian_code }));
         if (D.in_team && !D.transfers_open) nodes.push(h('p', { class: 'a-hint', text: 'أنت في فريق الآن، فلا تظهر للفرق الأخرى إلا إذا فتحت الإدارة الانتقالات.' }));
@@ -2070,7 +2071,7 @@
       });
     }
     // three groups instead of one long page: what the admin does every week, around the matches, and with the leaders
-    const groups = [['week', 'هذا الأسبوع', [th, aw, weekReportCard()]], ['matches', 'المباريات', [qualifiedDesk(), appealsDesk(false), matchStaffDesk(), incidentsDesk()]], ['leaders', 'القادة', [tk, leadReviewDesk(), leadMeetDesk()]], ['impact', 'الأثر', [impactReportCard(), attendBoardCard(), surveyDesk()]], ['privacy', 'الخصوصية', [privacyDesk(false), photoConsentDesk()]],
+    const groups = [['week', 'هذا الأسبوع', [th, aw, weekReportCard()]], ['matches', 'المباريات', [qualifiedDesk(), appealsDesk(false), matchStaffDesk(), incidentsDesk()]], ['leaders', 'القادة', [tk, leadReviewDesk(), leadMeetDesk()]], ['impact', 'الأثر', [impactReportCard(), attendBoardCard(), surveyDesk()]], ['privacy', 'الخصوصية', [linkRequestsCard('alr', true), adultsDesk(), privacyDesk(false), photoConsentDesk()]],
       ['closing', 'الختام', [honoursDesk(), ceremonyCard(), certCard(true), teamReportCard(null, A.teams.filter(t => t.status === 'approved' && !t.waitlist).map(t => ({ id: t.id, name: t.name })))]]];
     const boxes = groups.map(g => h('div', { class: 'a-home', 'data-tools-group': g[0], hidden: g[0] !== (A.toolsGroup || 'week') }, g[2]));
     const tabs = groups.map(g => h('button', { type: 'button', class: 'a-deed-c', 'aria-pressed': String(g[0] === (A.toolsGroup || 'week')), 'data-fk': 'tg-' + g[0], onclick: () => {
@@ -2936,6 +2937,71 @@
   }
 
   // «أسبوع ابني» (the parent): one card per linked child for a chosen week, and a picture to share with the family
+  /* 0026: who is who. A parent's link waits for the team leader; an adult player waits for the admin. */
+  // the parent: requests still waiting for the leader
+  function linkWaitCard() {
+    const el = h('section', { class: 'a-card a-lwait', 'data-link-wait': '', hidden: true, 'aria-labelledby': 'lw-h' });
+    YB.rpc('yb_link_requests_mine', {}).then(r => {
+      const rows = r.ok && Array.isArray(r.data) ? r.data : [];
+      if (!rows.length) return;   // nothing waiting, or an older backend
+      put(el, h('h3', { id: 'lw-h' }, icon('clock'), h('span', { text: 'بانتظار تأكيد القائد' })),
+        h('p', { class: 'a-lead', text: 'يؤكد قائد الفريق أنك ولي أمر الطفل قبل أن تظهر بياناته هنا، حمايةً للأطفال. يصلك تنبيه حين يؤكد.' }),
+        h('ul', { class: 'a-lw-l' }, rows.map(x => h('li', {}, h('b', { text: x.child_name }), h('small', { class: 'a-hint', text: ` · ${/^فريق\s/.test(x.team_name) ? '' : 'فريق '}${x.team_name} · منذ ${fmtDate(x.at)}` })))));
+      el.hidden = false;
+    });
+    return el;
+  }
+  // the leader (their team) and the admin (every team, or a team with no leader account yet): confirm the parents
+  function linkRequestsCard(fk, admin) {
+    const el = h('section', { class: 'a-card a-lreq', 'data-link-requests': '', hidden: true, 'aria-labelledby': fk + '-h' });
+    async function load(msg) {
+      const r = await YB.rpc('yb_link_requests_team', {});
+      const rows = r.ok && Array.isArray(r.data) ? r.data : [];
+      if (!rows.length) { el.hidden = true; if (msg) say(msg); return; }
+      put(el, h('h3', { id: fk + '-h' }, icon('user-check'), h('span', { text: 'طلبات أولياء الأمور' }), chip(String(rows.length), 'sun')),
+        h('p', { class: 'a-lead', text: 'أكّد أن صاحب الطلب ولي أمر الطفل فعلًا (اتصل به أو اسأل الطفل) قبل الموافقة: الموافقة تتيح له رؤية بيانات الطفل ومتابعته.' }),
+        h('ul', { class: 'a-lreq-l' }, rows.map(x => h('li', { class: 'a-lreq-i', 'data-lreq': x.id },
+          h('div', {}, h('b', { text: `${x.parent_name || 'ولي أمر'} يطلب متابعة ${x.child_name}` }),
+            h('small', { class: 'a-hint', text: [admin ? `فريق ${x.team_name}` : '', fmtDate(x.at), x.other_children ? `مرتبط بـ ${x.other_children} ${x.other_children === 1 ? 'طفل آخر' : 'أطفال آخرين'}` : ''].filter(Boolean).join(' · ') })),
+          h('div', { class: 'a-actions' },
+            btn('نعم، هو ولي أمره', 'check', 'btn-primary', () => answer(x, true), { 'data-fk': `${fk}-ok-${x.id}` }),
+            armed(btn('لا أعرفه', 'x', 'btn-ghost btn-danger', () => {}, { 'data-fk': `${fk}-no-${x.id}` }), 'اضغط مرة أخرى للرفض', () => answer(x, false)))))));
+      el.hidden = false;
+      if (msg) say(msg);
+    }
+    async function answer(x, accept) {
+      const r = await YB.rpc('yb_link_answer', { id: x.id, accept });
+      if (!r.ok) { if (!sessionLost(r)) say(errMsg(r)); return; }
+      await load(accept ? `أُكّد: صار ${x.parent_name || 'ولي الأمر'} يتابع ${x.child_name}، ووصله تنبيه.` : `رُفض الطلب، ووصل صاحبه تنبيه بذلك.`);
+    }
+    load();
+    return el;
+  }
+  // the admin: members who said "18 or older" in the player pool
+  function adultsDesk() {
+    const el = h('section', { class: 'a-card a-adults', 'data-adults': '', hidden: true, 'aria-labelledby': 'ad-h' });
+    async function load(msg) {
+      const r = await YB.rpc('yb_seek_adults', {});
+      const rows = r.ok && Array.isArray(r.data) ? r.data : [];
+      if (!rows.length) { el.hidden = true; if (msg) say(msg); return; }
+      put(el, h('h3', { id: 'ad-h' }, icon('users'), h('span', { text: 'لاعبون قالوا «18 فأكثر»' }), chip(String(rows.length), 'sun')),
+        h('p', { class: 'a-lead', text: 'لا يظهر اللاعب البالغ لقادة الفرق حتى تتأكد من عمره، فلا يتجاوز طفلٌ موافقة وليّ أمره.' }),
+        h('ul', { class: 'a-lreq-l' }, rows.map(x => h('li', { class: 'a-lreq-i', 'data-adult': x.user_id },
+          h('div', {}, h('b', { text: x.full_name }), h('small', { class: 'a-hint', text: [x.area, fmtDate(x.at)].filter(Boolean).join(' · ') })),
+          h('div', { class: 'a-actions' },
+            btn('تأكدت: 18 فأكثر', 'check', 'btn-primary', () => answer(x, true), { 'data-fk': `ad-ok-${x.user_id}` }),
+            armed(btn('ليس بالغًا', 'x', 'btn-ghost btn-danger', () => {}, { 'data-fk': `ad-no-${x.user_id}` }), 'اضغط مرة أخرى', () => answer(x, false)))))));
+      el.hidden = false;
+      if (msg) say(msg);
+    }
+    async function answer(x, ok) {
+      const r = await YB.rpc('yb_seek_adult_confirm', { target: x.user_id, ok });
+      if (!r.ok) { if (!sessionLost(r)) say(errMsg(r)); return; }
+      await load(ok ? `ظهر ${x.full_name} لقادة الفرق.` : `أُوقف طلب ${x.full_name}، ووصله تنبيه ليطلب موافقة وليّ أمره.`);
+    }
+    load();
+    return el;
+  }
   function parentWeekCard() {
     const el = h('section', { class: 'a-card a-pwk', 'aria-labelledby': 'pwk-h', 'data-parent-week': '', hidden: true });
     let wk = weekKey();
@@ -3963,6 +4029,12 @@
     if (n.kind === 'team_out') return `خرج ${team} من المسابقة بقرار من الإدارة، وأُلغيت مبارياته القادمة. تابع «المباريات والمواعيد».`;
     if (n.kind === 'judge_team_out') return `خرج ${team} من المسابقة: لا تحكّمه بعد الآن، ودرجاته لا تُحسب. تابع تحكيم بقية الفرق في «التحكيم».`;
     if (n.kind === 'team_qualified') return `مبارك! تأهّل ${team} إلى الدور النهائي.`;
+    if (n.kind === 'link_request') return `${d.parent_name || 'ولي أمر'} يطلب متابعة ${d.child_name || 'أحد أعضاء فريقك'}. أكّد أنه ولي أمره من «نظرة عامة».`;
+    if (n.kind === 'link_confirmed') return `أكّد قائد ${team} أنك ولي الأمر، فصرت تتابع ابنك أو ابنتك من حسابك.`;
+    if (n.kind === 'link_declined') return `لم يؤكّد قائد ${team} طلب المتابعة. إن كنت ولي الأمر فتواصل معه مباشرة.`;
+    if (n.kind === 'seek_adult') return `${d.first_name || 'لاعب'} قال إنه 18 فأكثر في «أبحث عن فريق». تأكّد من ذلك في «أدوات الإدارة» ← الخصوصية.`;
+    if (n.kind === 'seek_adult_ok') return 'أكّدت الإدارة أنك 18 فأكثر، فصرت ظاهرًا لقادة الفرق.';
+    if (n.kind === 'seek_adult_no') return 'لم تؤكّد الإدارة أنك 18 فأكثر، فتوقّف ظهورك للقادة. اختر فئتك العمرية واطلب موافقة وليّ أمرك.';
     if (n.kind === 'qualified_announced') return `أعلنت الإدارة الفرق المتأهلة إلى الدور النهائي: ${(Array.isArray(d.names) ? d.names : []).join('، ')}.`;
     if (n.kind === 'invite_new') return `دعاك ${team} للانضمام إليه. افتح «أبحث عن فريق» لتقبل أو تعتذر.`;
     if (n.kind === 'invite_waiting') return `دعوة ${team} تنتظر ردّك لتكتمل.`;
@@ -3997,9 +4069,9 @@
     let rows = [];
     // the pop-up (0025): the big changes show at the top of the account as they arrive, once each (this tab remembers)
     const pop = h('div', { class: 'a-pop-wrap', 'data-pop': '', role: 'status', 'aria-live': 'polite' });
-    const POP_KINDS = new Set(['team_disqualified', 'team_out', 'judge_team_out', 'team_qualified', 'qualified_announced', 'event_postponed', 'event_cancelled',
+    const POP_KINDS = new Set(['link_request', 'link_confirmed', 'link_declined', 'seek_adult_ok', 'seek_adult_no', 'team_disqualified', 'team_out', 'judge_team_out', 'team_qualified', 'qualified_announced', 'event_postponed', 'event_cancelled',
       'event_changed', 'team_status', 'team_approved', 'team_seated', 'results_published', 'honours_announced', 'appeal_decided', 'judge_assigned', 'announcement', 'result_returned']);
-    const POP_TONE = { team_disqualified: 'bad', team_out: 'bad', judge_team_out: 'bad', event_cancelled: 'bad', event_postponed: 'sun', event_changed: 'sun',
+    const POP_TONE = { link_confirmed: 'ok', seek_adult_ok: 'ok', link_declined: 'bad', seek_adult_no: 'bad', team_disqualified: 'bad', team_out: 'bad', judge_team_out: 'bad', event_cancelled: 'bad', event_postponed: 'sun', event_changed: 'sun',
       team_qualified: 'ok', qualified_announced: 'ok', team_approved: 'ok', team_seated: 'ok', results_published: 'ok', honours_announced: 'ok' };
     const POP_ICON = { bad: 'alert', sun: 'clock', ok: 'trophy' };
     // shown once per page; when the page opens, only what arrived in the last 30 minutes (the rest waits in «الإشعارات»)
@@ -4062,6 +4134,12 @@
       if (S.stopInbox) { S.stopInbox(); S.stopInbox = null; }
       S.stopInbox = YB.poll ? YB.poll(load, INBOX_MS) : null;
       if (!S.stopInbox) load();
+      // a phone alert that reaches this browser while the page is open: show it now, not at the next check
+      S.inboxNow = load;
+      if (!S.swNote && 'serviceWorker' in navigator && navigator.serviceWorker.addEventListener) {
+        S.swNote = true;
+        navigator.serviceWorker.addEventListener('message', e => { if (e.data && e.data.type === 'yb-note' && S.inboxNow) S.inboxNow(); });
+      }
     }
     return { bell, panel, pop, start };
   }
@@ -4476,6 +4554,38 @@
   // 0025: the admin takes a team out of the competition, with a reason its people read
   const DQ_ERR = { reason_required: 'اكتب سبب الاستبعاد (5 أحرف على الأقل).', not_in_play: 'هذا الفريق ليس في المسابقة الآن.',
     contact_not_allowed: 'لا تُكتب أرقام الهواتف أو عناوين البريد في السبب.' };
+  // The board after a disqualification. The rules (lg2) count a withdrawal before a match as a 0–2 loss; the team's
+  // matches not yet played are recorded that way (the opponent wins), and its chess pairs still open go to the other
+  // side. Published with the board's own conflict check (another manager saving at the same moment wins; we retry once).
+  async function boardForfeit(teamId, teamName) {
+    const T = window.YTour;
+    if (!T) return { ok: false, n: 0 };
+    for (let attempt = 0; attempt < 2; attempt++) {
+      let row;
+      try { row = await YB.getState(); } catch (e) { return { ok: false, n: 0 }; }
+      let st = row && row.state;
+      const bt = st && Array.isArray(st.teams) ? (st.teams.find(x => x.id === teamId) || st.teams.find(x => x.name === teamName)) : null;
+      if (!bt) return { ok: true, n: 0 };   // not on the board (no board yet, or never added)
+      const id = bt.id;
+      let n = 0;
+      try {
+        const fb = T.football(st);
+        const matches = [...(fb.groups || []).flatMap(g => g.rounds || []), ...((fb.final && fb.final.rounds) || [])].flatMap(r => r.matches || []);
+        matches.filter(m => !m.res && (m.a === id || m.b === id)).forEach(m => { st = T.adminResult(st, m.a, m.b, 'withdraw', id, { note: 'استبعاد الفريق من المسابقة' }); n++; });
+        ['r1', 'r2'].forEach(stage => ((st.chess && st.chess[stage]) || []).forEach((pr, i) => {
+          if (pr && !pr.w && pr.a && pr.b && (pr.a === id || pr.b === id)) { st = T.setChessWinner(st, stage, i, pr.a === id ? pr.b : pr.a); n++; }
+        }));
+      } catch (e) { return { ok: false, n: 0 }; }
+      if (!n) return { ok: true, n: 0 };
+      st = T.stamp(st, new Date().toISOString());
+      (st.teams || []).forEach(x => { delete x.chess; });   // player labels are never published
+      let r;
+      try { r = await YB.publishState(st, row.updated_at); } catch (e) { r = { ok: false }; }
+      if (r && r.ok) { S.boardP = null; return { ok: true, n }; }
+      if (!(r && r.conflict)) return { ok: false, n: 0 };
+    }
+    return { ok: false, n: 0 };
+  }
   function dqBox(t) {
     const reason = h('textarea', { rows: 2, maxlength: 300, 'data-fk': 'dqr-' + t.id });
     const go = armed(btn('أخرج الفريق من المسابقة', 'x', 'btn-ghost btn-danger', () => {}, { 'data-fk': 'dq-' + t.id }), 'اضغط مرة أخرى لتأكيد الاستبعاد', async () => {
@@ -4483,11 +4593,14 @@
       if (!r.ok) { if (!sessionLost(r)) say(errMsg(r, DQ_ERR)); return; }
       if (!r.data || !r.data.ok) { say(errMsg({ error: r.data && r.data.error }, DQ_ERR)); reason.focus(); return; }
       const nEv = r.data.events_cancelled || 0;
-      await refreshAdmin(`أُخرج «${t.name}» من المسابقة، ووصل الخبر لأعضائه وأولياء أمورهم وللحكام ولقادة الفرق${nEv ? `، وأُلغي ${nEv === 1 ? 'موعد قادم' : nEv + ' مواعيد قادمة'} له` : ''}. يأخذ مكانه أول فريق في الاحتياط إن وُجد.`, 'th-' + t.id);
+      const bf = await boardForfeit(t.id, t.name);
+      const board = !bf.ok ? ' تعذّر تحديث لوحة البطولة الآن: افتحها وسجّل مبارياته المتبقية خسارةً 0–2.'
+        : bf.n ? ` وسُجّلت ${bf.n === 1 ? 'مباراته المتبقية' : bf.n + ' من مبارياته المتبقية'} في لوحة البطولة خسارةً 0–2 (كالانسحاب قبل المباراة).` : '';
+      await refreshAdmin(`أُخرج «${t.name}» من المسابقة، ووصل الخبر لأعضائه وأولياء أمورهم وللحكام ولقادة الفرق${nEv ? `، وأُلغي ${nEv === 1 ? 'موعد قادم' : nEv + ' مواعيد قادمة'} له` : ''}. يأخذ مكانه أول فريق في الاحتياط إن وُجد.${board}`, 'th-' + t.id);
     });
     return h('details', { class: 'a-dq', 'data-dq': t.id },
       h('summary', { text: 'استبعاد الفريق من المسابقة' }),
-      h('p', { class: 'a-hint', text: 'يخرج الفريق فورًا: يختفي من الجداول والتحكيم، وتُلغى مواعيده القادمة، ولا تُحسب درجاته. يصل الخبر بالسبب لأعضائه وأولياء أمورهم، ويُبلَّغ الحكام وقادة الفرق.' }),
+      h('p', { class: 'a-hint', text: 'يخرج الفريق فورًا: يختفي من الجداول والتحكيم، وتُلغى مواعيده القادمة، ولا تُحسب درجاته، وتُسجَّل مبارياته المتبقية في لوحة البطولة خسارةً 0–2. يصل الخبر بالسبب لأعضائه وأولياء أمورهم، ويُبلَّغ الحكام وقادة الفرق.' }),
       h('label', { class: 'a-field' }, h('span', { text: 'السبب (يقرؤه أعضاء الفريق وأولياء أمورهم)' }), reason),
       h('div', { class: 'a-actions' }, go));
   }
@@ -6204,7 +6317,7 @@
     L.sum = leadSummaryCard(() => { const mn = L.members.filter(m => isMinor(m.age)); return { team: L.team.team_name, status: STATUS[L.team.status] || L.team.status, members: L.members.length, minors: mn.length,
       got: mn.filter(m => m.consent_status === 'received').length, accepted: L.init.accepted || 0, tasks: L.lw.done(), follow: L.mf.counts || null }; });
     dashLayout([
-      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [L.hero, (L.boxes.mday = matchDayCard(t.team_id, t.team_name, 'leader')), (L.boxes.next = nextCard(leaderNext())), leaderTiles(t), myHonoursCard(), L.boxes.top, L.boxes.check, L.staff, L.run, L.opp, matchStaffCard(t.team_id), L.chs, L.hft, awardsCard(t.team_id), L.badges, L.cal, scoresCard(), L.pulse, announceFeed()] },
+      { key: 'home', label: 'نظرة عامة', icon: 'chart', nodes: [L.hero, (L.boxes.mday = matchDayCard(t.team_id, t.team_name, 'leader')), (L.boxes.next = nextCard(leaderNext())), linkRequestsCard('llr', false), leaderTiles(t), myHonoursCard(), L.boxes.top, L.boxes.check, L.staff, L.run, L.opp, matchStaffCard(t.team_id), L.chs, L.hft, awardsCard(t.team_id), L.badges, L.cal, scoresCard(), L.pulse, announceFeed()] },
       feedGroup(),
       { key: 'matches', label: 'المباريات والمواعيد', icon: 'trophy', one: true, nodes: [L.dates, L.sched.node, L.boxes.marks, appealCard(t.team_id)] },
       { key: 'team', label: 'الفريق', icon: 'users', nodes: [L.boxes.roster, L.boxes.roles, L.boxes.code, (L.style || (L.style = teamStyleCard(t), L.style.start(), L.style)).el, L.printBox] },
@@ -6548,7 +6661,8 @@
       const r = await YB.rpc(isMember ? 'join_team' : 'link_child', isMember ? { code: c, member_name: n } : { code: c, child_name: n });
       if (!r.ok) { if (sessionLost(r)) return; return showErr(form, errMsg(r, over), ['name_not_in_roster', 'already_linked'].includes(r.error) ? nm.input : code.input); }
       code.input.value = ''; nm.input.value = '';
-      S.flash = isMember ? 'تم ربط حسابك بالفريق.' : 'تم ربط حسابك بالطفل.';
+      S.flash = isMember ? 'تم ربط حسابك بالفريق.' : r.data && r.data.pending
+        ? 'أُرسل طلبك إلى قائد الفريق ليؤكد أنك ولي أمر الطفل. يصلك تنبيه حين يؤكده، ثم تظهر بياناته هنا.' : 'تم ربط حسابك بالطفل.';
       route({ focus: true });
     });
     return form;
@@ -6626,7 +6740,7 @@
     const pExtra = k0 ? [staffCard(k0.team_id), runCard(k0.team_id, k0.team_name), oppCard(k0.team_id, k0.team_name), chessCard(k0.team_id, k0.team_name), hifzTeamCard(k0.team_id), badgesCard({ teamId: k0.team_id, teamName: k0.team_name, status: k0.team_status }),
       calCard({ teamId: k0.team_id, teamName: k0.team_name, teamStatus: k0.team_status })] : [];
     const pPulse = pulseCard(), pPoints = pointsCard();
-    const home = [pHero, mday, nextCard(parentNext(kids)), parentTiles(kids), kids.length ? themeCard() : null, kids.length ? surveyCard() : null, kids.length ? childJourneyCard() : null, kids.length ? parentWeekCard() : null, kids.length ? myHonoursCard() : null, kids.length ? attendMineCard() : null, kids.length ? matchStaffCard(kids[0].team_id) : null, kids.length ? awardsCard(kids[0].team_id) : null, kids.length ? raceCard(kids[0].team_id) : null, ...pExtra, scoresCard(), pPulse, announceFeed()];
+    const home = [pHero, linkWaitCard(), mday, nextCard(parentNext(kids)), parentTiles(kids), kids.length ? themeCard() : null, kids.length ? surveyCard() : null, kids.length ? childJourneyCard() : null, kids.length ? parentWeekCard() : null, kids.length ? myHonoursCard() : null, kids.length ? attendMineCard() : null, kids.length ? matchStaffCard(kids[0].team_id) : null, kids.length ? awardsCard(kids[0].team_id) : null, kids.length ? raceCard(kids[0].team_id) : null, ...pExtra, scoresCard(), pPulse, announceFeed()];
     const nodes = home, games = [];
     const boxes = [];
     if (!kids.length) nodes.push(h('p', { class: 'a-empty a-card', text: 'لم تربط أي ابن أو ابنة بعد. اكتب رمز الفريق واسم الطفل أدناه.' }));
