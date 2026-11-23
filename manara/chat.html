@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ar" dir="rtl" data-lang="ar">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title data-en="Ask MANARA — a rule-based helper">اسأل منارة — مساعد بقواعد مكتوبة</title>
+<meta name="description" content="اسأل منارة: مساعد يعمل دون إنترنت ويجيب من قاعدة معرفة مكتوبة عن سلامة السكان وعن طريقة عمل المشروع وأرقامه وحدوده. ليس نموذجًا لغويًا، ويقول «لا أعرف» حين لا يعرف.">
+<meta name="theme-color" content="#0a0e15">
+<meta name="color-scheme" content="light dark">
+<script>(function(){var d=document.documentElement,t,l;try{t=localStorage.getItem('manara-theme');l=localStorage.getItem('manara-lang')}catch(e){}var q=/[?&]lang=(ar|en)/.exec(location.search);if(q)l=q[1];if(t!=='light'&&t!=='dark')t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';if(l!=='en')l='ar';d.dataset.theme=t;d.dataset.lang=l;d.lang=l;d.dir=l==='ar'?'rtl':'ltr';d.classList.add('js');setTimeout(function(){if(!window.__manaraReady)d.classList.remove('js')},2500)})();</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/chatbot.css">
+<script src="js/core.js" defer></script>
+<script src="data/test-counts.js" defer></script>
+<script src="js/chatbot-kb.js" defer></script>
+<script src="js/chatbot.js" defer></script>
+</head>
+<body data-page="chat.html" class="chat">
+<a class="skip" href="#main">تخطَّ إلى المحتوى</a>
+<header class="nav" data-nav></header>
+<main id="main">
+
+<section class="page-hero mc-hero" aria-labelledby="mc-h1">
+  <div class="wrap">
+    <span class="eyebrow" data-icon="chat"><span data-l="ar">محادثة</span><span data-l="en">Chat</span></span>
+    <h1 id="mc-h1"><span data-l="ar">اسأل منارة</span><span data-l="en">Ask MANARA</span></h1>
+    <p><span data-l="ar">مساعد يجيب من قاعدة معرفة مكتوبة: نصائح السلامة للسكان، وطريقة عمل المشروع وأرقام محاكاته وحدوده للحكام والزوار. هو ليس ذكاءً اصطناعيًا ولا نموذجًا لغويًا: يطابق سؤالك مع إجابات كُتبت سلفًا، ويقول «لا أعرف» حين لا يجد، ويعمل دون إنترنت.</span><span data-l="en">A helper that answers from a written knowledge base: safety advice for residents, and how the project works, its simulation numbers and its limits for judges and visitors. It is not an AI model and not a language model: it matches your question to answers written in advance, says "I do not know" when it finds none, and works offline.</span></p>
+    <div class="note warn mc-call-note" role="note"><span data-l="ar"><b>في خطر حقيقي لا تكتب هنا: اتصل بـ 999.</b> منارة نموذج تجريبي طلابي وليست خدمة طوارئ.</span><span data-l="en"><b>In real danger do not type here: call 999.</b> MANARA is a student demo prototype, not an emergency service.</span></div>
+  </div>
+</section>
+
+<section class="sec mc-sec" aria-label="Ask MANARA">
+  <div class="wrap wide">
+    <div class="mc-layout">
+      <div class="mc-card" data-chat-mount></div>
+      <aside class="mc-side" aria-labelledby="mc-side-h">
+        <h2 class="sr-only" id="mc-side-h"><span data-l="ar">كيف يجيب وما حدوده</span><span data-l="en">How it answers, and its limits</span></h2>
+        <details class="card mc-how" open>
+          <summary><span data-l="ar">كيف يختار الجواب؟</span><span data-l="en">How does it choose an answer?</span></summary>
+          <ol class="mc-steps">
+            <li><span data-l="ar"><b>يُطبِّع الكلمات:</b> يحذف التشكيل والتطويل، ويوحّد الألف والياء والتاء المربوطة، ويبسّط الكلمات الإنجليزية، ويستبدل المرادفات.</span><span data-l="en"><b>Normalises words:</b> strips Arabic diacritics and tatweel, unifies alef, ya and ta marbuta, stems English words and maps synonyms.</span></li>
+            <li><span data-l="ar"><b>يطابق:</b> يقارن كلماتك وعباراتك بكلمات كل موضوع، ويتسامح مع الأخطاء الإملائية، ويحسب نقاطًا لكل موضوع.</span><span data-l="en"><b>Matches:</b> compares your words and phrases with each topic's keywords, tolerates typos and scores every topic.</span></li>
+            <li><span data-l="ar"><b>يقرّر:</b> واثق ← يجيب. غير متأكد ← يقول إنه «أقرب موضوع». لا شيء ← يقول «لا أعرف» ويعرض أقرب المواضيع.</span><span data-l="en"><b>Decides:</b> confident, it answers. Unsure, it says "closest topic". Nothing, it says "I do not know" and shows the closest topics.</span></li>
+            <li><span data-l="ar"><b>يشرح السبب:</b> تحت كل جواب «لماذا هذا الجواب؟» فيه الكلمات التي طابقت والمصدر.</span><span data-l="en"><b>Explains why:</b> under every answer, "Why this answer?" lists the words that matched and the source.</span></li>
+            <li><span data-l="ar"><b>يقدّم السلامة:</b> إن بدا أن الرسالة عن خطر حقيقي (حريق، دخان، غاز، نجدة…) يظهر أولًا شريط «هذا نموذج تجريبي — اتصل بـ 999».</span><span data-l="en"><b>Puts safety first:</b> if a message looks like a real danger (fire, smoke, gas, help…) a banner appears first: "This is a demo prototype — call 999".</span></li>
+          </ol>
+        </details>
+        <details class="card mc-can">
+          <summary><span data-l="ar">ما لا يستطيعه</span><span data-l="en">What it cannot do</span></summary>
+          <ul class="mc-bul">
+            <li><span data-l="ar">لا يفهم السياق كما يفعل إنسان، ولا يستنتج: يجيب مما كُتب فقط.</span><span data-l="en">It does not understand context like a person and does not reason: it answers only from what is written.</span></li>
+            <li><span data-l="ar">لا يعرف الأخبار الحالية ولا الطقس ولا مواقعك.</span><span data-l="en">It does not know current news, the weather or where you are.</span></li>
+            <li><span data-l="ar">لا يقدّم نصائح طبية، وللوائح والغرامات والأرقام الرسمية يقول: أكِّد مع الجهة المختصة.</span><span data-l="en">It gives no medical advice, and for regulations, fines and official numbers it says: confirm with the authority.</span></li>
+            <li><span data-l="ar">رسائلك تبقى في ذاكرة هذه الصفحة فقط؛ لا تُرسل ولا تُحفظ. وتقييم «مفيد» كذلك.</span><span data-l="en">Your messages stay in this page's memory only: they are not sent or saved. So does the "helpful" rating.</span></li>
+          </ul>
+        </details>
+        <details class="card mc-topics-box">
+          <summary><span data-l="ar">المواضيع التي أعرفها</span><span data-l="en">Topics I know</span></summary>
+          <div class="mc-topics" data-chat-topics></div>
+        </details>
+      </aside>
+    </div>
+  </div>
+</section>
+
+</main>
+<footer class="foot" data-footer></footer>
+</body>
+</html>

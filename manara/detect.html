@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="ar" dir="rtl" data-lang="ar">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title data-en="MANARA — Evidence Lab">منارة — مختبر الأدلة</title>
+<meta name="description" content="مختبر الأدلة في منارة: الدليل قبل الذعر. شاهد كاشف الحريق طبقةً طبقة، وحاول خداعه، وانظر كم مرة يصيب.">
+<meta name="theme-color" content="#0a0e15">
+<meta name="color-scheme" content="light dark">
+<script>(function(){var d=document.documentElement,t,l;try{t=localStorage.getItem('manara-theme');l=localStorage.getItem('manara-lang')}catch(e){}var q=/[?&]lang=(ar|en)/.exec(location.search);if(q)l=q[1];if(t!=='light'&&t!=='dark')t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';if(l!=='en')l='ar';d.dataset.theme=t;d.dataset.lang=l;d.lang=l;d.dir=l==='ar'?'rtl':'ltr';d.classList.add('js');setTimeout(function(){if(!window.__manaraReady)d.classList.remove('js')},2500)})();</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/detect.css">
+<script src="js/core.js" defer></script>
+<script src="js/fire.js" defer></script>
+<script src="assets/samples/samples.js" defer></script>
+<script src="assets/samples/samples-data.js" defer></script>
+<script src="js/detect.js" defer></script>
+</head>
+<body data-page="detect.html">
+<a class="skip" href="#main">تخطَّ إلى المحتوى</a>
+<header class="nav" data-nav></header>
+<main id="main">
+  <section class="page-hero evidence-hero">
+    <div class="wrap wide">
+      <span class="eyebrow" data-icon="eye"><span data-l="ar">التحقق · الدليل قبل الذعر</span><span data-l="en">VERIFY · Proof before panic</span></span>
+      <h1><span data-l="ar">مختبر الأدلة</span><span data-l="en">Evidence Lab</span></h1>
+      <p><span data-l="ar">شاهد كاشف الحريق وهو يفكّر طبقةً طبقة، وحاول خداعه، وانظر كم مرة يصيب — قبل أن يُرسَل أي إنذار.</span><span data-l="en">Watch a fire detector think, layer by layer, try to fool it, and see how often it is right — before any alert is sent.</span></p>
+      <div class="chips hero-chips">
+        <span class="tag cool"><span data-l="ar">رؤية حاسوبية بقواعد — ليست ذكاءً اصطناعيًا</span><span data-l="en">Rule-based computer vision — not AI</span></span>
+        <span class="tag warn"><span data-l="ar">كل ما هو محاكى موسوم SIM</span><span data-l="en">Everything simulated is marked SIM</span></span>
+        <span class="tag safe"><span data-l="ar">يعمل دون إنترنت</span><span data-l="en">Works offline</span></span>
+        <button class="btn btn-ghost btn-sm" type="button" id="open-drawer" data-icon="help"><span data-l="ar">كيف يعمل وما حدوده</span><span data-l="en">How it works &amp; its limits</span></button>
+      </div>
+    </div>
+  </section>
+
+  <section class="lab">
+    <div class="wrap wide">
+      <div class="tabs scroll-x" role="tablist" id="tabs" aria-label="">
+        <button class="tab" role="tab" id="t-live" aria-controls="p-live" aria-selected="true" tabindex="0" type="button" data-icon="eye"><span data-l="ar">مباشر</span><span data-l="en">Live</span></button>
+        <button class="tab" role="tab" id="t-fool" aria-controls="p-fool" aria-selected="false" tabindex="-1" type="button" data-icon="target"><span data-l="ar">تحدَّ الكاشف</span><span data-l="en">Fool me if you can</span></button>
+        <button class="tab" role="tab" id="t-decoy" aria-controls="p-decoy" aria-selected="false" tabindex="-1" type="button" data-icon="layers"><span data-l="ar">مختبر الخدع</span><span data-l="en">Decoy Lab</span></button>
+        <button class="tab" role="tab" id="t-sensor" aria-controls="p-sensor" aria-selected="false" tabindex="-1" type="button" data-icon="signal"><span data-l="ar">مختبر الحسّاسات</span><span data-l="en">Sensor Lab</span></button>
+      </div>
+
+      <section class="tabpanel" id="p-live" role="tabpanel" aria-labelledby="t-live">
+        <p class="tab-intro"><span data-l="ar"><b>مباشر:</b> مشهد يعمل فور فتح الصفحة (لهب مولَّد بالشيفرة). بدِّل إلى قميص أحمر أو مصباح وامض أو كاميرتك أو ملف من جهازك، وراقب المؤشرات الست والمفاتيح الثلاثة. <b>العرض الأهم:</b> اضغط «فيديو حريق على هاتف» — الرؤية ترى حريقًا والحرارة لا ترى شيئًا، فيبقى الحكم اشتباهًا.</span><span data-l="en"><b>Live:</b> a scene runs as soon as the page opens (a code-generated flame). Switch to a red shirt, a flickering lamp, your own camera or a file, and watch the six lamps and the three keys. <b>The key demo:</b> press “Fire video on a phone” — vision says fire, thermal says no, so the verdict stays SUSPECT.</span></p>
+        <div id="live-host"></div>
+      </section>
+      <section class="tabpanel" id="p-fool" role="tabpanel" aria-labelledby="t-fool" hidden>
+        <p class="tab-intro"><span data-l="ar"><b>تحدَّ الكاشف:</b> أرِ الكاميرا وشاحًا أحمر أو كشّاف هاتف أو مصباح LED أو فيديو حريق على هاتف أو جدارًا برتقاليًا. لكل محاولة نسجّل: «ماذا عرضتُ» ونتيجة اللون وحده مقابل الطبقات الست كلها.</span><span data-l="en"><b>Fool me if you can:</b> show the camera a red scarf, a phone flashlight, an LED lamp, a fire video on a phone, or an orange wall. For every attempt we record what you showed, and the colour-only result against the full six layers.</span></p>
+      </section>
+      <section class="tabpanel" id="p-decoy" role="tabpanel" aria-labelledby="t-decoy" hidden>
+        <p class="tab-intro"><span data-l="ar"><b>مختبر الخدع:</b> الشيفرة نفسها على مُدخلات معروفة الحقيقة: جدول الاستئصال (C1 ثم +C2 … +C6)، ومسح العتبة τ، وقسمة 70/30 بذرة ثابتة. الأرقام الغامقة هي المحجوزة فقط.</span><span data-l="en"><b>Decoy Lab:</b> the same code on inputs with known truth: an ablation table (C1, then +C2 … +C6), a τ sweep, and a seeded 70/30 split. Bold numbers are the held-out ones only.</span></p>
+      </section>
+      <section class="tabpanel" id="p-sensor" role="tabpanel" aria-labelledby="t-sensor" hidden></section>
+    </div>
+  </section>
+
+  <section class="wrap wide drawer-wrap">
+    <details class="drawer" id="drawer">
+      <summary><span data-icon="help"><span data-l="ar">كيف يعمل وما حدوده</span><span data-l="en">How it works &amp; its limits</span></span></summary>
+      <div class="drawer-body">
+        <div data-l="ar">
+          <h3>ما هذا؟</h3>
+          <p>«رؤية حاسوبية بقواعد»: نماذج لونية وتحليل حركة ووميض وقواعد كتبناها بأنفسنا. ليست ذكاءً اصطناعيًا ولا تعلّمًا عميقًا، ولا تتعلّم من الأمثلة. ولذلك نستطيع شرح كل رقم فيها.</p>
+          <h3>الطبقات والمعادلات</h3>
+          <ol class="refs">
+            <li><b>C1 اللون.</b> يُعدّ البكسل «لون نار» إن اجتاز النموذجين معًا. Çelik وDemirel (2009، <i>Fire Safety Journal</i> 44(2):147–158): Y = 16 + 0.2568R + 0.5041G + 0.0979B، وCb = 128 − 0.1482R − 0.2910G + 0.4392B، وCr = 128 + 0.4392R − 0.3678G − 0.0714B، ثم الشروط Y &gt; Cb وCr &gt; Cb وY &gt; متوسط Y وCb &lt; متوسط Cb وCr &gt; متوسط Cr و|Cb − Cr| ≥ τ (τ = 40 اختاره المؤلفان من منحنى ROC). وChen وWu وChiou (2004، <i>IEEE ICIP</i>، ص 1707–1710): R &gt; R_T وR ≥ G &gt; B والتشبع S ≥ (255 − R)·S_T / R_T (R_T ≈ 115–135، S_T ≈ 55–65).</li>
+            <li><b>C2 الحركة (إضافة منّا).</b> فرق السطوع بين إطارين متتاليين داخل المنطقة الملوّنة: الجسم الثابت (وشاح، مصباح، جدار) يسقط هنا.</li>
+            <li><b>C3 الوميض.</b> اللهب يغيّر شكله وسطوعه عدة مرات في الثانية وهو في مكانه. نقيس معدّل تبدّل قناع اللون |M<sub>t</sub> XOR M<sub>t−1</sub>| / |M<sub>t</sub> OR M<sub>t−1</sub>| وتغيّر سطوع كتل النار بين إطارين، مع خصمٍ حين تتحرك الصورة كلها أو تنزلق المنطقة الملونة كقطعة واحدة (سيارة حمراء). الفكرة من أبحاث وميض اللهب (Töreyin وآخرون 2006، <i>Pattern Recognition Letters</i> 27(1):49–58)؛ أما تحليلهم بالمويجات فلم ننفّذه — طريقتنا أبسط.</li>
+            <li><b>C4 الشكل والملمس.</b> اللهب جسم صلب لكنه متعرّج وغني الملمس وله قلب مضيء؛ المصابيح والطلاء والسماء ملساء. تُحسب من إشارات في fire.js (التراصّ، الملمس، السماء الملساء، القلب الأبيض) ضُبطت عتباتها يدويًا على صور — هذا مذكور بصراحة في المحرّك.</li>
+            <li><b>C5 الثبات (إضافة منّا).</b> يجب أن تصمد الطبقات C1–C4 عدة إطارات متتالية؛ الإطار الفائت يكلّف إطارين.</li>
+            <li><b>C6 النقض الحراري (إضافة منّا).</b> شبكة حرارية 32×24 على غرار MLX90640. البقعة الساخنة مطلقة (T ≥ 57°م، تصنيف كاشف حرارة مدرج) وسياقية (T &gt; متوسط الخلفية + 3·MAD وأعلى من الخلفية بـ6°م). فكرة مقارنة البكسل بمحيطه من خوارزمية MODIS السياقية (Giglio وآخرون 2003، <i>Remote Sensing of Environment</i> 87(2–3):273–282)؛ الأرقام تعديلنا نحن لا أرقامهم. إن رأت الرؤية حريقًا ولم ترَ الحرارة بقعة ساخنة يعود الحكم إلى «اشتباه» — لا إلى «سليم»، لأن الزجاج يحجب الأشعة تحت الحمراء ذات الموجة الطويلة وقد يخفي حريقًا حقيقيًا.</li>
+          </ol>
+          <h3>المفاتيح الثلاثة</h3>
+          <p>الرؤية، والحرارة، والإنسان. مفتاح واحد = اشتباه؛ مفتاحان مستقلان = مؤكَّد؛ وموافقة إنسان فوقهما = إنذار عام. الرؤية وحدها لا تتجاوز الاشتباه في أي إنذار عام. عند الاعتماد تُرسَل رسالة «detection» إلى غرفة العمليات.</p>
+          <h3>مصادر الإنذار الكاذب في الخليج</h3>
+          <p>وهج الشمس والشمس المنخفضة وانعكاسات الزجاج والمعدن، وغبار الجو (يُبهت الألوان ويشبه الدخان)، والمركبات (حمراء وبرتقالية، وأضواء خلفية، ومنارات تنبيه)، وإنارة الشوارع البرتقالية. هذه ملاحظات هندسية وحدود معروفة لقواعد اللون؛ وما نحاكيه في مختبر الخدع هو الغبار والمركبات فقط، أما البقية فأداؤنا فيها مجهول.</p>
+          <h3>وميض المصابيح وتردد 50 هرتز</h3>
+          <p>التيار الكهربائي في قطر 50 هرتز (240 فولت؛ مصدرنا دليل مقيمين — يُتحقَّق منه عند كهرماء قبل الطباعة، ولم نقس مصدر الجناح). مصابيح التيار المتردد تومض بضعف التردد، أي 100 هرتز. الكاميرا بمعدل f إطارًا في الثانية لا ترى 100 هرتز بل تردّدًا ظاهريًا = |100 − n·f| لأقرب عدد صحيح n. أمثلة: 15 إطارًا ← 5 هرتز، 24 ← 4، 25 ← 0 (لا وميض ظاهر)، 30 ← 10 هرتز. (حساب فيزيائي مشتق لا قياس.) لهذا يظهر مصباحنا 10 هرتز في 15 إطارًا بوميض 5 هرتز.</p>
+          <h3>توقيت الكاميرا</h3>
+          <p>الكاميرات تغيّر التعريض وتوازن اللون تلقائيًا، وتضغط الصورة، ويتغيّر معدّل الإطارات الفعلي مع الإضاءة والحمل على المعالج، وقد تصل الإطارات متأخرة أو مكرَّرة. نستعمل طوابع زمن إطارات الفيديو متى توفّرت. ولأن الثبات يُحسب بالإطارات لا بالثواني، فانخفاض المعدّل يطيل الزمن حتى الإنذار. الرقم «ms» على الشاشة هو زمن معالجتنا للإطار لا زمن الكاميرا.</p>
+          <h3>الإحصاء</h3>
+          <p>لكل نسبة نعرض فاصل ثقة 95% بطريقة Wilson (Wilson 1927، <i>JASA</i> 22:209–212) لأن العيّنات صغيرة. القسمة 70/30 طبقية بذرة ثابتة؛ وتُختار τ* من قسم الضبط فقط.</p>
+          <h3>احترام من سبقنا</h3>
+          <p>الصقور تكافح النار والمنارة تُخرج الجميع بأمان: طائرة «صقر» للدفاع المدني السعودي، و«شاهين» في دبي، و«سُهيل» في أبوظبي، وطائرات الدفاع المدني القطري للإطفاء، ومشروع طلاب قطر في ISEF 2025 لكشف H₂S بطائرة. منارة هي منصة «آخر مئة متر» حولها لا منافسة لها.</p>
+        </div>
+        <div data-l="en">
+          <h3>What is this?</h3>
+          <p>“Rule-based computer vision”: colour models, motion and flicker analysis, and rules we wrote ourselves. It is not AI or deep learning and it does not learn from examples. That is why we can explain every number in it.</p>
+          <h3>The layers and their formulas</h3>
+          <ol class="refs">
+            <li><b>C1 Colour.</b> A pixel counts as “fire-coloured” only if it passes both models. Çelik &amp; Demirel (2009, <i>Fire Safety Journal</i> 44(2):147–158): Y = 16 + 0.2568R + 0.5041G + 0.0979B, Cb = 128 − 0.1482R − 0.2910G + 0.4392B, Cr = 128 + 0.4392R − 0.3678G − 0.0714B, then Y &gt; Cb, Cr &gt; Cb, Y &gt; mean Y, Cb &lt; mean Cb, Cr &gt; mean Cr and |Cb − Cr| ≥ τ (τ = 40, picked by the authors from an ROC curve). And Chen, Wu &amp; Chiou (2004, <i>IEEE ICIP</i>, pp. 1707–1710): R &gt; R_T, R ≥ G &gt; B and saturation S ≥ (255 − R)·S_T / R_T (R_T ≈ 115–135, S_T ≈ 55–65).</li>
+            <li><b>C2 Motion (added by us).</b> The brightness difference between two consecutive frames inside the coloured area: a static object (scarf, lamp, wall) fails here.</li>
+            <li><b>C3 Flicker.</b> Flames change shape and brightness several times a second while staying in place. We measure the toggling rate of the colour mask |M<sub>t</sub> XOR M<sub>t−1</sub>| / |M<sub>t</sub> OR M<sub>t−1</sub>| and the frame-to-frame brightness change of fire blocks, discounted when the whole picture moves or the coloured area slides as one piece (a red car). The idea comes from flame-flicker research (Töreyin et al. 2006, <i>Pattern Recognition Letters</i> 27(1):49–58); we did not implement their wavelet analysis — ours is simpler.</li>
+            <li><b>C4 Shape / texture.</b> A flame is solid yet ragged, richly textured, with a bright core; lamps, paint and sky are smooth. Computed from cues in fire.js (compactness, texture, smooth-sky, white core) whose thresholds were hand-tuned on photos — the engine says so openly.</li>
+            <li><b>C5 Persistence (added by us).</b> Layers C1–C4 must hold for several frames in a row; one miss costs two.</li>
+            <li><b>C6 Thermal veto (added by us).</b> A 32×24 thermal grid in the style of the MLX90640. A hotspot is absolute (T ≥ 57 °C, the rating of a listed heat detector) and contextual (T &gt; background mean + 3·MAD and more than 6 °C above the background). Comparing a pixel with its surroundings is the idea of the MODIS contextual fire algorithm (Giglio et al. 2003, <i>Remote Sensing of Environment</i> 87(2–3):273–282); the numbers are our adaptation, not theirs. If vision sees fire and thermal sees no hotspot the verdict falls back to SUSPECT — not to CLEAR, because glass blocks long-wave infrared and can hide a real fire.</li>
+          </ol>
+          <h3>The three keys</h3>
+          <p>Vision, thermal and the human. One key = SUSPECT; two independent keys = CONFIRMED; a human approval on top = PUBLIC ALERT. Vision alone can never go beyond SUSPECT for a public alert. On approval a “detection” message is sent to Mission Control.</p>
+          <h3>Gulf false-alarm sources</h3>
+          <p>Sun glare and a low sun, reflections from glass and metal, airborne dust (it washes colours out and looks like smoke), vehicles (red and orange bodies, tail-lights, amber beacons) and orange street lighting. These are engineering judgement and known blind spots of colour rules; the Decoy Lab simulates only dust haze and vehicles — for the rest our performance is unknown.</p>
+          <h3>Lamp flicker and 50 Hz mains</h3>
+          <p>Mains power in Qatar is 50 Hz (240 V; our source is an expat guide — confirm with Kahramaa before printing; we did not measure the booth supply). Lamps on AC flicker at twice that, 100 Hz. A camera running at f frames per second cannot see 100 Hz; it sees an apparent frequency = |100 − n·f| for the nearest whole number n. Examples: 15 fps → 5 Hz, 24 → 4, 25 → 0 (no visible flicker), 30 → 10 Hz. (Derived physics, not a measurement.) That is why our 10 Hz lamp shows 5 Hz flicker at 15 fps.</p>
+          <h3>Webcam frame timing</h3>
+          <p>Cameras change exposure and white balance by themselves, compress the picture, and their real frame rate moves with light and CPU load; frames can arrive late or duplicated. We use the video frame timestamps when the browser provides them. Persistence counts frames, not seconds, so a lower frame rate lengthens the time to alert. The “ms” readout is our processing time per frame, not the camera’s.</p>
+          <h3>Statistics</h3>
+          <p>For every proportion we show a 95% Wilson confidence interval (Wilson 1927, <i>JASA</i> 22:209–212) because the samples are small. The 70/30 split is stratified with a fixed seed, and τ* is chosen on the tuning split only.</p>
+          <h3>Respect for those before us</h3>
+          <p>The falcons fight the fire; the lighthouse gets everyone out: Saudi Civil Defense’s “Saqr/Falcon” drone, Dubai’s “Shaheen”, Abu Dhabi’s “Suhail”, Qatar Civil Defence’s own firefighting drones, and the Qatari students’ ISEF 2025 project on H₂S detection by drone. MANARA is the last-100-metres platform around them, not a competitor.</p>
+        </div>
+      </div>
+    </details>
+  </section>
+</main>
+<footer class="foot" data-footer></footer>
+</body>
+</html>

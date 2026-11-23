@@ -1,0 +1,71 @@
+// The words of a phone notification, made from a yb_notifications row (kind + data). Short on purpose: the full
+// text, any note and the times are in the account's «الإشعارات» (the server clock is UTC, so no hours here).
+// Mirrors noteText() in site/yanabee/js/account.js.
+const STATUS = { draft: 'مسودة', submitted: 'قيد المراجعة', returned: 'مطلوب تعديل', approved: 'معتمد', rejected: 'مرفوض' };
+const clip = (s, n = 60) => { const t = String(s || '').replace(/\s+/g, ' ').trim(); return t.length > n ? t.slice(0, n - 1) + '…' : t; };
+
+export function pushMessage(kind, data) {
+  const d = data && typeof data === 'object' ? data : {};
+  const team = !d.team_name ? 'فريقك' : /^فريق\s/.test(String(d.team_name)) ? clip(d.team_name, 40) : `فريق ${clip(d.team_name, 40)}`;
+  const T = {
+    team_status: () => `تغيّرت حالة ${team}: ${STATUS[d.to] || ''}`,
+    team_submitted: () => `${team} أرسل طلب التسجيل، وهو بانتظار المراجعة.`,
+    team_approved: () => `اعتُمد ${team} في المسابقة.`,
+    team_fee: () => (d.fee === 'waived' ? `أعفت الإدارة ${team} من الرسوم.` : `سُجّل سداد رسوم ${team}.`),
+    team_seated: () => `خلا مكان، فانتقل ${team} من الاحتياط إلى الفرق المشاركة.`,
+    result_pending: () => 'نتيجة مباراة بانتظار اعتمادك.',
+    result_approved: () => 'اعتُمدت نتيجة مباراة لفريقك.',
+    result_returned: () => 'أعادت الإدارة نتيجة مباراة للمراجعة.',
+    judge_assigned: () => 'اختارتك الإدارة حكمًا. افتح «التحكيم» في حسابك.',
+    results_published: () => 'أُعلنت النتائج النهائية للمسابقة.',
+    announcement: () => `إعلان جديد: ${clip(d.title)}`,
+    chat_report: () => 'بلاغ جديد في غرفة القادة.',
+    chat_muted: () => 'أوقفت الإدارة مشاركتك مؤقتًا، ويمكنك القراءة.',
+    post_pending: () => 'خبر جديد من قائد فريق ينتظر موافقتك.',
+    post_reviewed: () => (d.action === 'publish' ? 'نُشر خبرك وصار يراه الجميع.' : d.action === 'reject' ? 'أعاد المشرف خبرك للتعديل.' : 'أخفى المشرف خبرك.'),
+    comment_new: () => 'تعليق جديد على خبرك.',
+    comment_report: () => 'بلاغ جديد عن تعليق في الأخبار.',
+    team_leader_new: () => `صرت قائد ${team}.`,
+    team_leader_left: () => 'سُلّمت قيادة فريقك لشخص آخر.',
+    submission_new: () => `${team} أرسل عملًا للمراجعة.`,
+    submission_reviewed: () => (d.status === 'accepted' ? 'قُبل عمل فريقك في المشاريع والمبادرات.' : d.status === 'returned' ? 'أُعيد عمل فريقك للتعديل.' : 'لم يُقبل عمل فريقك.'),
+    submission_featured: () => (d.show ? 'صار عمل فريقك معروضًا في الصفحة الرئيسية.' : 'أُخفي عمل فريقك من الصفحة الرئيسية.'),
+    event_new: () => `موعد جديد: ${clip(d.title)}`,
+    event_changed: () => `تغيّر موعد: ${clip(d.title)}`,
+    event_cancelled: () => `أُلغي موعد: ${clip(d.title)}`,
+    event_postponed: () => `أُجّل موعد: ${clip(d.title)}`,
+    team_disqualified: () => `أخرجت إدارة المسابقة ${team} من المسابقة.`,
+    team_out: () => `خرج ${team} من المسابقة بقرار من الإدارة.`,
+    judge_team_out: () => `خرج ${team} من المسابقة: لا تحكّمه بعد الآن.`,
+    team_qualified: () => `مبارك! تأهّل ${team} إلى الدور النهائي.`,
+    qualified_announced: () => `أعلنت الإدارة الفرق المتأهلة إلى الدور النهائي.`,
+    link_request: () => `${clip(d.parent_name, 30) || 'ولي أمر'} يطلب متابعة أحد أعضاء فريقك. أكّد من حسابك.`,
+    link_confirmed: () => `أكّد قائد ${team} أنك ولي الأمر.`,
+    link_declined: () => `لم يؤكّد قائد ${team} طلب المتابعة.`,
+    seek_adult: () => 'لاعب قال إنه 18 فأكثر في «أبحث عن فريق»: تأكّد من ذلك.',
+    seek_adult_ok: () => 'أكّدت الإدارة أنك 18 فأكثر، فصرت ظاهرًا لقادة الفرق.',
+    seek_adult_no: () => 'لم تؤكّد الإدارة أنك 18 فأكثر.',
+    invite_new: () => `دعاك ${team} للانضمام إليه.`,
+    invite_waiting: () => `دعوة ${team} تنتظر ردّك.`,
+    invite_answer: () => (d.accepted ? `انضم ${clip(d.first_name, 20) || 'لاعب'} إلى فريقك.` : `اعتذر ${clip(d.first_name, 20) || 'لاعب'} عن دعوتك.`),
+    seek_approved: () => 'وافق ولي أمرك، وأصبحت في قائمة الباحثين عن فريق.',
+    pledge_note: () => 'كتب لك وليّ أمرك كلمة على وعدك هذا الأسبوع.',
+    pledge_cheer: () => 'شجّعك قائد فريقك على وعدك هذا الأسبوع.',
+    pledge_kept: () => `وفّى ${clip(d.first_name, 20) || 'ابنك'} بوعده هذا الأسبوع.`,
+    pledge_nudge: () => `يذكّرك قائد ${team}: اكتب وعد هذا الأسبوع.`,
+    week_theme: () => `قيمة هذا الأسبوع: ${clip(d.title, 50)}`,
+    award: () => `نال ${team} وسامًا تشجيعيًا من إدارة المسابقة.`,
+    admin_task: () => `مهمة جديدة من الإدارة: ${clip(d.title, 50)}`,
+    incident_new: () => 'سُجّلت واقعة جديدة في سجل الإصابات والطوارئ.',
+    lead_review: () => 'كتب المشرف تقييمك القيادي لهذا الأسبوع.',
+    survey_open: () => 'فتحت الإدارة استبيان أولياء الأمور: ثلاثة أسئلة قصيرة في حسابك.',
+    honours_announced: () => 'أعلنت الإدارة التكريمات النهائية. افتح حسابك لترى تكريمات فريقك وشهاداتك.',
+    honour: () => `تكريم جديد في ${team}. تجد الشهادة في «شهاداتي».`,
+    privacy_request: () => 'طلب جديد عن البيانات الشخصية. المهلة 30 يومًا.',
+    privacy_done: () => 'ردّت الإدارة على طلبك بشأن بياناتك.',
+    appeal_new: () => `تظلّم جديد من ${team} بانتظار البتّ.`,
+    appeal_decided: () => `بُتّ في تظلّم ${team}: ${d.accepted ? 'قُبل' : 'رُفض'}.`,
+  };
+  const body = (T[kind] || (() => 'لديك إشعار جديد.'))();
+  return { title: 'ينابيع', body, url: 'account.html', tag: 'yb-' + String(kind || 'note').replace(/[^a-z_]/g, '').slice(0, 30) };
+}

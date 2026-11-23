@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="ar" dir="rtl" data-lang="ar">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title data-en="MANARA — Robot Rescue Lab">منارة — مختبر الروبوت</title>
+<meta name="description" content="مختبر الروبوت في منارة: شاهد روبوت إنقاذ محاكى يبحث في مبنى مليء بالدخان ليلاً، وشغّله بالمفتاح البشري (المشغّل يطلب وقائد الحادث وحده يعتمد)، وراقب ما تراه كاميرته وما يعثر عليه، ثم افحص افتراضاته وحدوده بصدق. مفهوم بنموذج أولي محاكى — لم يُبنَ ولم يُجرَّب.">
+<meta property="og:title" content="منارة · مختبر الروبوت · MANARA Robot Rescue Lab">
+<meta property="og:description" content="A simulated rescue robot you can watch and operate — concept, not built, not tested. Robot assists; firefighters decide.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#0a0e15">
+<meta name="color-scheme" content="light dark">
+<script>(function(){var d=document.documentElement,t,l;try{t=localStorage.getItem('manara-theme');l=localStorage.getItem('manara-lang')}catch(e){}var q=/[?&]lang=(ar|en)/.exec(location.search);if(q)l=q[1];if(t!=='light'&&t!=='dark')t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';if(l!=='en')l='ar';d.dataset.theme=t;d.dataset.lang=l;d.lang=l;d.dir=l==='ar'?'rtl':'ltr';d.classList.add('js');setTimeout(function(){if(!window.__manaraReady)d.classList.remove('js')},2500)})();</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/robot.css">
+<script src="js/core.js" defer></script>
+<script src="js/sim.js" defer></script>
+<script src="js/messages.js" defer></script>
+<script src="js/robot.js" defer></script>
+</head>
+<body data-page="robot.html" class="robot">
+<a class="skip" href="#main">تخطَّ إلى المحتوى</a>
+<header class="nav" data-nav></header>
+<main id="main" tabindex="-1">
+  <h1 class="sr-only"><span data-l="ar">مختبر الروبوت — منارة</span><span data-l="en">Robot Rescue Lab — MANARA</span></h1>
+
+  <div class="rl-purpose" id="rl-purpose">
+    <span class="tag warn" translate="no">SIM</span>
+    <p><span data-l="ar">الروبوت مفهوم بنموذج أولي محاكى — لم يُبنَ ولم يُجرَّب. يساعد، ورجال الإطفاء هم من يقرّر. كل ما تراه هنا محاكاة.</span><span data-l="en">The robot is a concept with a simulated prototype — not built, not tested. It assists; firefighters decide. Everything here is a simulation.</span></p>
+  </div>
+
+  <noscript><div class="wrap"><p class="note warn" style="margin-block:16px"><span data-l="ar">مختبر الروبوت يحتاج إلى JavaScript (يعمل دون إنترنت). النصوص والحدود والافتراضات أدناه ظاهرة بدونه.</span><span data-l="en">The Robot Lab needs JavaScript (it works offline). The text, limits and assumptions below are visible without it.</span></p></div></noscript>
+
+  <!-- the console is built by js/robot.js -->
+  <div class="rl" id="rl" data-ready="0">
+    <div class="rl-boot" id="rl-boot" role="status"><span><span data-l="ar">جارٍ تجهيز مختبر الروبوت…</span><span data-l="en">Preparing the Robot Lab…</span></span></div>
+  </div>
+
+  <!-- ===================================================================== A/B + sensitivity -->
+  <section class="rl-sec" id="rl-ab" aria-labelledby="rl-ab-h">
+    <div class="wrap wide">
+      <div class="rl-sec-head">
+        <span class="eyebrow" data-icon="chart"><span data-l="ar">فحص آلية العمل</span><span data-l="en">A mechanism check</span></span>
+        <h2 class="sec-title" id="rl-ab-h"><span data-l="ar">هل يفيد الروبوت؟ المحاكاة نفسها مرتين</span><span data-l="en">Does the robot help? The same simulation, twice</span></h2>
+        <p class="sec-lead"><span data-l="ar">بذرة واحدة وعالم واحد: مرة «منارة بلا روبوت» ومرة «منارة مع الروبوت». لا تثبت شيئًا عن الواقع؛ تُظهر فقط ماذا تفعل الآلية بالافتراضات التي ترى قيمها في درج الافتراضات.</span><span data-l="en">One seed, one world: once "MANARA without the robot", once "MANARA with the robot". It proves nothing about the real world; it only shows what the mechanism does with the assumptions you can see in the assumptions drawer.</span></p>
+        <p class="rl-simlabel" role="note"><span class="tag warn" translate="no">SIM</span><b><span data-l="ar">محاكاة — فحص لآلية العمل، وليست دليلاً على الأثر</span><span data-l="en">SIMULATION — a mechanism check, not proof of impact</span></b></p>
+      </div>
+      <div class="rl-ab-grid">
+        <div class="rl-card" id="rl-ab-controls"></div>
+        <div class="rl-card rl-ab-out" id="rl-ab-out" aria-live="polite"></div>
+      </div>
+      <div class="rl-note-honest" id="rl-finding">
+        <h3><span data-l="ar">النتيجة الصادقة</span><span data-l="en">The honest finding</span></h3>
+        <p><span data-l="ar">زمن العثور على سكان المبنى إجمالاً يكاد لا يتغير — فالمنارة تُحصي معظمهم أصلاً عبر هواتفهم وحارس المبنى. لكن أشخاصاً بعينهم، مثل مستخدم الكرسي المتحرك العالق في الممر المليء بالدخان، يُعثر عليهم أبكر في أغلب البذور. وفي بعض البذور وصلت فرق الإنقاذ أولاً فلم يكن الروبوت أول من وجده. هذا ما تقوله الآلية بافتراضاتنا، وليس ما سيحدث في مبنى حقيقي.</span><span data-l="en">The overall time to locate the building's residents barely changes — MANARA already counts most of them through their phones and the building guard. But specific people, such as the wheelchair user stuck in the smoke-filled corridor, are located earlier in most seeds. In some seeds the crews got there first, so the robot was not the first to find him. That is what the mechanism says with our assumptions, not what would happen in a real building.</span></p>
+        <p class="small muted"><span data-l="ar">الأرقام الدقيقة تظهر أعلاه بعد التشغيل (وتُحسب في متصفحك الآن، لا نتائج جاهزة مخزَّنة).</span><span data-l="en">The exact numbers appear above after you run it (they are computed in your browser right now, not stored results).</span></p>
+      </div>
+
+      <div class="rl-sec-head rl-sub">
+        <h2 class="sec-title rl-h2" id="rl-sens-h"><span data-l="ar">حساسية النتيجة لافتراض واحد</span><span data-l="en">How sensitive is the result to ONE assumption?</span></h2>
+        <p class="sec-lead"><span data-l="ar">غيّرنا افتراضًا واحدًا في كل مرة وأعدنا التشغيل بالبذور نفسها. إن تغيّرت النتيجة كثيرًا فهي تعتمد على ذلك الافتراض — وهذا هو الدرس.</span><span data-l="en">We change one assumption at a time and re-run with the same seeds. If the result moves a lot, it depends on that assumption — that is the lesson.</span></p>
+        <p class="rl-simlabel" role="note"><span class="tag warn" translate="no">SIM</span><b><span data-l="ar">محاكاة — فحص لآلية العمل، وليست دليلاً على الأثر</span><span data-l="en">SIMULATION — a mechanism check, not proof of impact</span></b></p>
+      </div>
+      <div class="rl-ab-grid">
+        <div class="rl-card" id="rl-sens-controls"></div>
+        <div class="rl-card rl-ab-out" id="rl-sens-out" aria-live="polite"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================== honest limits -->
+  <section class="rl-sec alt" id="rl-limits" aria-labelledby="rl-lim-h">
+    <div class="wrap wide">
+      <div class="rl-sec-head">
+        <span class="eyebrow" data-icon="alert"><span data-l="ar">حدود نقولها بصوت عالٍ</span><span data-l="en">Limits we say out loud</span></span>
+        <h2 class="sec-title" id="rl-lim-h"><span data-l="ar">ما لا يستطيعه الروبوت</span><span data-l="en">What the robot cannot do</span></h2>
+        <p class="sec-lead"><span data-l="ar">كل رقم هنا افتراض مُسمّى في درج الافتراضات، يتغير فيتغير النص.</span><span data-l="en">Every number here is a named assumption from the assumptions drawer; change it and this text changes.</span></p>
+      </div>
+      <div class="grid g3 rl-limits">
+        <article class="card" style="--sc:var(--warn)"><div class="ico" aria-hidden="true"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h4v-4h4v-4h4V8h4V4"/></svg></div>
+          <h3><span data-l="ar">الدرج</span><span data-l="en">Stairs</span></h3>
+          <p><span data-l="ar">الروبوت ذو العجلات لا يصعد الدرج: الطوابق العليا تبقى بلا تفتيش ويُبلَّغ عنها. الروبوت ذو الجنزير يصعد لكن أبطأ بـ <b data-param="robotStairPenalty"></b> مرة ويستهلك بطارية أكثر بـ <b data-param="robotStairDrain"></b> مرة.</span><span data-l="en">A wheeled robot cannot climb stairs: upper floors stay unsearched and are reported. A tracked robot can, but <b data-param="robotStairPenalty"></b>× slower and using <b data-param="robotStairDrain"></b>× the battery.</span></p>
+          <p class="btns"><button type="button" class="btn btn-ghost btn-sm" data-act="try-wheeled"><span data-l="ar">جرّب الروبوت ذا العجلات</span><span data-l="en">Try the wheeled robot</span></button></p></article>
+        <article class="card" style="--sc:var(--danger)"><div class="ico" aria-hidden="true"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 14.8V4a2 2 0 0 0-4 0v10.8a4 4 0 1 0 4 0z"/></svg></div>
+          <h3><span data-l="ar">حرارة الخليج وكاميرا الأشعة تحت الحمراء</span><span data-l="en">Gulf heat and the thermal camera</span></h3>
+          <p><span data-l="ar">تتحدد رؤية الإنسان حرارياً بفرق حرارته (34 °م في النموذج) عن الغرفة. كلما سخنت الغرفة ضعف التباين حتى ينعدم عند 34 °م. في هذا النموذج: التباين الحالي <b data-live="contrast"></b> عند هواء الغرفة <b data-param="robotRoomC"></b> °م.</span><span data-l="en">A person shows up on the thermal camera by being warmer than the room (34 °C in the model). The hotter the room, the weaker the contrast, down to zero at 34 °C. In this model: contrast is now <b data-live="contrast"></b> at a room air temperature of <b data-param="robotRoomC"></b> °C.</span></p>
+          <div class="rl-contrast" id="rl-contrast" role="img"></div></article>
+        <article class="card" style="--sc:var(--info)"><div class="ico" aria-hidden="true"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="17" height="10" rx="2"/><path d="M22 11v2"/></svg></div>
+          <h3><span data-l="ar">البطارية والحرارة</span><span data-l="en">Battery and heat</span></h3>
+          <p><span data-l="ar">تكفي البطارية نحو <b data-param="robotBattMin"></b> دقيقة في الظروف الاعتيادية، وتنفد أسرع في الحرارة والدخان وعلى الدرج. لا يدخل الروبوت عقدة أسخن من <b data-param="robotMaxTempC"></b> °م، ويتوقف حرارياً بعد <b data-param="robotHeatSoakSec"></b> ث فوق <b data-param="robotHeatWarnC"></b> °م، ويعود قبل أن تنفد بطاريته.</span><span data-l="en">The battery lasts about <b data-param="robotBattMin"></b> minutes in ordinary conditions and drains faster in heat, smoke and on stairs. The robot never enters a node hotter than <b data-param="robotMaxTempC"></b> °C, shuts down thermally after <b data-param="robotHeatSoakSec"></b> s above <b data-param="robotHeatWarnC"></b> °C, and turns back before its battery runs out.</span></p></article>
+        <article class="card" style="--sc:var(--accent)"><div class="ico" aria-hidden="true"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12a7 7 0 0 1 14 0M8.5 12a3.5 3.5 0 0 1 7 0"/><circle cx="12" cy="12" r="1"/><path d="M12 13v8"/></svg></div>
+          <h3><span data-l="ar">مدى الاتصال</span><span data-l="en">Link range</span></h3>
+          <p><span data-l="ar">شبكة لاسلكية بمدى <b data-param="robotMeshRangeM"></b> م، وكل طابق يخسر <b data-param="robotFloorLossM"></b> م إضافية. عند ضعف الإشارة يُسقط الروبوت مرحِّلات، وإن انقطع الاتصال تُخزَّن تقاريره حتى يعود. لا نعرف مدى حقيقياً لأن لا روبوت حقيقياً بُني.</span><span data-l="en">A mesh with a range of <b data-param="robotMeshRangeM"></b> m, and every floor costs <b data-param="robotFloorLossM"></b> m more. When the signal weakens the robot drops relays; if the link is lost its reports are buffered until it returns. We do not know a real range because no real robot has been built.</span></p></article>
+        <article class="card" style="--sc:var(--brand)"><div class="ico" aria-hidden="true"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></div>
+          <h3><span data-l="ar">الأبواب والكشف</span><span data-l="en">Doors and detection</span></h3>
+          <p><span data-l="ar">الروبوت يفتح الباب غير المقفل ولا يكسر المقفل أبدًا: يُبلّغ عنه ويُعلّمه مسدودًا. الكشف بقواعد بسيطة (تباين حراري وصوت وكاميرا) وليس ذكاءً اصطناعيًا، وله سالب كاذب وموجب كاذب («شخص محتمل» يتبيّن أنه جسم ساخن).</span><span data-l="en">The robot opens an unlocked door and never breaks a locked one: it reports it and marks it blocked. Detection is rule-based (thermal contrast, sound, camera) — not "AI" — with false negatives and false positives (a "possible person" that turns out to be a hot object).</span></p></article>
+        <article class="card" style="--sc:var(--safe)"><div class="ico" aria-hidden="true"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+          <h3><span data-l="ar">يساعد، ورجال الإطفاء يقرّرون</span><span data-l="en">It assists; firefighters decide</span></h3>
+          <p><span data-l="ar">لا يتحرك الروبوت قبل أن يعتمد قائد الحادث. الأدوار هنا (مشاهد، مشغّل، قائد الحادث) محاكاة وليست دخولاً حقيقياً. الروبوت مفهوم لم يُبنَ ولم يُجرَّب في حريق، وأي تشغيل حقيقي يحتاج موافقة الدفاع المدني وملف سلامة وتجارب ميدانية.</span><span data-l="en">The robot does not move before the incident commander approves. The roles here (viewer, operator, incident commander) are simulated, not a real login. The robot is a concept, never built and never tested in a fire; any real use needs Civil Defence approval, a safety case and field trials.</span></p></article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================== the real robot -->
+  <section class="rl-sec" id="rl-real" aria-labelledby="rl-real-h">
+    <div class="wrap wide">
+      <div class="rl-sec-head">
+        <span class="eyebrow" data-icon="wrench"><span data-l="ar">من المحاكاة إلى الحديد</span><span data-l="en">From simulation to hardware</span></span>
+        <h2 class="sec-title" id="rl-real-h"><span data-l="ar">ماذا سيكون الروبوت الحقيقي؟</span><span data-l="en">What would the real robot be?</span></h2>
+        <p class="sec-lead"><span data-l="ar">تصميم مقترح وليس منتجًا: لا نقدّم مواصفات ولا أسعارًا لأننا لم نصمّمه بعد (غير متاح في هذا العرض). هذه هي القدرات التي تفترضها المحاكاة، وكل واحدة منها تحتاج بناءً واختبارًا.</span><span data-l="en">A proposed design, not a product: we give no specifications or prices because we have not designed it yet (N/A for this stimulus). These are the capabilities the simulation assumes, and each one needs building and testing.</span></p>
+      </div>
+      <div class="grid g3">
+        <article class="card"><h3><span data-l="ar">الجسم</span><span data-l="en">Body</span></h3><p><span data-l="ar">منصة صغيرة بجنزير (لتصعد الدرج بحدود) أو بعجلات (للممرات)، تحملها مركبة الإطفاء أو توضع مسبقًا في المبنى.</span><span data-l="en">A small tracked platform (to climb stairs, within limits) or a wheeled one (for corridors), carried by the fire engine or pre-positioned at the building.</span></p></article>
+        <article class="card"><h3><span data-l="ar">العيون</span><span data-l="en">Eyes</span></h3><p><span data-l="ar">كاميرا عادية بمصباح خاص وكاميرا حرارية، وتفادي العوائق، وخريطة للمبنى مأخوذة من التوأم الرقمي.</span><span data-l="en">A visible camera with its own lamp, a thermal camera, obstacle avoidance, and a map of the building taken from the digital twin.</span></p></article>
+        <article class="card"><h3><span data-l="ar">الأذن والصوت</span><span data-l="en">Ears and voice</span></h3><p><span data-l="ar">ميكروفون ومكبّر صوت للحديث في اتجاهين بلغة الشخص: «أنا روبوت الدفاع المدني — اتبع الضوء الأخضر».</span><span data-l="en">A microphone and speaker for two-way voice in the person's language: "I am a Civil Defence robot — follow the green light."</span></p></article>
+        <article class="card"><h3><span data-l="ar">الضوء والمنارات</span><span data-l="en">Light and beacons</span></h3><p><span data-l="ar">ضوء ودّي (أخضر ثابت ووميضان أبيضان كل ثانيتين؛ والوميض القوي اختياري مع تحذير الحساسية الضوئية) ومنارات طريق تعمل أيضًا كمرحِّلات اتصال.</span><span data-l="en">A friendly light (steady green with two white flashes every 2 s; a strobe is opt-in with a photosensitivity warning) and route beacons that also act as link relays.</span></p></article>
+        <article class="card"><h3><span data-l="ar">الأنف والجيب</span><span data-l="en">Nose and pouch</span></h3><p><span data-l="ar">حسّاس للغاز وأول أكسيد الكربون، وجيب صغير: غطاء دخان وماء وبطاقة إسعاف أولي.</span><span data-l="en">A gas / carbon-monoxide sensor and a small pouch: a smoke hood, water and a first-aid card.</span></p></article>
+        <article class="card" style="--sc:var(--warn)"><h3><span data-l="ar">ما ينقص قبل أي تشغيل حقيقي</span><span data-l="en">What is missing before any real use</span></h3><p><span data-l="ar">البناء، والاختبار في حرارة الخليج والدخان، وملف السلامة، وموافقة الدفاع المدني، وتدريب الطواقم. لم يتم أي منها.</span><span data-l="en">Building it, testing it in Gulf heat and smoke, a safety case, Civil Defence approval, and crew training. None of it has been done.</span></p></article>
+      </div>
+      <p class="btns rl-links">
+        <a class="btn btn-primary" href="build.html#robot" data-icon="wrench"><span data-l="ar">دليل البناء (قسم الروبوت)</span><span data-l="en">The build guide (robot section)</span></a>
+        <a class="btn btn-ghost" href="mission.html" data-icon="radar"><span data-l="ar">غرفة العمليات</span><span data-l="en">Mission Control</span></a>
+        <a class="btn btn-ghost" href="alert.html" data-icon="phone"><span data-l="ar">هواتف السكان</span><span data-l="en">Resident Phones</span></a>
+        <a class="btn btn-ghost" href="report.html" data-icon="chart"><span data-l="ar">التقرير العلمي</span><span data-l="en">The report</span></a>
+      </p>
+    </div>
+  </section>
+</main>
+<div id="rl-announce" class="sr-only" role="status" aria-live="polite"></div>
+<footer class="foot" data-footer></footer>
+</body>
+</html>
